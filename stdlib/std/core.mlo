@@ -1,0 +1,44 @@
+module std.core
+
+export identity(value: T) -> T:
+    value
+
+export constant(value: T, ignored: U) -> T:
+    value
+
+export equal(left: T, right: T) -> Bool:
+    left == right
+
+export not_equal(left: T, right: T) -> Bool:
+    left != right
+
+export clamp(value: Int64, lower: Int64, upper: Int64) -> Int64:
+    if value < lower:
+        return lower
+    if value > upper:
+        return upper
+    value
+
+export min_int(left: Int64, right: Int64) -> Int64:
+    if left < right:
+        return left
+    right
+
+export max_int(left: Int64, right: Int64) -> Int64:
+    if left > right:
+        return left
+    right
+
+export checked_add(left: UInt64, right: UInt64) -> Result[UInt64,Overflow]:
+    if right > 18446744073709551615 - left:
+        return Err(Overflow.Add)
+    Ok(left + right)
+
+export checked_sub(left: UInt64, right: UInt64) -> Result[UInt64,Overflow]:
+    if right > left:
+        return Err(Overflow.Subtract)
+    Ok(left - right)
+
+export enum Overflow:
+    Add
+    Subtract

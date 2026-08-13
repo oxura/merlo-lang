@@ -167,7 +167,6 @@ def build_stage06p_protocol(root: str | Path = ".") -> dict[str, Any]:
             "NaN_payload_identity": "not_promised",
             "generated_c_flags": [
                 "-fwrapv",
-                "-fno-strict-overflow",
                 "-fno-delete-null-pointer-checks",
                 "-ffp-contract=off",
             ],

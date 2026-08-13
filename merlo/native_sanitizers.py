@@ -86,7 +86,6 @@ def _compile(
     semantic_flags = (
         (
             "-fwrapv",
-            "-fno-strict-overflow",
             "-fno-delete-null-pointer-checks",
             "-ffp-contract=off",
         )

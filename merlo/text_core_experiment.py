@@ -1219,7 +1219,6 @@ def _compile_raw(
         "-std=c11",
         "-O3",
         "-fwrapv",
-        "-fno-strict-overflow",
         str(source),
         "-o",
         str(binary),

@@ -31,7 +31,8 @@ htmlcov/
 gmon.out
 *.profraw
 *.profdata
-core.*
+core
+core.[0-9]*
 
 # Generated corpus scratch directories
 alpha-corpus-*/

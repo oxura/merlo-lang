@@ -60,7 +60,7 @@ Compared semantic observations: status, result, printed checksum, and error kind
 - `Int64`: two-complement modulo $2^{64}$ reinterpreted as signed.
 - `Float32` and `Float64`: IEEE-754 host operations; NaN payload identity is not promised.
 - Generated C must not rely on signed-overflow UB, invalid aliasing, invalid alignment, unchecked pointer arithmetic, uninitialized reads, or out-of-bounds access.
-- Generated C uses explicit unsigned helpers for wrapping signed arithmetic, `memcpy` bit reinterpretation, masked shifts, explicit division edge handling, and compiler flags `-fwrapv -fno-strict-overflow -fno-delete-null-pointer-checks -ffp-contract=off`.
+- Generated C uses explicit unsigned helpers for wrapping signed arithmetic, `memcpy` bit reinterpretation, masked shifts, explicit division edge handling, and compiler flags `-fwrapv -fno-delete-null-pointer-checks -ffp-contract=off`.
 
 Required modes: release, debug assertions, explicit bounds checks, ASan, UBSan, and LeakSanitizer when supported.
 

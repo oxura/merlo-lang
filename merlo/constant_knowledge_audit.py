@@ -60,7 +60,6 @@ _C_FLAGS = (
     "-std=c11",
     "-O3",
     "-fwrapv",
-    "-fno-strict-overflow",
     "-fno-delete-null-pointer-checks",
     "-ffp-contract=off",
     "-fno-ident",
@@ -735,8 +734,9 @@ def _extract_loop(
                 direct_calls.append(target)
     canonical = _canonical_instructions(parsed_instructions)
     iteration = _infer_iteration_stride(parsed_instructions)
+    local_label = re.compile(r"\.L[A-Za-z0-9_.$]+")
     operand_sequence = [
-        f"{mnemonic} {re.sub(r'\.L[A-Za-z0-9_.$]+', 'LABEL', operands)}".rstrip()
+        f"{mnemonic} {local_label.sub('LABEL', operands)}".rstrip()
         for mnemonic, operands in parsed_instructions
     ]
     logical_per_machine = iteration["source_iterations_per_machine_iteration"]

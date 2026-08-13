@@ -75,7 +75,6 @@ def _compile_assembly(
         "-std=c11",
         "-O3",
         "-fwrapv",
-        "-fno-strict-overflow",
         "-fno-delete-null-pointer-checks",
         "-ffp-contract=off",
         "-fno-ident",

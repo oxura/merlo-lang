@@ -580,7 +580,6 @@ def _sanitizer_run(
         "-fno-omit-frame-pointer",
         "-fsanitize=address,undefined",
         "-fwrapv",
-        "-fno-strict-overflow",
         "-fno-delete-null-pointer-checks",
         "-ffp-contract=off",
         str(source_path),
