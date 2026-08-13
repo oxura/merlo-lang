@@ -1,0 +1,11 @@
+{
+  "hypothesis": "BytesView is a non-escaping zero-copy borrow and ordinary Bytes receives exactly one compiler-inserted drop without manual surface cleanup.",
+  "competing_explanation_1": "Zero-copy evidence is only an optimizer artifact; the pre-optimization MIR or generated C may still allocate or copy.",
+  "competing_explanation_2": "The workload is memory-bound, so timing can hide extra instructions, allocation, or payload copies.",
+  "falsifier": "Any hidden view allocation/free/copy, wrong pointer-offset relation, ownership imbalance, sanitizer failure, unexpected corpus result, valid<500, invalid<300, or non-hermetic full suite.",
+  "minimal_change": "Expand only Bytes evidence families and accounting, add zero-copy/automatic-drop probes, and make the unavailable-provider test independent of external roots.",
+  "required_evidence": "positive+negative+boundary+falsification; independent reference/surface/MIR/native agreement; ASan+UBSan+LSan; zero-copy and drop proofs; one hermetic full suite; frozen hashes.",
+  "stop_condition": "Stop with BYTES_SAFETY_DEFECT_FOUND on a safety defect; otherwise stop after one decision run with BYTES_EVIDENCE_CLOSED or BYTES_EVIDENCE_INCOMPLETE.",
+  "allowed_statuses": ["BYTES_EVIDENCE_CLOSED", "BYTES_EVIDENCE_INCOMPLETE", "BYTES_SAFETY_DEFECT_FOUND"],
+  "gates": {"valid_minimum": 500, "invalid_minimum": 300, "timing_reuse_only_if_cache_key_matches": true}
+}

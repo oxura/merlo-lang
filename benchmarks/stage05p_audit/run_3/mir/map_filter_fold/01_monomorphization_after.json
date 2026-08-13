@@ -1,0 +1,1761 @@
+{
+  "entry_function": "main",
+  "functions": [
+    {
+      "blocks": [
+        {
+          "id": "bb1_entry",
+          "instructions": [
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i1",
+              "op": "binary",
+              "operands": [
+                "%left_1",
+                "%right_2"
+              ],
+              "result": "%v_3",
+              "source": {
+                "column": 4,
+                "end_column": 16,
+                "end_line": 8,
+                "line": 8,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "return",
+            "source": {
+              "column": 4,
+              "end_column": 16,
+              "end_line": 8,
+              "line": 8,
+              "path": "corpus/map_filter_fold.meldra"
+            },
+            "targets": [],
+            "value": "%v_3"
+          }
+        }
+      ],
+      "entry_block": "bb1_entry",
+      "generic_parameters": [],
+      "instruction_count": 1,
+      "name": "add",
+      "parameters": [
+        {
+          "name": "left",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%left_1"
+        },
+        {
+          "name": "right",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%right_2"
+        }
+      ],
+      "pure": true,
+      "return_type": {
+        "bits": 64,
+        "element": null,
+        "kind": "uint",
+        "length": null,
+        "name": "UInt64",
+        "record": null,
+        "shared": false,
+        "unique": false
+      },
+      "source": {
+        "column": 0,
+        "end_column": 16,
+        "end_line": 8,
+        "line": 7,
+        "path": "corpus/map_filter_fold.meldra"
+      }
+    },
+    {
+      "blocks": [
+        {
+          "id": "bb1_entry",
+          "instructions": [
+            {
+              "attributes": {
+                "value": 2
+              },
+              "id": "i1",
+              "op": "const",
+              "operands": [],
+              "result": "%v_2",
+              "source": {
+                "column": 12,
+                "end_column": 13,
+                "end_line": 5,
+                "line": 5,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "mod"
+              },
+              "id": "i2",
+              "op": "binary",
+              "operands": [
+                "%value_1",
+                "%v_2"
+              ],
+              "result": "%v_3",
+              "source": {
+                "column": 4,
+                "end_column": 13,
+                "end_line": 5,
+                "line": 5,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i3",
+              "op": "const",
+              "operands": [],
+              "result": "%v_4",
+              "source": {
+                "column": 17,
+                "end_column": 18,
+                "end_line": 5,
+                "line": 5,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "eq"
+              },
+              "id": "i4",
+              "op": "compare",
+              "operands": [
+                "%v_3",
+                "%v_4"
+              ],
+              "result": "%v_5",
+              "source": {
+                "column": 4,
+                "end_column": 18,
+                "end_line": 5,
+                "line": 5,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 8,
+                "element": null,
+                "kind": "bool",
+                "length": null,
+                "name": "Bool",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "return",
+            "source": {
+              "column": 4,
+              "end_column": 18,
+              "end_line": 5,
+              "line": 5,
+              "path": "corpus/map_filter_fold.meldra"
+            },
+            "targets": [],
+            "value": "%v_5"
+          }
+        }
+      ],
+      "entry_block": "bb1_entry",
+      "generic_parameters": [],
+      "instruction_count": 4,
+      "name": "even",
+      "parameters": [
+        {
+          "name": "value",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%value_1"
+        }
+      ],
+      "pure": true,
+      "return_type": {
+        "bits": 8,
+        "element": null,
+        "kind": "bool",
+        "length": null,
+        "name": "Bool",
+        "record": null,
+        "shared": false,
+        "unique": false
+      },
+      "source": {
+        "column": 0,
+        "end_column": 18,
+        "end_line": 5,
+        "line": 4,
+        "path": "corpus/map_filter_fold.meldra"
+      }
+    },
+    {
+      "blocks": [
+        {
+          "id": "bb1_entry",
+          "instructions": [
+            {
+              "attributes": {
+                "value": 1
+              },
+              "id": "i1",
+              "op": "const",
+              "operands": [],
+              "result": "%v_2",
+              "source": {
+                "column": 32,
+                "end_column": 33,
+                "end_line": 11,
+                "line": 11,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 2
+              },
+              "id": "i2",
+              "op": "const",
+              "operands": [],
+              "result": "%v_3",
+              "source": {
+                "column": 35,
+                "end_column": 36,
+                "end_line": 11,
+                "line": 11,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 3
+              },
+              "id": "i3",
+              "op": "const",
+              "operands": [],
+              "result": "%v_4",
+              "source": {
+                "column": 38,
+                "end_column": 39,
+                "end_line": 11,
+                "line": 11,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 4
+              },
+              "id": "i4",
+              "op": "const",
+              "operands": [],
+              "result": "%v_5",
+              "source": {
+                "column": 41,
+                "end_column": 42,
+                "end_line": 11,
+                "line": 11,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 5
+              },
+              "id": "i5",
+              "op": "const",
+              "operands": [],
+              "result": "%v_6",
+              "source": {
+                "column": 44,
+                "end_column": 45,
+                "end_line": 11,
+                "line": 11,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 6
+              },
+              "id": "i6",
+              "op": "const",
+              "operands": [],
+              "result": "%v_7",
+              "source": {
+                "column": 47,
+                "end_column": 48,
+                "end_line": 11,
+                "line": 11,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 7
+              },
+              "id": "i7",
+              "op": "const",
+              "operands": [],
+              "result": "%v_8",
+              "source": {
+                "column": 50,
+                "end_column": 51,
+                "end_line": 11,
+                "line": 11,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 8
+              },
+              "id": "i8",
+              "op": "const",
+              "operands": [],
+              "result": "%v_9",
+              "source": {
+                "column": 53,
+                "end_column": 54,
+                "end_line": 11,
+                "line": 11,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "bytes": 0,
+                "reason": "unclassified_array_literal"
+              },
+              "id": "i9",
+              "op": "alloc_heap",
+              "operands": [],
+              "result": "%v_10",
+              "source": {
+                "column": 31,
+                "end_column": 55,
+                "end_line": 11,
+                "line": 11,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": null,
+                "element": {
+                  "bits": 64,
+                  "element": null,
+                  "kind": "uint",
+                  "length": null,
+                  "name": "UInt64",
+                  "record": null,
+                  "shared": false,
+                  "unique": false
+                },
+                "kind": "array",
+                "length": 8,
+                "name": "Array[UInt64;8]",
+                "record": null,
+                "shared": false,
+                "unique": true
+              }
+            },
+            {
+              "attributes": {
+                "length": 8
+              },
+              "id": "i10",
+              "op": "array_init",
+              "operands": [
+                "%v_10",
+                "%v_2",
+                "%v_3",
+                "%v_4",
+                "%v_5",
+                "%v_6",
+                "%v_7",
+                "%v_8",
+                "%v_9"
+              ],
+              "result": "%v_11",
+              "source": {
+                "column": 31,
+                "end_column": 55,
+                "end_line": 11,
+                "line": 11,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": null,
+                "element": {
+                  "bits": 64,
+                  "element": null,
+                  "kind": "uint",
+                  "length": null,
+                  "name": "UInt64",
+                  "record": null,
+                  "shared": false,
+                  "unique": false
+                },
+                "kind": "array",
+                "length": 8,
+                "name": "Array[UInt64;8]",
+                "record": null,
+                "shared": false,
+                "unique": true
+              }
+            },
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i11",
+              "op": "const",
+              "operands": [],
+              "result": "%v_12",
+              "source": {
+                "column": 23,
+                "end_column": 24,
+                "end_line": 12,
+                "line": 12,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "bytes": 0,
+                "local": "checksum"
+              },
+              "id": "i12",
+              "op": "alloc_stack",
+              "operands": [],
+              "result": "%v_13",
+              "source": {
+                "column": 4,
+                "end_column": 24,
+                "end_line": 12,
+                "line": 12,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i13",
+              "op": "store_local",
+              "operands": [
+                "%v_13",
+                "%v_12"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 24,
+                "end_line": 12,
+                "line": 12,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i14",
+              "op": "const",
+              "operands": [],
+              "result": "%v_14",
+              "source": {
+                "column": 26,
+                "end_column": 27,
+                "end_line": 13,
+                "line": 13,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "local": "i"
+              },
+              "id": "i15",
+              "op": "alloc_stack",
+              "operands": [],
+              "result": "%v_15",
+              "source": {
+                "column": 4,
+                "end_column": 77,
+                "end_line": 15,
+                "line": 13,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i16",
+              "op": "store_local",
+              "operands": [
+                "%v_15",
+                "%v_14"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 77,
+                "end_line": 15,
+                "line": 13,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 4,
+              "end_column": 77,
+              "end_line": 15,
+              "line": 13,
+              "path": "corpus/map_filter_fold.meldra"
+            },
+            "targets": [
+              "bb2_for_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb2_for_header",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i17",
+              "op": "load_local",
+              "operands": [
+                "%v_15"
+              ],
+              "result": "%v_16",
+              "source": {
+                "column": 4,
+                "end_column": 77,
+                "end_line": 15,
+                "line": 13,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "lt",
+                "range_guard": true
+              },
+              "id": "i18",
+              "op": "compare",
+              "operands": [
+                "%v_16",
+                "%n_1"
+              ],
+              "result": "%v_17",
+              "source": {
+                "column": 4,
+                "end_column": 77,
+                "end_line": 15,
+                "line": 13,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 8,
+                "element": null,
+                "kind": "bool",
+                "length": null,
+                "name": "Bool",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": "%v_17",
+            "kind": "branch",
+            "source": {
+              "column": 4,
+              "end_column": 77,
+              "end_line": 15,
+              "line": 13,
+              "path": "corpus/map_filter_fold.meldra"
+            },
+            "targets": [
+              "bb3_for_body",
+              "bb4_for_exit"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb3_for_body",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i19",
+              "op": "load_local",
+              "operands": [
+                "%v_15"
+              ],
+              "result": "%v_18",
+              "source": {
+                "column": 15,
+                "end_column": 16,
+                "end_line": 14,
+                "line": 14,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 7
+              },
+              "id": "i20",
+              "op": "const",
+              "operands": [],
+              "result": "%v_19",
+              "source": {
+                "column": 19,
+                "end_column": 20,
+                "end_line": 14,
+                "line": 14,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "bit_and"
+              },
+              "id": "i21",
+              "op": "binary",
+              "operands": [
+                "%v_18",
+                "%v_19"
+              ],
+              "result": "%v_20",
+              "source": {
+                "column": 15,
+                "end_column": 20,
+                "end_line": 14,
+                "line": 14,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i22",
+              "op": "load_local",
+              "operands": [
+                "%v_15"
+              ],
+              "result": "%v_21",
+              "source": {
+                "column": 31,
+                "end_column": 32,
+                "end_line": 14,
+                "line": 14,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 7
+              },
+              "id": "i23",
+              "op": "const",
+              "operands": [],
+              "result": "%v_22",
+              "source": {
+                "column": 35,
+                "end_column": 36,
+                "end_line": 14,
+                "line": 14,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "bit_and"
+              },
+              "id": "i24",
+              "op": "binary",
+              "operands": [
+                "%v_21",
+                "%v_22"
+              ],
+              "result": "%v_23",
+              "source": {
+                "column": 31,
+                "end_column": 36,
+                "end_line": 14,
+                "line": 14,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i25",
+              "op": "array_len",
+              "operands": [
+                "%v_11"
+              ],
+              "result": "%v_24",
+              "source": {
+                "column": 24,
+                "end_column": 37,
+                "end_line": 14,
+                "line": 14,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "aggregate": "%v_11",
+                "proven": false
+              },
+              "id": "i26",
+              "op": "bounds_check",
+              "operands": [
+                "%v_23",
+                "%v_24"
+              ],
+              "result": null,
+              "source": {
+                "column": 24,
+                "end_column": 37,
+                "end_line": 14,
+                "line": 14,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i27",
+              "op": "index_load",
+              "operands": [
+                "%v_11",
+                "%v_23"
+              ],
+              "result": "%v_25",
+              "source": {
+                "column": 24,
+                "end_column": 37,
+                "end_line": 14,
+                "line": 14,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i28",
+              "op": "load_local",
+              "operands": [
+                "%v_15"
+              ],
+              "result": "%v_26",
+              "source": {
+                "column": 40,
+                "end_column": 41,
+                "end_line": 14,
+                "line": 14,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i29",
+              "op": "binary",
+              "operands": [
+                "%v_25",
+                "%v_26"
+              ],
+              "result": "%v_27",
+              "source": {
+                "column": 24,
+                "end_column": 41,
+                "end_line": 14,
+                "line": 14,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i30",
+              "op": "array_len",
+              "operands": [
+                "%v_11"
+              ],
+              "result": "%v_28",
+              "source": {
+                "column": 8,
+                "end_column": 41,
+                "end_line": 14,
+                "line": 14,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i31",
+              "op": "bounds_check",
+              "operands": [
+                "%v_20",
+                "%v_28"
+              ],
+              "result": null,
+              "source": {
+                "column": 8,
+                "end_column": 41,
+                "end_line": 14,
+                "line": 14,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {
+                "in_place": true
+              },
+              "id": "i32",
+              "op": "store_index",
+              "operands": [
+                "%v_11",
+                "%v_20",
+                "%v_27"
+              ],
+              "result": null,
+              "source": {
+                "column": 8,
+                "end_column": 41,
+                "end_line": 14,
+                "line": 14,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i33",
+              "op": "load_local",
+              "operands": [
+                "%v_13"
+              ],
+              "result": "%v_29",
+              "source": {
+                "column": 19,
+                "end_column": 27,
+                "end_line": 15,
+                "line": 15,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "reason": "collection_map"
+              },
+              "id": "i34",
+              "op": "alloc_heap",
+              "operands": [],
+              "result": "%v_30",
+              "source": {
+                "column": 42,
+                "end_column": 61,
+                "end_line": 15,
+                "line": 15,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": null,
+                "element": {
+                  "bits": 64,
+                  "element": null,
+                  "kind": "uint",
+                  "length": null,
+                  "name": "UInt64",
+                  "record": null,
+                  "shared": false,
+                  "unique": false
+                },
+                "kind": "slice",
+                "length": null,
+                "name": "Slice[UInt64]",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "function": "square",
+                "specialized_type": "UInt64"
+              },
+              "id": "i35",
+              "op": "collection_map_uint64",
+              "operands": [
+                "%v_11",
+                "%v_30"
+              ],
+              "result": "%v_31",
+              "source": {
+                "column": 42,
+                "end_column": 61,
+                "end_line": 15,
+                "line": 15,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": null,
+                "element": {
+                  "bits": 64,
+                  "element": null,
+                  "kind": "uint",
+                  "length": null,
+                  "name": "UInt64",
+                  "record": null,
+                  "shared": false,
+                  "unique": false
+                },
+                "kind": "slice",
+                "length": null,
+                "name": "Slice[UInt64]",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "reason": "collection_filter"
+              },
+              "id": "i36",
+              "op": "alloc_heap",
+              "operands": [],
+              "result": "%v_32",
+              "source": {
+                "column": 35,
+                "end_column": 68,
+                "end_line": 15,
+                "line": 15,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": null,
+                "element": {
+                  "bits": 64,
+                  "element": null,
+                  "kind": "uint",
+                  "length": null,
+                  "name": "UInt64",
+                  "record": null,
+                  "shared": false,
+                  "unique": false
+                },
+                "kind": "slice",
+                "length": null,
+                "name": "Slice[UInt64]",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "function": "even",
+                "specialized_type": "UInt64"
+              },
+              "id": "i37",
+              "op": "collection_filter_uint64",
+              "operands": [
+                "%v_31",
+                "%v_32"
+              ],
+              "result": "%v_33",
+              "source": {
+                "column": 35,
+                "end_column": 68,
+                "end_line": 15,
+                "line": 15,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": null,
+                "element": {
+                  "bits": 64,
+                  "element": null,
+                  "kind": "uint",
+                  "length": null,
+                  "name": "UInt64",
+                  "record": null,
+                  "shared": false,
+                  "unique": false
+                },
+                "kind": "slice",
+                "length": null,
+                "name": "Slice[UInt64]",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i38",
+              "op": "const",
+              "operands": [],
+              "result": "%v_34",
+              "source": {
+                "column": 70,
+                "end_column": 71,
+                "end_line": 15,
+                "line": 15,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "function": "add",
+                "specialized_type": "UInt64"
+              },
+              "id": "i39",
+              "op": "collection_fold_uint64",
+              "operands": [
+                "%v_33",
+                "%v_34"
+              ],
+              "result": "%v_35",
+              "source": {
+                "column": 30,
+                "end_column": 77,
+                "end_line": 15,
+                "line": 15,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i40",
+              "op": "binary",
+              "operands": [
+                "%v_29",
+                "%v_35"
+              ],
+              "result": "%v_36",
+              "source": {
+                "column": 19,
+                "end_column": 77,
+                "end_line": 15,
+                "line": 15,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i41",
+              "op": "store_local",
+              "operands": [
+                "%v_13",
+                "%v_36"
+              ],
+              "result": null,
+              "source": {
+                "column": 8,
+                "end_column": 77,
+                "end_line": 15,
+                "line": 15,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i42",
+              "op": "load_local",
+              "operands": [
+                "%v_15"
+              ],
+              "result": "%v_37",
+              "source": {
+                "column": 4,
+                "end_column": 77,
+                "end_line": 15,
+                "line": 13,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 1
+              },
+              "id": "i43",
+              "op": "const",
+              "operands": [],
+              "result": "%v_38",
+              "source": {
+                "column": 4,
+                "end_column": 77,
+                "end_line": 15,
+                "line": 13,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i44",
+              "op": "binary",
+              "operands": [
+                "%v_37",
+                "%v_38"
+              ],
+              "result": "%v_39",
+              "source": {
+                "column": 4,
+                "end_column": 77,
+                "end_line": 15,
+                "line": 13,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i45",
+              "op": "store_local",
+              "operands": [
+                "%v_15",
+                "%v_39"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 77,
+                "end_line": 15,
+                "line": 13,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 4,
+              "end_column": 77,
+              "end_line": 15,
+              "line": 13,
+              "path": "corpus/map_filter_fold.meldra"
+            },
+            "targets": [
+              "bb2_for_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb4_for_exit",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i46",
+              "op": "load_local",
+              "operands": [
+                "%v_13"
+              ],
+              "result": "%v_40",
+              "source": {
+                "column": 4,
+                "end_column": 12,
+                "end_line": 16,
+                "line": 16,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "return",
+            "source": {
+              "column": 4,
+              "end_column": 12,
+              "end_line": 16,
+              "line": 16,
+              "path": "corpus/map_filter_fold.meldra"
+            },
+            "targets": [],
+            "value": "%v_40"
+          }
+        }
+      ],
+      "entry_block": "bb1_entry",
+      "generic_parameters": [],
+      "instruction_count": 46,
+      "name": "main",
+      "parameters": [
+        {
+          "name": "n",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%n_1"
+        }
+      ],
+      "pure": true,
+      "return_type": {
+        "bits": 64,
+        "element": null,
+        "kind": "uint",
+        "length": null,
+        "name": "UInt64",
+        "record": null,
+        "shared": false,
+        "unique": false
+      },
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 16,
+        "line": 10,
+        "path": "corpus/map_filter_fold.meldra"
+      }
+    },
+    {
+      "blocks": [
+        {
+          "id": "bb1_entry",
+          "instructions": [
+            {
+              "attributes": {
+                "operator": "mul"
+              },
+              "id": "i1",
+              "op": "binary",
+              "operands": [
+                "%value_1",
+                "%value_1"
+              ],
+              "result": "%v_2",
+              "source": {
+                "column": 4,
+                "end_column": 17,
+                "end_line": 2,
+                "line": 2,
+                "path": "corpus/map_filter_fold.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "return",
+            "source": {
+              "column": 4,
+              "end_column": 17,
+              "end_line": 2,
+              "line": 2,
+              "path": "corpus/map_filter_fold.meldra"
+            },
+            "targets": [],
+            "value": "%v_2"
+          }
+        }
+      ],
+      "entry_block": "bb1_entry",
+      "generic_parameters": [],
+      "instruction_count": 1,
+      "name": "square",
+      "parameters": [
+        {
+          "name": "value",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%value_1"
+        }
+      ],
+      "pure": true,
+      "return_type": {
+        "bits": 64,
+        "element": null,
+        "kind": "uint",
+        "length": null,
+        "name": "UInt64",
+        "record": null,
+        "shared": false,
+        "unique": false
+      },
+      "source": {
+        "column": 0,
+        "end_column": 17,
+        "end_line": 2,
+        "line": 1,
+        "path": "corpus/map_filter_fold.meldra"
+      }
+    }
+  ],
+  "instruction_count": 52,
+  "records": [],
+  "schema_version": 1,
+  "source_sha256": "ce67655b739ace86b42fa61714c521c24cb4369aaf234dda1b6c4dfface456b1",
+  "subset_forms": [
+    "fn",
+    "let",
+    "var",
+    "if",
+    "match",
+    "for",
+    "while",
+    "direct_function_calls"
+  ],
+  "subset_types": [
+    "Int64",
+    "UInt64",
+    "Float32",
+    "Float64",
+    "Bool",
+    "records",
+    "arrays",
+    "slices"
+  ]
+}

@@ -1,0 +1,3 @@
+{"timestamp":"2026-01-01T00:00:00Z","level":"error","service":"api","message":"failed"}
+{"timestamp":"2026-01-01T00:00:01Z","level":"info","service":"web","message":"ok"}
+{"timestamp":"bad","level":3,"service":"api","message":"invalid"}

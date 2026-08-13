@@ -1,0 +1,208 @@
+{
+  "contract": "merlo.semantic-surface-experiment.v1",
+  "gates": {
+    "ambiguity_rejected": true,
+    "four_categories": true,
+    "native_correct": true,
+    "native_faster_than_python": true,
+    "semantic_references_exact": true,
+    "surface_not_longer_than_python": true
+  },
+  "hypothesis": "A concise target-independent surface can be no longer than Python while elaborating deterministically into typed Merlo HIR/MIR and retaining native execution.",
+  "negative_controls": [
+    {
+      "diagnostic": "negative/ambiguous_parameter.mlo:2: AmbiguousType 'identity.item'; add one boundary annotation or a constraining operation",
+      "id": "ambiguous_parameter",
+      "rejected": true
+    },
+    {
+      "diagnostic": "negative/type_conflict.mlo:3: TypeConflict Bool vs UInt64 (numeric operator)",
+      "id": "type_conflict",
+      "rejected": true
+    },
+    {
+      "diagnostic": "negative/unresolved_name.mlo:2: UnresolvedName 'missing'",
+      "id": "unresolved_name",
+      "rejected": true
+    }
+  ],
+  "observations": [
+    {
+      "arguments": [
+        750000
+      ],
+      "category": "script",
+      "correct": true,
+      "expected": 9699862646238194464,
+      "id": "automation_checksum",
+      "performance": {
+        "merlo_median_ms": 0.786693,
+        "merlo_over_python": 0.0045738277040691675,
+        "native_faster_than_python": true,
+        "python_median_ms": 171.998827,
+        "runs": 9,
+        "warmups": 2
+      },
+      "semantic_projection": {
+        "generated_c_sha256": "77d20207066dfdc367a284d93ebcae6aaf184d6eb68166baffb49705821b9b40",
+        "hir_digest": "3d5d6e9f68f11e9687f40a6aea5035586d18faadfcfe2627d288383d19b54a8b",
+        "mir_digest": "bf42ee9a2afcaf0a59894a2ed2d6fb6fc03dfbc3b5999a1962f271255ce7e230",
+        "optimized_mir_digest": "bf42ee9a2afcaf0a59894a2ed2d6fb6fc03dfbc3b5999a1962f271255ce7e230",
+        "unknown_references": 0
+      },
+      "surface": {
+        "canonical_source": "fn main(n: UInt64) -> UInt64:\n    var value: UInt64 = 1\n    var checksum: UInt64 = 0\n    for i in 0..n:\n        value = value * 1664525 + 1013904223\n        checksum = checksum ^ value + i\n    checksum\n",
+        "inferred_annotations": 5,
+        "inferred_mutability": 2,
+        "lines": 7,
+        "not_longer_than_python": true,
+        "python_lines": 9,
+        "python_source_bytes": 208,
+        "python_tokens": 64,
+        "source_bytes": 138,
+        "token_ratio_vs_python": 0.5625,
+        "tokens": 36
+      }
+    },
+    {
+      "arguments": [
+        650000,
+        17
+      ],
+      "category": "research",
+      "correct": true,
+      "expected": 21224568672,
+      "id": "research_recurrence",
+      "performance": {
+        "merlo_median_ms": 1.061202,
+        "merlo_over_python": 0.006287383183134952,
+        "native_faster_than_python": true,
+        "python_median_ms": 168.782778,
+        "runs": 9,
+        "warmups": 2
+      },
+      "semantic_projection": {
+        "generated_c_sha256": "9d5d4849876ce8d2de1245c6607162a0157c4b58f81030d6155dd064ac205b0d",
+        "hir_digest": "d78f4a3179e6b743f21d90c36c292c78f2d1a95683122e79839df9b8ebe84e48",
+        "mir_digest": "bb27107adf6513cd8517890a1b5184fe8a5a3c24968a7ba95ea60643c6419ac9",
+        "optimized_mir_digest": "bb27107adf6513cd8517890a1b5184fe8a5a3c24968a7ba95ea60643c6419ac9",
+        "unknown_references": 0
+      },
+      "surface": {
+        "canonical_source": "fn main(samples: UInt64, seed: UInt64) -> UInt64:\n    var state: UInt64 = seed\n    var score: UInt64 = 0\n    for step in 0..samples:\n        state = state * 6364136223846793005 + 1442695040888963407\n        score = score + ((state ^ step) & 65535)\n    score\n",
+        "inferred_annotations": 6,
+        "inferred_mutability": 2,
+        "lines": 8,
+        "not_longer_than_python": true,
+        "python_lines": 9,
+        "python_source_bytes": 260,
+        "python_tokens": 76,
+        "source_bytes": 193,
+        "token_ratio_vs_python": 0.6052631578947368,
+        "tokens": 46
+      }
+    },
+    {
+      "arguments": [
+        12500000,
+        375,
+        48
+      ],
+      "category": "business",
+      "correct": true,
+      "expected": 73170958,
+      "id": "billing_compound",
+      "performance": {
+        "merlo_median_ms": 0.363251,
+        "merlo_over_python": 0.03570992863047566,
+        "native_faster_than_python": true,
+        "python_median_ms": 10.172269,
+        "runs": 9,
+        "warmups": 2
+      },
+      "semantic_projection": {
+        "generated_c_sha256": "fe840b9db0c6ff1e276421da7d8a41af31dd2d1fa9324c4e0b301c92b4dbec4a",
+        "hir_digest": "de556b105f922f15c1fd2186a1e88aa39cc9b9fc6a44fb1ef3d8daf61f56501b",
+        "mir_digest": "bd5421ecc2abc604e845dc75e4477f152f0607a6981904889a5e5c58d93d78d4",
+        "optimized_mir_digest": "bd5421ecc2abc604e845dc75e4477f152f0607a6981904889a5e5c58d93d78d4",
+        "unknown_references": 0
+      },
+      "surface": {
+        "canonical_source": "fn compound(amount: UInt64, rate: UInt64, periods: UInt64) -> UInt64:\n    var total: UInt64 = amount\n    for period in 0..periods:\n        total = total + total * rate / 10000\n    total\n\nfn main(principal: UInt64, rate: UInt64, periods: UInt64) -> UInt64:\n    compound(principal, rate, periods)\n",
+        "inferred_annotations": 10,
+        "inferred_mutability": 1,
+        "lines": 10,
+        "not_longer_than_python": true,
+        "python_lines": 8,
+        "python_source_bytes": 259,
+        "python_tokens": 83,
+        "source_bytes": 229,
+        "token_ratio_vs_python": 0.6746987951807228,
+        "tokens": 56
+      }
+    },
+    {
+      "arguments": [
+        900000,
+        88172645463325252
+      ],
+      "category": "systems",
+      "correct": true,
+      "expected": 14035967121975701733,
+      "id": "systems_mixer",
+      "performance": {
+        "merlo_median_ms": 1.783573,
+        "merlo_over_python": 0.005524399804412968,
+        "native_faster_than_python": true,
+        "python_median_ms": 322.853715,
+        "runs": 9,
+        "warmups": 2
+      },
+      "semantic_projection": {
+        "generated_c_sha256": "541e919342c673ce9164d1e108f44f1402cc0c4e208029a43d6dd698ae8dc9d6",
+        "hir_digest": "85b84df62d082865077113b789e52129dd0a7ef5e29861fa919772ec8cbb99ff",
+        "mir_digest": "ebaa07df6f6bf076354ee05af28031a88a71795f98ede2aff0f4217f8d716849",
+        "optimized_mir_digest": "ebaa07df6f6bf076354ee05af28031a88a71795f98ede2aff0f4217f8d716849",
+        "unknown_references": 0
+      },
+      "surface": {
+        "canonical_source": "fn main(n: UInt64, __input_word: UInt64) -> UInt64:\n    var word: UInt64 = __input_word\n    for round in 0..n:\n        word = word ^ word << 13\n        word = word ^ word >> 7\n        word = word ^ word << 17\n    word\n",
+        "inferred_annotations": 4,
+        "inferred_mutability": 0,
+        "lines": 7,
+        "not_longer_than_python": true,
+        "python_lines": 9,
+        "python_source_bytes": 227,
+        "python_tokens": 84,
+        "source_bytes": 143,
+        "token_ratio_vs_python": 0.5595238095238095,
+        "tokens": 47
+      }
+    }
+  ],
+  "report_sha256": "65902053cc52d34157aada135782709f81919dc92c9d60d2f775c957170d1c5b",
+  "schema_version": 1,
+  "scope": {
+    "future_targets": [
+      "WebAssembly",
+      "browser DOM/UI facet",
+      "server rendering"
+    ],
+    "supported": [
+      "top-level scripts with positional native inputs",
+      "Bool and UInt64 local inference",
+      "inferred mutability",
+      "functions, calls, conditions, and numeric loops",
+      "canonical typed Merlo projection",
+      "native C backend"
+    ],
+    "unsupported": [
+      "Text and collections inference",
+      "I/O and effects",
+      "records and enums in concise syntax",
+      "REPL persistence",
+      "frontend renderer or DOM runtime"
+    ]
+  },
+  "status": "SEMANTIC_COMPRESSION_SUPPORTED"
+}

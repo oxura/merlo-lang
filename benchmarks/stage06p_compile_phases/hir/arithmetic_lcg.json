@@ -1,0 +1,1002 @@
+{
+  "contract": "meldra.native-typed-hir.v1",
+  "cst": {
+    "adapter": "stage05p_frozen_performance_parser",
+    "lossless": true,
+    "normalized_sha256": "f434d6d13021c8de676dfdc882c340e718c5fb22dbb01ce88516cad912db703e",
+    "path": "compile-phases/arithmetic_lcg.meldra",
+    "source_sha256": "de4877e1e2de326ed49b545bafb25a3093dd4e09cebc73905ae97e23f1c2b4ae"
+  },
+  "entry_function": "main",
+  "invariants": {
+    "effects_and_capabilities_explicit": true,
+    "lossless_source": true,
+    "source_mappings": true,
+    "stable_symbol_ids": true
+  },
+  "nodes": [
+    {
+      "children": [
+        "nhirn_fa9ea30576afb8b9c9ba6d6b3a73eaa4db46850f3940d53796493eb7a1f67deb"
+      ],
+      "id": "nhirn_27fd58d472aa7e1a8953f8fdca75efda601ae444e560c40ac3da0838d672fa4f",
+      "kind": "Module",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_4efaa472a4e747de231ce449a254732ae1c68234305544d576e4769d78d5da8f",
+        "nhirn_a0b627a4ce064ab6ddd522b07c4132c722e555398e2791246b6acb6c3f3c2c6a",
+        "nhirn_c57576313c754f4a02929e4548d4ab15887a77656b90679c87a3f0448c5e6644",
+        "nhirn_db79c44ad099213ca6a28f3728a36d5cf38dc540d03db8a11fc36e2d45e0a094",
+        "nhirn_f2fbc2be2c04503a4abb1238ac93d7f9967ba289e54922673c20178b24e54150",
+        "nhirn_b46e40fb3ca91501987b20c530e0a504ba29d46f97b81ce59810491a7cf9da9b"
+      ],
+      "id": "nhirn_fa9ea30576afb8b9c9ba6d6b3a73eaa4db46850f3940d53796493eb7a1f67deb",
+      "kind": "FunctionDef",
+      "name": "main",
+      "operator": null,
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 7,
+        "line": 1,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_38e78f6639920c99bd5e8901f00998dfcdeb1592975f23718cb219da2bb05304"
+      ],
+      "id": "nhirn_4efaa472a4e747de231ce449a254732ae1c68234305544d576e4769d78d5da8f",
+      "kind": "arguments",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_59a9ab6fc453f9c29dab18e5945ea81978ae48af381541b627d64f65ccbe6d38",
+        "nhirn_595a3775eb383b9a76d9343f92784529e3dfcbe676a0eee02773b2ad8e925ed0",
+        "nhirn_421fc6efdba02204ea65972557b2bac3531c1354f7eea0d553a18a6fd2948645"
+      ],
+      "id": "nhirn_a0b627a4ce064ab6ddd522b07c4132c722e555398e2791246b6acb6c3f3c2c6a",
+      "kind": "AnnAssign",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 21,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_6e071906ace0f1d3c968969582bd9b871dfa8a0c14b67ff19b86be749f1a6f30",
+        "nhirn_e1435e327c2b402116bfe378c54875d831b0faa304d3d4f030e5a54978828b0c",
+        "nhirn_7ef69e8ad4fa0c20e98427fcc6386311456d4ad5489fc3d7d4dd32803528fbb2"
+      ],
+      "id": "nhirn_c57576313c754f4a02929e4548d4ab15887a77656b90679c87a3f0448c5e6644",
+      "kind": "AnnAssign",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 24,
+        "end_line": 3,
+        "line": 3,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_80de7b3326955ddd71fa2828986a20d2470e10bb67812e924cde74c64c9f9ae5",
+        "nhirn_adf853af207b0014af5be87341b38379a5c4ebe9f047baaba618dd34453dc32b",
+        "nhirn_06094836cba8830a8f2ae864e13751c6d9b38f50a73179633166f72f04647e41",
+        "nhirn_a6f589f8ad2b3bc86fd029739f767f292142b1e189375a1c232b5948d9adec61"
+      ],
+      "id": "nhirn_db79c44ad099213ca6a28f3728a36d5cf38dc540d03db8a11fc36e2d45e0a094",
+      "kind": "For",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 41,
+        "end_line": 6,
+        "line": 4,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_4f8a0cdeafb188c31c39bf38c62435d8e650433a2106d2189833b4b678ad9d61"
+      ],
+      "id": "nhirn_f2fbc2be2c04503a4abb1238ac93d7f9967ba289e54922673c20178b24e54150",
+      "kind": "Expr",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_3d4a813cb0a1cbb9d52e87e2736ed9cd212b0e87eaeee04f9aef16418521397f"
+      ],
+      "id": "nhirn_b46e40fb3ca91501987b20c530e0a504ba29d46f97b81ce59810491a7cf9da9b",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 23,
+        "end_column": 29,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_b1929f41ff7591309a27d7e0cb1dbf2bf875425734894c4c237682279b8c36e5"
+      ],
+      "id": "nhirn_38e78f6639920c99bd5e8901f00998dfcdeb1592975f23718cb219da2bb05304",
+      "kind": "arg",
+      "name": "n",
+      "operator": null,
+      "source": {
+        "column": 9,
+        "end_column": 18,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_fbcc8cbe0922ba272a59d6b3af44964536261c1622186267d199bd5026a61431"
+      ],
+      "id": "nhirn_59a9ab6fc453f9c29dab18e5945ea81978ae48af381541b627d64f65ccbe6d38",
+      "kind": "Name",
+      "name": "value",
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 9,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_3d4a813cb0a1cbb9d52e87e2736ed9cd212b0e87eaeee04f9aef16418521397f"
+      ],
+      "id": "nhirn_595a3775eb383b9a76d9343f92784529e3dfcbe676a0eee02773b2ad8e925ed0",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 11,
+        "end_column": 17,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_421fc6efdba02204ea65972557b2bac3531c1354f7eea0d553a18a6fd2948645",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 20,
+        "end_column": 21,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": 1
+    },
+    {
+      "children": [
+        "nhirn_fbcc8cbe0922ba272a59d6b3af44964536261c1622186267d199bd5026a61431"
+      ],
+      "id": "nhirn_6e071906ace0f1d3c968969582bd9b871dfa8a0c14b67ff19b86be749f1a6f30",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 3,
+        "line": 3,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_3d4a813cb0a1cbb9d52e87e2736ed9cd212b0e87eaeee04f9aef16418521397f"
+      ],
+      "id": "nhirn_e1435e327c2b402116bfe378c54875d831b0faa304d3d4f030e5a54978828b0c",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 14,
+        "end_column": 20,
+        "end_line": 3,
+        "line": 3,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_7ef69e8ad4fa0c20e98427fcc6386311456d4ad5489fc3d7d4dd32803528fbb2",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 23,
+        "end_column": 24,
+        "end_line": 3,
+        "line": 3,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": 0
+    },
+    {
+      "children": [
+        "nhirn_fbcc8cbe0922ba272a59d6b3af44964536261c1622186267d199bd5026a61431"
+      ],
+      "id": "nhirn_80de7b3326955ddd71fa2828986a20d2470e10bb67812e924cde74c64c9f9ae5",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 9,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8c26713e0c51ff342fd7adf758fb291417d35a4930be6a9be2ec059ef646fe5d",
+        "nhirn_99094dd8132bbb393f8bb02639323e56252510caec6d812b1346cb626ffe7416",
+        "nhirn_86de51c074c704e2029787ae6567a6718b2a9040ab88216547b6dc7f53228836"
+      ],
+      "id": "nhirn_adf853af207b0014af5be87341b38379a5c4ebe9f047baaba618dd34453dc32b",
+      "kind": "Call",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 13,
+        "end_column": 31,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_e5fe91b1241bdfaea25555a054f549e710e8093b880ebd623d90354b623d0c95",
+        "nhirn_b859daa3d2c6204bf1a7c0881a6b3be8476377f1b3ff633623becd8b2bc15072"
+      ],
+      "id": "nhirn_06094836cba8830a8f2ae864e13751c6d9b38f50a73179633166f72f04647e41",
+      "kind": "Assign",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 44,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_32b2b6b3ed66a4c79c3847fd07d4b34ce33a47b50cc4789fbda7f1726dcae890",
+        "nhirn_ba0025a5927abc75af11aea067dd53e32da619213d338ad4d6efc96b816a64f6"
+      ],
+      "id": "nhirn_a6f589f8ad2b3bc86fd029739f767f292142b1e189375a1c232b5948d9adec61",
+      "kind": "Assign",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 41,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_3d4a813cb0a1cbb9d52e87e2736ed9cd212b0e87eaeee04f9aef16418521397f"
+      ],
+      "id": "nhirn_4f8a0cdeafb188c31c39bf38c62435d8e650433a2106d2189833b4b678ad9d61",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_3d4a813cb0a1cbb9d52e87e2736ed9cd212b0e87eaeee04f9aef16418521397f",
+      "kind": "Load",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_3d4a813cb0a1cbb9d52e87e2736ed9cd212b0e87eaeee04f9aef16418521397f"
+      ],
+      "id": "nhirn_b1929f41ff7591309a27d7e0cb1dbf2bf875425734894c4c237682279b8c36e5",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 12,
+        "end_column": 18,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_fbcc8cbe0922ba272a59d6b3af44964536261c1622186267d199bd5026a61431",
+      "kind": "Store",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_3d4a813cb0a1cbb9d52e87e2736ed9cd212b0e87eaeee04f9aef16418521397f"
+      ],
+      "id": "nhirn_8c26713e0c51ff342fd7adf758fb291417d35a4930be6a9be2ec059ef646fe5d",
+      "kind": "Name",
+      "name": "meldra_range",
+      "operator": null,
+      "source": {
+        "column": 13,
+        "end_column": 25,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_99094dd8132bbb393f8bb02639323e56252510caec6d812b1346cb626ffe7416",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 26,
+        "end_column": 27,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": 0
+    },
+    {
+      "children": [
+        "nhirn_3d4a813cb0a1cbb9d52e87e2736ed9cd212b0e87eaeee04f9aef16418521397f"
+      ],
+      "id": "nhirn_86de51c074c704e2029787ae6567a6718b2a9040ab88216547b6dc7f53228836",
+      "kind": "Name",
+      "name": "n",
+      "operator": null,
+      "source": {
+        "column": 29,
+        "end_column": 30,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_fbcc8cbe0922ba272a59d6b3af44964536261c1622186267d199bd5026a61431"
+      ],
+      "id": "nhirn_e5fe91b1241bdfaea25555a054f549e710e8093b880ebd623d90354b623d0c95",
+      "kind": "Name",
+      "name": "value",
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 13,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_1550d9671b929ec6ad29598d7b93b0e85d53b442f7c51e1f2d078f4e303560b7",
+        "nhirn_703831f819d93b7d8493dd5a317a68bf76627428c2581a73a8bdb42db687e8b6",
+        "nhirn_35b207f3a6b05dfa1b44659c4d9853adfb54acd8ee47f07266854fbcc1cd1b4b"
+      ],
+      "id": "nhirn_b859daa3d2c6204bf1a7c0881a6b3be8476377f1b3ff633623becd8b2bc15072",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Add",
+      "source": {
+        "column": 16,
+        "end_column": 44,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_fbcc8cbe0922ba272a59d6b3af44964536261c1622186267d199bd5026a61431"
+      ],
+      "id": "nhirn_32b2b6b3ed66a4c79c3847fd07d4b34ce33a47b50cc4789fbda7f1726dcae890",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 16,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_281e847c4f6f9477922e1182594a07b7ed15467827960308e333a3f65509f721",
+        "nhirn_1fa8282ab3c36aa7487a40abb0429c459e28cac43c578c0a5a19ce1290982fca",
+        "nhirn_26a07f9a6c925f11fe7b74580464885b76f61119d61b23d2258e49483f5f7536"
+      ],
+      "id": "nhirn_ba0025a5927abc75af11aea067dd53e32da619213d338ad4d6efc96b816a64f6",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "BitXor",
+      "source": {
+        "column": 19,
+        "end_column": 41,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_890cfe169632d32db423fa94a7727a6cfbd12660b1aa17bf12d4988ef12046a3",
+        "nhirn_d4328ffde9288c14d78e3d7f3fc64525d53270c84882fecd7144d79aa5193fee",
+        "nhirn_db9d16ef0bbd7d2de72c3146dda917d90dcccb6b01ab69ec942ec58e82a19492"
+      ],
+      "id": "nhirn_1550d9671b929ec6ad29598d7b93b0e85d53b442f7c51e1f2d078f4e303560b7",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Mult",
+      "source": {
+        "column": 16,
+        "end_column": 31,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_703831f819d93b7d8493dd5a317a68bf76627428c2581a73a8bdb42db687e8b6",
+      "kind": "Add",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_35b207f3a6b05dfa1b44659c4d9853adfb54acd8ee47f07266854fbcc1cd1b4b",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 34,
+        "end_column": 44,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": 1013904223
+    },
+    {
+      "children": [
+        "nhirn_3d4a813cb0a1cbb9d52e87e2736ed9cd212b0e87eaeee04f9aef16418521397f"
+      ],
+      "id": "nhirn_281e847c4f6f9477922e1182594a07b7ed15467827960308e333a3f65509f721",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 19,
+        "end_column": 27,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_1fa8282ab3c36aa7487a40abb0429c459e28cac43c578c0a5a19ce1290982fca",
+      "kind": "BitXor",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_b325d6831c26ec2bc8ec453e390b535cd5e5e938f6a1e47b0af6f201b89f0c87",
+        "nhirn_703831f819d93b7d8493dd5a317a68bf76627428c2581a73a8bdb42db687e8b6",
+        "nhirn_87ab52d4188e90932bf0089eb37ec3be7dc95c66c505b1b77ad35cfb04f62cdc"
+      ],
+      "id": "nhirn_26a07f9a6c925f11fe7b74580464885b76f61119d61b23d2258e49483f5f7536",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Add",
+      "source": {
+        "column": 31,
+        "end_column": 40,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_3d4a813cb0a1cbb9d52e87e2736ed9cd212b0e87eaeee04f9aef16418521397f"
+      ],
+      "id": "nhirn_890cfe169632d32db423fa94a7727a6cfbd12660b1aa17bf12d4988ef12046a3",
+      "kind": "Name",
+      "name": "value",
+      "operator": null,
+      "source": {
+        "column": 16,
+        "end_column": 21,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_d4328ffde9288c14d78e3d7f3fc64525d53270c84882fecd7144d79aa5193fee",
+      "kind": "Mult",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_db9d16ef0bbd7d2de72c3146dda917d90dcccb6b01ab69ec942ec58e82a19492",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 24,
+        "end_column": 31,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": 1664525
+    },
+    {
+      "children": [
+        "nhirn_3d4a813cb0a1cbb9d52e87e2736ed9cd212b0e87eaeee04f9aef16418521397f"
+      ],
+      "id": "nhirn_b325d6831c26ec2bc8ec453e390b535cd5e5e938f6a1e47b0af6f201b89f0c87",
+      "kind": "Name",
+      "name": "value",
+      "operator": null,
+      "source": {
+        "column": 31,
+        "end_column": 36,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_3d4a813cb0a1cbb9d52e87e2736ed9cd212b0e87eaeee04f9aef16418521397f"
+      ],
+      "id": "nhirn_87ab52d4188e90932bf0089eb37ec3be7dc95c66c505b1b77ad35cfb04f62cdc",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 39,
+        "end_column": 40,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    }
+  ],
+  "references": [
+    {
+      "owner_symbol_id": "nhirs_c8313bf588b53b9ba27dbfdf8a878a3f35db7dff13246898eb95ffa856049efe",
+      "source": {
+        "column": 12,
+        "end_column": 18,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_a64124cbc6275ff3c8c19920122f9ac81bdd6e03f4c0837448ec976185807e3b",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c8313bf588b53b9ba27dbfdf8a878a3f35db7dff13246898eb95ffa856049efe",
+      "source": {
+        "column": 23,
+        "end_column": 29,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_b86eb7fa8d838f11778da1712ec627ad0876d0ef4e0575b5f433776c5a038d23",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c8313bf588b53b9ba27dbfdf8a878a3f35db7dff13246898eb95ffa856049efe",
+      "source": {
+        "column": 11,
+        "end_column": 17,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_287f4124e433e70f5ff0c7c8205df4efe6ce3a8b28b89bcc8d5d844ed43dcb7c",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c8313bf588b53b9ba27dbfdf8a878a3f35db7dff13246898eb95ffa856049efe",
+      "source": {
+        "column": 14,
+        "end_column": 20,
+        "end_line": 3,
+        "line": 3,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_322adb905bf849b31f0918ec72667c9e200eef3bcddf7196c21ab7d9d27b55e8",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c8313bf588b53b9ba27dbfdf8a878a3f35db7dff13246898eb95ffa856049efe",
+      "source": {
+        "column": 13,
+        "end_column": 25,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "spelling": "meldra_range",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_cbc409a842e89d580e20c5eabf5fad17b1e31060d51bfab55b3e40b73db9853b",
+      "target_symbol_id": null,
+      "usage": "Call"
+    },
+    {
+      "owner_symbol_id": "nhirs_c8313bf588b53b9ba27dbfdf8a878a3f35db7dff13246898eb95ffa856049efe",
+      "source": {
+        "column": 29,
+        "end_column": 30,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "spelling": "n",
+      "status": "Exact",
+      "syntax_node_id": "synref_fd90cc153fd498da2d0b29dee9c176f3bcd8b0ef215862ca54599cf52a87b50b",
+      "target_symbol_id": "nhirs_480c1f24816e2e8e057b38d46bc337acb989ff668485bf5239d163faa38f3897",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c8313bf588b53b9ba27dbfdf8a878a3f35db7dff13246898eb95ffa856049efe",
+      "source": {
+        "column": 16,
+        "end_column": 21,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "spelling": "value",
+      "status": "Exact",
+      "syntax_node_id": "synref_4930d9e4f758bfa0504ba6252ff9f9c015b60a66927dfa88dfafdb4e6c7023e4",
+      "target_symbol_id": "nhirs_1ad21baa0af54735b944121abf77c85ee9e9926d9e467741a67258831e2fa527",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c8313bf588b53b9ba27dbfdf8a878a3f35db7dff13246898eb95ffa856049efe",
+      "source": {
+        "column": 19,
+        "end_column": 27,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "spelling": "checksum",
+      "status": "Exact",
+      "syntax_node_id": "synref_9b7569706ec2f7debf57bfb23cfa7a1edcc3e8b846c4a81bf092b7349519dc26",
+      "target_symbol_id": "nhirs_4d5e1c1bc375a7d7e25eb5f15bae2215ccd1413254dfff197869fd3738e9e94d",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c8313bf588b53b9ba27dbfdf8a878a3f35db7dff13246898eb95ffa856049efe",
+      "source": {
+        "column": 31,
+        "end_column": 36,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "spelling": "value",
+      "status": "Exact",
+      "syntax_node_id": "synref_9c1dfcf2335724ff9d97f06e0a95efa8fc05421d1336e9863238b98712ff234c",
+      "target_symbol_id": "nhirs_1ad21baa0af54735b944121abf77c85ee9e9926d9e467741a67258831e2fa527",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c8313bf588b53b9ba27dbfdf8a878a3f35db7dff13246898eb95ffa856049efe",
+      "source": {
+        "column": 39,
+        "end_column": 40,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "spelling": "i",
+      "status": "Exact",
+      "syntax_node_id": "synref_ccaac431424087fb4529bcc24e8116f00dc7aab830294b6e874070bf88005838",
+      "target_symbol_id": "nhirs_96b8321ba3f6eebe4d2352a8cb2036258c0038563c1866bb8fb36e6b68f90712",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c8313bf588b53b9ba27dbfdf8a878a3f35db7dff13246898eb95ffa856049efe",
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "spelling": "checksum",
+      "status": "Exact",
+      "syntax_node_id": "synref_ff9055e696a3b47db3d9fec0f37f0bbedbc0170ac85499b067392736b8707033",
+      "target_symbol_id": "nhirs_4d5e1c1bc375a7d7e25eb5f15bae2215ccd1413254dfff197869fd3738e9e94d",
+      "usage": "Read"
+    }
+  ],
+  "schema_version": 1,
+  "source_kind": "stage05p_performance_adapter",
+  "symbols": [
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": true,
+      "kind": "function",
+      "name": "main",
+      "origin": "native",
+      "parameter_types": [
+        "UInt64"
+      ],
+      "path": "compile-phases/arithmetic_lcg.meldra",
+      "return_type": "UInt64",
+      "revision_id": "rev_6e6424a149f9411e5d13daab592607ee27041f5397845f969cbac263b78a10b9",
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 7,
+        "line": 1,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "symbol_id": "nhirs_c8313bf588b53b9ba27dbfdf8a878a3f35db7dff13246898eb95ffa856049efe",
+      "syntax_node_id": "syn_2bae897b022fed9107df8a489c31c46adb197dd11ef9511826b22623b25b1a6d",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "local",
+      "name": "main.checksum",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/arithmetic_lcg.meldra",
+      "return_type": null,
+      "revision_id": "rev_b408d8d5d1ffbf857f987710c34ac9999b43956e7fe286d342ca8515b0c24cc4",
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 3,
+        "line": 3,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "symbol_id": "nhirs_4d5e1c1bc375a7d7e25eb5f15bae2215ccd1413254dfff197869fd3738e9e94d",
+      "syntax_node_id": "syn_a76f562302e5930d4b17ad06338064c26987b21976f107d76043945ef5d229b1",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "local",
+      "name": "main.i",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/arithmetic_lcg.meldra",
+      "return_type": null,
+      "revision_id": "rev_c54f8d781b8ddca14060dfff7963464b74dedbb8b2f1de2e9b67c11e1127d22a",
+      "source": {
+        "column": 8,
+        "end_column": 9,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "symbol_id": "nhirs_96b8321ba3f6eebe4d2352a8cb2036258c0038563c1866bb8fb36e6b68f90712",
+      "syntax_node_id": "syn_17d1ffb949e16dfc65ea6eb7f546aaf99a56d3ab6e8bb4b4c69a351f31feba41",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "local",
+      "name": "main.value",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/arithmetic_lcg.meldra",
+      "return_type": null,
+      "revision_id": "rev_d4ca587cd903297a31d504f2149d0ace0a6c2a4e90d23b41eecdc003341dbdd1",
+      "source": {
+        "column": 4,
+        "end_column": 9,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "symbol_id": "nhirs_1ad21baa0af54735b944121abf77c85ee9e9926d9e467741a67258831e2fa527",
+      "syntax_node_id": "syn_0e7896e36692131a5857ba468feba8dfcda124edef545e416dd823314c9e4804",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "parameter",
+      "name": "main.n",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/arithmetic_lcg.meldra",
+      "return_type": null,
+      "revision_id": "rev_162d0d8cd5e4b3558fddff4bc7e788a63ea273ce0c5e1bfd651349d0a7fd3b7c",
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 7,
+        "line": 1,
+        "path": "compile-phases/arithmetic_lcg.meldra"
+      },
+      "symbol_id": "nhirs_480c1f24816e2e8e057b38d46bc337acb989ff668485bf5239d163faa38f3897",
+      "syntax_node_id": "syn_7d83ffdde9d72d6eac5f65c202b2929e7cf3debb3d60f3b1b6affbbb58c03247",
+      "type": "UInt64"
+    }
+  ]
+}

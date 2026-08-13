@@ -1,0 +1,413 @@
+{
+  "attempted_cases": 1360,
+  "execution_layers": {
+    "canonical": {
+      "attempted": 0,
+      "failed": 0,
+      "failure_ids": [],
+      "passed": 0,
+      "reason": "",
+      "status": "UNMEASURED",
+      "total": 0,
+      "unmeasured": 0,
+      "unmeasured_ids": [],
+      "unmeasured_reasons": {}
+    },
+    "concise_application": {
+      "attempted": 0,
+      "failed": 0,
+      "failure_ids": [],
+      "passed": 0,
+      "reason": "",
+      "status": "UNMEASURED",
+      "total": 0,
+      "unmeasured": 0,
+      "unmeasured_ids": [],
+      "unmeasured_reasons": {}
+    },
+    "hir": {
+      "attempted": 0,
+      "failed": 0,
+      "failure_ids": [],
+      "passed": 0,
+      "reason": "",
+      "status": "UNMEASURED",
+      "total": 0,
+      "unmeasured": 0,
+      "unmeasured_ids": [],
+      "unmeasured_reasons": {}
+    },
+    "merlo_compiler": {
+      "attempted": 400,
+      "failed": 0,
+      "failure_ids": [],
+      "passed": 400,
+      "reason": "",
+      "status": "PASSED",
+      "total": 400,
+      "unmeasured": 0,
+      "unmeasured_ids": [],
+      "unmeasured_reasons": {}
+    },
+    "mir": {
+      "attempted": 0,
+      "failed": 0,
+      "failure_ids": [],
+      "passed": 0,
+      "reason": "",
+      "status": "UNMEASURED",
+      "total": 0,
+      "unmeasured": 0,
+      "unmeasured_ids": [],
+      "unmeasured_reasons": {}
+    },
+    "native": {
+      "attempted": 0,
+      "failed": 0,
+      "failure_ids": [],
+      "passed": 0,
+      "reason": "",
+      "status": "UNMEASURED",
+      "total": 0,
+      "unmeasured": 0,
+      "unmeasured_ids": [],
+      "unmeasured_reasons": {}
+    },
+    "python_applications": {
+      "attempted": 960,
+      "failed": 0,
+      "failure_ids": [],
+      "passed": 960,
+      "reason": "",
+      "status": "PASSED",
+      "total": 960,
+      "unmeasured": 0,
+      "unmeasured_ids": [],
+      "unmeasured_reasons": {}
+    },
+    "rir": {
+      "attempted": 0,
+      "failed": 0,
+      "failure_ids": [],
+      "passed": 0,
+      "reason": "",
+      "status": "UNMEASURED",
+      "total": 0,
+      "unmeasured": 0,
+      "unmeasured_ids": [],
+      "unmeasured_reasons": {}
+    }
+  },
+  "failures": [],
+  "kind": "merlo.productive-corpus-execution",
+  "passed": false,
+  "per_family": {
+    "csv": {
+      "cli-failure": {
+        "attempted": 30,
+        "failed": 0,
+        "passed": 30,
+        "total": 30,
+        "unmeasured": 0
+      },
+      "early-parse-error": {
+        "attempted": 30,
+        "failed": 0,
+        "passed": 30,
+        "total": 30,
+        "unmeasured": 0
+      },
+      "empty": {
+        "attempted": 29,
+        "failed": 0,
+        "passed": 29,
+        "total": 29,
+        "unmeasured": 0
+      },
+      "invalid-utf8": {
+        "attempted": 30,
+        "failed": 0,
+        "passed": 30,
+        "total": 30,
+        "unmeasured": 0
+      },
+      "large": {
+        "attempted": 29,
+        "failed": 0,
+        "passed": 29,
+        "total": 29,
+        "unmeasured": 0
+      },
+      "late-parse-error": {
+        "attempted": 30,
+        "failed": 0,
+        "passed": 30,
+        "total": 30,
+        "unmeasured": 0
+      },
+      "map-collision": {
+        "attempted": 28,
+        "failed": 0,
+        "passed": 28,
+        "total": 28,
+        "unmeasured": 0
+      },
+      "map-duplicate": {
+        "attempted": 28,
+        "failed": 0,
+        "passed": 28,
+        "total": 28,
+        "unmeasured": 0
+      },
+      "map-growth": {
+        "attempted": 28,
+        "failed": 0,
+        "passed": 28,
+        "total": 28,
+        "unmeasured": 0
+      },
+      "one-line": {
+        "attempted": 29,
+        "failed": 0,
+        "passed": 29,
+        "total": 29,
+        "unmeasured": 0
+      },
+      "unicode": {
+        "attempted": 29,
+        "failed": 0,
+        "passed": 29,
+        "total": 29,
+        "unmeasured": 0
+      }
+    },
+    "grep": {
+      "cli-failure": {
+        "attempted": 60,
+        "failed": 0,
+        "passed": 60,
+        "total": 60,
+        "unmeasured": 0
+      },
+      "empty": {
+        "attempted": 29,
+        "failed": 0,
+        "passed": 29,
+        "total": 29,
+        "unmeasured": 0
+      },
+      "invalid-utf8": {
+        "attempted": 60,
+        "failed": 0,
+        "passed": 60,
+        "total": 60,
+        "unmeasured": 0
+      },
+      "large": {
+        "attempted": 29,
+        "failed": 0,
+        "passed": 29,
+        "total": 29,
+        "unmeasured": 0
+      },
+      "map-collision": {
+        "attempted": 28,
+        "failed": 0,
+        "passed": 28,
+        "total": 28,
+        "unmeasured": 0
+      },
+      "map-duplicate": {
+        "attempted": 28,
+        "failed": 0,
+        "passed": 28,
+        "total": 28,
+        "unmeasured": 0
+      },
+      "map-growth": {
+        "attempted": 28,
+        "failed": 0,
+        "passed": 28,
+        "total": 28,
+        "unmeasured": 0
+      },
+      "one-line": {
+        "attempted": 29,
+        "failed": 0,
+        "passed": 29,
+        "total": 29,
+        "unmeasured": 0
+      },
+      "unicode": {
+        "attempted": 29,
+        "failed": 0,
+        "passed": 29,
+        "total": 29,
+        "unmeasured": 0
+      }
+    },
+    "merlo": {
+      "close-every-exit": {
+        "attempted": 57,
+        "failed": 0,
+        "passed": 57,
+        "total": 57,
+        "unmeasured": 0
+      },
+      "cyclic-import": {
+        "attempted": 57,
+        "failed": 0,
+        "passed": 57,
+        "total": 57,
+        "unmeasured": 0
+      },
+      "missing-capability": {
+        "attempted": 58,
+        "failed": 0,
+        "passed": 58,
+        "total": 58,
+        "unmeasured": 0
+      },
+      "private-module-access": {
+        "attempted": 57,
+        "failed": 0,
+        "passed": 57,
+        "total": 57,
+        "unmeasured": 0
+      },
+      "public-interface-drift": {
+        "attempted": 57,
+        "failed": 0,
+        "passed": 57,
+        "total": 57,
+        "unmeasured": 0
+      },
+      "pure-effect-violation": {
+        "attempted": 57,
+        "failed": 0,
+        "passed": 57,
+        "total": 57,
+        "unmeasured": 0
+      },
+      "stale-line-view": {
+        "attempted": 57,
+        "failed": 0,
+        "passed": 57,
+        "total": 57,
+        "unmeasured": 0
+      }
+    },
+    "ndjson": {
+      "cli-failure": {
+        "attempted": 30,
+        "failed": 0,
+        "passed": 30,
+        "total": 30,
+        "unmeasured": 0
+      },
+      "early-parse-error": {
+        "attempted": 30,
+        "failed": 0,
+        "passed": 30,
+        "total": 30,
+        "unmeasured": 0
+      },
+      "empty": {
+        "attempted": 29,
+        "failed": 0,
+        "passed": 29,
+        "total": 29,
+        "unmeasured": 0
+      },
+      "invalid-utf8": {
+        "attempted": 30,
+        "failed": 0,
+        "passed": 30,
+        "total": 30,
+        "unmeasured": 0
+      },
+      "large": {
+        "attempted": 29,
+        "failed": 0,
+        "passed": 29,
+        "total": 29,
+        "unmeasured": 0
+      },
+      "late-parse-error": {
+        "attempted": 30,
+        "failed": 0,
+        "passed": 30,
+        "total": 30,
+        "unmeasured": 0
+      },
+      "map-collision": {
+        "attempted": 28,
+        "failed": 0,
+        "passed": 28,
+        "total": 28,
+        "unmeasured": 0
+      },
+      "map-duplicate": {
+        "attempted": 28,
+        "failed": 0,
+        "passed": 28,
+        "total": 28,
+        "unmeasured": 0
+      },
+      "map-growth": {
+        "attempted": 28,
+        "failed": 0,
+        "passed": 28,
+        "total": 28,
+        "unmeasured": 0
+      },
+      "one-line": {
+        "attempted": 29,
+        "failed": 0,
+        "passed": 29,
+        "total": 29,
+        "unmeasured": 0
+      },
+      "unicode": {
+        "attempted": 29,
+        "failed": 0,
+        "passed": 29,
+        "total": 29,
+        "unmeasured": 0
+      }
+    }
+  },
+  "per_kind": {
+    "csv": {
+      "attempted": 320,
+      "failed": 0,
+      "passed": 320,
+      "total": 320,
+      "unmeasured": 0
+    },
+    "grep": {
+      "attempted": 320,
+      "failed": 0,
+      "passed": 320,
+      "total": 320,
+      "unmeasured": 0
+    },
+    "merlo": {
+      "attempted": 400,
+      "failed": 0,
+      "passed": 400,
+      "total": 400,
+      "unmeasured": 0
+    },
+    "ndjson": {
+      "attempted": 320,
+      "failed": 0,
+      "passed": 320,
+      "total": 320,
+      "unmeasured": 0
+    }
+  },
+  "schema_version": 1,
+  "source_corpus_sha256": "a565dcfa6a64f22279e845c90d1f9200a5c3dcf71ee53044e026ae904cacc5da",
+  "total_cases": 1360
+}

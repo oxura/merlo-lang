@@ -1,0 +1,242 @@
+{
+  "backend": {
+    "compiler": "/usr/bin/clang",
+    "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+    "flags": [
+      "-std=c11",
+      "-O3",
+      "-fwrapv",
+      "-fno-ident",
+      "-Werror",
+      "-Wl,--build-id=none"
+    ],
+    "integer_overflow": "Int64 and UInt64 use two-complement wrapping; -fwrapv freezes signed C lowering",
+    "kind": "portable_C11",
+    "version": 1
+  },
+  "benchmark": {
+    "audit_reports": {
+      "run_1": "c37db83c12494faeb60aa872fe0c0cb286c5cf546a7959b21a142507aae446c0",
+      "run_2": "da8f1a88c6a7505f0b0ecd021dee0f2e70bdb4541d9c7de453c99da59ec9067d",
+      "run_3": "9596bd3f29169728b642f0bde9cc37a8565a9c9c1fb27fa4d4b4462e323272a1"
+    },
+    "corpus_sha256": "ead95940d537bcc1b3afcc25fe93d6e9c63fe8cc86aa88a893f41975ec3cf563",
+    "corpus_source_count": 70,
+    "input_sha256": "807dba5dfa05afea2c2ca74eb8df7ed81937b87c7a6ead2214b609d8abbc6fe1",
+    "inputs": {
+      "arithmetic_lcg": {
+        "arm_source_sha256": {
+          "c": "60e34c2b992605b51cb93a8437f208b5375dbb2b0c68506e49c837b29ae69e7d",
+          "csharp": "611e7d2eb79175847b34604a40fe1f7721ba4a7573ca1214bc4cf787dc15cbf2",
+          "go": "66fd00e853d689622ed21547cc54aa2d17503680c5396f2e5e3b43a1b79de23c",
+          "python": "de1d6c39d480423f8930666c57c54ec77785709b56ee17d75dddf11637a48717",
+          "rust": "1d9cfe3f17117ce72a5f251e700277463fb52912e34ef27820d299fcec6b50d2"
+        },
+        "expected_checksum": 12630180546796697088,
+        "expected_checksum_sha256": "d04da8e5973230bbd09d8656fdc82279958948149a2d0803886012cf37325a25",
+        "input": 20000000,
+        "input_sha256": "ff4f9b4dcda9d0a2adc534be11a017ae4a7ce3921e8a5b2e8c39f23b52677650"
+      },
+      "bubble_sort_8": {
+        "arm_source_sha256": {
+          "c": "5d234c445eea342b03218ff54a9b1d10b93988e7734c756168633152d9e813d6",
+          "csharp": "ff2e277bae58cfb3bd308bd7309bb9aceffbf8768cc3890aee9a2f2f561e66d3",
+          "go": "50fb7e77c07844001c5b483c0ad1ab8157ea217c3de57e1a3bf84322a44184fa",
+          "python": "b83170398a98452d60352dbb6b35d87f9024ae911c78288221a7477504cca4a1",
+          "rust": "8a37e6ab8b5975444c6f00712a394c343343363c67abaa072ec05aaab277442e"
+        },
+        "expected_checksum": 140,
+        "expected_checksum_sha256": "1728bcd75ab12ffacf41dcaf46f500d7c65a59679d6039a88833ae5f6180c503",
+        "input": 200000,
+        "input_sha256": "3a4743b84f5aeb7e2c23368a0436074791fb0c6425aac634f88a511f1f61566e"
+      },
+      "fixed_array_scan": {
+        "arm_source_sha256": {
+          "c": "5c8526b1a13c8fb5cd6f4da9127bd073aa3a9bef6b1c2bd74f0ca1090d2c4d05",
+          "csharp": "43164205a58fe04801373ac5a8b535acaac1164c19a49679fabce290abab25ba",
+          "go": "7c88009145b77d9bad28d89d4830e6f43de81e838c58338b1da096bf8658e869",
+          "python": "370d056709c02ff30b155a5d383d645e546775db1a9e682849d340164388d1f9",
+          "rust": "507c954a2cc10777d3d9153ac0d01e8bb591675d706c1f2e849110ad18d7dc60"
+        },
+        "expected_checksum": 775000095000000,
+        "expected_checksum_sha256": "4dc63efe908535f786c9c4bcce5ddea51d11ba018f16efc42cf51002898d047a",
+        "input": 20000000,
+        "input_sha256": "f60743166d867aa31fdb8a9e373049718c4b3d73478f0588171534fd0c8bed78"
+      },
+      "fnv_ascii": {
+        "arm_source_sha256": {
+          "c": "896bfcd3b9b7714a157c21ca981d2581fa93a87d40b20fd0d3d8e84bd106f5d0",
+          "csharp": "bb643bf886a93ef90dca6d6830586ae49c35faee9f1a67ed1a2ee2dc97e03e8a",
+          "go": "4918eacb2659c39ebdec511f480523f9a350e054610daa74ed9c3bca9d19646d",
+          "python": "5c1e6bd2b76761dcb1deeadd6a0d79c22898427bc05df42ef1c04e0d4e5cb49c",
+          "rust": "9461dd7e9e2a167c90857d8361766554cabde40663495da90956ae91a27b869e"
+        },
+        "expected_checksum": 9468894880917082044,
+        "expected_checksum_sha256": "2054d66bfed65cdae6d6daaaa4c923c383614a4aa12f6d59b035d076e413e186",
+        "input": 20000000,
+        "input_sha256": "44be5a39e621b922fec363cb010f396317bbc81e6635bcb4713fa2e78fe78146"
+      },
+      "implicit_tree": {
+        "arm_source_sha256": {
+          "c": "a06ddd74ba9a897ef0d0aefe575359469f60462ee5bb195bbc214bfa624f66ac",
+          "csharp": "49e284c616e4fc3ccab8e73b810058054341be6bbb5084dd06e3613109cbb819",
+          "go": "e0de7b2b3b3ec8aef6897d71b089071c1c340f29c060a3a408988b597a150620",
+          "python": "7cceda90b31bfe1ee8e85d844225d0ee81c68f4951e4d7476cecfd41a39ead5b",
+          "rust": "ec023e9eb55a7e7ed3d16cb3c95a5247c6afb4163ae10f562c1bd916aeeec91b"
+        },
+        "expected_checksum": 4368487137060864,
+        "expected_checksum_sha256": "9ee6657d5aa9bbb6598fc42e812bce443cfcdb4c3a9d980214389465c0e79734",
+        "input": 20000000,
+        "input_sha256": "3636f9847f0aa953966a104a43d3a0495321acb29d64857bf5430658915770e8"
+      },
+      "map_filter_fold": {
+        "arm_source_sha256": {
+          "c": "9ef413932247d065e961a3f209e46b038af3f0c76d6836685a9ba2f28750da92",
+          "csharp": "11725a0cccd6553b95b3eadebcbbb89ef4871c870afc50a2d050758155d18c50",
+          "go": "91eff0c408873ca091373f5dd77fdd66cec4c045c6f98e0cebb79e44e1bc757a",
+          "python": "8c1fe19c89177113335036d1af291c34fe78009fb93256f4187aa81ec58bb59c",
+          "rust": "35a1101d0c0a3a455bd367479a6a587782bb2fc481cfbe738615a375b37309f5"
+        },
+        "expected_checksum": 10526524361746373504,
+        "expected_checksum_sha256": "6b59ac7acc1c43f005cefaa61780018a32b7de1e641de1238ef9c13d889560a5",
+        "input": 2000000,
+        "input_sha256": "699a90820ac813b9a3f8a587e155b85f88b899673ebdd76644d7478cf8798658"
+      },
+      "record_values": {
+        "arm_source_sha256": {
+          "c": "b35526f739ac8e8648f65ee63c986dc8af24cfbc269ba0d4c1a58f80994f819f",
+          "csharp": "df70c6a8072c8c85ddac8d4397d9f059522935d7762d10e7091658b32a714a57",
+          "go": "02ccd2c002de69a8b9de8f81cff98eeec5cd1efda42440e6f15f659021d0c797",
+          "python": "3a7dc170b6d5e89dc952632adc785900d2b8c2dcad73e837a66f46f3f66303fc",
+          "rust": "506f5af7028b5b8c2dfa697db5a5b70800ea6cbdea1de73d44557c3eab12ec8c"
+        },
+        "expected_checksum": 497448184770816,
+        "expected_checksum_sha256": "e476b9510aa198f601c4e517a7a6b6d1eb0ebd06e9e344b3ea1336850f186a81",
+        "input": 20000000,
+        "input_sha256": "0169edd2a9185713c1df47b341039e89fcef03621e9191996ea545c2cb1dd16d"
+      },
+      "shared_allocations": {
+        "arm_source_sha256": {
+          "c": "06b6b250e6bc4a5c5ba324458f72c407ef8957d4a105d661e546ea6eb43afa1e",
+          "csharp": "3f37658bede084686cfa08b8e8c92a305798d39df15538273dd8ae07154bcda8",
+          "go": "02aa49069a3120625f397423307bc4cc20371c6f32253b4e4b2a0721681bd869",
+          "python": "0ca03e83f45470e7322ee46985bf9293545d219ed0e8dbf0ef7a799c0fab33ef",
+          "rust": "3a7b6ae93c495adf63da3bf09d3c3f9a946387dd1263b9293b26e98e9bc216b6"
+        },
+        "expected_checksum": 250003000000,
+        "expected_checksum_sha256": "49e7e1b82b34a0f26edb307a881a50030a6dc104747567696e0561313305c27a",
+        "input": 500000,
+        "input_sha256": "ba71ceb96d631d24470bd245bae7d3dd1fb480f62bb363e665a2b6df67d90d29"
+      },
+      "startup": {
+        "arm_source_sha256": {
+          "c": "a0a6883cd635f6f8171ea7249974b341db48d9810becfd2afafd6d1bf9d2f6b6",
+          "csharp": "a4821ea9db09e84cd33a0636cacc495dd90d4b9010ca85cb648ca960edbddf38",
+          "go": "7db06dffba214cd129f2b75b2387132ed87da50ceec7d5f3081de06a3c5fdab6",
+          "python": "088ba77cac005238ba811e82f2149bc9439720b1e9aa41f3d77f66010b8967e6",
+          "rust": "735a029daeef0235873bdda67fa0a36a21aea6ca6413e03ca010cc1e3488b9a6"
+        },
+        "expected_checksum": 42,
+        "expected_checksum_sha256": "3266a7bc83c735fe26deb46cb8c26c01060ca2fbc571477fecf1262e6424d786",
+        "input": 0,
+        "input_sha256": "5ec2104608dc23b61875752da938b6a53cb6cd711c45976c80662e350802b617"
+      }
+    }
+  },
+  "change_policy": {
+    "defect_workflow": [
+      "add failing regression test",
+      "capture before result",
+      "fix root cause",
+      "increment relevant version",
+      "capture after result",
+      "regenerate a new versioned artifact without rewriting old evidence"
+    ],
+    "python_sidecar": "CRITICAL_FIXES_ONLY",
+    "silent_recalculation_forbidden": true,
+    "stage05p": "FROZEN_CRITICAL_FIXES_ONLY"
+  },
+  "environment": {
+    "architecture": "x86_64",
+    "libc": [
+      "glibc",
+      "2.43"
+    ],
+    "platform": "Linux-7.1.7-200.fc44.x86_64-x86_64-with-glibc2.43",
+    "python": "3.14.6 (main, Jun 11 2026, 00:00:00) [GCC 16.1.1 20260515 (Red Hat 16.1.1-2)]"
+  },
+  "frozen_files": {
+    "benchmarks/meldra_stage05p_decision.json": "01e183e1d940a3b52005a5928925ae676d90386125b4373f7acd9cbad2fea2c1",
+    "benchmarks/meldra_stage05p_freeze.json": "8925fd572eb38edc9710be4d47a167c5fb5f0fff472e8ec17d4138fd102d5e25",
+    "benchmarks/meldra_stage05p_hypotheses.json": "6564a97163adc86f9314514b52ccdc90e4239b81e3fdb5c2d918a94a63556cc5",
+    "benchmarks/meldra_stage05p_protocol.json": "62be32abf760a1a6dac7a6174fd46cd6819ecf92dc4b097ed8b3c982eb31a98a",
+    "benchmarks/meldra_stage06p_stage05p_audit.json": "7e242b2de8280da70f1aafad309ed48f00badf53cd2535575508a2047d0c37e0",
+    "meldra/native_bench.py": "2599a621277e9c3277fef33ac11c18c101ec4cfef6b29864663fe7861908eb76",
+    "meldra/native_c_backend.py": "4cd0ebf55b95ba03feabeb46e20282e073bc5beb5ecdf7feb0e0219b578767b3",
+    "meldra/native_hypotheses.py": "36a9e4ae37508ccf7c087773f584f7cda157269a0e7c24e34364cb1f64f3f18b",
+    "meldra/performance_frontend.py": "f001590a67abda6ff124e35883739c63a6e3d6fe373f5b4f3d107ab405d9b5f6",
+    "meldra/performance_mir.py": "6557e2fdf9d2e220f166132431671b7d23b9f6446f6a040eb5d80a6e9c790259",
+    "meldra/performance_mir_schema_v1.json": "d73168485cff917a16b97f97983c96079335dd754cf5928b2d94cc4ee4ac0f8a",
+    "meldra/performance_opt.py": "52b661783099910ff8e9c55509da7834c6df3fb4c752659260da74f79f94f39a",
+    "meldra/stage05p_decision.py": "fb1f88f9e2af11d1d2fb9bb2a824f2b5ea98e87e52a372a0d56708d4983d040a",
+    "meldra/stage05p_freeze.py": "6541732bb7fdd86afef1d1994d0a2f439b0b38640936dc96042c47fecd1825a6",
+    "meldra/stage05p_protocol.py": "8851e7f78765a8208f1a3c32463b30b5d54a3cf9e02946543d2963732834d7e3",
+    "tests/test_meldra_stage05p.py": "a0867d82b44c8e531b7ec428a0b1eb9109742913c8636c160cad44537ccddafb"
+  },
+  "kind": "MeldraStage05PFreezeV2",
+  "optimizer_passes": {
+    "bounds_check_elimination": {
+      "implementation_sha256": "52b661783099910ff8e9c55509da7834c6df3fb4c752659260da74f79f94f39a",
+      "version": 1
+    },
+    "collection_fusion": {
+      "implementation_sha256": "52b661783099910ff8e9c55509da7834c6df3fb4c752659260da74f79f94f39a",
+      "version": 1
+    },
+    "constant_folding": {
+      "implementation_sha256": "52b661783099910ff8e9c55509da7834c6df3fb4c752659260da74f79f94f39a",
+      "version": 1
+    },
+    "dead_code_elimination": {
+      "implementation_sha256": "52b661783099910ff8e9c55509da7834c6df3fb4c752659260da74f79f94f39a",
+      "version": 1
+    },
+    "inlining": {
+      "implementation_sha256": "52b661783099910ff8e9c55509da7834c6df3fb4c752659260da74f79f94f39a",
+      "version": 1
+    },
+    "memory_model_lowering": {
+      "implementation_sha256": "52b661783099910ff8e9c55509da7834c6df3fb4c752659260da74f79f94f39a",
+      "version": 1
+    },
+    "monomorphization": {
+      "implementation_sha256": "52b661783099910ff8e9c55509da7834c6df3fb4c752659260da74f79f94f39a",
+      "version": 1
+    }
+  },
+  "performance_mir_schema": {
+    "path": "meldra/performance_mir_schema_v1.json",
+    "sha256": "d73168485cff917a16b97f97983c96079335dd754cf5928b2d94cc4ee4ac0f8a"
+  },
+  "schema_version": 2,
+  "source_revision": {
+    "command": [
+      "git",
+      "rev-parse",
+      "HEAD"
+    ],
+    "returncode": 0,
+    "revision": "e8fdfc078a3017759bf7feb1677be42fb536eacc",
+    "stderr": ""
+  },
+  "versions": {
+    "c_backend": 1,
+    "c_backend_schema": 1,
+    "memory_model": 1,
+    "optimizer_pass": 1,
+    "performance_frontend_schema": 1,
+    "performance_mir_schema": 1,
+    "performance_syntax": 1
+  },
+  "workspace_content_sha256": "8145a116cae2a1e79f1d281192539dd8f16f10b6ddaefbd39395725c3e0f7ec3"
+}

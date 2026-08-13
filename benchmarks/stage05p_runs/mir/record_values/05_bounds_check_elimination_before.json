@@ -1,0 +1,871 @@
+{
+  "entry_function": "main",
+  "functions": [
+    {
+      "blocks": [
+        {
+          "id": "bb1_entry",
+          "instructions": [
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i1",
+              "op": "const",
+              "operands": [],
+              "result": "%v_2",
+              "source": {
+                "column": 23,
+                "end_column": 24,
+                "end_line": 6,
+                "line": 6,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "bytes": 0,
+                "local": "checksum"
+              },
+              "id": "i2",
+              "op": "alloc_stack",
+              "operands": [],
+              "result": "%v_3",
+              "source": {
+                "column": 4,
+                "end_column": 24,
+                "end_line": 6,
+                "line": 6,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i3",
+              "op": "store_local",
+              "operands": [
+                "%v_3",
+                "%v_2"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 24,
+                "end_line": 6,
+                "line": 6,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i4",
+              "op": "const",
+              "operands": [],
+              "result": "%v_4",
+              "source": {
+                "column": 26,
+                "end_column": 27,
+                "end_line": 7,
+                "line": 7,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "local": "i"
+              },
+              "id": "i5",
+              "op": "alloc_stack",
+              "operands": [],
+              "result": "%v_5",
+              "source": {
+                "column": 4,
+                "end_column": 49,
+                "end_line": 9,
+                "line": 7,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i6",
+              "op": "store_local",
+              "operands": [
+                "%v_5",
+                "%v_4"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 49,
+                "end_line": 9,
+                "line": 7,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 4,
+              "end_column": 49,
+              "end_line": 9,
+              "line": 7,
+              "path": "corpus/record_values.meldra"
+            },
+            "targets": [
+              "bb2_for_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb2_for_header",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i7",
+              "op": "load_local",
+              "operands": [
+                "%v_5"
+              ],
+              "result": "%v_6",
+              "source": {
+                "column": 4,
+                "end_column": 49,
+                "end_line": 9,
+                "line": 7,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "lt",
+                "range_guard": true
+              },
+              "id": "i8",
+              "op": "compare",
+              "operands": [
+                "%v_6",
+                "%n_1"
+              ],
+              "result": "%v_7",
+              "source": {
+                "column": 4,
+                "end_column": 49,
+                "end_line": 9,
+                "line": 7,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 8,
+                "element": null,
+                "kind": "bool",
+                "length": null,
+                "name": "Bool",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": "%v_7",
+            "kind": "branch",
+            "source": {
+              "column": 4,
+              "end_column": 49,
+              "end_line": 9,
+              "line": 7,
+              "path": "corpus/record_values.meldra"
+            },
+            "targets": [
+              "bb3_for_body",
+              "bb4_for_exit"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb3_for_body",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i9",
+              "op": "load_local",
+              "operands": [
+                "%v_5"
+              ],
+              "result": "%v_8",
+              "source": {
+                "column": 31,
+                "end_column": 32,
+                "end_line": 8,
+                "line": 8,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i10",
+              "op": "load_local",
+              "operands": [
+                "%v_5"
+              ],
+              "result": "%v_9",
+              "source": {
+                "column": 36,
+                "end_column": 37,
+                "end_line": 8,
+                "line": 8,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 3
+              },
+              "id": "i11",
+              "op": "const",
+              "operands": [],
+              "result": "%v_10",
+              "source": {
+                "column": 40,
+                "end_column": 41,
+                "end_line": 8,
+                "line": 8,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "mul"
+              },
+              "id": "i12",
+              "op": "binary",
+              "operands": [
+                "%v_9",
+                "%v_10"
+              ],
+              "result": "%v_11",
+              "source": {
+                "column": 36,
+                "end_column": 41,
+                "end_line": 8,
+                "line": 8,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 1
+              },
+              "id": "i13",
+              "op": "const",
+              "operands": [],
+              "result": "%v_12",
+              "source": {
+                "column": 44,
+                "end_column": 45,
+                "end_line": 8,
+                "line": 8,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i14",
+              "op": "binary",
+              "operands": [
+                "%v_11",
+                "%v_12"
+              ],
+              "result": "%v_13",
+              "source": {
+                "column": 36,
+                "end_column": 45,
+                "end_line": 8,
+                "line": 8,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "record": "Point"
+              },
+              "id": "i15",
+              "op": "record_init",
+              "operands": [
+                "%v_8",
+                "%v_13"
+              ],
+              "result": "%v_14",
+              "source": {
+                "column": 23,
+                "end_column": 46,
+                "end_line": 8,
+                "line": 8,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": null,
+                "element": null,
+                "kind": "record",
+                "length": null,
+                "name": "Point",
+                "record": "Point",
+                "shared": false,
+                "unique": true
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i16",
+              "op": "load_local",
+              "operands": [
+                "%v_3"
+              ],
+              "result": "%v_15",
+              "source": {
+                "column": 19,
+                "end_column": 27,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "field": "x"
+              },
+              "id": "i17",
+              "op": "field_load",
+              "operands": [
+                "%v_14"
+              ],
+              "result": "%v_16",
+              "source": {
+                "column": 31,
+                "end_column": 38,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "field": "y"
+              },
+              "id": "i18",
+              "op": "field_load",
+              "operands": [
+                "%v_14"
+              ],
+              "result": "%v_17",
+              "source": {
+                "column": 41,
+                "end_column": 48,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "bit_xor"
+              },
+              "id": "i19",
+              "op": "binary",
+              "operands": [
+                "%v_16",
+                "%v_17"
+              ],
+              "result": "%v_18",
+              "source": {
+                "column": 31,
+                "end_column": 48,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i20",
+              "op": "binary",
+              "operands": [
+                "%v_15",
+                "%v_18"
+              ],
+              "result": "%v_19",
+              "source": {
+                "column": 19,
+                "end_column": 49,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i21",
+              "op": "store_local",
+              "operands": [
+                "%v_3",
+                "%v_19"
+              ],
+              "result": null,
+              "source": {
+                "column": 8,
+                "end_column": 49,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i22",
+              "op": "load_local",
+              "operands": [
+                "%v_5"
+              ],
+              "result": "%v_20",
+              "source": {
+                "column": 4,
+                "end_column": 49,
+                "end_line": 9,
+                "line": 7,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 1
+              },
+              "id": "i23",
+              "op": "const",
+              "operands": [],
+              "result": "%v_21",
+              "source": {
+                "column": 4,
+                "end_column": 49,
+                "end_line": 9,
+                "line": 7,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i24",
+              "op": "binary",
+              "operands": [
+                "%v_20",
+                "%v_21"
+              ],
+              "result": "%v_22",
+              "source": {
+                "column": 4,
+                "end_column": 49,
+                "end_line": 9,
+                "line": 7,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i25",
+              "op": "store_local",
+              "operands": [
+                "%v_5",
+                "%v_22"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 49,
+                "end_line": 9,
+                "line": 7,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 4,
+              "end_column": 49,
+              "end_line": 9,
+              "line": 7,
+              "path": "corpus/record_values.meldra"
+            },
+            "targets": [
+              "bb2_for_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb4_for_exit",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i26",
+              "op": "load_local",
+              "operands": [
+                "%v_3"
+              ],
+              "result": "%v_23",
+              "source": {
+                "column": 4,
+                "end_column": 12,
+                "end_line": 10,
+                "line": 10,
+                "path": "corpus/record_values.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "return",
+            "source": {
+              "column": 4,
+              "end_column": 12,
+              "end_line": 10,
+              "line": 10,
+              "path": "corpus/record_values.meldra"
+            },
+            "targets": [],
+            "value": "%v_23"
+          }
+        }
+      ],
+      "entry_block": "bb1_entry",
+      "generic_parameters": [],
+      "instruction_count": 26,
+      "name": "main",
+      "parameters": [
+        {
+          "name": "n",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%n_1"
+        }
+      ],
+      "pure": true,
+      "return_type": {
+        "bits": 64,
+        "element": null,
+        "kind": "uint",
+        "length": null,
+        "name": "UInt64",
+        "record": null,
+        "shared": false,
+        "unique": false
+      },
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 10,
+        "line": 5,
+        "path": "corpus/record_values.meldra"
+      }
+    }
+  ],
+  "instruction_count": 26,
+  "records": [
+    {
+      "fields": [
+        {
+          "name": "x",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          }
+        },
+        {
+          "name": "y",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          }
+        }
+      ],
+      "layout": {
+        "alignment": 8,
+        "field_offsets": {
+          "x": 0,
+          "y": 8
+        },
+        "representation": "value",
+        "size": 16,
+        "type": "Point"
+      },
+      "name": "Point",
+      "source": {
+        "column": 0,
+        "end_column": 13,
+        "end_line": 3,
+        "line": 1,
+        "path": "corpus/record_values.meldra"
+      }
+    }
+  ],
+  "schema_version": 1,
+  "source_sha256": "3fab8c92998a63adc5f314241b4e3aeeef6e7612b68e53298d0320a0d2c30a4f",
+  "subset_forms": [
+    "fn",
+    "let",
+    "var",
+    "if",
+    "match",
+    "for",
+    "while",
+    "direct_function_calls"
+  ],
+  "subset_types": [
+    "Int64",
+    "UInt64",
+    "Float32",
+    "Float64",
+    "Bool",
+    "records",
+    "arrays",
+    "slices"
+  ]
+}

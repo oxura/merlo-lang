@@ -1,0 +1,3072 @@
+{
+  "environment": {
+    "c_compiler": "/usr/bin/clang",
+    "dotnet": null,
+    "go": null,
+    "machine": "x86_64",
+    "platform": "Linux-7.1.7-200.fc44.x86_64-x86_64-with-glibc2.43",
+    "python": "3.14.6",
+    "rustc": null,
+    "time": "/usr/bin/time"
+  },
+  "kind": "MeldraStage05PNativeBenchmark",
+  "observations": [
+    {
+      "algorithm": "uint64_lcg_xor_reduce",
+      "build": {
+        "binary_sha256": "4f598887abba747e8e14f3a5d0aa68887d44e404716ce55d6b8bb474c9e2d3c7",
+        "binary_size": 12624,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/arithmetic_lcg/meldra/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/arithmetic_lcg/meldra/program"
+        ],
+        "compile_time_ms": 44.01373,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "de4877e1e2de326ed49b545bafb25a3093dd4e09cebc73905ae97e23f1c2b4ae",
+        "source_size": 204,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "arithmetic",
+      "input": 20000000,
+      "language": "meldra",
+      "limitation": null,
+      "optimization_statistics": [
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 28,
+          "instructions_before": 28,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "monomorphization",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 28,
+          "instructions_before": 28,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "collection_fusion",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 28,
+          "instructions_before": 28,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "inlining",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 28,
+          "instructions_before": 28,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "constant_folding",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 28,
+          "instructions_before": 28,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "bounds_check_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 28,
+          "instructions_before": 28,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "memory_model_lowering",
+          "specializations_created": 0,
+          "stack_allocations": 3
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 28,
+          "instructions_before": 28,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "dead_code_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        }
+      ],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 12630180546796697088,
+        "observed_checksums": [
+          12630180546796697088,
+          12630180546796697088,
+          12630180546796697088,
+          12630180546796697088
+        ],
+        "peak_rss_kb": 1620,
+        "runtime_ms": 10.210048,
+        "samples_ms": [
+          10.182862,
+          10.485763,
+          10.210048
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "arithmetic_lcg"
+    },
+    {
+      "algorithm": "uint64_lcg_xor_reduce",
+      "build": {
+        "binary_sha256": "6e8329b448f4b4a33ddf80a1a87353f43c5d1ca01a8c51e79afa2c198a1de030",
+        "binary_size": 12568,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/arithmetic_lcg/c/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/arithmetic_lcg/c/program"
+        ],
+        "compile_time_ms": 43.246624,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "60e34c2b992605b51cb93a8437f208b5375dbb2b0c68506e49c837b29ae69e7d",
+        "source_size": 989,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "arithmetic",
+      "input": 20000000,
+      "language": "c",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 12630180546796697088,
+        "observed_checksums": [
+          12630180546796697088,
+          12630180546796697088,
+          12630180546796697088,
+          12630180546796697088
+        ],
+        "peak_rss_kb": 1576,
+        "runtime_ms": 10.135582,
+        "samples_ms": [
+          10.135582,
+          10.068015,
+          10.245388
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "arithmetic_lcg"
+    },
+    {
+      "algorithm": "uint64_lcg_xor_reduce",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "1d9cfe3f17117ce72a5f251e700277463fb52912e34ef27820d299fcec6b50d2",
+        "source_size": 501,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "rust compiler was not found on PATH"
+      },
+      "category": "arithmetic",
+      "input": 20000000,
+      "language": "rust",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "rust compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "arithmetic_lcg"
+    },
+    {
+      "algorithm": "uint64_lcg_xor_reduce",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "66fd00e853d689622ed21547cc54aa2d17503680c5396f2e5e3b43a1b79de23c",
+        "source_size": 605,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "go compiler was not found on PATH"
+      },
+      "category": "arithmetic",
+      "input": 20000000,
+      "language": "go",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "go compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "arithmetic_lcg"
+    },
+    {
+      "algorithm": "uint64_lcg_xor_reduce",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "611e7d2eb79175847b34604a40fe1f7721ba4a7573ca1214bc4cf787dc15cbf2",
+        "source_size": 681,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "csharp compiler was not found on PATH"
+      },
+      "category": "arithmetic",
+      "input": 20000000,
+      "language": "csharp",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "csharp compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "arithmetic_lcg"
+    },
+    {
+      "algorithm": "uint64_lcg_xor_reduce",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [
+          "/usr/bin/python",
+          "-m",
+          "py_compile",
+          "benchmarks/stage05p_runs/corpus/arithmetic_lcg/python/main.py"
+        ],
+        "compile_time_ms": 41.210862,
+        "compiler": "/usr/bin/python",
+        "compiler_version": "3.14.6",
+        "source_sha256": "de1d6c39d480423f8930666c57c54ec77785709b56ee17d75dddf11637a48717",
+        "source_size": 348,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "arithmetic",
+      "input": 20000000,
+      "language": "python",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 12630180546796697088,
+        "observed_checksums": [
+          12630180546796697088,
+          12630180546796697088,
+          12630180546796697088,
+          12630180546796697088
+        ],
+        "peak_rss_kb": 9284,
+        "runtime_ms": 3023.8579,
+        "samples_ms": [
+          3023.8579,
+          3036.648878,
+          2976.77667
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "arithmetic_lcg"
+    },
+    {
+      "algorithm": "fixed_8_element_weighted_scan",
+      "build": {
+        "binary_sha256": "1e0cc53c31edab5aa8813ee37e4692bdff789dd50d9cedfd95a6ff189163e4f4",
+        "binary_size": 12624,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/fixed_array_scan/meldra/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/fixed_array_scan/meldra/program"
+        ],
+        "compile_time_ms": 47.502439,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "e6afbbe65edb9ad56fe14a29b47b0bce7def5266a70225cd4a93848a8acf9f26",
+        "source_size": 205,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "arrays",
+      "input": 20000000,
+      "language": "meldra",
+      "limitation": null,
+      "optimization_statistics": [
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 36,
+          "instructions_before": 36,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "monomorphization",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 36,
+          "instructions_before": 36,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "collection_fusion",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 36,
+          "instructions_before": 36,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "inlining",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 36,
+          "instructions_before": 36,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "constant_folding",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 36,
+          "instructions_before": 36,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "bounds_check_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 1,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 36,
+          "instructions_before": 36,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "memory_model_lowering",
+          "specializations_created": 0,
+          "stack_allocations": 3
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 36,
+          "instructions_before": 36,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "dead_code_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        }
+      ],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 775000095000000,
+        "observed_checksums": [
+          775000095000000,
+          775000095000000,
+          775000095000000,
+          775000095000000
+        ],
+        "peak_rss_kb": 1688,
+        "runtime_ms": 7.920079,
+        "samples_ms": [
+          7.920079,
+          7.87086,
+          8.061734
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "fixed_array_scan"
+    },
+    {
+      "algorithm": "fixed_8_element_weighted_scan",
+      "build": {
+        "binary_sha256": "2a5205eb1c46dcc882318a073b696f6694d67c2baac43cb53695618ac5e13160",
+        "binary_size": 12568,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/fixed_array_scan/c/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/fixed_array_scan/c/program"
+        ],
+        "compile_time_ms": 45.563514,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "5c8526b1a13c8fb5cd6f4da9127bd073aa3a9bef6b1c2bd74f0ca1090d2c4d05",
+        "source_size": 969,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "arrays",
+      "input": 20000000,
+      "language": "c",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 775000095000000,
+        "observed_checksums": [
+          775000095000000,
+          775000095000000,
+          775000095000000,
+          775000095000000
+        ],
+        "peak_rss_kb": 1696,
+        "runtime_ms": 7.543112,
+        "samples_ms": [
+          7.491995,
+          7.897594,
+          7.543112
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "fixed_array_scan"
+    },
+    {
+      "algorithm": "fixed_8_element_weighted_scan",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "507c954a2cc10777d3d9153ac0d01e8bb591675d706c1f2e849110ad18d7dc60",
+        "source_size": 507,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "rust compiler was not found on PATH"
+      },
+      "category": "arrays",
+      "input": 20000000,
+      "language": "rust",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "rust compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "fixed_array_scan"
+    },
+    {
+      "algorithm": "fixed_8_element_weighted_scan",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "7c88009145b77d9bad28d89d4830e6f43de81e838c58338b1da096bf8658e869",
+        "source_size": 591,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "go compiler was not found on PATH"
+      },
+      "category": "arrays",
+      "input": 20000000,
+      "language": "go",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "go compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "fixed_array_scan"
+    },
+    {
+      "algorithm": "fixed_8_element_weighted_scan",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "43164205a58fe04801373ac5a8b535acaac1164c19a49679fabce290abab25ba",
+        "source_size": 667,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "csharp compiler was not found on PATH"
+      },
+      "category": "arrays",
+      "input": 20000000,
+      "language": "csharp",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "csharp compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "fixed_array_scan"
+    },
+    {
+      "algorithm": "fixed_8_element_weighted_scan",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [
+          "/usr/bin/python",
+          "-m",
+          "py_compile",
+          "benchmarks/stage05p_runs/corpus/fixed_array_scan/python/main.py"
+        ],
+        "compile_time_ms": 36.716875,
+        "compiler": "/usr/bin/python",
+        "compiler_version": "3.14.6",
+        "source_sha256": "370d056709c02ff30b155a5d383d645e546775db1a9e682849d340164388d1f9",
+        "source_size": 309,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "arrays",
+      "input": 20000000,
+      "language": "python",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 775000095000000,
+        "observed_checksums": [
+          775000095000000,
+          775000095000000,
+          775000095000000,
+          775000095000000
+        ],
+        "peak_rss_kb": 9284,
+        "runtime_ms": 1662.626501,
+        "samples_ms": [
+          1662.626501,
+          1672.133105,
+          1662.295043
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "fixed_array_scan"
+    },
+    {
+      "algorithm": "square_then_even_then_sum_fixed_8",
+      "build": {
+        "binary_sha256": "f649f5e6ac6804f5d2e729ef8d52a06668a5df400e345e721a0842bc3905c4c1",
+        "binary_size": 12624,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/map_filter_fold/meldra/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/map_filter_fold/meldra/program"
+        ],
+        "compile_time_ms": 45.013599,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "ce67655b739ace86b42fa61714c521c24cb4369aaf234dda1b6c4dfface456b1",
+        "source_size": 443,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "pipelines",
+      "input": 2000000,
+      "language": "meldra",
+      "limitation": null,
+      "optimization_statistics": [
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 52,
+          "instructions_before": 52,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "monomorphization",
+          "specializations_created": 3,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 2,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 48,
+          "instructions_before": 52,
+          "instructions_removed": 4,
+          "loops_fused": 1,
+          "name": "collection_fusion",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 48,
+          "instructions_before": 48,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "inlining",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 48,
+          "instructions_before": 48,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "constant_folding",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 48,
+          "instructions_before": 48,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "bounds_check_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 1,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 1,
+          "instructions_after": 48,
+          "instructions_before": 48,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "memory_model_lowering",
+          "specializations_created": 0,
+          "stack_allocations": 3
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 48,
+          "instructions_before": 48,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "dead_code_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        }
+      ],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 10526524361746373504,
+        "observed_checksums": [
+          10526524361746373504,
+          10526524361746373504,
+          10526524361746373504,
+          10526524361746373504
+        ],
+        "peak_rss_kb": 1576,
+        "runtime_ms": 8.303871,
+        "samples_ms": [
+          8.612285,
+          8.138775,
+          8.303871
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "map_filter_fold"
+    },
+    {
+      "algorithm": "square_then_even_then_sum_fixed_8",
+      "build": {
+        "binary_sha256": "1619ab32ea1bd93975b05780305c943fe16c062df062f9982d34c32a6afa574d",
+        "binary_size": 12568,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/map_filter_fold/c/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/map_filter_fold/c/program"
+        ],
+        "compile_time_ms": 44.546749,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "9ef413932247d065e961a3f209e46b038af3f0c76d6836685a9ba2f28750da92",
+        "source_size": 1088,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "pipelines",
+      "input": 2000000,
+      "language": "c",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 10526524361746373504,
+        "observed_checksums": [
+          10526524361746373504,
+          10526524361746373504,
+          10526524361746373504,
+          10526524361746373504
+        ],
+        "peak_rss_kb": 1612,
+        "runtime_ms": 8.077906,
+        "samples_ms": [
+          7.838854,
+          8.208858,
+          8.077906
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "map_filter_fold"
+    },
+    {
+      "algorithm": "square_then_even_then_sum_fixed_8",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "35a1101d0c0a3a455bd367479a6a587782bb2fc481cfbe738615a375b37309f5",
+        "source_size": 625,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "rust compiler was not found on PATH"
+      },
+      "category": "pipelines",
+      "input": 2000000,
+      "language": "rust",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "rust compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "map_filter_fold"
+    },
+    {
+      "algorithm": "square_then_even_then_sum_fixed_8",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "91eff0c408873ca091373f5dd77fdd66cec4c045c6f98e0cebb79e44e1bc757a",
+        "source_size": 632,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "go compiler was not found on PATH"
+      },
+      "category": "pipelines",
+      "input": 2000000,
+      "language": "go",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "go compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "map_filter_fold"
+    },
+    {
+      "algorithm": "square_then_even_then_sum_fixed_8",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "11725a0cccd6553b95b3eadebcbbb89ef4871c870afc50a2d050758155d18c50",
+        "source_size": 712,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "csharp compiler was not found on PATH"
+      },
+      "category": "pipelines",
+      "input": 2000000,
+      "language": "csharp",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "csharp compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "map_filter_fold"
+    },
+    {
+      "algorithm": "square_then_even_then_sum_fixed_8",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [
+          "/usr/bin/python",
+          "-m",
+          "py_compile",
+          "benchmarks/stage05p_runs/corpus/map_filter_fold/python/main.py"
+        ],
+        "compile_time_ms": 37.073462,
+        "compiler": "/usr/bin/python",
+        "compiler_version": "3.14.6",
+        "source_sha256": "8c1fe19c89177113335036d1af291c34fe78009fb93256f4187aa81ec58bb59c",
+        "source_size": 369,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "pipelines",
+      "input": 2000000,
+      "language": "python",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 10526524361746373504,
+        "observed_checksums": [
+          10526524361746373504,
+          10526524361746373504,
+          10526524361746373504,
+          10526524361746373504
+        ],
+        "peak_rss_kb": 9292,
+        "runtime_ms": 1857.378548,
+        "samples_ms": [
+          1857.378548,
+          1843.998875,
+          1884.524552
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "map_filter_fold"
+    },
+    {
+      "algorithm": "fnv1a_over_repeated_ascii_pattern",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "source_size": 0,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "Text/bytes are intentionally outside the Stage 0.5P native subset."
+      },
+      "category": "strings",
+      "input": 20000000,
+      "language": "meldra",
+      "limitation": "Text/bytes are intentionally outside the Stage 0.5P native subset.",
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "Text/bytes are intentionally outside the Stage 0.5P native subset.",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "fnv_ascii"
+    },
+    {
+      "algorithm": "fnv1a_over_repeated_ascii_pattern",
+      "build": {
+        "binary_sha256": "4e13f088211a037b4774c224cd567f5b568a0c3ad5b6ee6b92625fd39d9cee05",
+        "binary_size": 12568,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/fnv_ascii/c/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/fnv_ascii/c/program"
+        ],
+        "compile_time_ms": 43.387877,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "896bfcd3b9b7714a157c21ca981d2581fa93a87d40b20fd0d3d8e84bd106f5d0",
+        "source_size": 1041,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "strings",
+      "input": 20000000,
+      "language": "c",
+      "limitation": "Text/bytes are intentionally outside the Stage 0.5P native subset.",
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 9468894880917082044,
+        "observed_checksums": [
+          9468894880917082044,
+          9468894880917082044,
+          9468894880917082044,
+          9468894880917082044
+        ],
+        "peak_rss_kb": 1592,
+        "runtime_ms": 19.565599,
+        "samples_ms": [
+          19.737226,
+          19.565599,
+          19.525029
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "fnv_ascii"
+    },
+    {
+      "algorithm": "fnv1a_over_repeated_ascii_pattern",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "9461dd7e9e2a167c90857d8361766554cabde40663495da90956ae91a27b869e",
+        "source_size": 530,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "rust compiler was not found on PATH"
+      },
+      "category": "strings",
+      "input": 20000000,
+      "language": "rust",
+      "limitation": "Text/bytes are intentionally outside the Stage 0.5P native subset.",
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "rust compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "fnv_ascii"
+    },
+    {
+      "algorithm": "fnv1a_over_repeated_ascii_pattern",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "4918eacb2659c39ebdec511f480523f9a350e054610daa74ed9c3bca9d19646d",
+        "source_size": 647,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "go compiler was not found on PATH"
+      },
+      "category": "strings",
+      "input": 20000000,
+      "language": "go",
+      "limitation": "Text/bytes are intentionally outside the Stage 0.5P native subset.",
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "go compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "fnv_ascii"
+    },
+    {
+      "algorithm": "fnv1a_over_repeated_ascii_pattern",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "bb643bf886a93ef90dca6d6830586ae49c35faee9f1a67ed1a2ee2dc97e03e8a",
+        "source_size": 754,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "csharp compiler was not found on PATH"
+      },
+      "category": "strings",
+      "input": 20000000,
+      "language": "csharp",
+      "limitation": "Text/bytes are intentionally outside the Stage 0.5P native subset.",
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "csharp compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "fnv_ascii"
+    },
+    {
+      "algorithm": "fnv1a_over_repeated_ascii_pattern",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [
+          "/usr/bin/python",
+          "-m",
+          "py_compile",
+          "benchmarks/stage05p_runs/corpus/fnv_ascii/python/main.py"
+        ],
+        "compile_time_ms": 36.516792,
+        "compiler": "/usr/bin/python",
+        "compiler_version": "3.14.6",
+        "source_sha256": "5c1e6bd2b76761dcb1deeadd6a0d79c22898427bc05df42ef1c04e0d4e5cb49c",
+        "source_size": 338,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "strings",
+      "input": 20000000,
+      "language": "python",
+      "limitation": "Text/bytes are intentionally outside the Stage 0.5P native subset.",
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 9468894880917082044,
+        "observed_checksums": [
+          9468894880917082044,
+          9468894880917082044,
+          9468894880917082044,
+          9468894880917082044
+        ],
+        "peak_rss_kb": 9100,
+        "runtime_ms": 2230.98739,
+        "samples_ms": [
+          2211.272367,
+          2230.98739,
+          2237.012084
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "fnv_ascii"
+    },
+    {
+      "algorithm": "point_value_xor_reduce",
+      "build": {
+        "binary_sha256": "39ecccb88c18d991b4b93aa9841e4872b1dd92d4cb06d5255ca7741a77b2747b",
+        "binary_size": 12624,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/record_values/meldra/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/record_values/meldra/program"
+        ],
+        "compile_time_ms": 45.031915,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "3fab8c92998a63adc5f314241b4e3aeeef6e7612b68e53298d0320a0d2c30a4f",
+        "source_size": 235,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "records",
+      "input": 20000000,
+      "language": "meldra",
+      "limitation": null,
+      "optimization_statistics": [
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 26,
+          "instructions_before": 26,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "monomorphization",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 26,
+          "instructions_before": 26,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "collection_fusion",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 26,
+          "instructions_before": 26,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "inlining",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 26,
+          "instructions_before": 26,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "constant_folding",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 26,
+          "instructions_before": 26,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "bounds_check_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 26,
+          "instructions_before": 26,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "memory_model_lowering",
+          "specializations_created": 0,
+          "stack_allocations": 2
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 26,
+          "instructions_before": 26,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "dead_code_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        }
+      ],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 497448184770816,
+        "observed_checksums": [
+          497448184770816,
+          497448184770816,
+          497448184770816,
+          497448184770816
+        ],
+        "peak_rss_kb": 1620,
+        "runtime_ms": 6.300568,
+        "samples_ms": [
+          6.300568,
+          6.278791,
+          6.577115
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "record_values"
+    },
+    {
+      "algorithm": "point_value_xor_reduce",
+      "build": {
+        "binary_sha256": "d2d369074828d7ff3f7b375c04d3d9550e6ac6cd9d63957fe5da30aff207a75a",
+        "binary_size": 12568,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/record_values/c/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/record_values/c/program"
+        ],
+        "compile_time_ms": 43.558026,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "b35526f739ac8e8648f65ee63c986dc8af24cfbc269ba0d4c1a58f80994f819f",
+        "source_size": 944,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "records",
+      "input": 20000000,
+      "language": "c",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 497448184770816,
+        "observed_checksums": [
+          497448184770816,
+          497448184770816,
+          497448184770816,
+          497448184770816
+        ],
+        "peak_rss_kb": 1624,
+        "runtime_ms": 6.238757,
+        "samples_ms": [
+          6.238757,
+          6.124692,
+          6.248724
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "record_values"
+    },
+    {
+      "algorithm": "point_value_xor_reduce",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "506f5af7028b5b8c2dfa697db5a5b70800ea6cbdea1de73d44557c3eab12ec8c",
+        "source_size": 481,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "rust compiler was not found on PATH"
+      },
+      "category": "records",
+      "input": 20000000,
+      "language": "rust",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "rust compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "record_values"
+    },
+    {
+      "algorithm": "point_value_xor_reduce",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "02ccd2c002de69a8b9de8f81cff98eeec5cd1efda42440e6f15f659021d0c797",
+        "source_size": 574,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "go compiler was not found on PATH"
+      },
+      "category": "records",
+      "input": 20000000,
+      "language": "go",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "go compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "record_values"
+    },
+    {
+      "algorithm": "point_value_xor_reduce",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "df70c6a8072c8c85ddac8d4397d9f059522935d7762d10e7091658b32a714a57",
+        "source_size": 655,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "csharp compiler was not found on PATH"
+      },
+      "category": "records",
+      "input": 20000000,
+      "language": "csharp",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "csharp compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "record_values"
+    },
+    {
+      "algorithm": "point_value_xor_reduce",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [
+          "/usr/bin/python",
+          "-m",
+          "py_compile",
+          "benchmarks/stage05p_runs/corpus/record_values/python/main.py"
+        ],
+        "compile_time_ms": 37.64008,
+        "compiler": "/usr/bin/python",
+        "compiler_version": "3.14.6",
+        "source_sha256": "3a7dc170b6d5e89dc952632adc785900d2b8c2dcad73e837a66f46f3f66303fc",
+        "source_size": 312,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "records",
+      "input": 20000000,
+      "language": "python",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 497448184770816,
+        "observed_checksums": [
+          497448184770816,
+          497448184770816,
+          497448184770816,
+          497448184770816
+        ],
+        "peak_rss_kb": 9284,
+        "runtime_ms": 2690.875626,
+        "samples_ms": [
+          2708.789142,
+          2669.510985,
+          2690.875626
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "record_values"
+    },
+    {
+      "algorithm": "complete_binary_tree_index_traversal",
+      "build": {
+        "binary_sha256": "665302fc9613e4a973ce4561c5c41b8ff5d5ac374dfa6c0f041b46954af47baf",
+        "binary_size": 12624,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/implicit_tree/meldra/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/implicit_tree/meldra/program"
+        ],
+        "compile_time_ms": 43.379588,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "00cab7ab85a5e7b19cf520a3ddbd71f9f7679faef165c83368f1d0c650e1819a",
+        "source_size": 312,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "trees",
+      "input": 20000000,
+      "language": "meldra",
+      "limitation": "Stage 0.5P has no recursive pointer type; this is an explicit indexed complete tree.",
+      "optimization_statistics": [
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 39,
+          "instructions_before": 39,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "monomorphization",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 39,
+          "instructions_before": 39,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "collection_fusion",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 39,
+          "instructions_before": 39,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "inlining",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 39,
+          "instructions_before": 39,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "constant_folding",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 39,
+          "instructions_before": 39,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "bounds_check_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 39,
+          "instructions_before": 39,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "memory_model_lowering",
+          "specializations_created": 0,
+          "stack_allocations": 2
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 39,
+          "instructions_before": 39,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "dead_code_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        }
+      ],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 4368487137060864,
+        "observed_checksums": [
+          4368487137060864,
+          4368487137060864,
+          4368487137060864,
+          4368487137060864
+        ],
+        "peak_rss_kb": 1576,
+        "runtime_ms": 8.380468,
+        "samples_ms": [
+          8.815975,
+          8.380468,
+          8.263048
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "implicit_tree"
+    },
+    {
+      "algorithm": "complete_binary_tree_index_traversal",
+      "build": {
+        "binary_sha256": "7fa6b73794930ccf2a8058df84363b8ddf0b6f40fb21108df33929f95d98e7b1",
+        "binary_size": 12568,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/implicit_tree/c/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/implicit_tree/c/program"
+        ],
+        "compile_time_ms": 43.363471,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "a06ddd74ba9a897ef0d0aefe575359469f60462ee5bb195bbc214bfa624f66ac",
+        "source_size": 985,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "trees",
+      "input": 20000000,
+      "language": "c",
+      "limitation": "Stage 0.5P has no recursive pointer type; this is an explicit indexed complete tree.",
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 4368487137060864,
+        "observed_checksums": [
+          4368487137060864,
+          4368487137060864,
+          4368487137060864,
+          4368487137060864
+        ],
+        "peak_rss_kb": 1688,
+        "runtime_ms": 8.351956,
+        "samples_ms": [
+          8.328398,
+          8.441107,
+          8.351956
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "implicit_tree"
+    },
+    {
+      "algorithm": "complete_binary_tree_index_traversal",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "ec023e9eb55a7e7ed3d16cb3c95a5247c6afb4163ae10f562c1bd916aeeec91b",
+        "source_size": 598,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "rust compiler was not found on PATH"
+      },
+      "category": "trees",
+      "input": 20000000,
+      "language": "rust",
+      "limitation": "Stage 0.5P has no recursive pointer type; this is an explicit indexed complete tree.",
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "rust compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "implicit_tree"
+    },
+    {
+      "algorithm": "complete_binary_tree_index_traversal",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "e0de7b2b3b3ec8aef6897d71b089071c1c340f29c060a3a408988b597a150620",
+        "source_size": 602,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "go compiler was not found on PATH"
+      },
+      "category": "trees",
+      "input": 20000000,
+      "language": "go",
+      "limitation": "Stage 0.5P has no recursive pointer type; this is an explicit indexed complete tree.",
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "go compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "implicit_tree"
+    },
+    {
+      "algorithm": "complete_binary_tree_index_traversal",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "49e284c616e4fc3ccab8e73b810058054341be6bbb5084dd06e3613109cbb819",
+        "source_size": 683,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "csharp compiler was not found on PATH"
+      },
+      "category": "trees",
+      "input": 20000000,
+      "language": "csharp",
+      "limitation": "Stage 0.5P has no recursive pointer type; this is an explicit indexed complete tree.",
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "csharp compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "implicit_tree"
+    },
+    {
+      "algorithm": "complete_binary_tree_index_traversal",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [
+          "/usr/bin/python",
+          "-m",
+          "py_compile",
+          "benchmarks/stage05p_runs/corpus/implicit_tree/python/main.py"
+        ],
+        "compile_time_ms": 39.161992,
+        "compiler": "/usr/bin/python",
+        "compiler_version": "3.14.6",
+        "source_sha256": "7cceda90b31bfe1ee8e85d844225d0ee81c68f4951e4d7476cecfd41a39ead5b",
+        "source_size": 352,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "trees",
+      "input": 20000000,
+      "language": "python",
+      "limitation": "Stage 0.5P has no recursive pointer type; this is an explicit indexed complete tree.",
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 4368487137060864,
+        "observed_checksums": [
+          4368487137060864,
+          4368487137060864,
+          4368487137060864,
+          4368487137060864
+        ],
+        "peak_rss_kb": 9284,
+        "runtime_ms": 5895.052665,
+        "samples_ms": [
+          5895.052665,
+          5928.521644,
+          5796.949808
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "implicit_tree"
+    },
+    {
+      "algorithm": "fixed_8_bubble_sort_repeated",
+      "build": {
+        "binary_sha256": "bf1a1e3b21c8aaea188a03b18816354030a1ce95be10dd3ad427ea6a48351705",
+        "binary_size": 12624,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/bubble_sort_8/meldra/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/bubble_sort_8/meldra/program"
+        ],
+        "compile_time_ms": 60.180467,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "b9fde8411ff0d79be896a76c035f0ebf09c7fdb6d023cc7613323f92b50f5b6b",
+        "source_size": 429,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "sorting",
+      "input": 200000,
+      "language": "meldra",
+      "limitation": null,
+      "optimization_statistics": [
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 83,
+          "instructions_before": 83,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "monomorphization",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 83,
+          "instructions_before": 83,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "collection_fusion",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 83,
+          "instructions_before": 83,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "inlining",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 83,
+          "instructions_before": 83,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "constant_folding",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 83,
+          "instructions_before": 83,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "bounds_check_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 1,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 2,
+          "instructions_after": 83,
+          "instructions_before": 83,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "memory_model_lowering",
+          "specializations_created": 0,
+          "stack_allocations": 4
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 83,
+          "instructions_before": 83,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "dead_code_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        }
+      ],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 140,
+        "observed_checksums": [
+          140,
+          140,
+          140,
+          140
+        ],
+        "peak_rss_kb": 1576,
+        "runtime_ms": 3.760942,
+        "samples_ms": [
+          3.536783,
+          3.760942,
+          3.798134
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "bubble_sort_8"
+    },
+    {
+      "algorithm": "fixed_8_bubble_sort_repeated",
+      "build": {
+        "binary_sha256": "b66a38f5d4d5810950fa730c245fb8aeca24c9d67e0c1acb1d9f19bdb6910437",
+        "binary_size": 12568,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/bubble_sort_8/c/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/bubble_sort_8/c/program"
+        ],
+        "compile_time_ms": 50.580924,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "5d234c445eea342b03218ff54a9b1d10b93988e7734c756168633152d9e813d6",
+        "source_size": 1197,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "sorting",
+      "input": 200000,
+      "language": "c",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 140,
+        "observed_checksums": [
+          140,
+          140,
+          140,
+          140
+        ],
+        "peak_rss_kb": 1672,
+        "runtime_ms": 3.73858,
+        "samples_ms": [
+          3.73858,
+          3.714248,
+          3.799906
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "bubble_sort_8"
+    },
+    {
+      "algorithm": "fixed_8_bubble_sort_repeated",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "8a37e6ab8b5975444c6f00712a394c343343363c67abaa072ec05aaab277442e",
+        "source_size": 525,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "rust compiler was not found on PATH"
+      },
+      "category": "sorting",
+      "input": 200000,
+      "language": "rust",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "rust compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "bubble_sort_8"
+    },
+    {
+      "algorithm": "fixed_8_bubble_sort_repeated",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "50fb7e77c07844001c5b483c0ad1ab8157ea217c3de57e1a3bf84322a44184fa",
+        "source_size": 658,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "go compiler was not found on PATH"
+      },
+      "category": "sorting",
+      "input": 200000,
+      "language": "go",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "go compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "bubble_sort_8"
+    },
+    {
+      "algorithm": "fixed_8_bubble_sort_repeated",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "ff2e277bae58cfb3bd308bd7309bb9aceffbf8768cc3890aee9a2f2f561e66d3",
+        "source_size": 741,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "csharp compiler was not found on PATH"
+      },
+      "category": "sorting",
+      "input": 200000,
+      "language": "csharp",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "csharp compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "bubble_sort_8"
+    },
+    {
+      "algorithm": "fixed_8_bubble_sort_repeated",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [
+          "/usr/bin/python",
+          "-m",
+          "py_compile",
+          "benchmarks/stage05p_runs/corpus/bubble_sort_8/python/main.py"
+        ],
+        "compile_time_ms": 39.686696,
+        "compiler": "/usr/bin/python",
+        "compiler_version": "3.14.6",
+        "source_sha256": "b83170398a98452d60352dbb6b35d87f9024ae911c78288221a7477504cca4a1",
+        "source_size": 377,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "sorting",
+      "input": 200000,
+      "language": "python",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 140,
+        "observed_checksums": [
+          140,
+          140,
+          140,
+          140
+        ],
+        "peak_rss_kb": 9280,
+        "runtime_ms": 210.370169,
+        "samples_ms": [
+          210.921141,
+          210.370169,
+          204.439108
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "bubble_sort_8"
+    },
+    {
+      "algorithm": "allocate_fill_read_drop_8_values",
+      "build": {
+        "binary_sha256": "d6571795c5a47b9cb67d09f9d2aaab62a9e28678cc53665dd6510b4808c586b0",
+        "binary_size": 12952,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/shared_allocations/meldra/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/shared_allocations/meldra/program"
+        ],
+        "compile_time_ms": 47.021687,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "b5f425131d9f6a09ffdb319092b719240362afe46458570fec7a6fac507627d9",
+        "source_size": 339,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "allocation-heavy",
+      "input": 500000,
+      "language": "meldra",
+      "limitation": null,
+      "optimization_statistics": [
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 45,
+          "instructions_before": 45,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "monomorphization",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 45,
+          "instructions_before": 45,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "collection_fusion",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 45,
+          "instructions_before": 45,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "inlining",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 45,
+          "instructions_before": 45,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "constant_folding",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 45,
+          "instructions_before": 45,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "bounds_check_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 1,
+          "in_place_reuses": 0,
+          "instructions_after": 45,
+          "instructions_before": 45,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "memory_model_lowering",
+          "specializations_created": 0,
+          "stack_allocations": 2
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 44,
+          "instructions_before": 45,
+          "instructions_removed": 1,
+          "loops_fused": 0,
+          "name": "dead_code_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        }
+      ],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 500000,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 250003000000,
+        "observed_checksums": [
+          250003000000,
+          250003000000,
+          250003000000,
+          250003000000
+        ],
+        "peak_rss_kb": 1688,
+        "runtime_ms": 6.32655,
+        "samples_ms": [
+          6.209161,
+          6.32655,
+          6.336645
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "shared_allocations"
+    },
+    {
+      "algorithm": "allocate_fill_read_drop_8_values",
+      "build": {
+        "binary_sha256": "d1f2cf5d75876aef78fd3f3027b510be31b13b241819e85bb5de766bc9ced0e4",
+        "binary_size": 12760,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/shared_allocations/c/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/shared_allocations/c/program"
+        ],
+        "compile_time_ms": 45.593267,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "06b6b250e6bc4a5c5ba324458f72c407ef8957d4a105d661e546ea6eb43afa1e",
+        "source_size": 977,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "allocation-heavy",
+      "input": 500000,
+      "language": "c",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 500000,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 250003000000,
+        "observed_checksums": [
+          250003000000,
+          250003000000,
+          250003000000,
+          250003000000
+        ],
+        "peak_rss_kb": 1744,
+        "runtime_ms": 3.726009,
+        "samples_ms": [
+          3.598994,
+          3.726009,
+          3.769386
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "shared_allocations"
+    },
+    {
+      "algorithm": "allocate_fill_read_drop_8_values",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "3a7b6ae93c495adf63da3bf09d3c3f9a946387dd1263b9293b26e98e9bc216b6",
+        "source_size": 470,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "rust compiler was not found on PATH"
+      },
+      "category": "allocation-heavy",
+      "input": 500000,
+      "language": "rust",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "rust compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "shared_allocations"
+    },
+    {
+      "algorithm": "allocate_fill_read_drop_8_values",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "02aa49069a3120625f397423307bc4cc20371c6f32253b4e4b2a0721681bd869",
+        "source_size": 576,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "go compiler was not found on PATH"
+      },
+      "category": "allocation-heavy",
+      "input": 500000,
+      "language": "go",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "go compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "shared_allocations"
+    },
+    {
+      "algorithm": "allocate_fill_read_drop_8_values",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "3f37658bede084686cfa08b8e8c92a305798d39df15538273dd8ae07154bcda8",
+        "source_size": 665,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "csharp compiler was not found on PATH"
+      },
+      "category": "allocation-heavy",
+      "input": 500000,
+      "language": "csharp",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "csharp compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "shared_allocations"
+    },
+    {
+      "algorithm": "allocate_fill_read_drop_8_values",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [
+          "/usr/bin/python",
+          "-m",
+          "py_compile",
+          "benchmarks/stage05p_runs/corpus/shared_allocations/python/main.py"
+        ],
+        "compile_time_ms": 37.876039,
+        "compiler": "/usr/bin/python",
+        "compiler_version": "3.14.6",
+        "source_sha256": "0ca03e83f45470e7322ee46985bf9293545d219ed0e8dbf0ef7a799c0fab33ef",
+        "source_size": 313,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "allocation-heavy",
+      "input": 500000,
+      "language": "python",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 500000,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 250003000000,
+        "observed_checksums": [
+          250003000000,
+          250003000000,
+          250003000000,
+          250003000000
+        ],
+        "peak_rss_kb": 9284,
+        "runtime_ms": 266.165553,
+        "samples_ms": [
+          256.590708,
+          266.165553,
+          268.882656
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "shared_allocations"
+    },
+    {
+      "algorithm": "return_constant_42",
+      "build": {
+        "binary_sha256": "bc08d0f20a8d023ca4925cbc78aec91b6ca5fec618a00064e15304b07fc489e0",
+        "binary_size": 12624,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/startup/meldra/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/startup/meldra/program"
+        ],
+        "compile_time_ms": 43.115299,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "fdf8f7251a3de1daee9d86687626a6472c87e00de333bc024bb217167c899a96",
+        "source_size": 37,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "startup",
+      "input": 0,
+      "language": "meldra",
+      "limitation": null,
+      "optimization_statistics": [
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 1,
+          "instructions_before": 1,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "monomorphization",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 1,
+          "instructions_before": 1,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "collection_fusion",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 1,
+          "instructions_before": 1,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "inlining",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 1,
+          "instructions_before": 1,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "constant_folding",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 1,
+          "instructions_before": 1,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "bounds_check_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 1,
+          "instructions_before": 1,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "memory_model_lowering",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        },
+        {
+          "allocations_removed": 0,
+          "bounds_checks_removed": 0,
+          "calls_inlined": 0,
+          "heap_allocations": 0,
+          "in_place_reuses": 0,
+          "instructions_after": 1,
+          "instructions_before": 1,
+          "instructions_removed": 0,
+          "loops_fused": 0,
+          "name": "dead_code_elimination",
+          "specializations_created": 0,
+          "stack_allocations": 0
+        }
+      ],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 42,
+        "observed_checksums": [
+          42,
+          42,
+          42,
+          42
+        ],
+        "peak_rss_kb": 1672,
+        "runtime_ms": 0.754103,
+        "samples_ms": [
+          0.740892,
+          0.807853,
+          0.754103
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "startup"
+    },
+    {
+      "algorithm": "return_constant_42",
+      "build": {
+        "binary_sha256": "e952891cfc93cd3efdf8761bcdcae9d6e1c45aded65f0c864c3c8e9cd5448e86",
+        "binary_size": 12568,
+        "command": [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-O3",
+          "-fwrapv",
+          "-fno-ident",
+          "-Werror",
+          "-Wl,--build-id=none",
+          "benchmarks/stage05p_runs/corpus/startup/c/program.c",
+          "-o",
+          "benchmarks/stage05p_runs/corpus/startup/c/program"
+        ],
+        "compile_time_ms": 42.060344,
+        "compiler": "/usr/bin/clang",
+        "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+        "source_sha256": "a0a6883cd635f6f8171ea7249974b341db48d9810becfd2afafd6d1bf9d2f6b6",
+        "source_size": 849,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "startup",
+      "input": 0,
+      "language": "c",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 42,
+        "observed_checksums": [
+          42,
+          42,
+          42,
+          42
+        ],
+        "peak_rss_kb": 1624,
+        "runtime_ms": 0.730081,
+        "samples_ms": [
+          0.928206,
+          0.730081,
+          0.63986
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "startup"
+    },
+    {
+      "algorithm": "return_constant_42",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "735a029daeef0235873bdda67fa0a36a21aea6ca6413e03ca010cc1e3488b9a6",
+        "source_size": 371,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "rust compiler was not found on PATH"
+      },
+      "category": "startup",
+      "input": 0,
+      "language": "rust",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "rust compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "startup"
+    },
+    {
+      "algorithm": "return_constant_42",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "7db06dffba214cd129f2b75b2387132ed87da50ceec7d5f3081de06a3c5fdab6",
+        "source_size": 502,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "go compiler was not found on PATH"
+      },
+      "category": "startup",
+      "input": 0,
+      "language": "go",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "go compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "startup"
+    },
+    {
+      "algorithm": "return_constant_42",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [],
+        "compile_time_ms": null,
+        "compiler": null,
+        "compiler_version": null,
+        "source_sha256": "a4821ea9db09e84cd33a0636cacc495dd90d4b9010ca85cb648ca960edbddf38",
+        "source_size": 585,
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE",
+        "stderr": "csharp compiler was not found on PATH"
+      },
+      "category": "startup",
+      "input": 0,
+      "language": "csharp",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocations": null,
+        "correct": null,
+        "error": "csharp compiler was not found on PATH",
+        "peak_rss_kb": null,
+        "runtime_ms": null,
+        "samples_ms": [],
+        "status": "UNMEASURED_TOOLCHAIN_UNAVAILABLE"
+      },
+      "workload": "startup"
+    },
+    {
+      "algorithm": "return_constant_42",
+      "build": {
+        "binary_sha256": null,
+        "binary_size": null,
+        "command": [
+          "/usr/bin/python",
+          "-m",
+          "py_compile",
+          "benchmarks/stage05p_runs/corpus/startup/python/main.py"
+        ],
+        "compile_time_ms": 38.381366,
+        "compiler": "/usr/bin/python",
+        "compiler_version": "3.14.6",
+        "source_sha256": "088ba77cac005238ba811e82f2149bc9439720b1e9aa41f3d77f66010b8967e6",
+        "source_size": 203,
+        "status": "MEASURED",
+        "stderr": ""
+      },
+      "category": "startup",
+      "input": 0,
+      "language": "python",
+      "limitation": null,
+      "optimization_statistics": [],
+      "run": {
+        "allocation_metric": "instrumented_algorithm_heap_allocations",
+        "allocations": 0,
+        "correct": true,
+        "error": null,
+        "expected_checksum": 42,
+        "observed_checksums": [
+          42,
+          42,
+          42,
+          42
+        ],
+        "peak_rss_kb": 9088,
+        "runtime_ms": 11.436006,
+        "samples_ms": [
+          12.404526,
+          11.436006,
+          11.310471
+        ],
+        "status": "MEASURED"
+      },
+      "workload": "startup"
+    }
+  ],
+  "protocol": {
+    "allocations": "instrumented_algorithm_heap_allocations; runtime-internal allocations are not claimed",
+    "compiler_optimization": "release/O3 for every compiled language",
+    "correctness": "identical frozen input and reference checksum for every measured language",
+    "languages": [
+      "meldra",
+      "c",
+      "rust",
+      "go",
+      "csharp",
+      "python"
+    ],
+    "memory_statistic": "median_GNU_time_maximum_resident_set_kb",
+    "repetitions": 3,
+    "runtime_statistic": "median_external_process_wall_time",
+    "warmups": 1
+  },
+  "schema_version": 1,
+  "workloads": [
+    {
+      "algorithm": "uint64_lcg_xor_reduce",
+      "category": "arithmetic",
+      "expected_checksum": 12630180546796697088,
+      "id": "arithmetic_lcg",
+      "input": 20000000,
+      "limitation": null,
+      "meldra_supported": true
+    },
+    {
+      "algorithm": "fixed_8_element_weighted_scan",
+      "category": "arrays",
+      "expected_checksum": 775000095000000,
+      "id": "fixed_array_scan",
+      "input": 20000000,
+      "limitation": null,
+      "meldra_supported": true
+    },
+    {
+      "algorithm": "square_then_even_then_sum_fixed_8",
+      "category": "pipelines",
+      "expected_checksum": 10526524361746373504,
+      "id": "map_filter_fold",
+      "input": 2000000,
+      "limitation": null,
+      "meldra_supported": true
+    },
+    {
+      "algorithm": "fnv1a_over_repeated_ascii_pattern",
+      "category": "strings",
+      "expected_checksum": 9468894880917082044,
+      "id": "fnv_ascii",
+      "input": 20000000,
+      "limitation": "Text/bytes are intentionally outside the Stage 0.5P native subset.",
+      "meldra_supported": false
+    },
+    {
+      "algorithm": "point_value_xor_reduce",
+      "category": "records",
+      "expected_checksum": 497448184770816,
+      "id": "record_values",
+      "input": 20000000,
+      "limitation": null,
+      "meldra_supported": true
+    },
+    {
+      "algorithm": "complete_binary_tree_index_traversal",
+      "category": "trees",
+      "expected_checksum": 4368487137060864,
+      "id": "implicit_tree",
+      "input": 20000000,
+      "limitation": "Stage 0.5P has no recursive pointer type; this is an explicit indexed complete tree.",
+      "meldra_supported": true
+    },
+    {
+      "algorithm": "fixed_8_bubble_sort_repeated",
+      "category": "sorting",
+      "expected_checksum": 140,
+      "id": "bubble_sort_8",
+      "input": 200000,
+      "limitation": null,
+      "meldra_supported": true
+    },
+    {
+      "algorithm": "allocate_fill_read_drop_8_values",
+      "category": "allocation-heavy",
+      "expected_checksum": 250003000000,
+      "id": "shared_allocations",
+      "input": 500000,
+      "limitation": null,
+      "meldra_supported": true
+    },
+    {
+      "algorithm": "return_constant_42",
+      "category": "startup",
+      "expected_checksum": 42,
+      "id": "startup",
+      "input": 0,
+      "limitation": null,
+      "meldra_supported": true
+    }
+  ]
+}

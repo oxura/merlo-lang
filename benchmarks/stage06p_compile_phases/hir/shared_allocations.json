@@ -1,0 +1,2091 @@
+{
+  "contract": "meldra.native-typed-hir.v1",
+  "cst": {
+    "adapter": "stage05p_frozen_performance_parser",
+    "lossless": true,
+    "normalized_sha256": "d4695d5169e9e65f055ac66ad7189922478445ef9167cc771d56c7f81f309c03",
+    "path": "compile-phases/shared_allocations.meldra",
+    "source_sha256": "b5f425131d9f6a09ffdb319092b719240362afe46458570fec7a6fac507627d9"
+  },
+  "entry_function": "main",
+  "invariants": {
+    "effects_and_capabilities_explicit": true,
+    "lossless_source": true,
+    "source_mappings": true,
+    "stable_symbol_ids": true
+  },
+  "nodes": [
+    {
+      "children": [
+        "nhirn_1729e10a971c582acc0ad6d9c703111842eb8e5d8d8794fa82f66f4e703d6abf",
+        "nhirn_015ef75c8780a15135f630581b690672d94fcf5548151243ae60307a64eb3e26"
+      ],
+      "id": "nhirn_ce863b7ea2e95d8e11ac56efb1c27b80cb7860fd44d9cff5ef42cb9adca82e61",
+      "kind": "Module",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_9abb265f7518a39905153ac98710dbcd42750658a351c75b10bb5159688fc970",
+        "nhirn_fef8b5d7572ac4c0fd0553a86791a0e7007f75e021a0c6df8bbf1ed514ee351f",
+        "nhirn_bb2b9ab1d60f1f356686d4b6d96560da2d8c5ed8b1e5465d402126499d42afc9"
+      ],
+      "id": "nhirn_1729e10a971c582acc0ad6d9c703111842eb8e5d8d8794fa82f66f4e703d6abf",
+      "kind": "FunctionDef",
+      "name": "make_values",
+      "operator": null,
+      "source": {
+        "column": 0,
+        "end_column": 56,
+        "end_line": 2,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "Array[UInt64;8]",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_4969170a0bf8a64384eaa6e1e69da624b52dc49e7b9937f0322c5d2c34962b0b",
+        "nhirn_5af4ff20f7f5efdb80f60018af818deca686206997a0b9990a0e1ac9726522bb",
+        "nhirn_d4a98d463d10c20773e5fc18ed5470f4f0f81eaa872341a3c13c1e5019c8d535",
+        "nhirn_a7f6cdccc13d38d5fbea21efa62ebc07cd624537fbde36923413a093add6f226",
+        "nhirn_00046640f0760ff0cc0fa13ccb5b52139f7418323a9f16754a7956dcf38d3744"
+      ],
+      "id": "nhirn_015ef75c8780a15135f630581b690672d94fcf5548151243ae60307a64eb3e26",
+      "kind": "FunctionDef",
+      "name": "main",
+      "operator": null,
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 10,
+        "line": 4,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_df0c2ef7d3fd625d1822b19123fa7fce4696b3d690759bd7167ed9476cdda5b7"
+      ],
+      "id": "nhirn_9abb265f7518a39905153ac98710dbcd42750658a351c75b10bb5159688fc970",
+      "kind": "arguments",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_1360fcf1089543f2d1e879e94ebb221c4c9114e26dc35d5e96257c9dd741cbc3"
+      ],
+      "id": "nhirn_fef8b5d7572ac4c0fd0553a86791a0e7007f75e021a0c6df8bbf1ed514ee351f",
+      "kind": "Expr",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 56,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "Array[UInt64;8]",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_db29f8f9332d31f0c82521d9a23b833bd4b40bfd3b42090a734c15dec849d883",
+        "nhirn_f4656cc3f3b52041f223a23e14da15a6bd7403b254e6485380b20643aa6952e2",
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_bb2b9ab1d60f1f356686d4b6d96560da2d8c5ed8b1e5465d402126499d42afc9",
+      "kind": "Subscript",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 30,
+        "end_column": 54,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_a45218613b5f17ef8af914bd25b6d8efca5d8a18a5bb0eb8e855fb407e62d5aa"
+      ],
+      "id": "nhirn_4969170a0bf8a64384eaa6e1e69da624b52dc49e7b9937f0322c5d2c34962b0b",
+      "kind": "arguments",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_bc8796c19e79c6a30da530c367887c54d439b2a5f91fe317a7ef2f39c10eecc2",
+        "nhirn_60157d34645871069f6d810a2ca55a8e5ea6aefdfba4c91c6caf009c92a568c6",
+        "nhirn_6558876ce276071981b2c8db930a8a7cf82099e9a936d4239b3bca018953842f"
+      ],
+      "id": "nhirn_5af4ff20f7f5efdb80f60018af818deca686206997a0b9990a0e1ac9726522bb",
+      "kind": "AnnAssign",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 24,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_ac59b3d96633ece432b4853478747fe10148482e3864940778389bb93693aaa0",
+        "nhirn_be90b7a17f6ef336e1cc4cfdf859885597f6da5d7384321649d5effbd08e0254",
+        "nhirn_f0d086df2e2bc317baf0b64604bc4e5dcacbfd5edd4ee4ff24999b7dbc958e88",
+        "nhirn_ddd81e9275261619cfb6c5026230ca3dfc4622aba64050f0d0549cd6a0b38987",
+        "nhirn_cf4064cbed1dbee7deac98747a6b6c3be88272bf00c8f3ba1bf63ebd804ef1c9"
+      ],
+      "id": "nhirn_d4a98d463d10c20773e5fc18ed5470f4f0f81eaa872341a3c13c1e5019c8d535",
+      "kind": "For",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 20,
+        "end_line": 9,
+        "line": 6,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_c276fcdff3f18c28207efaad72a12c2e3707d6effec2295dee48086595879a8a"
+      ],
+      "id": "nhirn_a7f6cdccc13d38d5fbea21efa62ebc07cd624537fbde36923413a093add6f226",
+      "kind": "Expr",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 10,
+        "line": 10,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_00046640f0760ff0cc0fa13ccb5b52139f7418323a9f16754a7956dcf38d3744",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 23,
+        "end_column": 29,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_7f7f91d1c8dbffdc939d573b6ede5fed302b327225849e5dc935b026d4c15ac7"
+      ],
+      "id": "nhirn_df0c2ef7d3fd625d1822b19123fa7fce4696b3d690759bd7167ed9476cdda5b7",
+      "kind": "arg",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 16,
+        "end_column": 25,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_a18975bf1981ab47e7a45c2077a7671ef2527809170571435a3d8466d9963356",
+        "nhirn_4c8fbaf2ef6c31488319aafd9d2509ae1d5449ebe16fbe448dc1e27963acf4cc",
+        "nhirn_1d37033bfbc9a7b5a31efb98104be312f349f40d7e79a4600bac6096dc791eb4",
+        "nhirn_d516f7bf3c1b9fa36c3545cf911192c4523c79a14822ba57d1fdd9a3b3886169",
+        "nhirn_20bcb1235fd9da6fd0d955339b2c845e8c3651c53f8df98c35024e24f3e38a5a",
+        "nhirn_94f52d7ca28e0ea096f6c31a93e766fb2c53613b9617ae8e9b5e298d4ed93fc5",
+        "nhirn_c4c49c3805e462af33d0b2d1978b308fb17233c204ef8e80784d182402506c23",
+        "nhirn_f17c955c337ac7c930b30d36f02472d12f40b2bed9acc51927c4657bc29ccb22",
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_1360fcf1089543f2d1e879e94ebb221c4c9114e26dc35d5e96257c9dd741cbc3",
+      "kind": "List",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 56,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "Array[UInt64;8]",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_db29f8f9332d31f0c82521d9a23b833bd4b40bfd3b42090a734c15dec849d883",
+      "kind": "Name",
+      "name": "Shared",
+      "operator": null,
+      "source": {
+        "column": 30,
+        "end_column": 36,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_6b14d787b5657babdbbdeb87c7c302543e73c0fd7c4380cffc086bccf479ee7c",
+        "nhirn_c9d484912a8c058d6b7f723ef50dd9f43929a08c2cf3b86143bff3540eae372b",
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_f4656cc3f3b52041f223a23e14da15a6bd7403b254e6485380b20643aa6952e2",
+      "kind": "Subscript",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 37,
+        "end_column": 53,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09",
+      "kind": "Load",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_dfb66335844b8350855b8086571531db397b1f06082e9a987ebefe30779f8b9c"
+      ],
+      "id": "nhirn_a45218613b5f17ef8af914bd25b6d8efca5d8a18a5bb0eb8e855fb407e62d5aa",
+      "kind": "arg",
+      "name": "n",
+      "operator": null,
+      "source": {
+        "column": 9,
+        "end_column": 18,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_3f393d65179edc80762244cdc1635e98f8e2eec34946b7406981b03133a3534e"
+      ],
+      "id": "nhirn_bc8796c19e79c6a30da530c367887c54d439b2a5f91fe317a7ef2f39c10eecc2",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_60157d34645871069f6d810a2ca55a8e5ea6aefdfba4c91c6caf009c92a568c6",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 14,
+        "end_column": 20,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_6558876ce276071981b2c8db930a8a7cf82099e9a936d4239b3bca018953842f",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 23,
+        "end_column": 24,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": 0
+    },
+    {
+      "children": [
+        "nhirn_3f393d65179edc80762244cdc1635e98f8e2eec34946b7406981b03133a3534e"
+      ],
+      "id": "nhirn_ac59b3d96633ece432b4853478747fe10148482e3864940778389bb93693aaa0",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 9,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_5844cb8173cf9917547c627a17235d294aa31b224796dab3d793c7c215775ee6",
+        "nhirn_2b6d9f5f2466fd1a7e6a44d39bc19a2cd0455a7ca0fb82db884baa14a3e062da",
+        "nhirn_d3b7d53ac606d5f59120463c4173f94b991d3937a2cadc9d1ffcde0252310ebf"
+      ],
+      "id": "nhirn_be90b7a17f6ef336e1cc4cfdf859885597f6da5d7384321649d5effbd08e0254",
+      "kind": "Call",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 13,
+        "end_column": 31,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_d68609b55da767bb98e699614321d3056fcbda2ab1fe80de69bb47912cdea358",
+        "nhirn_d2b6aac8ee474c1143df71b9b348fd858f354955bc23d7784f4cfaac4a334e71",
+        "nhirn_c3d5857f5af5d5e2bb3d1b844daf531671bbc1ed1b835a4936d3a2093e91925e"
+      ],
+      "id": "nhirn_f0d086df2e2bc317baf0b64604bc4e5dcacbfd5edd4ee4ff24999b7dbc958e88",
+      "kind": "AnnAssign",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 57,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_7209258467272d75d923e9af74b930131ef700f9ca51c433c030c36adbbbb834",
+        "nhirn_bcba031fe4a9a5c033d12490595df1aeb12838f320d42ff82e650734acf0ef8f"
+      ],
+      "id": "nhirn_ddd81e9275261619cfb6c5026230ca3dfc4622aba64050f0d0549cd6a0b38987",
+      "kind": "Assign",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 51,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8f2cce516f0208612913adceaaa335005a3d0b0340ff99976b0e4ecad304ca3d"
+      ],
+      "id": "nhirn_cf4064cbed1dbee7deac98747a6b6c3be88272bf00c8f3ba1bf63ebd804ef1c9",
+      "kind": "Expr",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 20,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "Unit",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_c276fcdff3f18c28207efaad72a12c2e3707d6effec2295dee48086595879a8a",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 10,
+        "line": 10,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_7f7f91d1c8dbffdc939d573b6ede5fed302b327225849e5dc935b026d4c15ac7",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 19,
+        "end_column": 25,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_a18975bf1981ab47e7a45c2077a7671ef2527809170571435a3d8466d9963356",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 5,
+        "end_column": 6,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_2e71b597f670e65c92d50f6631d341d3ec569d5a917e30cbb4bf8a2670211a10",
+        "nhirn_beb796cd8f229537e7b592036522da0ff04e2f49a51bad23ebb8843501bae189",
+        "nhirn_1f469ac05a86adf60a0455f56f9f01a4e564f85e6e561c57a3d43d83dd9c8634"
+      ],
+      "id": "nhirn_4c8fbaf2ef6c31488319aafd9d2509ae1d5449ebe16fbe448dc1e27963acf4cc",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Add",
+      "source": {
+        "column": 8,
+        "end_column": 13,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_6e2b8809bf1978f748a04cca31798c38e23b8b7af994d3968f0fb89829ec0409",
+        "nhirn_beb796cd8f229537e7b592036522da0ff04e2f49a51bad23ebb8843501bae189",
+        "nhirn_5565b20a32b7d954534c32f30918925458252619f591be05846eedff305a55af"
+      ],
+      "id": "nhirn_1d37033bfbc9a7b5a31efb98104be312f349f40d7e79a4600bac6096dc791eb4",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Add",
+      "source": {
+        "column": 15,
+        "end_column": 20,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_4a6dc8c3e08db30fedd111ab67681a7148d676ce2ab9af9c1c7decc0a1bfab80",
+        "nhirn_beb796cd8f229537e7b592036522da0ff04e2f49a51bad23ebb8843501bae189",
+        "nhirn_84cec9612b3f1e103f391a6d41ddeba7c1781771804709c84fb660ecfa43aac0"
+      ],
+      "id": "nhirn_d516f7bf3c1b9fa36c3545cf911192c4523c79a14822ba57d1fdd9a3b3886169",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Add",
+      "source": {
+        "column": 22,
+        "end_column": 27,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_d4943eee8c1449589e4ef0a1c6947bf257c7779bd9b2ffeced27470a7fca0c61",
+        "nhirn_beb796cd8f229537e7b592036522da0ff04e2f49a51bad23ebb8843501bae189",
+        "nhirn_d16bf2f6830280a4e216d8a4601d20ddcbde4de33ab58bc9e056f53e52e4496f"
+      ],
+      "id": "nhirn_20bcb1235fd9da6fd0d955339b2c845e8c3651c53f8df98c35024e24f3e38a5a",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Add",
+      "source": {
+        "column": 29,
+        "end_column": 34,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_0b060cde3018f6de40eaf769105efae258ae4a1fac92a45a4bc718c515c571b8",
+        "nhirn_beb796cd8f229537e7b592036522da0ff04e2f49a51bad23ebb8843501bae189",
+        "nhirn_c590ed8d6c073342e71d558897180e8efcde073e2f23e1becbf9e0539a37d533"
+      ],
+      "id": "nhirn_94f52d7ca28e0ea096f6c31a93e766fb2c53613b9617ae8e9b5e298d4ed93fc5",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Add",
+      "source": {
+        "column": 36,
+        "end_column": 41,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_c87e5aa879e67efc2425a8874acbc261dfdde4065ffe86d51b8837f9726a3f73",
+        "nhirn_beb796cd8f229537e7b592036522da0ff04e2f49a51bad23ebb8843501bae189",
+        "nhirn_e8fea1a4e96ee28dc895c5250b29e6a4495a5126c53e4a49e23fac588f9ba6be"
+      ],
+      "id": "nhirn_c4c49c3805e462af33d0b2d1978b308fb17233c204ef8e80784d182402506c23",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Add",
+      "source": {
+        "column": 43,
+        "end_column": 48,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_4c99843cb07f0ad21745bfc8a7bbfa8891e1edfee887496225c7cefdc6491404",
+        "nhirn_beb796cd8f229537e7b592036522da0ff04e2f49a51bad23ebb8843501bae189",
+        "nhirn_28f2f8447d363a7b6518fcd22b22ef0d6e69ff71d83934951ac0e936eb2bb623"
+      ],
+      "id": "nhirn_f17c955c337ac7c930b30d36f02472d12f40b2bed9acc51927c4657bc29ccb22",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Add",
+      "source": {
+        "column": 50,
+        "end_column": 55,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_6b14d787b5657babdbbdeb87c7c302543e73c0fd7c4380cffc086bccf479ee7c",
+      "kind": "Name",
+      "name": "Array",
+      "operator": null,
+      "source": {
+        "column": 37,
+        "end_column": 42,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_129a1e38d8bcd7dc1a69414b822123c6e185bfaed4b156b9066d8d279d03ce7c",
+        "nhirn_563ce6291008aa9465e0ad2c504adf7c419a3a35369d24b6dbccd27b20d6129e",
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_c9d484912a8c058d6b7f723ef50dd9f43929a08c2cf3b86143bff3540eae372b",
+      "kind": "Tuple",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 43,
+        "end_column": 52,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_dfb66335844b8350855b8086571531db397b1f06082e9a987ebefe30779f8b9c",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 12,
+        "end_column": 18,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_3f393d65179edc80762244cdc1635e98f8e2eec34946b7406981b03133a3534e",
+      "kind": "Store",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_5844cb8173cf9917547c627a17235d294aa31b224796dab3d793c7c215775ee6",
+      "kind": "Name",
+      "name": "meldra_range",
+      "operator": null,
+      "source": {
+        "column": 13,
+        "end_column": 25,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_2b6d9f5f2466fd1a7e6a44d39bc19a2cd0455a7ca0fb82db884baa14a3e062da",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 26,
+        "end_column": 27,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": 0
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_d3b7d53ac606d5f59120463c4173f94b991d3937a2cadc9d1ffcde0252310ebf",
+      "kind": "Name",
+      "name": "n",
+      "operator": null,
+      "source": {
+        "column": 29,
+        "end_column": 30,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_3f393d65179edc80762244cdc1635e98f8e2eec34946b7406981b03133a3534e"
+      ],
+      "id": "nhirn_d68609b55da767bb98e699614321d3056fcbda2ab1fe80de69bb47912cdea358",
+      "kind": "Name",
+      "name": "values",
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 14,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_882cb8a11e58765ff37a9fe9a63ba640d0ae5e7f51f21697fb7e041e0a28698f",
+        "nhirn_df2c18ff9f6565347223bba47469c33693a1ed605eaab14bd5c6ff7e5098018f",
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_d2b6aac8ee474c1143df71b9b348fd858f354955bc23d7784f4cfaac4a334e71",
+      "kind": "Subscript",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 16,
+        "end_column": 40,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_a36bc7da677f1b9f3a43aafcdf6dc9ab3f2983416ea1229ee5e3198e76a8826d",
+        "nhirn_d28b81af794522f032a9ae3b0051b0adea94bcbf51727359e23fc1f8e8cabff7"
+      ],
+      "id": "nhirn_c3d5857f5af5d5e2bb3d1b844daf531671bbc1ed1b835a4936d3a2093e91925e",
+      "kind": "Call",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 43,
+        "end_column": 57,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "Array[UInt64;8]",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_3f393d65179edc80762244cdc1635e98f8e2eec34946b7406981b03133a3534e"
+      ],
+      "id": "nhirn_7209258467272d75d923e9af74b930131ef700f9ca51c433c030c36adbbbb834",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 16,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8d060f08ef46f81e11076317da1bea03e49a40fce8805de682aa4a3df82299e6",
+        "nhirn_beb796cd8f229537e7b592036522da0ff04e2f49a51bad23ebb8843501bae189",
+        "nhirn_cc67a90fae5323f4c9f90cb5f14e7ac5ee38191da6d06720cadc735dd3eb71d0"
+      ],
+      "id": "nhirn_bcba031fe4a9a5c033d12490595df1aeb12838f320d42ff82e650734acf0ef8f",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Add",
+      "source": {
+        "column": 19,
+        "end_column": 51,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_2f4a71be91504468110723a6bcc7e211ca739ac56d4831437b876e7d46dc485e",
+        "nhirn_7978baef6af8fe68bfb875a9098e959c2defaaa5a0e41a878d7c28104dbbd5a2"
+      ],
+      "id": "nhirn_8f2cce516f0208612913adceaaa335005a3d0b0340ff99976b0e4ecad304ca3d",
+      "kind": "Call",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 20,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "Unit",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_2e71b597f670e65c92d50f6631d341d3ec569d5a917e30cbb4bf8a2670211a10",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 9,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_beb796cd8f229537e7b592036522da0ff04e2f49a51bad23ebb8843501bae189",
+      "kind": "Add",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_1f469ac05a86adf60a0455f56f9f01a4e564f85e6e561c57a3d43d83dd9c8634",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 12,
+        "end_column": 13,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": 1
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_6e2b8809bf1978f748a04cca31798c38e23b8b7af994d3968f0fb89829ec0409",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 15,
+        "end_column": 16,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_5565b20a32b7d954534c32f30918925458252619f591be05846eedff305a55af",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 19,
+        "end_column": 20,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": 2
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_4a6dc8c3e08db30fedd111ab67681a7148d676ce2ab9af9c1c7decc0a1bfab80",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 22,
+        "end_column": 23,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_84cec9612b3f1e103f391a6d41ddeba7c1781771804709c84fb660ecfa43aac0",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 26,
+        "end_column": 27,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": 3
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_d4943eee8c1449589e4ef0a1c6947bf257c7779bd9b2ffeced27470a7fca0c61",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 29,
+        "end_column": 30,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_d16bf2f6830280a4e216d8a4601d20ddcbde4de33ab58bc9e056f53e52e4496f",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 33,
+        "end_column": 34,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": 4
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_0b060cde3018f6de40eaf769105efae258ae4a1fac92a45a4bc718c515c571b8",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 36,
+        "end_column": 37,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_c590ed8d6c073342e71d558897180e8efcde073e2f23e1becbf9e0539a37d533",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 40,
+        "end_column": 41,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": 5
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_c87e5aa879e67efc2425a8874acbc261dfdde4065ffe86d51b8837f9726a3f73",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 43,
+        "end_column": 44,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_e8fea1a4e96ee28dc895c5250b29e6a4495a5126c53e4a49e23fac588f9ba6be",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 47,
+        "end_column": 48,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": 6
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_4c99843cb07f0ad21745bfc8a7bbfa8891e1edfee887496225c7cefdc6491404",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 50,
+        "end_column": 51,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_28f2f8447d363a7b6518fcd22b22ef0d6e69ff71d83934951ac0e936eb2bb623",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 54,
+        "end_column": 55,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": 7
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_129a1e38d8bcd7dc1a69414b822123c6e185bfaed4b156b9066d8d279d03ce7c",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 43,
+        "end_column": 49,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_563ce6291008aa9465e0ad2c504adf7c419a3a35369d24b6dbccd27b20d6129e",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 51,
+        "end_column": 52,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": 8
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_882cb8a11e58765ff37a9fe9a63ba640d0ae5e7f51f21697fb7e041e0a28698f",
+      "kind": "Name",
+      "name": "Shared",
+      "operator": null,
+      "source": {
+        "column": 16,
+        "end_column": 22,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_466a7440969c7f11c20cfbf88b327a607900e106c5321d36629e5051186b3cd0",
+        "nhirn_df0f489fe1bf2435e3c9044d0635ce9a08742672d5f3065662d3d423ebe571e5",
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_df2c18ff9f6565347223bba47469c33693a1ed605eaab14bd5c6ff7e5098018f",
+      "kind": "Subscript",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 23,
+        "end_column": 39,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_a36bc7da677f1b9f3a43aafcdf6dc9ab3f2983416ea1229ee5e3198e76a8826d",
+      "kind": "Name",
+      "name": "make_values",
+      "operator": null,
+      "source": {
+        "column": 43,
+        "end_column": 54,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "Array[UInt64;8]",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_d28b81af794522f032a9ae3b0051b0adea94bcbf51727359e23fc1f8e8cabff7",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 55,
+        "end_column": 56,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_09091871c58c0522c22e19c8fe0db783ee674f7a4d92f7207ee423a805ee5078",
+        "nhirn_beb796cd8f229537e7b592036522da0ff04e2f49a51bad23ebb8843501bae189",
+        "nhirn_9d4111525fb977416bc370d42760ed8be744b1c9f94b085c2640882aae5e3de0"
+      ],
+      "id": "nhirn_8d060f08ef46f81e11076317da1bea03e49a40fce8805de682aa4a3df82299e6",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Add",
+      "source": {
+        "column": 19,
+        "end_column": 39,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_4a1f47c39869e0969cb0069904fc75d9510a499b0434a3bcbbdde6a6958ad74b",
+        "nhirn_ed661649dc1968da791abc93ee5a6991a3ce7717852f32f55421ba9213fad2b8",
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_cc67a90fae5323f4c9f90cb5f14e7ac5ee38191da6d06720cadc735dd3eb71d0",
+      "kind": "Subscript",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 42,
+        "end_column": 51,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_2f4a71be91504468110723a6bcc7e211ca739ac56d4831437b876e7d46dc485e",
+      "kind": "Name",
+      "name": "drop",
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 12,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "Unit",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_7978baef6af8fe68bfb875a9098e959c2defaaa5a0e41a878d7c28104dbbd5a2",
+      "kind": "Name",
+      "name": "values",
+      "operator": null,
+      "source": {
+        "column": 13,
+        "end_column": 19,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_466a7440969c7f11c20cfbf88b327a607900e106c5321d36629e5051186b3cd0",
+      "kind": "Name",
+      "name": "Array",
+      "operator": null,
+      "source": {
+        "column": 23,
+        "end_column": 28,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_11a5693a470fb4bdc6b8b2dafca7aebc443d95f4b030dc6c658f100825487303",
+        "nhirn_640c1e753141769cf9631e3945812295db8cba2532feb93c6fbea060a4eb4970",
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_df0f489fe1bf2435e3c9044d0635ce9a08742672d5f3065662d3d423ebe571e5",
+      "kind": "Tuple",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 29,
+        "end_column": 38,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_09091871c58c0522c22e19c8fe0db783ee674f7a4d92f7207ee423a805ee5078",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 19,
+        "end_column": 27,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_1e37f079fbcb8d00137d8567f18c1b45c1993a7dfd80ba0e3e02254aad9ed3b1",
+        "nhirn_0d871720c138773246197339e52faceb2e31f1deb152001582e2ff948e5fc17f",
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_9d4111525fb977416bc370d42760ed8be744b1c9f94b085c2640882aae5e3de0",
+      "kind": "Subscript",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 30,
+        "end_column": 39,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_4a1f47c39869e0969cb0069904fc75d9510a499b0434a3bcbbdde6a6958ad74b",
+      "kind": "Name",
+      "name": "values",
+      "operator": null,
+      "source": {
+        "column": 42,
+        "end_column": 48,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_ed661649dc1968da791abc93ee5a6991a3ce7717852f32f55421ba9213fad2b8",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 49,
+        "end_column": 50,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": 7
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_11a5693a470fb4bdc6b8b2dafca7aebc443d95f4b030dc6c658f100825487303",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 29,
+        "end_column": 35,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_640c1e753141769cf9631e3945812295db8cba2532feb93c6fbea060a4eb4970",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 37,
+        "end_column": 38,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": null,
+      "value": 8
+    },
+    {
+      "children": [
+        "nhirn_8cef018e34e1bafc7ead485dd32c1719a0e9654b7fdaf1b2feb79791fcd42c09"
+      ],
+      "id": "nhirn_1e37f079fbcb8d00137d8567f18c1b45c1993a7dfd80ba0e3e02254aad9ed3b1",
+      "kind": "Name",
+      "name": "values",
+      "operator": null,
+      "source": {
+        "column": 30,
+        "end_column": 36,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_0d871720c138773246197339e52faceb2e31f1deb152001582e2ff948e5fc17f",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 37,
+        "end_column": 38,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "type": "UInt64",
+      "value": 0
+    }
+  ],
+  "references": [
+    {
+      "owner_symbol_id": "nhirs_13a7a4de19d38a018290a7e00a12688abbd363bd81cef78d5491b629622062d0",
+      "source": {
+        "column": 19,
+        "end_column": 25,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_1d78acde76dc40624057dfc2ff74a2289c6cc85b4fc6a9673fa411b8fe54d9ff",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_13a7a4de19d38a018290a7e00a12688abbd363bd81cef78d5491b629622062d0",
+      "source": {
+        "column": 30,
+        "end_column": 36,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "Shared",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_571ef465fac9ffc38485d1ed3ee5ac46320e081945a2605c00d6ca2f1fa10b69",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_13a7a4de19d38a018290a7e00a12688abbd363bd81cef78d5491b629622062d0",
+      "source": {
+        "column": 37,
+        "end_column": 42,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "Array",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_11a274877e41c7f6b1dfcb4465935aa059c2d76cfe34d3b5c95b7de573616103",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_13a7a4de19d38a018290a7e00a12688abbd363bd81cef78d5491b629622062d0",
+      "source": {
+        "column": 43,
+        "end_column": 49,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_09d3073c2af33088e817e16a773a748d2f0b1e8225e84a769b88f610c56f6952",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_13a7a4de19d38a018290a7e00a12688abbd363bd81cef78d5491b629622062d0",
+      "source": {
+        "column": 5,
+        "end_column": 6,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "i",
+      "status": "Exact",
+      "syntax_node_id": "synref_ecadce07428c54217874e9cc04a1431ac907fa5ad6ee8a8c7bde638c1d058a1f",
+      "target_symbol_id": "nhirs_f43f08789707f9a75182819aa4294c556e31c4cd7f44e4b06d0efbf9fa3c5ffc",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_13a7a4de19d38a018290a7e00a12688abbd363bd81cef78d5491b629622062d0",
+      "source": {
+        "column": 8,
+        "end_column": 9,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "i",
+      "status": "Exact",
+      "syntax_node_id": "synref_5523903fd3e2843fa581716df71714a78070e200b0e7e3db83a226f68b19bdb7",
+      "target_symbol_id": "nhirs_f43f08789707f9a75182819aa4294c556e31c4cd7f44e4b06d0efbf9fa3c5ffc",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_13a7a4de19d38a018290a7e00a12688abbd363bd81cef78d5491b629622062d0",
+      "source": {
+        "column": 15,
+        "end_column": 16,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "i",
+      "status": "Exact",
+      "syntax_node_id": "synref_30c08858dbf13edd65cb93009c086083972662fd197ef91f45273ea357ca5e21",
+      "target_symbol_id": "nhirs_f43f08789707f9a75182819aa4294c556e31c4cd7f44e4b06d0efbf9fa3c5ffc",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_13a7a4de19d38a018290a7e00a12688abbd363bd81cef78d5491b629622062d0",
+      "source": {
+        "column": 22,
+        "end_column": 23,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "i",
+      "status": "Exact",
+      "syntax_node_id": "synref_220a273759be3b65f99ab3c56ce440ed8686edb00db0f8a31882d88a4e1f5698",
+      "target_symbol_id": "nhirs_f43f08789707f9a75182819aa4294c556e31c4cd7f44e4b06d0efbf9fa3c5ffc",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_13a7a4de19d38a018290a7e00a12688abbd363bd81cef78d5491b629622062d0",
+      "source": {
+        "column": 29,
+        "end_column": 30,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "i",
+      "status": "Exact",
+      "syntax_node_id": "synref_43b9c491e17d5053772ed6b5793bf7e67a2b3c2a5030d0bf79461aaf4f20233d",
+      "target_symbol_id": "nhirs_f43f08789707f9a75182819aa4294c556e31c4cd7f44e4b06d0efbf9fa3c5ffc",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_13a7a4de19d38a018290a7e00a12688abbd363bd81cef78d5491b629622062d0",
+      "source": {
+        "column": 36,
+        "end_column": 37,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "i",
+      "status": "Exact",
+      "syntax_node_id": "synref_7163d920e6936790f5c4c2c82ad31fc2dbca69a6e7eaf00a5eae5c8f7d80f8fa",
+      "target_symbol_id": "nhirs_f43f08789707f9a75182819aa4294c556e31c4cd7f44e4b06d0efbf9fa3c5ffc",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_13a7a4de19d38a018290a7e00a12688abbd363bd81cef78d5491b629622062d0",
+      "source": {
+        "column": 43,
+        "end_column": 44,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "i",
+      "status": "Exact",
+      "syntax_node_id": "synref_a1131cbbc656b66fdc2a393042a56dca15569b00652bd9df3ce20debc6b89e10",
+      "target_symbol_id": "nhirs_f43f08789707f9a75182819aa4294c556e31c4cd7f44e4b06d0efbf9fa3c5ffc",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_13a7a4de19d38a018290a7e00a12688abbd363bd81cef78d5491b629622062d0",
+      "source": {
+        "column": 50,
+        "end_column": 51,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "i",
+      "status": "Exact",
+      "syntax_node_id": "synref_9103da1e0af294f4f09b3fe9b60854fc6de2fb34c00418c45b1cefedfa1d8df5",
+      "target_symbol_id": "nhirs_f43f08789707f9a75182819aa4294c556e31c4cd7f44e4b06d0efbf9fa3c5ffc",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 12,
+        "end_column": 18,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_a1fd355e3fef1121d3c07d755fcc55f4476323ae443482cb5ff0d2247c7b9d37",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 23,
+        "end_column": 29,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_73704944612dcfe5767057d86cb62acc689c3b13489effebd0d30cccb16c6a0c",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 14,
+        "end_column": 20,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_e6bdfc7883b9d96e50f61f059a29d177a5c5e5c91fde9139724ea345f7246876",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 13,
+        "end_column": 25,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "meldra_range",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_2dda4919515bd15db8649cac8482d23f1a55147eb379c028c46025a3e2728c84",
+      "target_symbol_id": null,
+      "usage": "Call"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 29,
+        "end_column": 30,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "n",
+      "status": "Exact",
+      "syntax_node_id": "synref_ff429eac06c702c70dffda1a8e6045b4e84e4776f3d4dbbca645c3e5bc829146",
+      "target_symbol_id": "nhirs_5238b3a7de88cedc86d6690413264a44901bf0b0bf7e7209d10611cd929d48f0",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 16,
+        "end_column": 22,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "Shared",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_05ad8216228793c127b0a8d269abb1be68f5771c1b3158c85485b238a79cdfa9",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 23,
+        "end_column": 28,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "Array",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_92fe5ffd28870103b7b76484097891b855f36b453a297c6a35d435d27031a4f2",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 29,
+        "end_column": 35,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_caf31e0b2c05c7d910d58958610ab16f3af779da5c70d51b64fd030d75dfd027",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 43,
+        "end_column": 54,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "make_values",
+      "status": "Exact",
+      "syntax_node_id": "synref_bd2936271114c6768d62ffbe96bd40c30302f1b98d3953787c8116ff63d40df0",
+      "target_symbol_id": "nhirs_13a7a4de19d38a018290a7e00a12688abbd363bd81cef78d5491b629622062d0",
+      "usage": "Call"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 55,
+        "end_column": 56,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "i",
+      "status": "Exact",
+      "syntax_node_id": "synref_ac2c7942ccc74ab654490f79bf075e79273385f3ca240f47d59f35d8073f9d88",
+      "target_symbol_id": "nhirs_83742fba79ddf4bab6b55f5acfab57d85c0b88a6f13eacb1c6f3424ed5d160be",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 19,
+        "end_column": 27,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "checksum",
+      "status": "Exact",
+      "syntax_node_id": "synref_c8e38ada522b093c4b6fec8f0e4393a85766d137e799ff0de3cb88ab22e5a3e8",
+      "target_symbol_id": "nhirs_20adead7a468c95cfef074d80b1b298a819101eecb7d566f33b956e48a5db3d3",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 30,
+        "end_column": 36,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "values",
+      "status": "Exact",
+      "syntax_node_id": "synref_96c75a5c1de23ba560e1c7b689efdd4a9484f7eab39b42c94fee1e796e0489e1",
+      "target_symbol_id": "nhirs_ab57f748fece7f6c0efc438f27f8ca027e697be7312d19151d74760c88390ea9",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 42,
+        "end_column": 48,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "values",
+      "status": "Exact",
+      "syntax_node_id": "synref_b232a59df74f447a8e2d845c4abe371945931e9082b436a61152d0212a4a618c",
+      "target_symbol_id": "nhirs_ab57f748fece7f6c0efc438f27f8ca027e697be7312d19151d74760c88390ea9",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 8,
+        "end_column": 12,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "drop",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_0548effe79ec5a623b4c76e8e1f09030626349aa3c046c0d631e57e70e9cdd96",
+      "target_symbol_id": null,
+      "usage": "Call"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 13,
+        "end_column": 19,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "values",
+      "status": "Exact",
+      "syntax_node_id": "synref_1b87281dc42c174d32b1dc5875efbae7249fc92f316c6f8b253803018c1508b9",
+      "target_symbol_id": "nhirs_ab57f748fece7f6c0efc438f27f8ca027e697be7312d19151d74760c88390ea9",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 10,
+        "line": 10,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "spelling": "checksum",
+      "status": "Exact",
+      "syntax_node_id": "synref_6e1a2299e8f6c4aa1964b2953759e51b3447684f8dc0d1c755a510d290f0674b",
+      "target_symbol_id": "nhirs_20adead7a468c95cfef074d80b1b298a819101eecb7d566f33b956e48a5db3d3",
+      "usage": "Read"
+    }
+  ],
+  "schema_version": 1,
+  "source_kind": "stage05p_performance_adapter",
+  "symbols": [
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": true,
+      "kind": "function",
+      "name": "main",
+      "origin": "native",
+      "parameter_types": [
+        "UInt64"
+      ],
+      "path": "compile-phases/shared_allocations.meldra",
+      "return_type": "UInt64",
+      "revision_id": "rev_6e6424a149f9411e5d13daab592607ee27041f5397845f969cbac263b78a10b9",
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 10,
+        "line": 4,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "symbol_id": "nhirs_c47efd4b0ccc3a524c31a421d85b2f6c0877a051a5f1bec20071ff6ee6643a77",
+      "syntax_node_id": "syn_291a0eee3d8f38340be917370e38aca34af60432012d8294b5cecf7f81fe7251",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": true,
+      "kind": "function",
+      "name": "make_values",
+      "origin": "native",
+      "parameter_types": [
+        "UInt64"
+      ],
+      "path": "compile-phases/shared_allocations.meldra",
+      "return_type": "Array[UInt64;8]",
+      "revision_id": "rev_c323057bda8e9ee2edc4f4f47f72d5d9104647cade83b902a807b6163d478d40",
+      "source": {
+        "column": 0,
+        "end_column": 56,
+        "end_line": 2,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "symbol_id": "nhirs_13a7a4de19d38a018290a7e00a12688abbd363bd81cef78d5491b629622062d0",
+      "syntax_node_id": "syn_de10094d7f62ce492cd61647d2deedb70f3390afe85d2d5fa768797c02c71cfa",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "local",
+      "name": "main.checksum",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/shared_allocations.meldra",
+      "return_type": null,
+      "revision_id": "rev_df4c3431d68fc8a96453b17551f65d555f005d44c655aab625e12665b11aae52",
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "symbol_id": "nhirs_20adead7a468c95cfef074d80b1b298a819101eecb7d566f33b956e48a5db3d3",
+      "syntax_node_id": "syn_db308324e884fd590dd391f1810e28964727c089b85f6dff02114b0e1bc05552",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "local",
+      "name": "main.i",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/shared_allocations.meldra",
+      "return_type": null,
+      "revision_id": "rev_56e3710bc0eaf0f7d3c5d8be7a443d497678ed59686a80877bc4ca3587228aa3",
+      "source": {
+        "column": 8,
+        "end_column": 9,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "symbol_id": "nhirs_83742fba79ddf4bab6b55f5acfab57d85c0b88a6f13eacb1c6f3424ed5d160be",
+      "syntax_node_id": "syn_478e517731497f81f655f8470b7f38b4fc49cd24f665625ad9dbc4629400a317",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "local",
+      "name": "main.values",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/shared_allocations.meldra",
+      "return_type": null,
+      "revision_id": "rev_864b5e3f1da86bb5ba5c88f405031819a98ace8576de17300c2944e6a51321b5",
+      "source": {
+        "column": 8,
+        "end_column": 14,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "symbol_id": "nhirs_ab57f748fece7f6c0efc438f27f8ca027e697be7312d19151d74760c88390ea9",
+      "syntax_node_id": "syn_40ba79f7fdaaaab931e4664a04ce8e691e5a3fbbb770c7ae5042a4c490748f41",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "parameter",
+      "name": "main.n",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/shared_allocations.meldra",
+      "return_type": null,
+      "revision_id": "rev_162d0d8cd5e4b3558fddff4bc7e788a63ea273ce0c5e1bfd651349d0a7fd3b7c",
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 10,
+        "line": 4,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "symbol_id": "nhirs_5238b3a7de88cedc86d6690413264a44901bf0b0bf7e7209d10611cd929d48f0",
+      "syntax_node_id": "syn_7ea92618253b7a8f676fa7d88a27394c8680ad3e19b06ff629cc6d17c6ae6283",
+      "type": "UInt64"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "parameter",
+      "name": "make_values.i",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/shared_allocations.meldra",
+      "return_type": null,
+      "revision_id": "rev_4980c52f2d04e7af7aaad7abbb9c82bbeb1612e2604b11531aa34e3ae2b38f61",
+      "source": {
+        "column": 0,
+        "end_column": 56,
+        "end_line": 2,
+        "line": 1,
+        "path": "compile-phases/shared_allocations.meldra"
+      },
+      "symbol_id": "nhirs_f43f08789707f9a75182819aa4294c556e31c4cd7f44e4b06d0efbf9fa3c5ffc",
+      "syntax_node_id": "syn_6e629ab8dcbba2c1b1298cb4f8ffbe4b2f03cde8858527af9a002f68f93012e7",
+      "type": "UInt64"
+    }
+  ]
+}

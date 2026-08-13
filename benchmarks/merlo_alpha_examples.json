@@ -1,0 +1,39 @@
+{
+  "examples": [
+    {
+      "family": "scalars",
+      "id": "alpha-valid-0000"
+    },
+    {
+      "family": "records",
+      "id": "alpha-valid-0005"
+    },
+    {
+      "family": "collections",
+      "id": "alpha-valid-0008"
+    },
+    {
+      "family": "resources",
+      "id": "alpha-valid-0014"
+    },
+    {
+      "family": "effects",
+      "id": "alpha-valid-0015"
+    },
+    {
+      "family": "paths",
+      "id": "alpha-valid-0018"
+    },
+    {
+      "family": "interfaces",
+      "id": "alpha-valid-0021"
+    },
+    {
+      "family": "refactors",
+      "id": "alpha-valid-0023"
+    }
+  ],
+  "generated_by": "merlo.alpha_corpus",
+  "name": "merlo-alpha-examples",
+  "schema_version": 1
+}

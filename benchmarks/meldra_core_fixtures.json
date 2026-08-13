@@ -1,0 +1,362 @@
+{
+  "fixtures": [
+    {
+      "core_program": {
+        "packages": [
+          {
+            "id": "package:textkit",
+            "modules": [
+              {
+                "declarations": [],
+                "exports": [],
+                "imports": [],
+                "name": "_moved"
+              },
+              {
+                "declarations": [
+                  {
+                    "capabilities": [],
+                    "effects": [],
+                    "export": false,
+                    "id": "symbol:textkit:api:_normalize",
+                    "implementation": "return re.sub(r'\\s+', ' ', value)",
+                    "kind": "function",
+                    "name": "_normalize",
+                    "refs": [
+                      "re"
+                    ],
+                    "signature": "(value: str) -> str"
+                  },
+                  {
+                    "capabilities": [],
+                    "effects": [],
+                    "export": true,
+                    "id": "symbol:textkit:api:format_title",
+                    "implementation": "return value",
+                    "kind": "function",
+                    "name": "format_title",
+                    "refs": [],
+                    "signature": "(value: str) -> str"
+                  }
+                ],
+                "exports": [
+                  "format_title"
+                ],
+                "imports": [
+                  {
+                    "alias": "re",
+                    "foreign": "python:re",
+                    "name": "re"
+                  }
+                ],
+                "name": "api"
+              }
+            ],
+            "name": "textkit"
+          },
+          {
+            "id": "package:textapp",
+            "modules": [
+              {
+                "declarations": [
+                  {
+                    "capabilities": [],
+                    "effects": [],
+                    "export": true,
+                    "id": "symbol:textapp:api:render_title",
+                    "implementation": "return format_title(value)",
+                    "kind": "function",
+                    "name": "render_title",
+                    "refs": [
+                      "format_title"
+                    ],
+                    "signature": "(value: str) -> str"
+                  }
+                ],
+                "exports": [
+                  "render_title"
+                ],
+                "imports": [
+                  {
+                    "alias": "format_title",
+                    "module": "api",
+                    "name": "format_title",
+                    "package": "textkit"
+                  }
+                ],
+                "name": "api"
+              }
+            ],
+            "name": "textapp"
+          }
+        ],
+        "schema_version": 1
+      },
+      "declared_public_contracts": [
+        "textapp.api.render_title(value: str) -> str",
+        "textkit.api.format_title(value: str) -> str"
+      ],
+      "fixture_id": "text",
+      "provenance": {
+        "fixture_id": "text",
+        "human_ground_truth": false,
+        "label_source": "benchmark_policy",
+        "oracle": "declared_public_contract",
+        "source": "generated:meldra.core_bench:fixed_getattr"
+      },
+      "python_files": [
+        {
+          "path": "textapp/api.py",
+          "source": "import textkit.api as public_module\n\ndef render_title(value: str) -> str:\n    return getattr(public_module, 'format_title')(value)\n"
+        },
+        {
+          "path": "textkit/_moved.py",
+          "source": ""
+        },
+        {
+          "path": "textkit/api.py",
+          "source": "import re\n\ndef _normalize(value: str) -> str:\n    return re.sub(r'\\s+', ' ', value)\n\ndef format_title(value: str) -> str:\n    return value\n"
+        }
+      ]
+    },
+    {
+      "core_program": {
+        "packages": [
+          {
+            "id": "package:pricekit",
+            "modules": [
+              {
+                "declarations": [],
+                "exports": [],
+                "imports": [],
+                "name": "_moved"
+              },
+              {
+                "declarations": [
+                  {
+                    "capabilities": [],
+                    "effects": [],
+                    "export": false,
+                    "id": "symbol:pricekit:api:_normalize",
+                    "implementation": "return re.sub(r'\\s+', ' ', value)",
+                    "kind": "function",
+                    "name": "_normalize",
+                    "refs": [
+                      "re"
+                    ],
+                    "signature": "(value: str) -> str"
+                  },
+                  {
+                    "capabilities": [],
+                    "effects": [],
+                    "export": true,
+                    "id": "symbol:pricekit:api:format_price",
+                    "implementation": "return value",
+                    "kind": "function",
+                    "name": "format_price",
+                    "refs": [],
+                    "signature": "(value: str) -> str"
+                  }
+                ],
+                "exports": [
+                  "format_price"
+                ],
+                "imports": [
+                  {
+                    "alias": "re",
+                    "foreign": "python:re",
+                    "name": "re"
+                  }
+                ],
+                "name": "api"
+              }
+            ],
+            "name": "pricekit"
+          },
+          {
+            "id": "package:shopapp",
+            "modules": [
+              {
+                "declarations": [
+                  {
+                    "capabilities": [],
+                    "effects": [],
+                    "export": true,
+                    "id": "symbol:shopapp:api:render_price",
+                    "implementation": "return format_price(value)",
+                    "kind": "function",
+                    "name": "render_price",
+                    "refs": [
+                      "format_price"
+                    ],
+                    "signature": "(value: str) -> str"
+                  }
+                ],
+                "exports": [
+                  "render_price"
+                ],
+                "imports": [
+                  {
+                    "alias": "format_price",
+                    "module": "api",
+                    "name": "format_price",
+                    "package": "pricekit"
+                  }
+                ],
+                "name": "api"
+              }
+            ],
+            "name": "shopapp"
+          }
+        ],
+        "schema_version": 1
+      },
+      "declared_public_contracts": [
+        "pricekit.api.format_price(value: str) -> str",
+        "shopapp.api.render_price(value: str) -> str"
+      ],
+      "fixture_id": "price",
+      "provenance": {
+        "fixture_id": "price",
+        "human_ground_truth": false,
+        "label_source": "benchmark_policy",
+        "oracle": "declared_public_contract",
+        "source": "generated:meldra.core_bench:static_control"
+      },
+      "python_files": [
+        {
+          "path": "pricekit/_moved.py",
+          "source": ""
+        },
+        {
+          "path": "pricekit/api.py",
+          "source": "import re\n\ndef _normalize(value: str) -> str:\n    return re.sub(r'\\s+', ' ', value)\n\ndef format_price(value: str) -> str:\n    return value\n"
+        },
+        {
+          "path": "shopapp/api.py",
+          "source": "from pricekit.api import format_price\n\ndef render_price(value: str) -> str:\n    return format_price(value)\n"
+        }
+      ]
+    },
+    {
+      "core_program": {
+        "packages": [
+          {
+            "id": "package:routekit",
+            "modules": [
+              {
+                "declarations": [],
+                "exports": [],
+                "imports": [],
+                "name": "_moved"
+              },
+              {
+                "declarations": [
+                  {
+                    "capabilities": [],
+                    "effects": [],
+                    "export": false,
+                    "id": "symbol:routekit:api:_normalize",
+                    "implementation": "return re.sub(r'\\s+', ' ', value)",
+                    "kind": "function",
+                    "name": "_normalize",
+                    "refs": [
+                      "re"
+                    ],
+                    "signature": "(value: str) -> str"
+                  },
+                  {
+                    "capabilities": [],
+                    "effects": [],
+                    "export": true,
+                    "id": "symbol:routekit:api:format_route",
+                    "implementation": "return value",
+                    "kind": "function",
+                    "name": "format_route",
+                    "refs": [],
+                    "signature": "(value: str) -> str"
+                  }
+                ],
+                "exports": [
+                  "format_route"
+                ],
+                "imports": [
+                  {
+                    "alias": "re",
+                    "foreign": "python:re",
+                    "name": "re"
+                  }
+                ],
+                "name": "api"
+              }
+            ],
+            "name": "routekit"
+          },
+          {
+            "id": "package:webapp",
+            "modules": [
+              {
+                "declarations": [
+                  {
+                    "capabilities": [],
+                    "effects": [],
+                    "export": true,
+                    "id": "symbol:webapp:api:render_route",
+                    "implementation": "return format_route(value)",
+                    "kind": "function",
+                    "name": "render_route",
+                    "refs": [
+                      "format_route"
+                    ],
+                    "signature": "(value: str) -> str"
+                  }
+                ],
+                "exports": [
+                  "render_route"
+                ],
+                "imports": [
+                  {
+                    "alias": "format_route",
+                    "module": "api",
+                    "name": "format_route",
+                    "package": "routekit"
+                  }
+                ],
+                "name": "api"
+              }
+            ],
+            "name": "webapp"
+          }
+        ],
+        "schema_version": 1
+      },
+      "declared_public_contracts": [
+        "routekit.api.format_route(value: str) -> str",
+        "webapp.api.render_route(value: str) -> str"
+      ],
+      "fixture_id": "route",
+      "provenance": {
+        "fixture_id": "route",
+        "human_ground_truth": false,
+        "label_source": "benchmark_policy",
+        "oracle": "declared_public_contract",
+        "source": "generated:meldra.core_bench:static_control"
+      },
+      "python_files": [
+        {
+          "path": "routekit/_moved.py",
+          "source": ""
+        },
+        {
+          "path": "routekit/api.py",
+          "source": "import re\n\ndef _normalize(value: str) -> str:\n    return re.sub(r'\\s+', ' ', value)\n\ndef format_route(value: str) -> str:\n    return value\n"
+        },
+        {
+          "path": "webapp/api.py",
+          "source": "from routekit.api import format_route\n\ndef render_route(value: str) -> str:\n    return format_route(value)\n"
+        }
+      ]
+    }
+  ],
+  "schema": 1
+}

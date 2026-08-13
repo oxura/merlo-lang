@@ -1,0 +1,16 @@
+fn square(value: UInt64) -> UInt64:
+    value * value
+
+fn even(value: UInt64) -> Bool:
+    value % 2 == 0
+
+fn add(left: UInt64, right: UInt64) -> UInt64:
+    left + right
+
+fn main(n: UInt64) -> UInt64:
+    let values: Array[UInt64, 8] = [1, 2, 3, 4, 5, 6, 7, 8]
+    var checksum: UInt64 = 0
+    for i in 0..n:
+        values[i & 7] = values[i & 7] + i
+        checksum = checksum + fold(filter(map(values, square), even), 0, add)
+    checksum

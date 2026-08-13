@@ -1,0 +1,109 @@
+{
+  "changeir_identity": {
+    "claim_status": "SCOPED_GUARANTEE",
+    "guarantee": "Identity continuity is Exact only for an explicit ChangeIR IdentityHint applied by the transactional evolution engine and validated against the post-change world.",
+    "non_guarantees": [
+      "arbitrary external text edits",
+      "Git rename/copy similarity",
+      "heuristic content similarity",
+      "split or merge hypotheses without reviewed provenance"
+    ],
+    "scope": [
+      "source-preserving RenameSymbol",
+      "source-preserving MoveSymbol",
+      "source-preserving ChangeSignature"
+    ]
+  },
+  "decision": "NO_BROAD_PYTHON_IDENTITY_CLAIM",
+  "external_edit_identity": {
+    "claim_status": "CONSERVATIVE_REVIEW_POLICY",
+    "exact_auto_inheritance": [
+      "unchanged semantic address",
+      "explicit ChangeIR provenance"
+    ],
+    "policy": "External edits never inherit identity from a Probable or Ambiguous match automatically. They require explicit reviewed provenance before identity inheritance.",
+    "review_required": [
+      "probable rename",
+      "probable move",
+      "split hypothesis",
+      "merge hypothesis",
+      "Git proxy disagreement"
+    ]
+  },
+  "inputs": {
+    "git_summary_sha256": "9f759a21ed5deea2352c33f532e9ba7bc05c26fbe7723e0cb011934f83c5dc38",
+    "manual_audit_sha256": "31b84617c69a2d2de80af3fc3d788cf0e183c5119595dac878f32f270229f9d2",
+    "review_queue_sha256": "abd007fbf05f2596cfee2c4dfed8a1ab32b2364a0200d481261db575de613323"
+  },
+  "kind": "MeldraSeparatedIdentityClaims",
+  "protocol_sha256": "29b4401c31871f219554985a253c80757ee3bdfb718d052fea4eabd41d0df1c7",
+  "provenance_policy": {
+    "ambiguous_inherits_identity": false,
+    "generated_git_proxy_is_ground_truth": false,
+    "independent_human_review_required": true,
+    "probable_is_exact": false,
+    "strict": true
+  },
+  "python_identity": {
+    "all_link_git_proxy": {
+      "false_positive_links": 0,
+      "ground_truth_ambiguous_count": 0,
+      "ground_truth_link_count": 73999,
+      "matched_ground_truth_links": 73995,
+      "new_entity_count": 74812,
+      "precision": {
+        "denominator": 73995,
+        "numerator": 73995,
+        "value": 1.0
+      },
+      "predicted_link_count": 73995,
+      "recall": {
+        "denominator": 73999,
+        "numerator": 73995,
+        "value": 0.999946
+      },
+      "resolver_ambiguous_count": 3,
+      "resolver_no_link_count": 7,
+      "true_positive_links": 73995
+    },
+    "changed_only_git_proxy": {
+      "ambiguous_changed_hints": 0,
+      "false_negative_links": 1,
+      "false_positive_links": 0,
+      "ground_truth_changed_links": 1,
+      "precision": {
+        "denominator": 0,
+        "numerator": 0,
+        "value": null
+      },
+      "predicted_changed_links": 0,
+      "recall": {
+        "denominator": 1,
+        "numerator": 0,
+        "value": 0.0
+      },
+      "true_positive_links": 0
+    },
+    "claim_status": "NOT_ESTABLISHED",
+    "guarantee": "Exact continuity is limited to unchanged semantic addresses; heuristic rename, move, split, and merge recovery is Probable or Ambiguous and receives a fresh EntityId.",
+    "manual_changed_prediction_precision": {
+      "denominator": 5,
+      "false_positive": 1,
+      "numerator": 4,
+      "true_positive": 4,
+      "value": 0.8
+    },
+    "manual_changed_recall": null,
+    "reason": "The changed-only manually adjudicated sample contains one verified false assignment (4/5 precision), has no recall denominator, and is too small for a population claim."
+  },
+  "review_workflow": {
+    "independently_adjudicated": 0,
+    "note": "Six prior disagreements are queued but deliberately remain unverified; no generated or Git-proxy label is counted as an independent human adjudication.",
+    "queue_fill_rate": 0.01,
+    "queued_candidates": 6,
+    "remaining_to_target": 600,
+    "status": "INCOMPLETE",
+    "target": 600
+  },
+  "schema_version": 1
+}

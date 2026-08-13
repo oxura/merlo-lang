@@ -1,0 +1,1244 @@
+{
+  "entry_function": "main",
+  "functions": [
+    {
+      "blocks": [
+        {
+          "id": "bb1_entry",
+          "instructions": [
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i1",
+              "op": "const",
+              "operands": [],
+              "result": "%v_2",
+              "source": {
+                "column": 23,
+                "end_column": 24,
+                "end_line": 7,
+                "line": 7,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "bytes": 0,
+                "local": "checksum"
+              },
+              "id": "i2",
+              "op": "alloc_stack",
+              "operands": [],
+              "result": "%v_3",
+              "source": {
+                "column": 4,
+                "end_column": 24,
+                "end_line": 7,
+                "line": 7,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i3",
+              "op": "store_local",
+              "operands": [
+                "%v_3",
+                "%v_2"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 24,
+                "end_line": 7,
+                "line": 7,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i4",
+              "op": "const",
+              "operands": [],
+              "result": "%v_4",
+              "source": {
+                "column": 26,
+                "end_column": 27,
+                "end_line": 8,
+                "line": 8,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "local": "i"
+              },
+              "id": "i5",
+              "op": "alloc_stack",
+              "operands": [],
+              "result": "%v_5",
+              "source": {
+                "column": 4,
+                "end_column": 73,
+                "end_line": 10,
+                "line": 8,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i6",
+              "op": "store_local",
+              "operands": [
+                "%v_5",
+                "%v_4"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 73,
+                "end_line": 10,
+                "line": 8,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 4,
+              "end_column": 73,
+              "end_line": 10,
+              "line": 8,
+              "path": "corpus/implicit_tree.meldra"
+            },
+            "targets": [
+              "bb2_for_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb2_for_header",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i7",
+              "op": "load_local",
+              "operands": [
+                "%v_5"
+              ],
+              "result": "%v_6",
+              "source": {
+                "column": 4,
+                "end_column": 73,
+                "end_line": 10,
+                "line": 8,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "lt",
+                "range_guard": true
+              },
+              "id": "i8",
+              "op": "compare",
+              "operands": [
+                "%v_6",
+                "%n_1"
+              ],
+              "result": "%v_7",
+              "source": {
+                "column": 4,
+                "end_column": 73,
+                "end_line": 10,
+                "line": 8,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 8,
+                "element": null,
+                "kind": "bool",
+                "length": null,
+                "name": "Bool",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": "%v_7",
+            "kind": "branch",
+            "source": {
+              "column": 4,
+              "end_column": 73,
+              "end_line": 10,
+              "line": 8,
+              "path": "corpus/implicit_tree.meldra"
+            },
+            "targets": [
+              "bb3_for_body",
+              "bb4_for_exit"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb3_for_body",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i9",
+              "op": "load_local",
+              "operands": [
+                "%v_5"
+              ],
+              "result": "%v_8",
+              "source": {
+                "column": 32,
+                "end_column": 33,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 3
+              },
+              "id": "i10",
+              "op": "const",
+              "operands": [],
+              "result": "%v_9",
+              "source": {
+                "column": 36,
+                "end_column": 37,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "mul"
+              },
+              "id": "i11",
+              "op": "binary",
+              "operands": [
+                "%v_8",
+                "%v_9"
+              ],
+              "result": "%v_10",
+              "source": {
+                "column": 32,
+                "end_column": 37,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 1
+              },
+              "id": "i12",
+              "op": "const",
+              "operands": [],
+              "result": "%v_11",
+              "source": {
+                "column": 40,
+                "end_column": 41,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i13",
+              "op": "binary",
+              "operands": [
+                "%v_10",
+                "%v_11"
+              ],
+              "result": "%v_12",
+              "source": {
+                "column": 32,
+                "end_column": 41,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i14",
+              "op": "load_local",
+              "operands": [
+                "%v_5"
+              ],
+              "result": "%v_13",
+              "source": {
+                "column": 48,
+                "end_column": 49,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 2
+              },
+              "id": "i15",
+              "op": "const",
+              "operands": [],
+              "result": "%v_14",
+              "source": {
+                "column": 52,
+                "end_column": 53,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "mul"
+              },
+              "id": "i16",
+              "op": "binary",
+              "operands": [
+                "%v_13",
+                "%v_14"
+              ],
+              "result": "%v_15",
+              "source": {
+                "column": 48,
+                "end_column": 53,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 1
+              },
+              "id": "i17",
+              "op": "const",
+              "operands": [],
+              "result": "%v_16",
+              "source": {
+                "column": 56,
+                "end_column": 57,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i18",
+              "op": "binary",
+              "operands": [
+                "%v_15",
+                "%v_16"
+              ],
+              "result": "%v_17",
+              "source": {
+                "column": 48,
+                "end_column": 57,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i19",
+              "op": "load_local",
+              "operands": [
+                "%v_5"
+              ],
+              "result": "%v_18",
+              "source": {
+                "column": 65,
+                "end_column": 66,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 2
+              },
+              "id": "i20",
+              "op": "const",
+              "operands": [],
+              "result": "%v_19",
+              "source": {
+                "column": 69,
+                "end_column": 70,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "mul"
+              },
+              "id": "i21",
+              "op": "binary",
+              "operands": [
+                "%v_18",
+                "%v_19"
+              ],
+              "result": "%v_20",
+              "source": {
+                "column": 65,
+                "end_column": 70,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 2
+              },
+              "id": "i22",
+              "op": "const",
+              "operands": [],
+              "result": "%v_21",
+              "source": {
+                "column": 73,
+                "end_column": 74,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i23",
+              "op": "binary",
+              "operands": [
+                "%v_20",
+                "%v_21"
+              ],
+              "result": "%v_22",
+              "source": {
+                "column": 65,
+                "end_column": 74,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "record": "Node"
+              },
+              "id": "i24",
+              "op": "record_init",
+              "operands": [
+                "%v_12",
+                "%v_17",
+                "%v_22"
+              ],
+              "result": "%v_23",
+              "source": {
+                "column": 21,
+                "end_column": 75,
+                "end_line": 9,
+                "line": 9,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": null,
+                "element": null,
+                "kind": "record",
+                "length": null,
+                "name": "Node",
+                "record": "Node",
+                "shared": false,
+                "unique": true
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i25",
+              "op": "load_local",
+              "operands": [
+                "%v_3"
+              ],
+              "result": "%v_24",
+              "source": {
+                "column": 19,
+                "end_column": 27,
+                "end_line": 10,
+                "line": 10,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "field": "value"
+              },
+              "id": "i26",
+              "op": "field_load",
+              "operands": [
+                "%v_23"
+              ],
+              "result": "%v_25",
+              "source": {
+                "column": 31,
+                "end_column": 41,
+                "end_line": 10,
+                "line": 10,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "field": "left"
+              },
+              "id": "i27",
+              "op": "field_load",
+              "operands": [
+                "%v_23"
+              ],
+              "result": "%v_26",
+              "source": {
+                "column": 45,
+                "end_column": 54,
+                "end_line": 10,
+                "line": 10,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "field": "right"
+              },
+              "id": "i28",
+              "op": "field_load",
+              "operands": [
+                "%v_23"
+              ],
+              "result": "%v_27",
+              "source": {
+                "column": 57,
+                "end_column": 67,
+                "end_line": 10,
+                "line": 10,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i29",
+              "op": "binary",
+              "operands": [
+                "%v_26",
+                "%v_27"
+              ],
+              "result": "%v_28",
+              "source": {
+                "column": 45,
+                "end_column": 67,
+                "end_line": 10,
+                "line": 10,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 1
+              },
+              "id": "i30",
+              "op": "const",
+              "operands": [],
+              "result": "%v_29",
+              "source": {
+                "column": 70,
+                "end_column": 71,
+                "end_line": 10,
+                "line": 10,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i31",
+              "op": "binary",
+              "operands": [
+                "%v_28",
+                "%v_29"
+              ],
+              "result": "%v_30",
+              "source": {
+                "column": 45,
+                "end_column": 71,
+                "end_line": 10,
+                "line": 10,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "mul"
+              },
+              "id": "i32",
+              "op": "binary",
+              "operands": [
+                "%v_25",
+                "%v_30"
+              ],
+              "result": "%v_31",
+              "source": {
+                "column": 31,
+                "end_column": 72,
+                "end_line": 10,
+                "line": 10,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "bit_xor"
+              },
+              "id": "i33",
+              "op": "binary",
+              "operands": [
+                "%v_24",
+                "%v_31"
+              ],
+              "result": "%v_32",
+              "source": {
+                "column": 19,
+                "end_column": 73,
+                "end_line": 10,
+                "line": 10,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i34",
+              "op": "store_local",
+              "operands": [
+                "%v_3",
+                "%v_32"
+              ],
+              "result": null,
+              "source": {
+                "column": 8,
+                "end_column": 73,
+                "end_line": 10,
+                "line": 10,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i35",
+              "op": "load_local",
+              "operands": [
+                "%v_5"
+              ],
+              "result": "%v_33",
+              "source": {
+                "column": 4,
+                "end_column": 73,
+                "end_line": 10,
+                "line": 8,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 1
+              },
+              "id": "i36",
+              "op": "const",
+              "operands": [],
+              "result": "%v_34",
+              "source": {
+                "column": 4,
+                "end_column": 73,
+                "end_line": 10,
+                "line": 8,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i37",
+              "op": "binary",
+              "operands": [
+                "%v_33",
+                "%v_34"
+              ],
+              "result": "%v_35",
+              "source": {
+                "column": 4,
+                "end_column": 73,
+                "end_line": 10,
+                "line": 8,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i38",
+              "op": "store_local",
+              "operands": [
+                "%v_5",
+                "%v_35"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 73,
+                "end_line": 10,
+                "line": 8,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 4,
+              "end_column": 73,
+              "end_line": 10,
+              "line": 8,
+              "path": "corpus/implicit_tree.meldra"
+            },
+            "targets": [
+              "bb2_for_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb4_for_exit",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i39",
+              "op": "load_local",
+              "operands": [
+                "%v_3"
+              ],
+              "result": "%v_36",
+              "source": {
+                "column": 4,
+                "end_column": 12,
+                "end_line": 11,
+                "line": 11,
+                "path": "corpus/implicit_tree.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "return",
+            "source": {
+              "column": 4,
+              "end_column": 12,
+              "end_line": 11,
+              "line": 11,
+              "path": "corpus/implicit_tree.meldra"
+            },
+            "targets": [],
+            "value": "%v_36"
+          }
+        }
+      ],
+      "entry_block": "bb1_entry",
+      "generic_parameters": [],
+      "instruction_count": 39,
+      "name": "main",
+      "parameters": [
+        {
+          "name": "n",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%n_1"
+        }
+      ],
+      "pure": true,
+      "return_type": {
+        "bits": 64,
+        "element": null,
+        "kind": "uint",
+        "length": null,
+        "name": "UInt64",
+        "record": null,
+        "shared": false,
+        "unique": false
+      },
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 11,
+        "line": 6,
+        "path": "corpus/implicit_tree.meldra"
+      }
+    }
+  ],
+  "instruction_count": 39,
+  "records": [
+    {
+      "fields": [
+        {
+          "name": "value",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          }
+        },
+        {
+          "name": "left",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          }
+        },
+        {
+          "name": "right",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          }
+        }
+      ],
+      "layout": {
+        "alignment": 8,
+        "field_offsets": {
+          "left": 8,
+          "right": 16,
+          "value": 0
+        },
+        "representation": "value",
+        "size": 24,
+        "type": "Node"
+      },
+      "name": "Node",
+      "source": {
+        "column": 0,
+        "end_column": 17,
+        "end_line": 4,
+        "line": 1,
+        "path": "corpus/implicit_tree.meldra"
+      }
+    }
+  ],
+  "schema_version": 1,
+  "source_sha256": "00cab7ab85a5e7b19cf520a3ddbd71f9f7679faef165c83368f1d0c650e1819a",
+  "subset_forms": [
+    "fn",
+    "let",
+    "var",
+    "if",
+    "match",
+    "for",
+    "while",
+    "direct_function_calls"
+  ],
+  "subset_types": [
+    "Int64",
+    "UInt64",
+    "Float32",
+    "Float64",
+    "Bool",
+    "records",
+    "arrays",
+    "slices"
+  ]
+}

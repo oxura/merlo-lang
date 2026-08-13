@@ -1,0 +1,176 @@
+{
+  "candidates": [
+    {
+      "candidate_oracle": "planner_preflight_candidate",
+      "candidate_source": "validated_fixture",
+      "expected_safe": null,
+      "id": "review_25e1ef5b74c79d98f5e4f08a",
+      "operation": "rename",
+      "payload": "meldra_safe_rename_0",
+      "project": "flask",
+      "project_revision": "unversioned",
+      "target": "ent_016adcf9592a6a3a",
+      "target_revision": "8ac061267db153856d287f8d236bd100059515ec0f7914f84cd66544b63fef86"
+    },
+    {
+      "candidate_oracle": "planner_preflight_candidate",
+      "candidate_source": "validated_fixture",
+      "expected_safe": null,
+      "id": "review_47af136940f6325fae3ea4cd",
+      "operation": "move",
+      "payload": "src.marshmallow.types",
+      "project": "marshmallow",
+      "project_revision": "unversioned",
+      "target": "ent_228fa8ec2332db65",
+      "target_revision": "f26deb9301e4c7f05bad397b49fc5405477adc4c8e92dfd3a83b6c302f7329c5"
+    },
+    {
+      "candidate_oracle": "planner_preflight_candidate",
+      "candidate_source": "validated_fixture",
+      "expected_safe": null,
+      "id": "review_86bdec9e5062f6175dc1d4b8",
+      "operation": "move",
+      "payload": "starlette.middleware.gzip",
+      "project": "starlette",
+      "project_revision": "unversioned",
+      "target": "ent_a5ab1e018b76126b",
+      "target_revision": "3668d6f78bd9bd19ad2c07639bf29fd1b0aaaff38cc05d293e7b7095250c437b"
+    },
+    {
+      "candidate_oracle": "planner_preflight_candidate",
+      "candidate_source": "validated_fixture",
+      "expected_safe": null,
+      "id": "review_90c8959e098f87ac1d0570e4",
+      "operation": "change_signature",
+      "payload": "(self, plugin: _Plugin, name: str, meldra_optional_0=None)",
+      "project": "pluggy",
+      "project_revision": "f632a4d1b69e32e210063a91a71ae32fb3ac150c",
+      "target": "ent_002a0fe3676f9c5d",
+      "target_revision": "6ddc9a7428198557119ca33ebe665a98fd93297d47b5c2053891cb91f1a75e37"
+    },
+    {
+      "candidate_oracle": "planner_preflight_candidate",
+      "candidate_source": "validated_fixture",
+      "expected_safe": null,
+      "id": "review_958a3b164f330a217c772a36",
+      "operation": "rename",
+      "payload": "meldra_safe_rename_9",
+      "project": "starlette",
+      "project_revision": "unversioned",
+      "target": "ent_a5ab1e018b76126b",
+      "target_revision": "3668d6f78bd9bd19ad2c07639bf29fd1b0aaaff38cc05d293e7b7095250c437b"
+    },
+    {
+      "candidate_oracle": "planner_preflight_candidate",
+      "candidate_source": "validated_fixture",
+      "expected_safe": null,
+      "id": "review_a68ed7605e54a02f6151108d",
+      "operation": "rename",
+      "payload": "meldra_safe_rename_3",
+      "project": "marshmallow",
+      "project_revision": "unversioned",
+      "target": "ent_228fa8ec2332db65",
+      "target_revision": "f26deb9301e4c7f05bad397b49fc5405477adc4c8e92dfd3a83b6c302f7329c5"
+    },
+    {
+      "candidate_oracle": "planner_preflight_candidate",
+      "candidate_source": "validated_fixture",
+      "expected_safe": null,
+      "id": "review_adaaa29ec7890704d28b8c4a",
+      "operation": "move",
+      "payload": "src.flask.debughelpers",
+      "project": "flask",
+      "project_revision": "unversioned",
+      "target": "ent_141055f2c39d05e9",
+      "target_revision": "a0237c90be66e01cf0c1912e3e146b37d39639b234f7a80e274ae639605faf7f"
+    },
+    {
+      "candidate_oracle": "planner_preflight_candidate",
+      "candidate_source": "validated_fixture",
+      "expected_safe": null,
+      "id": "review_bee0d8e113b1513973c45b30",
+      "operation": "change_signature",
+      "payload": "(self, meldra_optional_0=None)",
+      "project": "marshmallow",
+      "project_revision": "unversioned",
+      "target": "ent_1c19b9c216e5a0ad",
+      "target_revision": "21913937568080d7eaf57880ce65fb5c7e41bb9482af63233d3972efd9e729e7"
+    },
+    {
+      "candidate_oracle": "planner_preflight_candidate",
+      "candidate_source": "validated_fixture",
+      "expected_safe": null,
+      "id": "review_d7b27249b5ca9386fa85ea76",
+      "operation": "change_signature",
+      "payload": "(self, scope: Scope, receive: Receive, send: Send, meldra_optional_1=None)",
+      "project": "starlette",
+      "project_revision": "unversioned",
+      "target": "ent_49c7589ecac3306b",
+      "target_revision": "3bc15e70e66569d0c6e8fb1a87eb04d8bfaef2d073e2e916e2f0b1cd4c10dd54"
+    },
+    {
+      "candidate_oracle": "planner_preflight_candidate",
+      "candidate_source": "validated_fixture",
+      "expected_safe": null,
+      "id": "review_f2b36ca6acd2a1a69ed7ddb3",
+      "operation": "rename",
+      "payload": "meldra_safe_rename_11",
+      "project": "pluggy",
+      "project_revision": "f632a4d1b69e32e210063a91a71ae32fb3ac150c",
+      "target": "ent_02539cbd8a24bcaf",
+      "target_revision": "6a675c8e172ab792f7b9f4d8e0e88963b92ce888689c6ad41446fed9f91de419"
+    },
+    {
+      "candidate_oracle": "planner_preflight_candidate",
+      "candidate_source": "validated_fixture",
+      "expected_safe": null,
+      "id": "review_f3ecca372d7fc4c734c8d2e3",
+      "operation": "change_signature",
+      "payload": "(name: str, meldra_optional_0=None)",
+      "project": "flask",
+      "project_revision": "unversioned",
+      "target": "ent_141055f2c39d05e9",
+      "target_revision": "a0237c90be66e01cf0c1912e3e146b37d39639b234f7a80e274ae639605faf7f"
+    },
+    {
+      "candidate_oracle": "planner_preflight_candidate",
+      "candidate_source": "validated_fixture",
+      "expected_safe": null,
+      "id": "review_fe550908ad525cefd7b2efef",
+      "operation": "move",
+      "payload": "src.pluggy._hooks",
+      "project": "pluggy",
+      "project_revision": "f632a4d1b69e32e210063a91a71ae32fb3ac150c",
+      "target": "ent_02539cbd8a24bcaf",
+      "target_revision": "6a675c8e172ab792f7b9f4d8e0e88963b92ce888689c6ad41446fed9f91de419"
+    }
+  ],
+  "counts": {
+    "change_signature": 4,
+    "move": 4,
+    "rename": 4
+  },
+  "dataset_digest": "9053ab0879264e49a0b1e92bfcfff4267408b2487b20b81f394d2e4ac869a524",
+  "kind": "MeldraExternalChangeReviewQueue",
+  "label_policy": {
+    "candidate_labels_inherited": false,
+    "required_evidence": [
+      "declared intent",
+      "baseline and changed collected node IDs",
+      "public API snapshot",
+      "selected behavior outputs",
+      "project tests",
+      "source restoration digest"
+    ],
+    "reviewer_must_not_see_planner_outcome": true
+  },
+  "missing": {
+    "change_signature": 26,
+    "move": 26,
+    "rename": 26
+  },
+  "ready_for_adjudication_target": false,
+  "required_per_operation": 30,
+  "schema_version": 1,
+  "seed": 20260810
+}

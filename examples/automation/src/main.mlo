@@ -1,0 +1,11 @@
+module main
+
+use report
+
+export enum AppError:
+    InvalidPath: Text
+
+export main(path: Path) -> Result[Text, AppError]:
+    result = report.run()
+    console.write(result)
+    Ok(result)

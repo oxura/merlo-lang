@@ -1,0 +1,199 @@
+{
+  "bindings": {
+    "let": "exactly one assignment",
+    "mutation": "mutation of an unresolved binding is rejected",
+    "shadowing": "a distinct binding must use let",
+    "source_rule": "the compiler infers let or var from whole-function assignment counts",
+    "var": "two or more assignments"
+  },
+  "canonical_expansion": {
+    "bindings": "all assignments are emitted as let or var",
+    "semantic_ast_equal": true,
+    "sum_types": "Option and Result lower deterministically to nominal enums for machine HIR",
+    "tasks": "task uses, parameters, returns, and inferred task-local types are explicit",
+    "types": "all inferred local, private parameter, private return, and public types are explicit"
+  },
+  "contract_sha256": "1152e28eb6070c87a162b5f4e6509ac354e80c4cddefc0174d3683330c3dd5bb",
+  "diagnostics": {
+    "ambiguity_names": [
+      "AmbiguousType",
+      "PublicBoundaryAnnotationRequired",
+      "RecursiveBoundaryAnnotationRequired"
+    ],
+    "format": "path:line: diagnostic detail",
+    "generated_only_diagnostics": "forbidden",
+    "source_projection": "generated canonical lines map to concise module paths and source lines"
+  },
+  "freeze_id": "concise_surface_559e3ed43ae6ff7705aa30f70f260a290a7a25724ef3df54e197640efef73f8d",
+  "grammar": {
+    "declaration_order": "module first; use declarations before all other declarations",
+    "forms": [
+      "module",
+      "use",
+      "record",
+      "enum",
+      "fn",
+      "task",
+      "let",
+      "var",
+      "if",
+      "while",
+      "for range",
+      "match case",
+      "return"
+    ],
+    "function_boundary": "fn name(parameters) -> ReturnType:",
+    "indentation": "four spaces define blocks",
+    "task_boundary": "task name(parameters) -> Result[Value, Error]:",
+    "unsupported": [
+      "async",
+      "flow",
+      "interface",
+      "machine",
+      "macro",
+      "ui",
+      "web"
+    ]
+  },
+  "operator_precedence": {
+    "direction": "lowest to highest",
+    "table": [
+      [
+        "or",
+        10,
+        "left"
+      ],
+      [
+        "and",
+        20,
+        "left"
+      ],
+      [
+        "comparison",
+        30,
+        "chain"
+      ],
+      [
+        "|",
+        40,
+        "left"
+      ],
+      [
+        "^",
+        50,
+        "left"
+      ],
+      [
+        "&",
+        60,
+        "left"
+      ],
+      [
+        "<< >>",
+        70,
+        "left"
+      ],
+      [
+        "+ -",
+        80,
+        "left"
+      ],
+      [
+        "* / %",
+        90,
+        "left"
+      ],
+      [
+        "unary not + - ~",
+        100,
+        "right"
+      ],
+      [
+        "call indexing member",
+        110,
+        "left"
+      ],
+      [
+        "atom",
+        120,
+        "none"
+      ]
+    ]
+  },
+  "ownership": {
+    "borrows": [
+      "BytesView",
+      "TextView",
+      "Borrow[Vec[T]]"
+    ],
+    "drops": "owned locals are dropped on every exit",
+    "fs_read": "returns owned Bytes",
+    "manual_memory_operations": 0,
+    "moves": "owned values move into owning constructors",
+    "ordinary_lifetime_annotations": 0,
+    "owners": [
+      "Bytes",
+      "Text",
+      "TextBuilder",
+      "Vec[T]"
+    ]
+  },
+  "public_signature_policy": {
+    "annotations": "canonical public parameters and returns are explicit",
+    "drift": "PublicInterfaceRevisionMismatch",
+    "lock": ".merlo-interface.json must exactly match all public interfaces",
+    "records_enums_and_functions": "only export declarations are public",
+    "revision": "hash module, name, kind, parameters, return type, effects, and capabilities",
+    "tasks": "export task is public"
+  },
+  "schema_version": 1,
+  "status": "CONCISE_SURFACE_V0_1_FROZEN",
+  "surface_version": "0.1",
+  "syntax_version_change": {
+    "explicit_reason_required": true,
+    "process": "change the version constant and freeze manifest in the same reviewed change",
+    "reason_field": "syntax_version_change_reason"
+  },
+  "task_effects": {
+    "allowed": [
+      "console.write",
+      "fs.read"
+    ],
+    "capabilities": "identical to the closed declared effect set",
+    "cli_main": "exactly one task main with one Path parameter",
+    "closure": "declared effects must exactly equal effects referenced by the task body",
+    "declaration": "every task declares a nonempty uses list",
+    "pure_functions": "fn cannot reference an allowed effect",
+    "read_visibility": "a task using fs.read must expose its result with console.write"
+  },
+  "type_inference": {
+    "aliases": {
+      "Float": "Float64",
+      "Int": "Int64",
+      "UInt": "UInt64"
+    },
+    "ambiguity": "reject and request one constraining boundary annotation",
+    "conflicts": "reject instead of coercing",
+    "constraints": [
+      "annotations",
+      "assignment values",
+      "call arguments",
+      "call return context",
+      "record fields",
+      "enum payloads",
+      "operators",
+      "match patterns",
+      "range indices"
+    ],
+    "dynamic_any": "forbidden",
+    "literals": {
+      "boolean": "Bool",
+      "floating_point": "Float64",
+      "negative_integer": "Int64",
+      "nonnegative_integer": "UInt64",
+      "string": "Text"
+    },
+    "public_signatures": "inference may use internal call sites, but every inferred public parameter and return type is materialized in canonical source",
+    "recursive_groups": "require at least one annotated parameter or return boundary"
+  }
+}

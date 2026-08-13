@@ -1,0 +1,1623 @@
+{
+  "aggregate": {
+    "evaluated_tasks": 12,
+    "generated_tasks": 12,
+    "operation_counts": {
+      "generated": {
+        "change_signature": 4,
+        "move": 4,
+        "rename": 4
+      },
+      "ready": {
+        "change_signature": 4,
+        "move": 4,
+        "rename": 4
+      }
+    },
+    "planner_ready": 12,
+    "projects_attempted": 5,
+    "projects_completed": 4,
+    "selection_timeouts": 1
+  },
+  "claim": "Twelve non-human, planner-preflight safe candidates (four per operation) were planner-ready across four completed source-product projects. Typer selection timed out; readiness is not behavioral correctness.",
+  "date": "2026-08-10",
+  "failed_projects": [
+    {
+      "detail": "Conservative source-only candidate selection did not finish within 180 seconds; no Typer tasks are counted.",
+      "elapsed_seconds_lower_bound": 180.0,
+      "error_kind": "SelectionTimeout",
+      "measured_by": "Main",
+      "project": "typer",
+      "stage": "generate_pilot_manifest"
+    }
+  ],
+  "invalidation_history": [
+    {
+      "candidate": "testing.test_pluginmanager.test_get_hookcallers_no_duplicates",
+      "finding": "Invalid test-source candidate; rename returned zero but reduced pytest discovery from 141 to 140.",
+      "project": "pluggy"
+    },
+    {
+      "finding": "Ambiguous duplicate EntityId candidates caused KeyError until multiplicity filtering was added.",
+      "project": "pluggy"
+    },
+    {
+      "finding": "Documentation/example/tutorial candidates were rejected and selection was rerun with conservative path filters.",
+      "projects": [
+        "pluggy",
+        "typer"
+      ]
+    }
+  ],
+  "kind": "MeldraBalancedSafeProductionPilot",
+  "project_runs": [
+    {
+      "capture": "embedded_manifest_and_report",
+      "elapsed_seconds": 34.74990811299722,
+      "manifest": {
+        "projects": [
+          {
+            "category": "backend-framework",
+            "entity_kinds": [],
+            "held_out_count": 0,
+            "id": "flask",
+            "metadata": {
+              "url": "https://github.com/pallets/flask.git"
+            },
+            "root": "/tmp/meldra-external-corpus/flask"
+          }
+        ],
+        "schema": 1,
+        "seed": 20260810,
+        "task_sample_size": null,
+        "tasks": [
+          {
+            "allow_new_dependencies": true,
+            "allow_public_api_break": true,
+            "argument_values": {},
+            "expectation": "safe",
+            "expected_safe": true,
+            "id": "flask:safe:change_signature:planner_preflight_candidate:00",
+            "label_source": "validated_fixture",
+            "metadata": {
+              "target_revision": "a0237c90be66e01cf0c1912e3e146b37d39639b234f7a80e274ae639605faf7f"
+            },
+            "operation": "change_signature",
+            "oracle": "planner_preflight_candidate",
+            "payload": "(name: str, meldra_optional_0=None)",
+            "project": "flask",
+            "target": "ent_141055f2c39d05e9"
+          },
+          {
+            "allow_new_dependencies": true,
+            "allow_public_api_break": true,
+            "argument_values": {},
+            "expectation": "safe",
+            "expected_safe": true,
+            "id": "flask:safe:move:planner_preflight_candidate:00",
+            "label_source": "validated_fixture",
+            "metadata": {
+              "target_revision": "a0237c90be66e01cf0c1912e3e146b37d39639b234f7a80e274ae639605faf7f"
+            },
+            "operation": "move",
+            "oracle": "planner_preflight_candidate",
+            "payload": "src.flask.debughelpers",
+            "project": "flask",
+            "target": "ent_141055f2c39d05e9"
+          },
+          {
+            "allow_new_dependencies": true,
+            "allow_public_api_break": true,
+            "argument_values": {},
+            "expectation": "safe",
+            "expected_safe": true,
+            "id": "flask:safe:rename:planner_preflight_candidate:00",
+            "label_source": "validated_fixture",
+            "metadata": {
+              "target_revision": "8ac061267db153856d287f8d236bd100059515ec0f7914f84cd66544b63fef86"
+            },
+            "operation": "rename",
+            "oracle": "planner_preflight_candidate",
+            "payload": "meldra_safe_rename_0",
+            "project": "flask",
+            "target": "ent_016adcf9592a6a3a"
+          }
+        ]
+      },
+      "operation_counts": {
+        "generated": {
+          "change_signature": 1,
+          "move": 1,
+          "rename": 1
+        },
+        "ready": {
+          "change_signature": 1,
+          "move": 1,
+          "rename": 1
+        }
+      },
+      "project": "flask",
+      "report": {
+        "blocked_reason_frequency": [],
+        "category_breakdown": {
+          "backend-framework": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 3
+            },
+            "evaluated_tasks": 3,
+            "expected_safe_tasks": 3,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 3,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 3,
+              "numerator": 3
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 3
+          }
+        },
+        "held_out_entities": [],
+        "label_source_breakdown": {
+          "validated_fixture": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 3
+            },
+            "evaluated_tasks": 3,
+            "expected_safe_tasks": 3,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 3,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 3,
+              "numerator": 3
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 3
+          }
+        },
+        "metrics": {
+          "confusion_matrix": {
+            "false_negative": 0,
+            "false_positive": 0,
+            "true_negative": 0,
+            "true_positive": 3
+          },
+          "evaluated_tasks": 3,
+          "expected_safe_tasks": 3,
+          "expected_unsafe_tasks": 0,
+          "false_block": {
+            "denominator": 3,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_block_rate": 0.0,
+          "false_safe": {
+            "denominator": 0,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_safe_rate": 0.0,
+          "infrastructure_errors": 0,
+          "safe_automation": {
+            "coverage": 1.0,
+            "denominator": 3,
+            "numerator": 3
+          },
+          "safe_automation_coverage": 1.0,
+          "total_tasks": 3
+        },
+        "operation_breakdown": {
+          "change_signature": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 1
+            },
+            "evaluated_tasks": 1,
+            "expected_safe_tasks": 1,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 1,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 1,
+              "numerator": 1
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 1
+          },
+          "move": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 1
+            },
+            "evaluated_tasks": 1,
+            "expected_safe_tasks": 1,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 1,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 1,
+              "numerator": 1
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 1
+          },
+          "rename": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 1
+            },
+            "evaluated_tasks": 1,
+            "expected_safe_tasks": 1,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 1,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 1,
+              "numerator": 1
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 1
+          }
+        },
+        "projects": [
+          {
+            "category": "backend-framework",
+            "entity_kinds": [],
+            "held_out_count": 0,
+            "id": "flask",
+            "metadata": {
+              "url": "https://github.com/pallets/flask.git"
+            },
+            "root": "/tmp/meldra-external-corpus/flask"
+          }
+        ],
+        "results": [
+          {
+            "affected_files": [
+              "src/flask/globals.py"
+            ],
+            "blocked_reasons": [],
+            "category": "backend-framework",
+            "edit_count": 1,
+            "error_kind": null,
+            "error_message": null,
+            "expected_safe": true,
+            "label_source": "validated_fixture",
+            "operation": "change_signature",
+            "oracle": "planner_preflight_candidate",
+            "outcome": "true_positive",
+            "plan_id": "chg_69060cc1e40846b4",
+            "planner_allowed": true,
+            "project": "flask",
+            "target": "ent_141055f2c39d05e9",
+            "target_id": "ent_141055f2c39d05e9",
+            "target_revision": "a0237c90be66e01cf0c1912e3e146b37d39639b234f7a80e274ae639605faf7f",
+            "task_id": "flask:safe:change_signature:planner_preflight_candidate:00"
+          },
+          {
+            "affected_files": [
+              "src/flask/debughelpers.py",
+              "src/flask/globals.py"
+            ],
+            "blocked_reasons": [],
+            "category": "backend-framework",
+            "edit_count": 2,
+            "error_kind": null,
+            "error_message": null,
+            "expected_safe": true,
+            "label_source": "validated_fixture",
+            "operation": "move",
+            "oracle": "planner_preflight_candidate",
+            "outcome": "true_positive",
+            "plan_id": "chg_aadd3949070839fa",
+            "planner_allowed": true,
+            "project": "flask",
+            "target": "ent_141055f2c39d05e9",
+            "target_id": "ent_141055f2c39d05e9",
+            "target_revision": "a0237c90be66e01cf0c1912e3e146b37d39639b234f7a80e274ae639605faf7f",
+            "task_id": "flask:safe:move:planner_preflight_candidate:00"
+          },
+          {
+            "affected_files": [
+              "src/flask/sessions.py"
+            ],
+            "blocked_reasons": [],
+            "category": "backend-framework",
+            "edit_count": 3,
+            "error_kind": null,
+            "error_message": null,
+            "expected_safe": true,
+            "label_source": "validated_fixture",
+            "operation": "rename",
+            "oracle": "planner_preflight_candidate",
+            "outcome": "true_positive",
+            "plan_id": "chg_84fbb868a630243c",
+            "planner_allowed": true,
+            "project": "flask",
+            "target": "ent_016adcf9592a6a3a",
+            "target_id": "ent_016adcf9592a6a3a",
+            "target_revision": "8ac061267db153856d287f8d236bd100059515ec0f7914f84cd66544b63fef86",
+            "task_id": "flask:safe:rename:planner_preflight_candidate:00"
+          }
+        ],
+        "seed": 20260810
+      },
+      "target_details": null
+    },
+    {
+      "capture": "embedded_manifest_and_report",
+      "elapsed_seconds": 33.35612471299828,
+      "manifest": {
+        "projects": [
+          {
+            "category": "library",
+            "entity_kinds": [],
+            "held_out_count": 0,
+            "id": "marshmallow",
+            "metadata": {},
+            "root": "/tmp/meldra-external-corpus/marshmallow"
+          }
+        ],
+        "schema": 1,
+        "seed": 20260810,
+        "task_sample_size": null,
+        "tasks": [
+          {
+            "allow_new_dependencies": true,
+            "allow_public_api_break": true,
+            "argument_values": {},
+            "expectation": "safe",
+            "expected_safe": true,
+            "id": "marshmallow:safe:change_signature:planner_preflight_candidate:00",
+            "label_source": "validated_fixture",
+            "metadata": {
+              "target_revision": "21913937568080d7eaf57880ce65fb5c7e41bb9482af63233d3972efd9e729e7"
+            },
+            "operation": "change_signature",
+            "oracle": "planner_preflight_candidate",
+            "payload": "(self, meldra_optional_0=None)",
+            "project": "marshmallow",
+            "target": "ent_1c19b9c216e5a0ad"
+          },
+          {
+            "allow_new_dependencies": true,
+            "allow_public_api_break": true,
+            "argument_values": {},
+            "expectation": "safe",
+            "expected_safe": true,
+            "id": "marshmallow:safe:move:planner_preflight_candidate:00",
+            "label_source": "validated_fixture",
+            "metadata": {
+              "target_revision": "f26deb9301e4c7f05bad397b49fc5405477adc4c8e92dfd3a83b6c302f7329c5"
+            },
+            "operation": "move",
+            "oracle": "planner_preflight_candidate",
+            "payload": "src.marshmallow.types",
+            "project": "marshmallow",
+            "target": "ent_228fa8ec2332db65"
+          },
+          {
+            "allow_new_dependencies": true,
+            "allow_public_api_break": true,
+            "argument_values": {},
+            "expectation": "safe",
+            "expected_safe": true,
+            "id": "marshmallow:safe:rename:planner_preflight_candidate:00",
+            "label_source": "validated_fixture",
+            "metadata": {
+              "target_revision": "f26deb9301e4c7f05bad397b49fc5405477adc4c8e92dfd3a83b6c302f7329c5"
+            },
+            "operation": "rename",
+            "oracle": "planner_preflight_candidate",
+            "payload": "meldra_safe_rename_3",
+            "project": "marshmallow",
+            "target": "ent_228fa8ec2332db65"
+          }
+        ]
+      },
+      "operation_counts": {
+        "generated": {
+          "change_signature": 1,
+          "move": 1,
+          "rename": 1
+        },
+        "ready": {
+          "change_signature": 1,
+          "move": 1,
+          "rename": 1
+        }
+      },
+      "project": "marshmallow",
+      "report": {
+        "blocked_reason_frequency": [],
+        "category_breakdown": {
+          "library": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 3
+            },
+            "evaluated_tasks": 3,
+            "expected_safe_tasks": 3,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 3,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 3,
+              "numerator": 3
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 3
+          }
+        },
+        "held_out_entities": [],
+        "label_source_breakdown": {
+          "validated_fixture": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 3
+            },
+            "evaluated_tasks": 3,
+            "expected_safe_tasks": 3,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 3,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 3,
+              "numerator": 3
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 3
+          }
+        },
+        "metrics": {
+          "confusion_matrix": {
+            "false_negative": 0,
+            "false_positive": 0,
+            "true_negative": 0,
+            "true_positive": 3
+          },
+          "evaluated_tasks": 3,
+          "expected_safe_tasks": 3,
+          "expected_unsafe_tasks": 0,
+          "false_block": {
+            "denominator": 3,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_block_rate": 0.0,
+          "false_safe": {
+            "denominator": 0,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_safe_rate": 0.0,
+          "infrastructure_errors": 0,
+          "safe_automation": {
+            "coverage": 1.0,
+            "denominator": 3,
+            "numerator": 3
+          },
+          "safe_automation_coverage": 1.0,
+          "total_tasks": 3
+        },
+        "operation_breakdown": {
+          "change_signature": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 1
+            },
+            "evaluated_tasks": 1,
+            "expected_safe_tasks": 1,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 1,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 1,
+              "numerator": 1
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 1
+          },
+          "move": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 1
+            },
+            "evaluated_tasks": 1,
+            "expected_safe_tasks": 1,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 1,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 1,
+              "numerator": 1
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 1
+          },
+          "rename": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 1
+            },
+            "evaluated_tasks": 1,
+            "expected_safe_tasks": 1,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 1,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 1,
+              "numerator": 1
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 1
+          }
+        },
+        "projects": [
+          {
+            "category": "library",
+            "entity_kinds": [],
+            "held_out_count": 0,
+            "id": "marshmallow",
+            "metadata": {},
+            "root": "/tmp/meldra-external-corpus/marshmallow"
+          }
+        ],
+        "results": [
+          {
+            "affected_files": [
+              "src/marshmallow/validate.py"
+            ],
+            "blocked_reasons": [],
+            "category": "library",
+            "edit_count": 1,
+            "error_kind": null,
+            "error_message": null,
+            "expected_safe": true,
+            "label_source": "validated_fixture",
+            "operation": "change_signature",
+            "oracle": "planner_preflight_candidate",
+            "outcome": "true_positive",
+            "plan_id": "chg_93e96d8e0c6adf5e",
+            "planner_allowed": true,
+            "project": "marshmallow",
+            "target": "ent_1c19b9c216e5a0ad",
+            "target_id": "ent_1c19b9c216e5a0ad",
+            "target_revision": "21913937568080d7eaf57880ce65fb5c7e41bb9482af63233d3972efd9e729e7",
+            "task_id": "marshmallow:safe:change_signature:planner_preflight_candidate:00"
+          },
+          {
+            "affected_files": [
+              "src/marshmallow/schema.py",
+              "src/marshmallow/types.py"
+            ],
+            "blocked_reasons": [],
+            "category": "library",
+            "edit_count": 3,
+            "error_kind": null,
+            "error_message": null,
+            "expected_safe": true,
+            "label_source": "validated_fixture",
+            "operation": "move",
+            "oracle": "planner_preflight_candidate",
+            "outcome": "true_positive",
+            "plan_id": "chg_8af2b355c3060940",
+            "planner_allowed": true,
+            "project": "marshmallow",
+            "target": "ent_228fa8ec2332db65",
+            "target_id": "ent_228fa8ec2332db65",
+            "target_revision": "f26deb9301e4c7f05bad397b49fc5405477adc4c8e92dfd3a83b6c302f7329c5",
+            "task_id": "marshmallow:safe:move:planner_preflight_candidate:00"
+          },
+          {
+            "affected_files": [
+              "src/marshmallow/schema.py"
+            ],
+            "blocked_reasons": [],
+            "category": "library",
+            "edit_count": 5,
+            "error_kind": null,
+            "error_message": null,
+            "expected_safe": true,
+            "label_source": "validated_fixture",
+            "operation": "rename",
+            "oracle": "planner_preflight_candidate",
+            "outcome": "true_positive",
+            "plan_id": "chg_1d103b5d767ecdd7",
+            "planner_allowed": true,
+            "project": "marshmallow",
+            "target": "ent_228fa8ec2332db65",
+            "target_id": "ent_228fa8ec2332db65",
+            "target_revision": "f26deb9301e4c7f05bad397b49fc5405477adc4c8e92dfd3a83b6c302f7329c5",
+            "task_id": "marshmallow:safe:rename:planner_preflight_candidate:00"
+          }
+        ],
+        "seed": 20260810
+      },
+      "target_details": [
+        {
+          "operation": "change_signature",
+          "target_file": "src/marshmallow/validate.py",
+          "target_fqname": "src.marshmallow.validate.Validator.__repr__",
+          "target_id": "ent_1c19b9c216e5a0ad",
+          "task_id": "marshmallow:safe:change_signature:planner_preflight_candidate:00"
+        },
+        {
+          "operation": "move",
+          "target_file": "src/marshmallow/schema.py",
+          "target_fqname": "src.marshmallow.schema.SchemaMeta",
+          "target_id": "ent_228fa8ec2332db65",
+          "task_id": "marshmallow:safe:move:planner_preflight_candidate:00"
+        },
+        {
+          "operation": "rename",
+          "target_file": "src/marshmallow/schema.py",
+          "target_fqname": "src.marshmallow.schema.SchemaMeta",
+          "target_id": "ent_228fa8ec2332db65",
+          "task_id": "marshmallow:safe:rename:planner_preflight_candidate:00"
+        }
+      ]
+    },
+    {
+      "capture": "embedded_manifest_and_report",
+      "elapsed_seconds": 3.155274,
+      "manifest": {
+        "projects": [
+          {
+            "category": "plugin-architecture",
+            "entity_kinds": [
+              "async_function",
+              "class",
+              "function"
+            ],
+            "held_out_count": 0,
+            "id": "pluggy",
+            "metadata": {
+              "revision": "f632a4d1b69e32e210063a91a71ae32fb3ac150c",
+              "url": "https://github.com/pytest-dev/pluggy.git"
+            },
+            "root": "/tmp/meldra-external-corpus/pluggy"
+          }
+        ],
+        "schema": 1,
+        "seed": 20260810,
+        "task_sample_size": null,
+        "tasks": [
+          {
+            "allow_new_dependencies": true,
+            "allow_public_api_break": true,
+            "argument_values": {},
+            "expectation": "safe",
+            "expected_safe": true,
+            "id": "pluggy:safe:change_signature:planner_preflight_candidate:00",
+            "label_source": "validated_fixture",
+            "metadata": {
+              "target_revision": "6ddc9a7428198557119ca33ebe665a98fd93297d47b5c2053891cb91f1a75e37"
+            },
+            "operation": "change_signature",
+            "oracle": "planner_preflight_candidate",
+            "payload": "(self, plugin: _Plugin, name: str, meldra_optional_0=None)",
+            "project": "pluggy",
+            "target": "ent_002a0fe3676f9c5d"
+          },
+          {
+            "allow_new_dependencies": true,
+            "allow_public_api_break": true,
+            "argument_values": {},
+            "expectation": "safe",
+            "expected_safe": true,
+            "id": "pluggy:safe:move:planner_preflight_candidate:00",
+            "label_source": "validated_fixture",
+            "metadata": {
+              "target_revision": "6a675c8e172ab792f7b9f4d8e0e88963b92ce888689c6ad41446fed9f91de419"
+            },
+            "operation": "move",
+            "oracle": "planner_preflight_candidate",
+            "payload": "src.pluggy._hooks",
+            "project": "pluggy",
+            "target": "ent_02539cbd8a24bcaf"
+          },
+          {
+            "allow_new_dependencies": true,
+            "allow_public_api_break": true,
+            "argument_values": {},
+            "expectation": "safe",
+            "expected_safe": true,
+            "id": "pluggy:safe:rename:planner_preflight_candidate:00",
+            "label_source": "validated_fixture",
+            "metadata": {
+              "target_revision": "6a675c8e172ab792f7b9f4d8e0e88963b92ce888689c6ad41446fed9f91de419"
+            },
+            "operation": "rename",
+            "oracle": "planner_preflight_candidate",
+            "payload": "meldra_safe_rename_11",
+            "project": "pluggy",
+            "target": "ent_02539cbd8a24bcaf"
+          }
+        ]
+      },
+      "operation_counts": {
+        "generated": {
+          "change_signature": 1,
+          "move": 1,
+          "rename": 1
+        },
+        "ready": {
+          "change_signature": 1,
+          "move": 1,
+          "rename": 1
+        }
+      },
+      "project": "pluggy",
+      "report": {
+        "blocked_reason_frequency": [],
+        "category_breakdown": {
+          "plugin-architecture": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 3
+            },
+            "evaluated_tasks": 3,
+            "expected_safe_tasks": 3,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 3,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 3,
+              "numerator": 3
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 3
+          }
+        },
+        "held_out_entities": [],
+        "label_source_breakdown": {
+          "validated_fixture": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 3
+            },
+            "evaluated_tasks": 3,
+            "expected_safe_tasks": 3,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 3,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 3,
+              "numerator": 3
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 3
+          }
+        },
+        "metrics": {
+          "confusion_matrix": {
+            "false_negative": 0,
+            "false_positive": 0,
+            "true_negative": 0,
+            "true_positive": 3
+          },
+          "evaluated_tasks": 3,
+          "expected_safe_tasks": 3,
+          "expected_unsafe_tasks": 0,
+          "false_block": {
+            "denominator": 3,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_block_rate": 0.0,
+          "false_safe": {
+            "denominator": 0,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_safe_rate": 0.0,
+          "infrastructure_errors": 0,
+          "safe_automation": {
+            "coverage": 1.0,
+            "denominator": 3,
+            "numerator": 3
+          },
+          "safe_automation_coverage": 1.0,
+          "total_tasks": 3
+        },
+        "operation_breakdown": {
+          "change_signature": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 1
+            },
+            "evaluated_tasks": 1,
+            "expected_safe_tasks": 1,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 1,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 1,
+              "numerator": 1
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 1
+          },
+          "move": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 1
+            },
+            "evaluated_tasks": 1,
+            "expected_safe_tasks": 1,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 1,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 1,
+              "numerator": 1
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 1
+          },
+          "rename": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 1
+            },
+            "evaluated_tasks": 1,
+            "expected_safe_tasks": 1,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 1,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 1,
+              "numerator": 1
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 1
+          }
+        },
+        "projects": [
+          {
+            "category": "plugin-architecture",
+            "entity_kinds": [
+              "async_function",
+              "class",
+              "function"
+            ],
+            "held_out_count": 0,
+            "id": "pluggy",
+            "metadata": {
+              "revision": "f632a4d1b69e32e210063a91a71ae32fb3ac150c",
+              "url": "https://github.com/pytest-dev/pluggy.git"
+            },
+            "root": "/tmp/meldra-external-corpus/pluggy"
+          }
+        ],
+        "results": [
+          {
+            "affected_files": [
+              "src/pluggy/_manager.py"
+            ],
+            "blocked_reasons": [],
+            "category": "plugin-architecture",
+            "edit_count": 1,
+            "error_kind": null,
+            "error_message": null,
+            "expected_safe": true,
+            "label_source": "validated_fixture",
+            "operation": "change_signature",
+            "oracle": "planner_preflight_candidate",
+            "outcome": "true_positive",
+            "plan_id": "chg_7133ed96475d2714",
+            "planner_allowed": true,
+            "project": "pluggy",
+            "target": "ent_002a0fe3676f9c5d",
+            "target_id": "ent_002a0fe3676f9c5d",
+            "target_revision": "6ddc9a7428198557119ca33ebe665a98fd93297d47b5c2053891cb91f1a75e37",
+            "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:00"
+          },
+          {
+            "affected_files": [
+              "src/pluggy/__init__.py",
+              "src/pluggy/_hooks.py"
+            ],
+            "blocked_reasons": [],
+            "category": "plugin-architecture",
+            "edit_count": 2,
+            "error_kind": null,
+            "error_message": null,
+            "expected_safe": true,
+            "label_source": "validated_fixture",
+            "operation": "move",
+            "oracle": "planner_preflight_candidate",
+            "outcome": "true_positive",
+            "plan_id": "chg_0fc8e5149681dc1f",
+            "planner_allowed": true,
+            "project": "pluggy",
+            "target": "ent_02539cbd8a24bcaf",
+            "target_id": "ent_02539cbd8a24bcaf",
+            "target_revision": "6a675c8e172ab792f7b9f4d8e0e88963b92ce888689c6ad41446fed9f91de419",
+            "task_id": "pluggy:safe:move:planner_preflight_candidate:00"
+          },
+          {
+            "affected_files": [
+              "src/pluggy/__init__.py"
+            ],
+            "blocked_reasons": [],
+            "category": "plugin-architecture",
+            "edit_count": 1,
+            "error_kind": null,
+            "error_message": null,
+            "expected_safe": true,
+            "label_source": "validated_fixture",
+            "operation": "rename",
+            "oracle": "planner_preflight_candidate",
+            "outcome": "true_positive",
+            "plan_id": "chg_e7f27a52f036bcd3",
+            "planner_allowed": true,
+            "project": "pluggy",
+            "target": "ent_02539cbd8a24bcaf",
+            "target_id": "ent_02539cbd8a24bcaf",
+            "target_revision": "6a675c8e172ab792f7b9f4d8e0e88963b92ce888689c6ad41446fed9f91de419",
+            "task_id": "pluggy:safe:rename:planner_preflight_candidate:00"
+          }
+        ],
+        "seed": 20260810
+      },
+      "target_details": [
+        {
+          "destination_module": null,
+          "operation": "change_signature",
+          "payload": "(self, plugin: _Plugin, name: str, meldra_optional_0=None)",
+          "target_file": "src/pluggy/_manager.py",
+          "target_fqname": "src.pluggy._manager.PluginManager.parse_hookimpl_opts",
+          "target_id": "ent_002a0fe3676f9c5d",
+          "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:00"
+        },
+        {
+          "destination_module": "src.pluggy._hooks",
+          "operation": "move",
+          "payload": "src.pluggy._hooks",
+          "target_file": "src/pluggy/__init__.py",
+          "target_fqname": "src.pluggy.__getattr__",
+          "target_id": "ent_02539cbd8a24bcaf",
+          "task_id": "pluggy:safe:move:planner_preflight_candidate:00"
+        },
+        {
+          "destination_module": null,
+          "operation": "rename",
+          "payload": "meldra_safe_rename_11",
+          "target_file": "src/pluggy/__init__.py",
+          "target_fqname": "src.pluggy.__getattr__",
+          "target_id": "ent_02539cbd8a24bcaf",
+          "task_id": "pluggy:safe:rename:planner_preflight_candidate:00"
+        }
+      ]
+    },
+    {
+      "capture": "embedded_manifest_and_report",
+      "elapsed_seconds": {
+        "generation": 6.063476,
+        "run": 5.38802,
+        "total": 15.641503
+      },
+      "manifest": {
+        "projects": [
+          {
+            "category": "library",
+            "entity_kinds": [],
+            "held_out_count": 0,
+            "id": "starlette",
+            "metadata": {},
+            "root": "/tmp/meldra-external-corpus/starlette"
+          }
+        ],
+        "schema": 1,
+        "seed": 20260810,
+        "task_sample_size": null,
+        "tasks": [
+          {
+            "allow_new_dependencies": true,
+            "allow_public_api_break": true,
+            "argument_values": {},
+            "expectation": "safe",
+            "expected_safe": true,
+            "id": "starlette:safe:change_signature:planner_preflight_candidate:00",
+            "label_source": "validated_fixture",
+            "metadata": {
+              "target_revision": "3bc15e70e66569d0c6e8fb1a87eb04d8bfaef2d073e2e916e2f0b1cd4c10dd54"
+            },
+            "operation": "change_signature",
+            "oracle": "planner_preflight_candidate",
+            "payload": "(self, scope: Scope, receive: Receive, send: Send, meldra_optional_1=None)",
+            "project": "starlette",
+            "target": "ent_49c7589ecac3306b"
+          },
+          {
+            "allow_new_dependencies": true,
+            "allow_public_api_break": true,
+            "argument_values": {},
+            "expectation": "safe",
+            "expected_safe": true,
+            "id": "starlette:safe:move:planner_preflight_candidate:00",
+            "label_source": "validated_fixture",
+            "metadata": {
+              "target_revision": "3668d6f78bd9bd19ad2c07639bf29fd1b0aaaff38cc05d293e7b7095250c437b"
+            },
+            "operation": "move",
+            "oracle": "planner_preflight_candidate",
+            "payload": "starlette.middleware.gzip",
+            "project": "starlette",
+            "target": "ent_a5ab1e018b76126b"
+          },
+          {
+            "allow_new_dependencies": true,
+            "allow_public_api_break": true,
+            "argument_values": {},
+            "expectation": "safe",
+            "expected_safe": true,
+            "id": "starlette:safe:rename:planner_preflight_candidate:00",
+            "label_source": "validated_fixture",
+            "metadata": {
+              "target_revision": "3668d6f78bd9bd19ad2c07639bf29fd1b0aaaff38cc05d293e7b7095250c437b"
+            },
+            "operation": "rename",
+            "oracle": "planner_preflight_candidate",
+            "payload": "meldra_safe_rename_9",
+            "project": "starlette",
+            "target": "ent_a5ab1e018b76126b"
+          }
+        ]
+      },
+      "operation_counts": {
+        "generated": {
+          "change_signature": 1,
+          "move": 1,
+          "rename": 1
+        },
+        "ready": {
+          "change_signature": 1,
+          "move": 1,
+          "rename": 1
+        }
+      },
+      "project": "starlette",
+      "report": {
+        "blocked_reason_frequency": [],
+        "category_breakdown": {
+          "library": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 3
+            },
+            "evaluated_tasks": 3,
+            "expected_safe_tasks": 3,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 3,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 3,
+              "numerator": 3
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 3
+          }
+        },
+        "held_out_entities": [],
+        "label_source_breakdown": {
+          "validated_fixture": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 3
+            },
+            "evaluated_tasks": 3,
+            "expected_safe_tasks": 3,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 3,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 3,
+              "numerator": 3
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 3
+          }
+        },
+        "metrics": {
+          "confusion_matrix": {
+            "false_negative": 0,
+            "false_positive": 0,
+            "true_negative": 0,
+            "true_positive": 3
+          },
+          "evaluated_tasks": 3,
+          "expected_safe_tasks": 3,
+          "expected_unsafe_tasks": 0,
+          "false_block": {
+            "denominator": 3,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_block_rate": 0.0,
+          "false_safe": {
+            "denominator": 0,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_safe_rate": 0.0,
+          "infrastructure_errors": 0,
+          "safe_automation": {
+            "coverage": 1.0,
+            "denominator": 3,
+            "numerator": 3
+          },
+          "safe_automation_coverage": 1.0,
+          "total_tasks": 3
+        },
+        "operation_breakdown": {
+          "change_signature": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 1
+            },
+            "evaluated_tasks": 1,
+            "expected_safe_tasks": 1,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 1,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 1,
+              "numerator": 1
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 1
+          },
+          "move": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 1
+            },
+            "evaluated_tasks": 1,
+            "expected_safe_tasks": 1,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 1,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 1,
+              "numerator": 1
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 1
+          },
+          "rename": {
+            "confusion_matrix": {
+              "false_negative": 0,
+              "false_positive": 0,
+              "true_negative": 0,
+              "true_positive": 1
+            },
+            "evaluated_tasks": 1,
+            "expected_safe_tasks": 1,
+            "expected_unsafe_tasks": 0,
+            "false_block": {
+              "denominator": 1,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_block_rate": 0.0,
+            "false_safe": {
+              "denominator": 0,
+              "numerator": 0,
+              "rate": 0.0
+            },
+            "false_safe_rate": 0.0,
+            "infrastructure_errors": 0,
+            "safe_automation": {
+              "coverage": 1.0,
+              "denominator": 1,
+              "numerator": 1
+            },
+            "safe_automation_coverage": 1.0,
+            "total_tasks": 1
+          }
+        },
+        "projects": [
+          {
+            "category": "library",
+            "entity_kinds": [],
+            "held_out_count": 0,
+            "id": "starlette",
+            "metadata": {},
+            "root": "/tmp/meldra-external-corpus/starlette"
+          }
+        ],
+        "results": [
+          {
+            "affected_files": [
+              "starlette/middleware/exceptions.py"
+            ],
+            "blocked_reasons": [],
+            "category": "library",
+            "edit_count": 1,
+            "error_kind": null,
+            "error_message": null,
+            "expected_safe": true,
+            "label_source": "validated_fixture",
+            "operation": "change_signature",
+            "oracle": "planner_preflight_candidate",
+            "outcome": "true_positive",
+            "plan_id": "chg_19dc945a4612997b",
+            "planner_allowed": true,
+            "project": "starlette",
+            "target": "ent_49c7589ecac3306b",
+            "target_id": "ent_49c7589ecac3306b",
+            "target_revision": "3bc15e70e66569d0c6e8fb1a87eb04d8bfaef2d073e2e916e2f0b1cd4c10dd54",
+            "task_id": "starlette:safe:change_signature:planner_preflight_candidate:00"
+          },
+          {
+            "affected_files": [
+              "starlette/applications.py",
+              "starlette/middleware/__init__.py",
+              "starlette/middleware/gzip.py",
+              "tests/middleware/test_base.py"
+            ],
+            "blocked_reasons": [],
+            "category": "library",
+            "edit_count": 5,
+            "error_kind": null,
+            "error_message": null,
+            "expected_safe": true,
+            "label_source": "validated_fixture",
+            "operation": "move",
+            "oracle": "planner_preflight_candidate",
+            "outcome": "true_positive",
+            "plan_id": "chg_a596039d55d4fd1c",
+            "planner_allowed": true,
+            "project": "starlette",
+            "target": "ent_a5ab1e018b76126b",
+            "target_id": "ent_a5ab1e018b76126b",
+            "target_revision": "3668d6f78bd9bd19ad2c07639bf29fd1b0aaaff38cc05d293e7b7095250c437b",
+            "task_id": "starlette:safe:move:planner_preflight_candidate:00"
+          },
+          {
+            "affected_files": [
+              "starlette/applications.py",
+              "starlette/middleware/__init__.py",
+              "tests/middleware/test_base.py"
+            ],
+            "blocked_reasons": [],
+            "category": "library",
+            "edit_count": 6,
+            "error_kind": null,
+            "error_message": null,
+            "expected_safe": true,
+            "label_source": "validated_fixture",
+            "operation": "rename",
+            "oracle": "planner_preflight_candidate",
+            "outcome": "true_positive",
+            "plan_id": "chg_276a9a092a3ece34",
+            "planner_allowed": true,
+            "project": "starlette",
+            "target": "ent_a5ab1e018b76126b",
+            "target_id": "ent_a5ab1e018b76126b",
+            "target_revision": "3668d6f78bd9bd19ad2c07639bf29fd1b0aaaff38cc05d293e7b7095250c437b",
+            "task_id": "starlette:safe:rename:planner_preflight_candidate:00"
+          }
+        ],
+        "seed": 20260810
+      },
+      "target_details": [
+        {
+          "entity_id": "ent_49c7589ecac3306b",
+          "file": "starlette/middleware/exceptions.py",
+          "fqname": "starlette.middleware.exceptions.ExceptionMiddleware.__call__",
+          "operation": "change_signature",
+          "task_id": "starlette:safe:change_signature:planner_preflight_candidate:00"
+        },
+        {
+          "entity_id": "ent_a5ab1e018b76126b",
+          "file": "starlette/middleware/__init__.py",
+          "fqname": "starlette.middleware._MiddlewareFactory",
+          "operation": "move",
+          "task_id": "starlette:safe:move:planner_preflight_candidate:00"
+        },
+        {
+          "entity_id": "ent_a5ab1e018b76126b",
+          "file": "starlette/middleware/__init__.py",
+          "fqname": "starlette.middleware._MiddlewareFactory",
+          "operation": "rename",
+          "task_id": "starlette:safe:rename:planner_preflight_candidate:00"
+        }
+      ]
+    }
+  ],
+  "schema": 1,
+  "selection_policy": {
+    "balanced_safe": true,
+    "exclude_ambiguous_entity_ids": true,
+    "excluded_path_prefixes": [
+      "demo",
+      "doc",
+      "example",
+      "sample",
+      "tutorial"
+    ],
+    "excluded_test_paths_and_names": true,
+    "human_ground_truth": false,
+    "label_source": "validated_fixture",
+    "operations": [
+      "rename",
+      "move",
+      "change_signature"
+    ],
+    "oracle": "planner_preflight_candidate",
+    "safe_per_successful_project": 3
+  }
+}

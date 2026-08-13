@@ -1,0 +1,5 @@
+fn main(n: UInt64, seed: UInt64) -> UInt64:
+    let builder: BytesBuilder = BytesBuilder.with_capacity(n)
+    if n > 0:
+        builder.push(seed & 255)
+    return builder.len() + builder.capacity()

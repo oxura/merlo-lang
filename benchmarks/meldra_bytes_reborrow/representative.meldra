@@ -1,0 +1,21 @@
+fn leaf(data: BytesView, state: UInt64) -> UInt64:
+    var checksum: UInt64 = state
+    for i in 0..data.len():
+        checksum = (checksum ^ (data[i] + i + 23)) * 1099511628211
+    return checksum
+
+fn middle(data: BytesView, state: UInt64) -> UInt64:
+    return leaf(data, state)
+
+fn outer(data: BytesView, state: UInt64) -> UInt64:
+    return middle(data, state)
+
+fn transfer(data: Bytes) -> Bytes:
+    return data
+
+fn main(n: UInt64, seed: UInt64, start: UInt64, length: UInt64, flag: Bool) -> UInt64:
+    let owner: Bytes = Bytes.new(n)
+    for i in 0..n:
+        owner[i] = (seed + i * 17 + (i >> 3) + 23) & 255
+    let checksum: UInt64 = outer(owner.slice(start, length), seed)
+    return checksum + owner.len()

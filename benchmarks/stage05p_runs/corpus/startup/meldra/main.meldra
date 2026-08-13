@@ -1,0 +1,2 @@
+fn main(n: UInt64) -> UInt64:
+    42

@@ -1,0 +1,1117 @@
+{
+  "claim_boundary": "Assembly counters and compiler remarks are descriptive evidence; runtime superiority is decided only by the repeated benchmark artifact.",
+  "compiler": "/usr/bin/clang",
+  "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+  "failures": [],
+  "kind": "MeldraStage06PCodegenEvidence",
+  "observations": [
+    {
+      "arms": [
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/arithmetic_lcg/c.s",
+          "assembly_sha256": "3413bdb4dd76a248a44e14cb32bab3151058e16061d6b7407fca47a2acc09ecb",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/arithmetic_lcg/c.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/arithmetic_lcg/c.c",
+            "-o",
+            "benchmarks/stage06p_codegen/arithmetic_lcg/c.s"
+          ],
+          "compile_time_ms": 22.65907,
+          "language": "c",
+          "metrics": {
+            "assembly_lines": 282,
+            "conditional_branch_count": 6,
+            "direct_call_count": 3,
+            "direct_call_targets": [
+              "fprintf",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 81,
+            "malloc_mentions": 0,
+            "stack_adjustments": [],
+            "vector_instruction_count": 0,
+            "vector_instruction_examples": [],
+            "vector_register_mentions": 0,
+            "vector_registers": []
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/arithmetic_lcg/c.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "671ee4d0a10251df0249e9c82a1c013caf85621ce57480068e60c3013c54a035",
+          "optimization_remark_lines": [
+            "benchmarks/stage06p_codegen/arithmetic_lcg/c.c:21:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]"
+          ],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/arithmetic_lcg/c.c",
+          "source_sha256": "60e34c2b992605b51cb93a8437f208b5375dbb2b0c68506e49c837b29ae69e7d",
+          "status": "MEASURED"
+        },
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/arithmetic_lcg/meldra.s",
+          "assembly_sha256": "e3bb5360687d7ad31891317c2554dc666ea1a93bb50eea3022fefc522079bf49",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/arithmetic_lcg/meldra.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/arithmetic_lcg/meldra.c",
+            "-o",
+            "benchmarks/stage06p_codegen/arithmetic_lcg/meldra.s"
+          ],
+          "compile_time_ms": 27.259916,
+          "language": "meldra",
+          "metrics": {
+            "assembly_lines": 305,
+            "conditional_branch_count": 6,
+            "direct_call_count": 4,
+            "direct_call_targets": [
+              "fprintf",
+              "fwrite@PLT",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 92,
+            "malloc_mentions": 0,
+            "stack_adjustments": [
+              "addq\t$8, %rsp"
+            ],
+            "vector_instruction_count": 0,
+            "vector_instruction_examples": [],
+            "vector_register_mentions": 0,
+            "vector_registers": []
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/arithmetic_lcg/meldra.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "62726625749489f3ef44dc106c86be466155ae41cd043e455ce12eac36eb9968",
+          "optimization_remark_lines": [
+            "benchmarks/stage06p_codegen/arithmetic_lcg/meldra.c:65:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]"
+          ],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/arithmetic_lcg/meldra.c",
+          "source_sha256": "4927829830b108bddfb858a2ff21e0ea321381863dc16659a8ce3d864d0aa5b7",
+          "status": "MEASURED"
+        }
+      ],
+      "category": "arithmetic",
+      "workload": "arithmetic_lcg"
+    },
+    {
+      "arms": [
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/fixed_array_scan/c.s",
+          "assembly_sha256": "5b7580688d9c6411c1794b4d9f66a7b4c9d815b08b61eefec3507fba26cfe11e",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/fixed_array_scan/c.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/fixed_array_scan/c.c",
+            "-o",
+            "benchmarks/stage06p_codegen/fixed_array_scan/c.s"
+          ],
+          "compile_time_ms": 23.774284,
+          "language": "c",
+          "metrics": {
+            "assembly_lines": 289,
+            "conditional_branch_count": 8,
+            "direct_call_count": 3,
+            "direct_call_targets": [
+              "fprintf",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 79,
+            "malloc_mentions": 0,
+            "stack_adjustments": [],
+            "vector_instruction_count": 0,
+            "vector_instruction_examples": [],
+            "vector_register_mentions": 0,
+            "vector_registers": []
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/fixed_array_scan/c.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "7c8ee535457d6caa3f13bb971120b95e420f5d0012bdd8be0185ba0de7bd6c91",
+          "optimization_remark_lines": [
+            "benchmarks/stage06p_codegen/fixed_array_scan/c.c:21:5: remark: vectorized loop (vectorization width: 2, interleaved count: 2) [-Rpass=loop-vectorize]"
+          ],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/fixed_array_scan/c.c",
+          "source_sha256": "5c8526b1a13c8fb5cd6f4da9127bd073aa3a9bef6b1c2bd74f0ca1090d2c4d05",
+          "status": "MEASURED"
+        },
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/fixed_array_scan/meldra.s",
+          "assembly_sha256": "531c05b49464d19971f6db467192044e82d6c0ac52b5c3d242debfd06e8a05ce",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/fixed_array_scan/meldra.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/fixed_array_scan/meldra.c",
+            "-o",
+            "benchmarks/stage06p_codegen/fixed_array_scan/meldra.s"
+          ],
+          "compile_time_ms": 30.302347,
+          "language": "meldra",
+          "metrics": {
+            "assembly_lines": 369,
+            "conditional_branch_count": 9,
+            "direct_call_count": 4,
+            "direct_call_targets": [
+              "fprintf",
+              "fwrite@PLT",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 131,
+            "malloc_mentions": 0,
+            "stack_adjustments": [
+              "subq\t$72, %rsp",
+              "addq\t$72, %rsp"
+            ],
+            "vector_instruction_count": 35,
+            "vector_instruction_examples": [
+              "movdqa\t(%rsp), %xmm2",
+              "movdqa\t16(%rsp), %xmm0",
+              "movdqa\t%xmm2, %xmm1",
+              "paddq\t%xmm1, %xmm1",
+              "movsd\t%xmm2, %xmm1                    # xmm1 = xmm2[0],xmm1[1]",
+              "movdqa\t.LCPI0_0(%rip), %xmm2           # xmm2 = [3,4]",
+              "movdqa\t%xmm0, %xmm3",
+              "pmuludq\t%xmm2, %xmm3",
+              "psrlq\t$32, %xmm0",
+              "pmuludq\t%xmm2, %xmm0",
+              "psllq\t$32, %xmm0",
+              "paddq\t%xmm3, %xmm0",
+              "movdqa\t32(%rsp), %xmm2",
+              "movdqa\t48(%rsp), %xmm3",
+              "movdqa\t.LCPI0_1(%rip), %xmm4           # xmm4 = [5,6]",
+              "movdqa\t%xmm2, %xmm5",
+              "pmuludq\t%xmm4, %xmm5",
+              "psrlq\t$32, %xmm2",
+              "pmuludq\t%xmm4, %xmm2",
+              "psllq\t$32, %xmm2"
+            ],
+            "vector_register_mentions": 56,
+            "vector_registers": [
+              "%xmm0",
+              "%xmm1",
+              "%xmm2",
+              "%xmm3",
+              "%xmm4",
+              "%xmm5",
+              "%xmm6"
+            ]
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/fixed_array_scan/meldra.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "90e8ddf05d53f4515cdd706da195eef2655a4b2b87b7da5b9f53c748daf64108",
+          "optimization_remark_lines": [
+            "benchmarks/stage06p_codegen/fixed_array_scan/meldra.c:91:9: remark: vectorized loop (vectorization width: 2, interleaved count: 2) [-Rpass=loop-vectorize]"
+          ],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/fixed_array_scan/meldra.c",
+          "source_sha256": "38db06c405ffe17772e28dd4ea3be60e759f88db3f186412cf0636c53f66a096",
+          "status": "MEASURED"
+        }
+      ],
+      "category": "arrays",
+      "workload": "fixed_array_scan"
+    },
+    {
+      "arms": [
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/map_filter_fold/c.s",
+          "assembly_sha256": "d22a8796c1d2e83addc0d31c2e4896eeb2cb684330ea1f8481e4d7f3e315a1b5",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/map_filter_fold/c.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/map_filter_fold/c.c",
+            "-o",
+            "benchmarks/stage06p_codegen/map_filter_fold/c.s"
+          ],
+          "compile_time_ms": 24.562326,
+          "language": "c",
+          "metrics": {
+            "assembly_lines": 287,
+            "conditional_branch_count": 3,
+            "direct_call_count": 3,
+            "direct_call_targets": [
+              "fprintf",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 81,
+            "malloc_mentions": 0,
+            "stack_adjustments": [
+              "subq\t$64, %rsp",
+              "addq\t$64, %rsp"
+            ],
+            "vector_instruction_count": 8,
+            "vector_instruction_examples": [
+              "movaps\t.L__const.run.values+48(%rip), %xmm0",
+              "movaps\t%xmm0, 48(%rsp)",
+              "movaps\t.L__const.run.values+32(%rip), %xmm0",
+              "movaps\t%xmm0, 32(%rsp)",
+              "movaps\t.L__const.run.values+16(%rip), %xmm0",
+              "movaps\t%xmm0, 16(%rsp)",
+              "movaps\t.L__const.run.values(%rip), %xmm0",
+              "movaps\t%xmm0, (%rsp)"
+            ],
+            "vector_register_mentions": 8,
+            "vector_registers": [
+              "%xmm0"
+            ]
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/map_filter_fold/c.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "e1a9df6f4a7d036a39703ad145311275a81774dbf11151643e72098081e4d978",
+          "optimization_remark_lines": [
+            "benchmarks/stage06p_codegen/map_filter_fold/c.c:21:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]"
+          ],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/map_filter_fold/c.c",
+          "source_sha256": "9ef413932247d065e961a3f209e46b038af3f0c76d6836685a9ba2f28750da92",
+          "status": "MEASURED"
+        },
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/map_filter_fold/meldra.s",
+          "assembly_sha256": "d77140a1781999cf8060f5d282e7da333c4150a75fcc3ff84724b8482cfdce56",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/map_filter_fold/meldra.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/map_filter_fold/meldra.c",
+            "-o",
+            "benchmarks/stage06p_codegen/map_filter_fold/meldra.s"
+          ],
+          "compile_time_ms": 31.10067,
+          "language": "meldra",
+          "metrics": {
+            "assembly_lines": 415,
+            "conditional_branch_count": 3,
+            "direct_call_count": 4,
+            "direct_call_targets": [
+              "fprintf",
+              "fwrite@PLT",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 95,
+            "malloc_mentions": 0,
+            "stack_adjustments": [
+              "subq\t$72, %rsp",
+              "addq\t$72, %rsp"
+            ],
+            "vector_instruction_count": 0,
+            "vector_instruction_examples": [],
+            "vector_register_mentions": 0,
+            "vector_registers": []
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/map_filter_fold/meldra.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "d91c6b2e1dfd68e39d633db99e4e33b890a406e041facfb8e0632378f600d07e",
+          "optimization_remark_lines": [
+            "benchmarks/stage06p_codegen/map_filter_fold/meldra.c:114:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]"
+          ],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/map_filter_fold/meldra.c",
+          "source_sha256": "2f368350f38d1cfd80779837caa8883f1441dad18418016707f2357fef231b33",
+          "status": "MEASURED"
+        }
+      ],
+      "category": "pipelines",
+      "workload": "map_filter_fold"
+    },
+    {
+      "arms": [
+        {
+          "language": "meldra",
+          "reason": "Text/bytes are intentionally outside the Stage 0.5P native subset.",
+          "status": "UNSUPPORTED_DECLARED"
+        },
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/fnv_ascii/c.s",
+          "assembly_sha256": "39facc55742512a1d86f12bc1cd6d03aeb0338d9b9978dc07ee8b27dd91e4221",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/fnv_ascii/c.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/fnv_ascii/c.c",
+            "-o",
+            "benchmarks/stage06p_codegen/fnv_ascii/c.s"
+          ],
+          "compile_time_ms": 22.702235,
+          "language": "c",
+          "metrics": {
+            "assembly_lines": 286,
+            "conditional_branch_count": 5,
+            "direct_call_count": 3,
+            "direct_call_targets": [
+              "fprintf",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 80,
+            "malloc_mentions": 0,
+            "stack_adjustments": [
+              "addq\t$8, %rsp"
+            ],
+            "vector_instruction_count": 0,
+            "vector_instruction_examples": [],
+            "vector_register_mentions": 0,
+            "vector_registers": []
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/fnv_ascii/c.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "68e45095509321cb8bac9a1ca3227a1bd9b6356add402565e54c637ea56c6e43",
+          "optimization_remark_lines": [
+            "benchmarks/stage06p_codegen/fnv_ascii/c.c:21:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]"
+          ],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/fnv_ascii/c.c",
+          "source_sha256": "896bfcd3b9b7714a157c21ca981d2581fa93a87d40b20fd0d3d8e84bd106f5d0",
+          "status": "MEASURED"
+        }
+      ],
+      "category": "strings",
+      "workload": "fnv_ascii"
+    },
+    {
+      "arms": [
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/record_values/c.s",
+          "assembly_sha256": "17393cd3e421d0a0a6ba00b6e8fcc79fbe873ca0a1beca961ac8718fcaf1ecfc",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/record_values/c.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/record_values/c.c",
+            "-o",
+            "benchmarks/stage06p_codegen/record_values/c.s"
+          ],
+          "compile_time_ms": 23.096245,
+          "language": "c",
+          "metrics": {
+            "assembly_lines": 276,
+            "conditional_branch_count": 6,
+            "direct_call_count": 3,
+            "direct_call_targets": [
+              "fprintf",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 68,
+            "malloc_mentions": 0,
+            "stack_adjustments": [],
+            "vector_instruction_count": 25,
+            "vector_instruction_examples": [
+              "movdqa\t.LCPI0_0(%rip), %xmm1           # xmm1 = [0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0]",
+              "pxor\t%xmm0, %xmm0",
+              "movdqa\t.LCPI0_1(%rip), %xmm2           # xmm2 = [2,2]",
+              "pcmpeqd\t%xmm3, %xmm3",
+              "movdqa\t.LCPI0_2(%rip), %xmm5           # xmm5 = [4,4]",
+              "pxor\t%xmm4, %xmm4",
+              "movdqa\t%xmm1, %xmm6",
+              "paddq\t%xmm2, %xmm6",
+              "movdqa\t%xmm1, %xmm7",
+              "paddq\t%xmm7, %xmm7",
+              "paddq\t%xmm1, %xmm7",
+              "movdqa\t%xmm6, %xmm8",
+              "paddq\t%xmm8, %xmm8",
+              "paddq\t%xmm6, %xmm8",
+              "psubq\t%xmm3, %xmm7",
+              "psubq\t%xmm3, %xmm8",
+              "pxor\t%xmm1, %xmm7",
+              "paddq\t%xmm7, %xmm4",
+              "pxor\t%xmm6, %xmm8",
+              "paddq\t%xmm8, %xmm0"
+            ],
+            "vector_register_mentions": 46,
+            "vector_registers": [
+              "%xmm0",
+              "%xmm1",
+              "%xmm2",
+              "%xmm3",
+              "%xmm4",
+              "%xmm5",
+              "%xmm6",
+              "%xmm7",
+              "%xmm8"
+            ]
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/record_values/c.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "e716d6837221375b5fe0572b20203317ff4837d0f26e3d452b7107453e775ab4",
+          "optimization_remark_lines": [
+            "benchmarks/stage06p_codegen/record_values/c.c:20:5: remark: vectorized loop (vectorization width: 2, interleaved count: 2) [-Rpass=loop-vectorize]"
+          ],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/record_values/c.c",
+          "source_sha256": "b35526f739ac8e8648f65ee63c986dc8af24cfbc269ba0d4c1a58f80994f819f",
+          "status": "MEASURED"
+        },
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/record_values/meldra.s",
+          "assembly_sha256": "1c7f89f0cfd67c3c6f6c491a22bbb0d9024e3f98b6fb375c7ec0d13845cec558",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/record_values/meldra.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/record_values/meldra.c",
+            "-o",
+            "benchmarks/stage06p_codegen/record_values/meldra.s"
+          ],
+          "compile_time_ms": 28.319482,
+          "language": "meldra",
+          "metrics": {
+            "assembly_lines": 302,
+            "conditional_branch_count": 6,
+            "direct_call_count": 4,
+            "direct_call_targets": [
+              "fprintf",
+              "fwrite@PLT",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 79,
+            "malloc_mentions": 0,
+            "stack_adjustments": [
+              "addq\t$8, %rsp"
+            ],
+            "vector_instruction_count": 25,
+            "vector_instruction_examples": [
+              "movdqa\t.LCPI0_0(%rip), %xmm1           # xmm1 = [0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0]",
+              "pxor\t%xmm0, %xmm0",
+              "movdqa\t.LCPI0_1(%rip), %xmm2           # xmm2 = [2,2]",
+              "pcmpeqd\t%xmm3, %xmm3",
+              "movdqa\t.LCPI0_2(%rip), %xmm5           # xmm5 = [4,4]",
+              "pxor\t%xmm4, %xmm4",
+              "movdqa\t%xmm1, %xmm6",
+              "paddq\t%xmm2, %xmm6",
+              "movdqa\t%xmm1, %xmm7",
+              "paddq\t%xmm7, %xmm7",
+              "paddq\t%xmm1, %xmm7",
+              "movdqa\t%xmm6, %xmm8",
+              "paddq\t%xmm8, %xmm8",
+              "paddq\t%xmm6, %xmm8",
+              "psubq\t%xmm3, %xmm7",
+              "psubq\t%xmm3, %xmm8",
+              "pxor\t%xmm1, %xmm7",
+              "paddq\t%xmm7, %xmm4",
+              "pxor\t%xmm6, %xmm8",
+              "paddq\t%xmm8, %xmm0"
+            ],
+            "vector_register_mentions": 46,
+            "vector_registers": [
+              "%xmm0",
+              "%xmm1",
+              "%xmm2",
+              "%xmm3",
+              "%xmm4",
+              "%xmm5",
+              "%xmm6",
+              "%xmm7",
+              "%xmm8"
+            ]
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/record_values/meldra.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "1c4420b8285d38fb0f94f9f375baac542ae8b050b3ca920633474b7ffd2b1ae2",
+          "optimization_remark_lines": [
+            "benchmarks/stage06p_codegen/record_values/meldra.c:65:9: remark: vectorized loop (vectorization width: 2, interleaved count: 2) [-Rpass=loop-vectorize]"
+          ],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/record_values/meldra.c",
+          "source_sha256": "d3106bbea9459a7c196daf07a1002b88823ff760468d00906857bac339d23c63",
+          "status": "MEASURED"
+        }
+      ],
+      "category": "records",
+      "workload": "record_values"
+    },
+    {
+      "arms": [
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/implicit_tree/c.s",
+          "assembly_sha256": "b6bbe4e3820a5a8b2a7047d52aaeeb51e84938698a53ed6ff79693ac3bd5fac2",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/implicit_tree/c.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/implicit_tree/c.c",
+            "-o",
+            "benchmarks/stage06p_codegen/implicit_tree/c.s"
+          ],
+          "compile_time_ms": 23.213821,
+          "language": "c",
+          "metrics": {
+            "assembly_lines": 231,
+            "conditional_branch_count": 5,
+            "direct_call_count": 3,
+            "direct_call_targets": [
+              "fprintf",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 53,
+            "malloc_mentions": 0,
+            "stack_adjustments": [],
+            "vector_instruction_count": 0,
+            "vector_instruction_examples": [],
+            "vector_register_mentions": 0,
+            "vector_registers": []
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/implicit_tree/c.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "5e0d13bae49edaad08987b5b3aa242fc2b189ed16f2baf17f1fc216bcefa0934",
+          "optimization_remark_lines": [],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/implicit_tree/c.c",
+          "source_sha256": "a06ddd74ba9a897ef0d0aefe575359469f60462ee5bb195bbc214bfa624f66ac",
+          "status": "MEASURED"
+        },
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/implicit_tree/meldra.s",
+          "assembly_sha256": "c4dd656416765599900bd149ef47874310769fec87501a5dffeb841350b7c5b4",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/implicit_tree/meldra.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/implicit_tree/meldra.c",
+            "-o",
+            "benchmarks/stage06p_codegen/implicit_tree/meldra.s"
+          ],
+          "compile_time_ms": 27.115134,
+          "language": "meldra",
+          "metrics": {
+            "assembly_lines": 258,
+            "conditional_branch_count": 5,
+            "direct_call_count": 4,
+            "direct_call_targets": [
+              "fprintf",
+              "fwrite@PLT",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 64,
+            "malloc_mentions": 0,
+            "stack_adjustments": [
+              "addq\t$8, %rsp"
+            ],
+            "vector_instruction_count": 0,
+            "vector_instruction_examples": [],
+            "vector_register_mentions": 0,
+            "vector_registers": []
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/implicit_tree/meldra.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "ebefc85b9a8ebe76a94bdaa836ecf3951a7383cbafbcb017c9236bd186971ba6",
+          "optimization_remark_lines": [],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/implicit_tree/meldra.c",
+          "source_sha256": "b661ed4586990252519545af052137e754554e23749506da4172057d4ac73efd",
+          "status": "MEASURED"
+        }
+      ],
+      "category": "trees",
+      "workload": "implicit_tree"
+    },
+    {
+      "arms": [
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/bubble_sort_8/c.s",
+          "assembly_sha256": "9192eacbe952986ea016cb7a3a5e79042861d337942b2b679077c8ba55eebfc3",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/bubble_sort_8/c.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/bubble_sort_8/c.c",
+            "-o",
+            "benchmarks/stage06p_codegen/bubble_sort_8/c.s"
+          ],
+          "compile_time_ms": 27.508829,
+          "language": "c",
+          "metrics": {
+            "assembly_lines": 327,
+            "conditional_branch_count": 3,
+            "direct_call_count": 3,
+            "direct_call_targets": [
+              "fprintf",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 150,
+            "malloc_mentions": 0,
+            "stack_adjustments": [],
+            "vector_instruction_count": 0,
+            "vector_instruction_examples": [],
+            "vector_register_mentions": 0,
+            "vector_registers": []
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/bubble_sort_8/c.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "abdd1e30cd178a05573666214ec10c06a383710e2367ecf3e3b91ec1226ad849",
+          "optimization_remark_lines": [
+            "benchmarks/stage06p_codegen/bubble_sort_8/c.c:21:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]"
+          ],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/bubble_sort_8/c.c",
+          "source_sha256": "5d234c445eea342b03218ff54a9b1d10b93988e7734c756168633152d9e813d6",
+          "status": "MEASURED"
+        },
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/bubble_sort_8/meldra.s",
+          "assembly_sha256": "516e51c23eb9f7f5b5e3bd84c92449b1ee0dcbca20575dd38712f5f791507802",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/bubble_sort_8/meldra.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/bubble_sort_8/meldra.c",
+            "-o",
+            "benchmarks/stage06p_codegen/bubble_sort_8/meldra.s"
+          ],
+          "compile_time_ms": 32.914131,
+          "language": "meldra",
+          "metrics": {
+            "assembly_lines": 349,
+            "conditional_branch_count": 3,
+            "direct_call_count": 4,
+            "direct_call_targets": [
+              "fprintf",
+              "fwrite@PLT",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 161,
+            "malloc_mentions": 0,
+            "stack_adjustments": [
+              "addq\t$8, %rsp"
+            ],
+            "vector_instruction_count": 0,
+            "vector_instruction_examples": [],
+            "vector_register_mentions": 0,
+            "vector_registers": []
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/bubble_sort_8/meldra.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "996877a377ef2f9f72a984929dd282c619febcefa0e04950ab81d3f2294dea1e",
+          "optimization_remark_lines": [
+            "benchmarks/stage06p_codegen/bubble_sort_8/meldra.c:85:9: remark: loop not vectorized [-Rpass-missed=loop-vectorize]"
+          ],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/bubble_sort_8/meldra.c",
+          "source_sha256": "c3746a68e2cf5740c60c4fac8dafaf05b7f4b14de266e5b1e128118db0dd6cf3",
+          "status": "MEASURED"
+        }
+      ],
+      "category": "sorting",
+      "workload": "bubble_sort_8"
+    },
+    {
+      "arms": [
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/shared_allocations/c.s",
+          "assembly_sha256": "289863f20c4dfd81d06417d076a996c0626a483802eeedc64039bb34ae67804f",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/shared_allocations/c.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/shared_allocations/c.c",
+            "-o",
+            "benchmarks/stage06p_codegen/shared_allocations/c.s"
+          ],
+          "compile_time_ms": 24.283412,
+          "language": "c",
+          "metrics": {
+            "assembly_lines": 293,
+            "conditional_branch_count": 4,
+            "direct_call_count": 7,
+            "direct_call_targets": [
+              "abort",
+              "fprintf",
+              "free",
+              "make_values",
+              "malloc",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 1,
+            "indirect_call_count": 0,
+            "instruction_lines": 59,
+            "malloc_mentions": 1,
+            "stack_adjustments": [],
+            "vector_instruction_count": 13,
+            "vector_instruction_examples": [
+              "movq\t%rbx, %xmm0",
+              "pshufd\t$68, %xmm0, %xmm0               # xmm0 = xmm0[0,1,0,1]",
+              "movdqa\t.LCPI1_0(%rip), %xmm1           # xmm1 = [0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0]",
+              "paddq\t%xmm0, %xmm1",
+              "movdqa\t.LCPI1_1(%rip), %xmm2           # xmm2 = [2,3]",
+              "paddq\t%xmm0, %xmm2",
+              "movdqu\t%xmm2, 16(%rax)",
+              "movdqa\t.LCPI1_2(%rip), %xmm2           # xmm2 = [4,5]",
+              "paddq\t%xmm0, %xmm2",
+              "paddq\t.LCPI1_3(%rip), %xmm0",
+              "movdqu\t%xmm1, (%rax)",
+              "movdqu\t%xmm0, 48(%rax)",
+              "movdqu\t%xmm2, 32(%rax)"
+            ],
+            "vector_register_mentions": 17,
+            "vector_registers": [
+              "%xmm0",
+              "%xmm1",
+              "%xmm2"
+            ]
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/shared_allocations/c.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "240bb4f75913f989303acb10c2ef4c6f1201f2a424b963de37ba3055e7fa95f6",
+          "optimization_remark_lines": [
+            "benchmarks/stage06p_codegen/shared_allocations/c.c:20:5: remark: loop not vectorized [-Rpass-missed=loop-vectorize]"
+          ],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/shared_allocations/c.c",
+          "source_sha256": "06b6b250e6bc4a5c5ba324458f72c407ef8957d4a105d661e546ea6eb43afa1e",
+          "status": "MEASURED"
+        },
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/shared_allocations/meldra.s",
+          "assembly_sha256": "9790b2479185978fad1d496198967cab4df9c3b5fec60526f3cb283d88e70226",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/shared_allocations/meldra.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/shared_allocations/meldra.c",
+            "-o",
+            "benchmarks/stage06p_codegen/shared_allocations/meldra.s"
+          ],
+          "compile_time_ms": 26.473612,
+          "language": "meldra",
+          "metrics": {
+            "assembly_lines": 205,
+            "conditional_branch_count": 2,
+            "direct_call_count": 4,
+            "direct_call_targets": [
+              "fprintf",
+              "fwrite@PLT",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 40,
+            "malloc_mentions": 0,
+            "stack_adjustments": [
+              "addq\t$8, %rsp"
+            ],
+            "vector_instruction_count": 0,
+            "vector_instruction_examples": [],
+            "vector_register_mentions": 0,
+            "vector_registers": []
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/shared_allocations/meldra.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "969325f83ea17367c3518bb8d65b026d175b6b67daefa932a80070a4165c9270",
+          "optimization_remark_lines": [],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/shared_allocations/meldra.c",
+          "source_sha256": "701141c0baa1f12057fe97efdc86366ae9a7ab531b18aabd3790343aedb58f6c",
+          "status": "MEASURED"
+        }
+      ],
+      "category": "allocation-heavy",
+      "workload": "shared_allocations"
+    },
+    {
+      "arms": [
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/startup/c.s",
+          "assembly_sha256": "123d90d3222c53403126daa93b97c2b26cd4af1ddb84d3b4aa5578bc484376ba",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/startup/c.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/startup/c.c",
+            "-o",
+            "benchmarks/stage06p_codegen/startup/c.s"
+          ],
+          "compile_time_ms": 19.548131,
+          "language": "c",
+          "metrics": {
+            "assembly_lines": 112,
+            "conditional_branch_count": 1,
+            "direct_call_count": 3,
+            "direct_call_targets": [
+              "fprintf",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 19,
+            "malloc_mentions": 0,
+            "stack_adjustments": [
+              "addq\t$8, %rsp"
+            ],
+            "vector_instruction_count": 0,
+            "vector_instruction_examples": [],
+            "vector_register_mentions": 0,
+            "vector_registers": []
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/startup/c.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "afca09fc79ef9ac54cffbe4abc260b2f4d1e6a5fed21c430d1f317b6114869e3",
+          "optimization_remark_lines": [],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/startup/c.c",
+          "source_sha256": "a0a6883cd635f6f8171ea7249974b341db48d9810becfd2afafd6d1bf9d2f6b6",
+          "status": "MEASURED"
+        },
+        {
+          "assembly_path": "benchmarks/stage06p_codegen/startup/meldra.s",
+          "assembly_sha256": "899dbd75a60d9f4f74fd904c1406e7866a65b9525a34f6349d5afd29d9db9de5",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-fsave-optimization-record",
+            "-foptimization-record-file=benchmarks/stage06p_codegen/startup/meldra.opt.yaml",
+            "-Rpass=loop-vectorize",
+            "-Rpass-missed=loop-vectorize",
+            "-S",
+            "benchmarks/stage06p_codegen/startup/meldra.c",
+            "-o",
+            "benchmarks/stage06p_codegen/startup/meldra.s"
+          ],
+          "compile_time_ms": 24.103895,
+          "language": "meldra",
+          "metrics": {
+            "assembly_lines": 128,
+            "conditional_branch_count": 1,
+            "direct_call_count": 4,
+            "direct_call_targets": [
+              "fprintf",
+              "fwrite@PLT",
+              "printf",
+              "strtoull"
+            ],
+            "free_mentions": 0,
+            "indirect_call_count": 0,
+            "instruction_lines": 27,
+            "malloc_mentions": 0,
+            "stack_adjustments": [],
+            "vector_instruction_count": 0,
+            "vector_instruction_examples": [],
+            "vector_register_mentions": 0,
+            "vector_registers": []
+          },
+          "optimization_record_path": "benchmarks/stage06p_codegen/startup/meldra.opt.yaml",
+          "optimization_record_present": true,
+          "optimization_record_sha256": "0c1ef45048a079bb24712c29a6bcca6d37fc91dee3ad4c9b06a0082a927b3261",
+          "optimization_remark_lines": [],
+          "returncode": 0,
+          "source_path": "benchmarks/stage06p_codegen/startup/meldra.c",
+          "source_sha256": "14552fbbde052204939b4cf3083ddcbbc637e658957b747e134ee3042618dda9",
+          "status": "MEASURED"
+        }
+      ],
+      "category": "startup",
+      "workload": "startup"
+    }
+  ],
+  "schema_version": 1,
+  "status": "PASS",
+  "workload_count": 9
+}

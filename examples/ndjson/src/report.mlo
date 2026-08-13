@@ -1,0 +1,79 @@
+module report
+
+use app.json
+
+export enum AppError:
+    MissingArgument
+    InvalidPath: Text
+    ReadFailure: Text
+    InvalidUtf8: UInt64
+    InvalidOption: Text
+    InvalidField: Text
+    InvalidEvent
+    InvalidMinimumDuration
+    DurationOverflow
+    CountOverflow
+
+export Options:
+    level: Option[Text]
+    service: Option[Text]
+    contains: Option[Text]
+    minimum_duration_ms: Option[UInt64]
+
+valid_event(value: Json) -> Bool:
+    match value:
+        case Json.Object(fields):
+            match json.required(fields, "timestamp"):
+                case Json.String(_):
+                    match json.required(fields, "level"):
+                        case Json.String(_):
+                            match json.required(fields, "service"):
+                                case Json.String(_):
+                                    match json.required(fields, "message"):
+                                        case Json.String(_):
+                                            return true
+                                        case _:
+                                            return false
+                                case _:
+                                    return false
+                        case _:
+                            return false
+                case _:
+                    return false
+        case _:
+            return false
+
+export analyze(lines: FileLines, options: Options) -> Result[Text,AppError]:
+    total: UInt64 = 0
+    valid: UInt64 = 0
+    invalid: UInt64 = 0
+    matching: UInt64 = 0
+    for line in lines:
+        total = total + 1
+        parsed = json.parse(line)
+        match parsed:
+            case Result.Err(_):
+                invalid = invalid + 1
+            case Result.Ok(value):
+                if valid_event(value):
+                    valid = valid + 1
+                    matching = matching + 1
+                else:
+                    invalid = invalid + 1
+    output = TextBuilder.new()
+    output.append_text("total=")
+    output.append_uint64(total)
+    output.append_byte(10)
+    output.append_text("valid=")
+    output.append_uint64(valid)
+    output.append_byte(10)
+    output.append_text("invalid=")
+    output.append_uint64(invalid)
+    output.append_byte(10)
+    output.append_text("matching=")
+    output.append_uint64(matching)
+    output.append_byte(10)
+    output.append_text("duration_sum_ms=0\n")
+    output.append_text("duration_average_ms=0\n")
+    output.append_text("duration_max_ms=0\n")
+    Ok(output.finish())

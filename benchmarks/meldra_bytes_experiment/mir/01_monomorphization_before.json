@@ -1,0 +1,3150 @@
+{
+  "entry_function": "main",
+  "functions": [
+    {
+      "blocks": [
+        {
+          "id": "bb1_entry",
+          "instructions": [
+            {
+              "attributes": {
+                "overflow_diagnostic": "BytesAllocationOverflow",
+                "representation": "owned_pointer_length_capacity_v1"
+              },
+              "id": "i1",
+              "op": "bytes_new",
+              "operands": [
+                "%n_1"
+              ],
+              "result": "%v_6",
+              "source": {
+                "column": 19,
+                "end_column": 31,
+                "end_line": 8,
+                "line": 8,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": null,
+                "element": null,
+                "kind": "record",
+                "length": null,
+                "name": "Bytes",
+                "record": "Bytes",
+                "shared": false,
+                "unique": true
+              }
+            },
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i2",
+              "op": "const",
+              "operands": [],
+              "result": "%v_7",
+              "source": {
+                "column": 26,
+                "end_column": 27,
+                "end_line": 9,
+                "line": 9,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "local": "i"
+              },
+              "id": "i3",
+              "op": "alloc_stack",
+              "operands": [],
+              "result": "%v_8",
+              "source": {
+                "column": 4,
+                "end_column": 43,
+                "end_line": 10,
+                "line": 9,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i4",
+              "op": "store_local",
+              "operands": [
+                "%v_8",
+                "%v_7"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 43,
+                "end_line": 10,
+                "line": 9,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 4,
+              "end_column": 43,
+              "end_line": 10,
+              "line": 9,
+              "path": "bytes-corpus/workload.meldra"
+            },
+            "targets": [
+              "bb2_for_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb2_for_header",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i5",
+              "op": "load_local",
+              "operands": [
+                "%v_8"
+              ],
+              "result": "%v_9",
+              "source": {
+                "column": 4,
+                "end_column": 43,
+                "end_line": 10,
+                "line": 9,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "lt",
+                "range_guard": true
+              },
+              "id": "i6",
+              "op": "compare",
+              "operands": [
+                "%v_9",
+                "%n_1"
+              ],
+              "result": "%v_10",
+              "source": {
+                "column": 4,
+                "end_column": 43,
+                "end_line": 10,
+                "line": 9,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 8,
+                "element": null,
+                "kind": "bool",
+                "length": null,
+                "name": "Bool",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": "%v_10",
+            "kind": "branch",
+            "source": {
+              "column": 4,
+              "end_column": 43,
+              "end_line": 10,
+              "line": 9,
+              "path": "bytes-corpus/workload.meldra"
+            },
+            "targets": [
+              "bb3_for_body",
+              "bb4_for_exit"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb3_for_body",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i7",
+              "op": "load_local",
+              "operands": [
+                "%v_8"
+              ],
+              "result": "%v_11",
+              "source": {
+                "column": 14,
+                "end_column": 15,
+                "end_line": 10,
+                "line": 10,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i8",
+              "op": "load_local",
+              "operands": [
+                "%v_8"
+              ],
+              "result": "%v_12",
+              "source": {
+                "column": 29,
+                "end_column": 30,
+                "end_line": 10,
+                "line": 10,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "callee": "mix",
+                "direct": true,
+                "pure": true
+              },
+              "id": "i9",
+              "op": "call",
+              "operands": [
+                "%seed_2",
+                "%v_12",
+                "%seed_2"
+              ],
+              "result": "%v_13",
+              "source": {
+                "column": 19,
+                "end_column": 37,
+                "end_line": 10,
+                "line": 10,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 255
+              },
+              "id": "i10",
+              "op": "const",
+              "operands": [],
+              "result": "%v_14",
+              "source": {
+                "column": 40,
+                "end_column": 43,
+                "end_line": 10,
+                "line": 10,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "bit_and"
+              },
+              "id": "i11",
+              "op": "binary",
+              "operands": [
+                "%v_13",
+                "%v_14"
+              ],
+              "result": "%v_15",
+              "source": {
+                "column": 19,
+                "end_column": 43,
+                "end_line": 10,
+                "line": 10,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i12",
+              "op": "bytes_len",
+              "operands": [
+                "%v_6"
+              ],
+              "result": "%v_16",
+              "source": {
+                "column": 8,
+                "end_column": 43,
+                "end_line": 10,
+                "line": 10,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "diagnostic": "BytesIndexOutOfBounds"
+              },
+              "id": "i13",
+              "op": "bytes_bounds_check",
+              "operands": [
+                "%v_11",
+                "%v_16"
+              ],
+              "result": null,
+              "source": {
+                "column": 8,
+                "end_column": 43,
+                "end_line": 10,
+                "line": 10,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {
+                "truncate_to_byte": true
+              },
+              "id": "i14",
+              "op": "bytes_store",
+              "operands": [
+                "%v_6",
+                "%v_11",
+                "%v_15"
+              ],
+              "result": null,
+              "source": {
+                "column": 8,
+                "end_column": 43,
+                "end_line": 10,
+                "line": 10,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i15",
+              "op": "load_local",
+              "operands": [
+                "%v_8"
+              ],
+              "result": "%v_17",
+              "source": {
+                "column": 4,
+                "end_column": 43,
+                "end_line": 10,
+                "line": 9,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 1
+              },
+              "id": "i16",
+              "op": "const",
+              "operands": [],
+              "result": "%v_18",
+              "source": {
+                "column": 4,
+                "end_column": 43,
+                "end_line": 10,
+                "line": 9,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i17",
+              "op": "binary",
+              "operands": [
+                "%v_17",
+                "%v_18"
+              ],
+              "result": "%v_19",
+              "source": {
+                "column": 4,
+                "end_column": 43,
+                "end_line": 10,
+                "line": 9,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i18",
+              "op": "store_local",
+              "operands": [
+                "%v_8",
+                "%v_19"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 43,
+                "end_line": 10,
+                "line": 9,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 4,
+              "end_column": 43,
+              "end_line": 10,
+              "line": 9,
+              "path": "bytes-corpus/workload.meldra"
+            },
+            "targets": [
+              "bb2_for_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb4_for_exit",
+          "instructions": [
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i19",
+              "op": "const",
+              "operands": [],
+              "result": "%v_20",
+              "source": {
+                "column": 20,
+                "end_column": 21,
+                "end_line": 11,
+                "line": 11,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "bytes": 0,
+                "local": "round"
+              },
+              "id": "i20",
+              "op": "alloc_stack",
+              "operands": [],
+              "result": "%v_21",
+              "source": {
+                "column": 4,
+                "end_column": 21,
+                "end_line": 11,
+                "line": 11,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i21",
+              "op": "store_local",
+              "operands": [
+                "%v_21",
+                "%v_20"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 21,
+                "end_line": 11,
+                "line": 11,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 4,
+              "end_column": 25,
+              "end_line": 16,
+              "line": 12,
+              "path": "bytes-corpus/workload.meldra"
+            },
+            "targets": [
+              "bb5_while_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb5_while_header",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i22",
+              "op": "load_local",
+              "operands": [
+                "%v_21"
+              ],
+              "result": "%v_22",
+              "source": {
+                "column": 10,
+                "end_column": 15,
+                "end_line": 12,
+                "line": 12,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "lt"
+              },
+              "id": "i23",
+              "op": "compare",
+              "operands": [
+                "%v_22",
+                "%rounds_3"
+              ],
+              "result": "%v_23",
+              "source": {
+                "column": 10,
+                "end_column": 24,
+                "end_line": 12,
+                "line": 12,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 8,
+                "element": null,
+                "kind": "bool",
+                "length": null,
+                "name": "Bool",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": "%v_23",
+            "kind": "branch",
+            "source": {
+              "column": 4,
+              "end_column": 25,
+              "end_line": 16,
+              "line": 12,
+              "path": "bytes-corpus/workload.meldra"
+            },
+            "targets": [
+              "bb6_while_body",
+              "bb7_while_exit"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb6_while_body",
+          "instructions": [
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i24",
+              "op": "const",
+              "operands": [],
+              "result": "%v_24",
+              "source": {
+                "column": 30,
+                "end_column": 31,
+                "end_line": 13,
+                "line": 13,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "local": "i"
+              },
+              "id": "i25",
+              "op": "alloc_stack",
+              "operands": [],
+              "result": "%v_25",
+              "source": {
+                "column": 8,
+                "end_column": 58,
+                "end_line": 15,
+                "line": 13,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i26",
+              "op": "store_local",
+              "operands": [
+                "%v_25",
+                "%v_24"
+              ],
+              "result": null,
+              "source": {
+                "column": 8,
+                "end_column": 58,
+                "end_line": 15,
+                "line": 13,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 8,
+              "end_column": 58,
+              "end_line": 15,
+              "line": 13,
+              "path": "bytes-corpus/workload.meldra"
+            },
+            "targets": [
+              "bb8_for_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb7_while_exit",
+          "instructions": [
+            {
+              "attributes": {
+                "diagnostic": "BytesSliceOutOfBounds",
+                "representation": "borrowed_pointer_length_v1"
+              },
+              "id": "i51",
+              "op": "bytes_slice",
+              "operands": [
+                "%v_6",
+                "%slice_start_4",
+                "%slice_length_5"
+              ],
+              "result": "%v_45",
+              "source": {
+                "column": 22,
+                "end_column": 60,
+                "end_line": 17,
+                "line": 17,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": null,
+                "element": null,
+                "kind": "record",
+                "length": null,
+                "name": "BytesView",
+                "record": "BytesView",
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "bytes": 0,
+                "local": "checksum"
+              },
+              "id": "i52",
+              "op": "alloc_stack",
+              "operands": [],
+              "result": "%v_46",
+              "source": {
+                "column": 4,
+                "end_column": 27,
+                "end_line": 18,
+                "line": 18,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i53",
+              "op": "store_local",
+              "operands": [
+                "%v_46",
+                "%seed_2"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 27,
+                "end_line": 18,
+                "line": 18,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i54",
+              "op": "const",
+              "operands": [],
+              "result": "%v_47",
+              "source": {
+                "column": 26,
+                "end_column": 27,
+                "end_line": 19,
+                "line": 19,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "local": "j"
+              },
+              "id": "i55",
+              "op": "alloc_stack",
+              "operands": [],
+              "result": "%v_48",
+              "source": {
+                "column": 4,
+                "end_column": 61,
+                "end_line": 20,
+                "line": 19,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i56",
+              "op": "store_local",
+              "operands": [
+                "%v_48",
+                "%v_47"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 61,
+                "end_line": 20,
+                "line": 19,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 4,
+              "end_column": 61,
+              "end_line": 20,
+              "line": 19,
+              "path": "bytes-corpus/workload.meldra"
+            },
+            "targets": [
+              "bb11_for_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb8_for_header",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i27",
+              "op": "load_local",
+              "operands": [
+                "%v_25"
+              ],
+              "result": "%v_26",
+              "source": {
+                "column": 8,
+                "end_column": 58,
+                "end_line": 15,
+                "line": 13,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "lt",
+                "range_guard": true
+              },
+              "id": "i28",
+              "op": "compare",
+              "operands": [
+                "%v_26",
+                "%n_1"
+              ],
+              "result": "%v_27",
+              "source": {
+                "column": 8,
+                "end_column": 58,
+                "end_line": 15,
+                "line": 13,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 8,
+                "element": null,
+                "kind": "bool",
+                "length": null,
+                "name": "Bool",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": "%v_27",
+            "kind": "branch",
+            "source": {
+              "column": 8,
+              "end_column": 58,
+              "end_line": 15,
+              "line": 13,
+              "path": "bytes-corpus/workload.meldra"
+            },
+            "targets": [
+              "bb9_for_body",
+              "bb10_for_exit"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb9_for_body",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i29",
+              "op": "load_local",
+              "operands": [
+                "%v_25"
+              ],
+              "result": "%v_28",
+              "source": {
+                "column": 36,
+                "end_column": 37,
+                "end_line": 14,
+                "line": 14,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i30",
+              "op": "bytes_len",
+              "operands": [
+                "%v_6"
+              ],
+              "result": "%v_29",
+              "source": {
+                "column": 30,
+                "end_column": 38,
+                "end_line": 14,
+                "line": 14,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "diagnostic": "BytesIndexOutOfBounds"
+              },
+              "id": "i31",
+              "op": "bytes_bounds_check",
+              "operands": [
+                "%v_28",
+                "%v_29"
+              ],
+              "result": null,
+              "source": {
+                "column": 30,
+                "end_column": 38,
+                "end_line": 14,
+                "line": 14,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i32",
+              "op": "bytes_load",
+              "operands": [
+                "%v_6",
+                "%v_28"
+              ],
+              "result": "%v_30",
+              "source": {
+                "column": 30,
+                "end_column": 38,
+                "end_line": 14,
+                "line": 14,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i33",
+              "op": "load_local",
+              "operands": [
+                "%v_25"
+              ],
+              "result": "%v_31",
+              "source": {
+                "column": 18,
+                "end_column": 19,
+                "end_line": 15,
+                "line": 15,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i34",
+              "op": "load_local",
+              "operands": [
+                "%v_25"
+              ],
+              "result": "%v_32",
+              "source": {
+                "column": 36,
+                "end_column": 37,
+                "end_line": 15,
+                "line": 15,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i35",
+              "op": "load_local",
+              "operands": [
+                "%v_21"
+              ],
+              "result": "%v_33",
+              "source": {
+                "column": 46,
+                "end_column": 51,
+                "end_line": 15,
+                "line": 15,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i36",
+              "op": "binary",
+              "operands": [
+                "%seed_2",
+                "%v_33"
+              ],
+              "result": "%v_34",
+              "source": {
+                "column": 39,
+                "end_column": 51,
+                "end_line": 15,
+                "line": 15,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "callee": "mix",
+                "direct": true,
+                "pure": true
+              },
+              "id": "i37",
+              "op": "call",
+              "operands": [
+                "%v_30",
+                "%v_32",
+                "%v_34"
+              ],
+              "result": "%v_35",
+              "source": {
+                "column": 23,
+                "end_column": 52,
+                "end_line": 15,
+                "line": 15,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 255
+              },
+              "id": "i38",
+              "op": "const",
+              "operands": [],
+              "result": "%v_36",
+              "source": {
+                "column": 55,
+                "end_column": 58,
+                "end_line": 15,
+                "line": 15,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "bit_and"
+              },
+              "id": "i39",
+              "op": "binary",
+              "operands": [
+                "%v_35",
+                "%v_36"
+              ],
+              "result": "%v_37",
+              "source": {
+                "column": 23,
+                "end_column": 58,
+                "end_line": 15,
+                "line": 15,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i40",
+              "op": "bytes_len",
+              "operands": [
+                "%v_6"
+              ],
+              "result": "%v_38",
+              "source": {
+                "column": 12,
+                "end_column": 58,
+                "end_line": 15,
+                "line": 15,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "diagnostic": "BytesIndexOutOfBounds"
+              },
+              "id": "i41",
+              "op": "bytes_bounds_check",
+              "operands": [
+                "%v_31",
+                "%v_38"
+              ],
+              "result": null,
+              "source": {
+                "column": 12,
+                "end_column": 58,
+                "end_line": 15,
+                "line": 15,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {
+                "truncate_to_byte": true
+              },
+              "id": "i42",
+              "op": "bytes_store",
+              "operands": [
+                "%v_6",
+                "%v_31",
+                "%v_37"
+              ],
+              "result": null,
+              "source": {
+                "column": 12,
+                "end_column": 58,
+                "end_line": 15,
+                "line": 15,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i43",
+              "op": "load_local",
+              "operands": [
+                "%v_25"
+              ],
+              "result": "%v_39",
+              "source": {
+                "column": 8,
+                "end_column": 58,
+                "end_line": 15,
+                "line": 13,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 1
+              },
+              "id": "i44",
+              "op": "const",
+              "operands": [],
+              "result": "%v_40",
+              "source": {
+                "column": 8,
+                "end_column": 58,
+                "end_line": 15,
+                "line": 13,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i45",
+              "op": "binary",
+              "operands": [
+                "%v_39",
+                "%v_40"
+              ],
+              "result": "%v_41",
+              "source": {
+                "column": 8,
+                "end_column": 58,
+                "end_line": 15,
+                "line": 13,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i46",
+              "op": "store_local",
+              "operands": [
+                "%v_25",
+                "%v_41"
+              ],
+              "result": null,
+              "source": {
+                "column": 8,
+                "end_column": 58,
+                "end_line": 15,
+                "line": 13,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 8,
+              "end_column": 58,
+              "end_line": 15,
+              "line": 13,
+              "path": "bytes-corpus/workload.meldra"
+            },
+            "targets": [
+              "bb8_for_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb10_for_exit",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i47",
+              "op": "load_local",
+              "operands": [
+                "%v_21"
+              ],
+              "result": "%v_42",
+              "source": {
+                "column": 16,
+                "end_column": 21,
+                "end_line": 16,
+                "line": 16,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 1
+              },
+              "id": "i48",
+              "op": "const",
+              "operands": [],
+              "result": "%v_43",
+              "source": {
+                "column": 24,
+                "end_column": 25,
+                "end_line": 16,
+                "line": 16,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i49",
+              "op": "binary",
+              "operands": [
+                "%v_42",
+                "%v_43"
+              ],
+              "result": "%v_44",
+              "source": {
+                "column": 16,
+                "end_column": 25,
+                "end_line": 16,
+                "line": 16,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i50",
+              "op": "store_local",
+              "operands": [
+                "%v_21",
+                "%v_44"
+              ],
+              "result": null,
+              "source": {
+                "column": 8,
+                "end_column": 25,
+                "end_line": 16,
+                "line": 16,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 4,
+              "end_column": 25,
+              "end_line": 16,
+              "line": 12,
+              "path": "bytes-corpus/workload.meldra"
+            },
+            "targets": [
+              "bb5_while_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb11_for_header",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i57",
+              "op": "load_local",
+              "operands": [
+                "%v_48"
+              ],
+              "result": "%v_49",
+              "source": {
+                "column": 4,
+                "end_column": 61,
+                "end_line": 20,
+                "line": 19,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "lt",
+                "range_guard": true
+              },
+              "id": "i58",
+              "op": "compare",
+              "operands": [
+                "%v_49",
+                "%slice_length_5"
+              ],
+              "result": "%v_50",
+              "source": {
+                "column": 4,
+                "end_column": 61,
+                "end_line": 20,
+                "line": 19,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 8,
+                "element": null,
+                "kind": "bool",
+                "length": null,
+                "name": "Bool",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": "%v_50",
+            "kind": "branch",
+            "source": {
+              "column": 4,
+              "end_column": 61,
+              "end_line": 20,
+              "line": 19,
+              "path": "bytes-corpus/workload.meldra"
+            },
+            "targets": [
+              "bb12_for_body",
+              "bb13_for_exit"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb12_for_body",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i59",
+              "op": "load_local",
+              "operands": [
+                "%v_46"
+              ],
+              "result": "%v_51",
+              "source": {
+                "column": 19,
+                "end_column": 27,
+                "end_line": 20,
+                "line": 20,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i60",
+              "op": "load_local",
+              "operands": [
+                "%v_48"
+              ],
+              "result": "%v_52",
+              "source": {
+                "column": 37,
+                "end_column": 38,
+                "end_line": 20,
+                "line": 20,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i61",
+              "op": "bytes_len",
+              "operands": [
+                "%v_45"
+              ],
+              "result": "%v_53",
+              "source": {
+                "column": 32,
+                "end_column": 39,
+                "end_line": 20,
+                "line": 20,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "diagnostic": "BytesIndexOutOfBounds"
+              },
+              "id": "i62",
+              "op": "bytes_bounds_check",
+              "operands": [
+                "%v_52",
+                "%v_53"
+              ],
+              "result": null,
+              "source": {
+                "column": 32,
+                "end_column": 39,
+                "end_line": 20,
+                "line": 20,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i63",
+              "op": "bytes_load",
+              "operands": [
+                "%v_45",
+                "%v_52"
+              ],
+              "result": "%v_54",
+              "source": {
+                "column": 32,
+                "end_column": 39,
+                "end_line": 20,
+                "line": 20,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i64",
+              "op": "load_local",
+              "operands": [
+                "%v_48"
+              ],
+              "result": "%v_55",
+              "source": {
+                "column": 42,
+                "end_column": 43,
+                "end_line": 20,
+                "line": 20,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i65",
+              "op": "binary",
+              "operands": [
+                "%v_54",
+                "%v_55"
+              ],
+              "result": "%v_56",
+              "source": {
+                "column": 32,
+                "end_column": 43,
+                "end_line": 20,
+                "line": 20,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 1099511628211
+              },
+              "id": "i66",
+              "op": "const",
+              "operands": [],
+              "result": "%v_57",
+              "source": {
+                "column": 47,
+                "end_column": 60,
+                "end_line": 20,
+                "line": 20,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "mul"
+              },
+              "id": "i67",
+              "op": "binary",
+              "operands": [
+                "%v_56",
+                "%v_57"
+              ],
+              "result": "%v_58",
+              "source": {
+                "column": 31,
+                "end_column": 60,
+                "end_line": 20,
+                "line": 20,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "bit_xor"
+              },
+              "id": "i68",
+              "op": "binary",
+              "operands": [
+                "%v_51",
+                "%v_58"
+              ],
+              "result": "%v_59",
+              "source": {
+                "column": 19,
+                "end_column": 61,
+                "end_line": 20,
+                "line": 20,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i69",
+              "op": "store_local",
+              "operands": [
+                "%v_46",
+                "%v_59"
+              ],
+              "result": null,
+              "source": {
+                "column": 8,
+                "end_column": 61,
+                "end_line": 20,
+                "line": 20,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i70",
+              "op": "load_local",
+              "operands": [
+                "%v_48"
+              ],
+              "result": "%v_60",
+              "source": {
+                "column": 4,
+                "end_column": 61,
+                "end_line": 20,
+                "line": 19,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 1
+              },
+              "id": "i71",
+              "op": "const",
+              "operands": [],
+              "result": "%v_61",
+              "source": {
+                "column": 4,
+                "end_column": 61,
+                "end_line": 20,
+                "line": 19,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i72",
+              "op": "binary",
+              "operands": [
+                "%v_60",
+                "%v_61"
+              ],
+              "result": "%v_62",
+              "source": {
+                "column": 4,
+                "end_column": 61,
+                "end_line": 20,
+                "line": 19,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i73",
+              "op": "store_local",
+              "operands": [
+                "%v_48",
+                "%v_62"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 61,
+                "end_line": 20,
+                "line": 19,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 4,
+              "end_column": 61,
+              "end_line": 20,
+              "line": 19,
+              "path": "bytes-corpus/workload.meldra"
+            },
+            "targets": [
+              "bb11_for_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb13_for_exit",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i74",
+              "op": "bytes_len",
+              "operands": [
+                "%v_45"
+              ],
+              "result": "%v_63",
+              "source": {
+                "column": 30,
+                "end_column": 40,
+                "end_line": 21,
+                "line": 21,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i75",
+              "op": "const",
+              "operands": [],
+              "result": "%v_64",
+              "source": {
+                "column": 10,
+                "end_column": 11,
+                "end_line": 22,
+                "line": 22,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i76",
+              "op": "const",
+              "operands": [],
+              "result": "%v_65",
+              "source": {
+                "column": 22,
+                "end_column": 23,
+                "end_line": 22,
+                "line": 22,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i77",
+              "op": "bytes_len",
+              "operands": [
+                "%v_6"
+              ],
+              "result": "%v_66",
+              "source": {
+                "column": 16,
+                "end_column": 24,
+                "end_line": 22,
+                "line": 22,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "diagnostic": "BytesIndexOutOfBounds"
+              },
+              "id": "i78",
+              "op": "bytes_bounds_check",
+              "operands": [
+                "%v_65",
+                "%v_66"
+              ],
+              "result": null,
+              "source": {
+                "column": 16,
+                "end_column": 24,
+                "end_line": 22,
+                "line": 22,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i79",
+              "op": "bytes_load",
+              "operands": [
+                "%v_6",
+                "%v_65"
+              ],
+              "result": "%v_67",
+              "source": {
+                "column": 16,
+                "end_column": 24,
+                "end_line": 22,
+                "line": 22,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i80",
+              "op": "load_local",
+              "operands": [
+                "%v_46"
+              ],
+              "result": "%v_68",
+              "source": {
+                "column": 27,
+                "end_column": 35,
+                "end_line": 22,
+                "line": 22,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i81",
+              "op": "binary",
+              "operands": [
+                "%v_67",
+                "%v_68"
+              ],
+              "result": "%v_69",
+              "source": {
+                "column": 16,
+                "end_column": 35,
+                "end_line": 22,
+                "line": 22,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i82",
+              "op": "binary",
+              "operands": [
+                "%v_69",
+                "%v_63"
+              ],
+              "result": "%v_70",
+              "source": {
+                "column": 16,
+                "end_column": 53,
+                "end_line": 22,
+                "line": 22,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 255
+              },
+              "id": "i83",
+              "op": "const",
+              "operands": [],
+              "result": "%v_71",
+              "source": {
+                "column": 57,
+                "end_column": 60,
+                "end_line": 22,
+                "line": 22,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "bit_and"
+              },
+              "id": "i84",
+              "op": "binary",
+              "operands": [
+                "%v_70",
+                "%v_71"
+              ],
+              "result": "%v_72",
+              "source": {
+                "column": 15,
+                "end_column": 60,
+                "end_line": 22,
+                "line": 22,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i85",
+              "op": "bytes_len",
+              "operands": [
+                "%v_6"
+              ],
+              "result": "%v_73",
+              "source": {
+                "column": 4,
+                "end_column": 60,
+                "end_line": 22,
+                "line": 22,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "diagnostic": "BytesIndexOutOfBounds"
+              },
+              "id": "i86",
+              "op": "bytes_bounds_check",
+              "operands": [
+                "%v_64",
+                "%v_73"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 60,
+                "end_line": 22,
+                "line": 22,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {
+                "truncate_to_byte": true
+              },
+              "id": "i87",
+              "op": "bytes_store",
+              "operands": [
+                "%v_6",
+                "%v_64",
+                "%v_72"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 60,
+                "end_line": 22,
+                "line": 22,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i88",
+              "op": "load_local",
+              "operands": [
+                "%v_46"
+              ],
+              "result": "%v_74",
+              "source": {
+                "column": 4,
+                "end_column": 12,
+                "end_line": 23,
+                "line": 23,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "bit_xor"
+              },
+              "id": "i89",
+              "op": "binary",
+              "operands": [
+                "%v_74",
+                "%v_63"
+              ],
+              "result": "%v_75",
+              "source": {
+                "column": 4,
+                "end_column": 30,
+                "end_line": 23,
+                "line": 23,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i90",
+              "op": "const",
+              "operands": [],
+              "result": "%v_76",
+              "source": {
+                "column": 39,
+                "end_column": 40,
+                "end_line": 23,
+                "line": 23,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i91",
+              "op": "bytes_len",
+              "operands": [
+                "%v_6"
+              ],
+              "result": "%v_77",
+              "source": {
+                "column": 33,
+                "end_column": 41,
+                "end_line": 23,
+                "line": 23,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "diagnostic": "BytesIndexOutOfBounds"
+              },
+              "id": "i92",
+              "op": "bytes_bounds_check",
+              "operands": [
+                "%v_76",
+                "%v_77"
+              ],
+              "result": null,
+              "source": {
+                "column": 33,
+                "end_column": 41,
+                "end_line": 23,
+                "line": 23,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i93",
+              "op": "bytes_load",
+              "operands": [
+                "%v_6",
+                "%v_76"
+              ],
+              "result": "%v_78",
+              "source": {
+                "column": 33,
+                "end_column": 41,
+                "end_line": 23,
+                "line": 23,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "bit_xor"
+              },
+              "id": "i94",
+              "op": "binary",
+              "operands": [
+                "%v_75",
+                "%v_78"
+              ],
+              "result": "%v_79",
+              "source": {
+                "column": 4,
+                "end_column": 41,
+                "end_line": 23,
+                "line": 23,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "automatic": true,
+                "owner_type": "Bytes"
+              },
+              "id": "i95",
+              "op": "drop",
+              "operands": [
+                "%v_6"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 41,
+                "end_line": 23,
+                "line": 23,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "return",
+            "source": {
+              "column": 4,
+              "end_column": 41,
+              "end_line": 23,
+              "line": 23,
+              "path": "bytes-corpus/workload.meldra"
+            },
+            "targets": [],
+            "value": "%v_79"
+          }
+        }
+      ],
+      "entry_block": "bb1_entry",
+      "generic_parameters": [],
+      "instruction_count": 95,
+      "name": "main",
+      "parameters": [
+        {
+          "name": "n",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%n_1"
+        },
+        {
+          "name": "seed",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%seed_2"
+        },
+        {
+          "name": "rounds",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%rounds_3"
+        },
+        {
+          "name": "slice_start",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%slice_start_4"
+        },
+        {
+          "name": "slice_length",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%slice_length_5"
+        }
+      ],
+      "pure": true,
+      "return_type": {
+        "bits": 64,
+        "element": null,
+        "kind": "uint",
+        "length": null,
+        "name": "UInt64",
+        "record": null,
+        "shared": false,
+        "unique": false
+      },
+      "source": {
+        "column": 0,
+        "end_column": 41,
+        "end_line": 23,
+        "line": 7,
+        "path": "bytes-corpus/workload.meldra"
+      }
+    },
+    {
+      "blocks": [
+        {
+          "id": "bb1_entry",
+          "instructions": [
+            {
+              "attributes": {
+                "value": 17
+              },
+              "id": "i1",
+              "op": "const",
+              "operands": [],
+              "result": "%v_4",
+              "source": {
+                "column": 37,
+                "end_column": 39,
+                "end_line": 2,
+                "line": 2,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "mul"
+              },
+              "id": "i2",
+              "op": "binary",
+              "operands": [
+                "%index_2",
+                "%v_4"
+              ],
+              "result": "%v_5",
+              "source": {
+                "column": 29,
+                "end_column": 39,
+                "end_line": 2,
+                "line": 2,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i3",
+              "op": "binary",
+              "operands": [
+                "%seed_3",
+                "%v_5"
+              ],
+              "result": "%v_6",
+              "source": {
+                "column": 22,
+                "end_column": 39,
+                "end_line": 2,
+                "line": 2,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "bit_xor"
+              },
+              "id": "i4",
+              "op": "binary",
+              "operands": [
+                "%value_1",
+                "%v_6"
+              ],
+              "result": "%v_7",
+              "source": {
+                "column": 20,
+                "end_column": 35,
+                "end_line": 3,
+                "line": 3,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 11400714819323198485
+              },
+              "id": "i5",
+              "op": "const",
+              "operands": [],
+              "result": "%v_8",
+              "source": {
+                "column": 30,
+                "end_column": 50,
+                "end_line": 4,
+                "line": 4,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "mul"
+              },
+              "id": "i6",
+              "op": "binary",
+              "operands": [
+                "%v_7",
+                "%v_8"
+              ],
+              "result": "%v_9",
+              "source": {
+                "column": 22,
+                "end_column": 50,
+                "end_line": 4,
+                "line": 4,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 29
+              },
+              "id": "i7",
+              "op": "const",
+              "operands": [],
+              "result": "%v_10",
+              "source": {
+                "column": 26,
+                "end_column": 28,
+                "end_line": 5,
+                "line": 5,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "shift_right"
+              },
+              "id": "i8",
+              "op": "binary",
+              "operands": [
+                "%v_9",
+                "%v_10"
+              ],
+              "result": "%v_11",
+              "source": {
+                "column": 15,
+                "end_column": 28,
+                "end_line": 5,
+                "line": 5,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "bit_xor"
+              },
+              "id": "i9",
+              "op": "binary",
+              "operands": [
+                "%v_9",
+                "%v_11"
+              ],
+              "result": "%v_12",
+              "source": {
+                "column": 4,
+                "end_column": 29,
+                "end_line": 5,
+                "line": 5,
+                "path": "bytes-corpus/workload.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "return",
+            "source": {
+              "column": 4,
+              "end_column": 29,
+              "end_line": 5,
+              "line": 5,
+              "path": "bytes-corpus/workload.meldra"
+            },
+            "targets": [],
+            "value": "%v_12"
+          }
+        }
+      ],
+      "entry_block": "bb1_entry",
+      "generic_parameters": [],
+      "instruction_count": 9,
+      "name": "mix",
+      "parameters": [
+        {
+          "name": "value",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%value_1"
+        },
+        {
+          "name": "index",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%index_2"
+        },
+        {
+          "name": "seed",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%seed_3"
+        }
+      ],
+      "pure": true,
+      "return_type": {
+        "bits": 64,
+        "element": null,
+        "kind": "uint",
+        "length": null,
+        "name": "UInt64",
+        "record": null,
+        "shared": false,
+        "unique": false
+      },
+      "source": {
+        "column": 0,
+        "end_column": 29,
+        "end_line": 5,
+        "line": 1,
+        "path": "bytes-corpus/workload.meldra"
+      }
+    }
+  ],
+  "instruction_count": 104,
+  "records": [],
+  "schema_version": 1,
+  "source_sha256": "0fb2be54b00765a8dec1d9a8f0433ff78b778f9403090277e347c758f349dd6f",
+  "subset_forms": [
+    "fn",
+    "let",
+    "var",
+    "if",
+    "match",
+    "for",
+    "while",
+    "direct_function_calls"
+  ],
+  "subset_types": [
+    "Int64",
+    "UInt64",
+    "Float32",
+    "Float64",
+    "Bool",
+    "records",
+    "arrays",
+    "slices"
+  ]
+}

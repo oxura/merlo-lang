@@ -1,0 +1,557 @@
+{
+  "check_count": 12,
+  "checks": {
+    "body_driven_public_signature_drift": {
+      "detected": true,
+      "evidence": {
+        "diagnostic": "PublicInterfaceRevisionMismatch"
+      }
+    },
+    "collision_updates_wrong_key": {
+      "detected": true,
+      "evidence": {
+        "actual_entries": 8,
+        "actual_values": [
+          [
+            "collision-falsification",
+            1
+          ],
+          [
+            "collision-falsification-3",
+            2
+          ],
+          [
+            "collision-falsification-12",
+            3
+          ],
+          [
+            "collision-falsification-23",
+            17
+          ],
+          [
+            "collision-falsification-34",
+            5
+          ],
+          [
+            "collision-falsification-45",
+            6
+          ],
+          [
+            "collision-falsification-56",
+            7
+          ],
+          [
+            "collision-falsification-67",
+            8
+          ]
+        ],
+        "expected_entries": 8,
+        "expected_values": [
+          [
+            "collision-falsification",
+            1
+          ],
+          [
+            "collision-falsification-3",
+            2
+          ],
+          [
+            "collision-falsification-12",
+            3
+          ],
+          [
+            "collision-falsification-23",
+            17
+          ],
+          [
+            "collision-falsification-34",
+            5
+          ],
+          [
+            "collision-falsification-45",
+            6
+          ],
+          [
+            "collision-falsification-56",
+            7
+          ],
+          [
+            "collision-falsification-67",
+            8
+          ]
+        ]
+      }
+    },
+    "csv_revenue_overflow_ignored": {
+      "detected": true,
+      "evidence": {
+        "diagnostic": "RevenueOverflow"
+      }
+    },
+    "file_close_omitted_on_error": {
+      "detected": true,
+      "evidence": {
+        "active_descriptors": 0,
+        "close_count": 1,
+        "error": "FileUtf8Error",
+        "open_count": 1
+      }
+    },
+    "grep_final_unterminated_line_dropped": {
+      "detected": true,
+      "evidence": {
+        "matches": [
+          [
+            2,
+            "final match"
+          ]
+        ],
+        "matching_lines": 1,
+        "output": "2:final match\n",
+        "total_lines": 2
+      }
+    },
+    "invalid_ndjson_counted_valid": {
+      "detected": true,
+      "evidence": {
+        "invalid": 1,
+        "total": 2,
+        "valid": 1
+      }
+    },
+    "map_drop_skips_text_key": {
+      "detected": true,
+      "evidence": {
+        "owned_after_close": 0,
+        "owned_before_close": 3,
+        "released_after_close": 3
+      }
+    },
+    "map_growth_loses_entry": {
+      "detected": true,
+      "evidence": {
+        "actual_entries": 48,
+        "actual_values": [
+          [
+            "growth-falsification-0",
+            0
+          ],
+          [
+            "growth-falsification-1",
+            1
+          ],
+          [
+            "growth-falsification-2",
+            2
+          ],
+          [
+            "growth-falsification-3",
+            3
+          ],
+          [
+            "growth-falsification-4",
+            4
+          ],
+          [
+            "growth-falsification-5",
+            5
+          ],
+          [
+            "growth-falsification-6",
+            6
+          ],
+          [
+            "growth-falsification-7",
+            7
+          ],
+          [
+            "growth-falsification-8",
+            8
+          ],
+          [
+            "growth-falsification-9",
+            9
+          ],
+          [
+            "growth-falsification-10",
+            10
+          ],
+          [
+            "growth-falsification-11",
+            11
+          ],
+          [
+            "growth-falsification-12",
+            12
+          ],
+          [
+            "growth-falsification-13",
+            13
+          ],
+          [
+            "growth-falsification-14",
+            14
+          ],
+          [
+            "growth-falsification-15",
+            15
+          ],
+          [
+            "growth-falsification-16",
+            16
+          ],
+          [
+            "growth-falsification-17",
+            17
+          ],
+          [
+            "growth-falsification-18",
+            18
+          ],
+          [
+            "growth-falsification-19",
+            19
+          ],
+          [
+            "growth-falsification-20",
+            20
+          ],
+          [
+            "growth-falsification-21",
+            21
+          ],
+          [
+            "growth-falsification-22",
+            22
+          ],
+          [
+            "growth-falsification-23",
+            23
+          ],
+          [
+            "growth-falsification-24",
+            24
+          ],
+          [
+            "growth-falsification-25",
+            25
+          ],
+          [
+            "growth-falsification-26",
+            26
+          ],
+          [
+            "growth-falsification-27",
+            27
+          ],
+          [
+            "growth-falsification-28",
+            28
+          ],
+          [
+            "growth-falsification-29",
+            29
+          ],
+          [
+            "growth-falsification-30",
+            30
+          ],
+          [
+            "growth-falsification-31",
+            31
+          ],
+          [
+            "growth-falsification-32",
+            32
+          ],
+          [
+            "growth-falsification-33",
+            33
+          ],
+          [
+            "growth-falsification-34",
+            34
+          ],
+          [
+            "growth-falsification-35",
+            35
+          ],
+          [
+            "growth-falsification-36",
+            36
+          ],
+          [
+            "growth-falsification-37",
+            37
+          ],
+          [
+            "growth-falsification-38",
+            38
+          ],
+          [
+            "growth-falsification-39",
+            39
+          ],
+          [
+            "growth-falsification-40",
+            40
+          ],
+          [
+            "growth-falsification-41",
+            41
+          ],
+          [
+            "growth-falsification-42",
+            42
+          ],
+          [
+            "growth-falsification-43",
+            43
+          ],
+          [
+            "growth-falsification-44",
+            44
+          ],
+          [
+            "growth-falsification-45",
+            45
+          ],
+          [
+            "growth-falsification-46",
+            46
+          ],
+          [
+            "growth-falsification-47",
+            47
+          ]
+        ],
+        "expected_entries": 48,
+        "expected_values": [
+          [
+            "growth-falsification-0",
+            0
+          ],
+          [
+            "growth-falsification-1",
+            1
+          ],
+          [
+            "growth-falsification-2",
+            2
+          ],
+          [
+            "growth-falsification-3",
+            3
+          ],
+          [
+            "growth-falsification-4",
+            4
+          ],
+          [
+            "growth-falsification-5",
+            5
+          ],
+          [
+            "growth-falsification-6",
+            6
+          ],
+          [
+            "growth-falsification-7",
+            7
+          ],
+          [
+            "growth-falsification-8",
+            8
+          ],
+          [
+            "growth-falsification-9",
+            9
+          ],
+          [
+            "growth-falsification-10",
+            10
+          ],
+          [
+            "growth-falsification-11",
+            11
+          ],
+          [
+            "growth-falsification-12",
+            12
+          ],
+          [
+            "growth-falsification-13",
+            13
+          ],
+          [
+            "growth-falsification-14",
+            14
+          ],
+          [
+            "growth-falsification-15",
+            15
+          ],
+          [
+            "growth-falsification-16",
+            16
+          ],
+          [
+            "growth-falsification-17",
+            17
+          ],
+          [
+            "growth-falsification-18",
+            18
+          ],
+          [
+            "growth-falsification-19",
+            19
+          ],
+          [
+            "growth-falsification-20",
+            20
+          ],
+          [
+            "growth-falsification-21",
+            21
+          ],
+          [
+            "growth-falsification-22",
+            22
+          ],
+          [
+            "growth-falsification-23",
+            23
+          ],
+          [
+            "growth-falsification-24",
+            24
+          ],
+          [
+            "growth-falsification-25",
+            25
+          ],
+          [
+            "growth-falsification-26",
+            26
+          ],
+          [
+            "growth-falsification-27",
+            27
+          ],
+          [
+            "growth-falsification-28",
+            28
+          ],
+          [
+            "growth-falsification-29",
+            29
+          ],
+          [
+            "growth-falsification-30",
+            30
+          ],
+          [
+            "growth-falsification-31",
+            31
+          ],
+          [
+            "growth-falsification-32",
+            32
+          ],
+          [
+            "growth-falsification-33",
+            33
+          ],
+          [
+            "growth-falsification-34",
+            34
+          ],
+          [
+            "growth-falsification-35",
+            35
+          ],
+          [
+            "growth-falsification-36",
+            36
+          ],
+          [
+            "growth-falsification-37",
+            37
+          ],
+          [
+            "growth-falsification-38",
+            38
+          ],
+          [
+            "growth-falsification-39",
+            39
+          ],
+          [
+            "growth-falsification-40",
+            40
+          ],
+          [
+            "growth-falsification-41",
+            41
+          ],
+          [
+            "growth-falsification-42",
+            42
+          ],
+          [
+            "growth-falsification-43",
+            43
+          ],
+          [
+            "growth-falsification-44",
+            44
+          ],
+          [
+            "growth-falsification-45",
+            45
+          ],
+          [
+            "growth-falsification-46",
+            46
+          ],
+          [
+            "growth-falsification-47",
+            47
+          ]
+        ]
+      }
+    },
+    "missing_capability_accepted": {
+      "detected": true,
+      "evidence": {
+        "diagnostic": "MissingCapability"
+      }
+    },
+    "opaque_c_parser_replacement": {
+      "detected": true,
+      "evidence": {
+        "actual_domain_ops": [],
+        "mutant_domain_ops": [
+          "json_parse"
+        ],
+        "primitive_count": 13
+      }
+    },
+    "pure_file_read_accepted": {
+      "detected": true,
+      "evidence": {
+        "diagnostic": "EffectInPureFunction"
+      }
+    },
+    "stale_borrowed_line_accepted": {
+      "detected": true,
+      "evidence": {
+        "stale_access_error": "BorrowedLineExpiredError"
+      }
+    }
+  },
+  "contract": "merlo.productive-falsification.v1",
+  "detected_count": 12,
+  "passed": true
+}

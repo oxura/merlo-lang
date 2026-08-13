@@ -1,0 +1,2 @@
+use std::env;
+fn main(){let a:Vec<String>=env::args().collect();let n=a[1].parse::<usize>().unwrap();let seed=a[2].parse::<u64>().unwrap();let reserved=a[3].parse::<u64>().unwrap()!=0;let mut b:Vec<u8>=if reserved{Vec::with_capacity(n)}else{Vec::new()};for i in 0..n{b.push(seed.wrapping_add((i as u64).wrapping_mul(17)) as u8);}let mut out=seed;for(i,v)in b.iter().enumerate(){out=out.wrapping_mul(1099511628211)^((*v as u64).wrapping_add(i as u64));}println!("{}",out^(b.len()as u64));}

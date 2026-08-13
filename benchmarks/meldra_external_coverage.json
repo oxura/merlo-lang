@@ -1,0 +1,2053 @@
+{
+  "aggregate": {
+    "calls": 37060,
+    "entities": 81905,
+    "exact": {
+      "count": 90882,
+      "denominator": 391227,
+      "ratio": 0.2323
+    },
+    "hazard_counts": {
+      "dynamic_import": 15,
+      "dynamic_reference": 742,
+      "module_getattr": 10,
+      "string_export": 2029,
+      "uncertain_reference": 60,
+      "wildcard_import": 22
+    },
+    "hazards": 4449,
+    "language_theoretical_upper_bound": {
+      "count": 298252,
+      "denominator": 298252,
+      "ratio": 1.0
+    },
+    "operation_coverage": {
+      "change_signature": {
+        "denominator": 238426,
+        "ratio": 0.167608,
+        "safe_count": 39962
+      },
+      "move": {
+        "denominator": 391227,
+        "ratio": 0.23765,
+        "safe_count": 92975
+      },
+      "rename": {
+        "denominator": 391227,
+        "ratio": 0.23765,
+        "safe_count": 92975
+      }
+    },
+    "projects": 20,
+    "references": 391227,
+    "resolution_counts": {
+      "Conditional": 3047,
+      "Derived": 2093,
+      "Dynamic": 1660,
+      "Exact": 90882,
+      "Observed": 0,
+      "Unknown": 293545
+    },
+    "scan_errors": 5,
+    "uncertain_kind_counts": {
+      "attribute": 43667,
+      "dynamic": 1623,
+      "dynamic_import": 20,
+      "dynamic_namespace": 2,
+      "import": 33237,
+      "module_getattr": 15,
+      "name": 209477,
+      "string_export": 2679,
+      "unknown_name": 7495,
+      "wildcard_import": 37
+    },
+    "uncertain_references": 298252,
+    "usable": {
+      "count": 92975,
+      "denominator": 391227,
+      "ratio": 0.23765
+    }
+  },
+  "aggregation_provenance": "Four parallel scan shards were validated and consolidated into this permanent per-project artifact; ephemeral shard paths are intentionally omitted.",
+  "date": "2026-08-10",
+  "kind": "ExternalSemanticCoverageValidation",
+  "language_claim": "theoretical_upper_bound_only; no language implementation was built or measured",
+  "project_count": 20,
+  "projects": [
+    {
+      "calls": 3431,
+      "category": "async-backend",
+      "entities": 5562,
+      "exact": {
+        "count": 6970,
+        "denominator": 27836,
+        "ratio": 0.250395
+      },
+      "hazard_counts": {
+        "dynamic_import": 3,
+        "dynamic_reference": 29,
+        "module_getattr": 1,
+        "string_export": 538,
+        "uncertain_reference": 16
+      },
+      "hazards": 587,
+      "language_theoretical_upper_bound": {
+        "count": 20006,
+        "denominator": 20006,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 12320,
+          "denominator": 15756,
+          "numerator": 3436,
+          "operation": "change_signature",
+          "ratio": 0.218076,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 746,
+            "Dynamic": 18,
+            "Exact": 3610,
+            "Observed": 0,
+            "Unknown": 11382
+          },
+          "safe_count": 3436,
+          "total_count": 15756
+        },
+        "move": {
+          "blocked_count": 20006,
+          "denominator": 27836,
+          "numerator": 7830,
+          "operation": "move",
+          "ratio": 0.28129,
+          "resolution_counts": {
+            "Conditional": 581,
+            "Derived": 860,
+            "Dynamic": 33,
+            "Exact": 6970,
+            "Observed": 0,
+            "Unknown": 19392
+          },
+          "safe_count": 7830,
+          "total_count": 27836
+        },
+        "rename": {
+          "blocked_count": 20006,
+          "denominator": 27836,
+          "numerator": 7830,
+          "operation": "rename",
+          "ratio": 0.28129,
+          "resolution_counts": {
+            "Conditional": 581,
+            "Derived": 860,
+            "Dynamic": 33,
+            "Exact": 6970,
+            "Observed": 0,
+            "Unknown": 19392
+          },
+          "safe_count": 7830,
+          "total_count": 27836
+        }
+      },
+      "project": "aiohttp",
+      "references": 27836,
+      "resolution_counts": {
+        "Conditional": 581,
+        "Derived": 860,
+        "Dynamic": 33,
+        "Exact": 6970,
+        "Observed": 0,
+        "Unknown": 19392
+      },
+      "scan_error": null,
+      "uncertain_kind_counts": {
+        "attribute": 5267,
+        "dynamic": 29,
+        "dynamic_import": 3,
+        "import": 1422,
+        "module_getattr": 1,
+        "name": 12492,
+        "string_export": 538,
+        "unknown_name": 254
+      },
+      "uncertain_references": 20006,
+      "usable": {
+        "count": 7830,
+        "denominator": 27836,
+        "ratio": 0.28129
+      }
+    },
+    {
+      "calls": 391,
+      "category": "tooling",
+      "entities": 479,
+      "exact": {
+        "count": 719,
+        "denominator": 3740,
+        "ratio": 0.192246
+      },
+      "hazard_counts": {
+        "dynamic_reference": 4
+      },
+      "hazards": 4,
+      "language_theoretical_upper_bound": {
+        "count": 3021,
+        "denominator": 3021,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 1317,
+          "denominator": 1741,
+          "numerator": 424,
+          "operation": "change_signature",
+          "ratio": 0.243538,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 0,
+            "Dynamic": 0,
+            "Exact": 615,
+            "Observed": 0,
+            "Unknown": 1126
+          },
+          "safe_count": 424,
+          "total_count": 1741
+        },
+        "move": {
+          "blocked_count": 3021,
+          "denominator": 3740,
+          "numerator": 719,
+          "operation": "move",
+          "ratio": 0.192246,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 0,
+            "Dynamic": 4,
+            "Exact": 719,
+            "Observed": 0,
+            "Unknown": 3017
+          },
+          "safe_count": 719,
+          "total_count": 3740
+        },
+        "rename": {
+          "blocked_count": 3021,
+          "denominator": 3740,
+          "numerator": 719,
+          "operation": "rename",
+          "ratio": 0.192246,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 0,
+            "Dynamic": 4,
+            "Exact": 719,
+            "Observed": 0,
+            "Unknown": 3017
+          },
+          "safe_count": 719,
+          "total_count": 3740
+        }
+      },
+      "project": "black",
+      "references": 3740,
+      "resolution_counts": {
+        "Conditional": 0,
+        "Derived": 0,
+        "Dynamic": 4,
+        "Exact": 719,
+        "Observed": 0,
+        "Unknown": 3017
+      },
+      "scan_error": null,
+      "uncertain_kind_counts": {
+        "attribute": 213,
+        "dynamic": 4,
+        "import": 446,
+        "name": 2306,
+        "unknown_name": 52
+      },
+      "uncertain_references": 3021,
+      "usable": {
+        "count": 719,
+        "denominator": 3740,
+        "ratio": 0.192246
+      }
+    },
+    {
+      "calls": 4388,
+      "category": "distributed-task-processing",
+      "entities": 7850,
+      "exact": {
+        "count": 8754,
+        "denominator": 24742,
+        "ratio": 0.353811
+      },
+      "hazard_counts": {
+        "dynamic_import": 8,
+        "dynamic_reference": 198,
+        "string_export": 537,
+        "uncertain_reference": 28,
+        "wildcard_import": 6
+      },
+      "hazards": 777,
+      "language_theoretical_upper_bound": {
+        "count": 15977,
+        "denominator": 15977,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 12618,
+          "denominator": 18156,
+          "numerator": 5538,
+          "operation": "change_signature",
+          "ratio": 0.305023,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 11,
+            "Dynamic": 86,
+            "Exact": 6797,
+            "Observed": 0,
+            "Unknown": 11262
+          },
+          "safe_count": 5538,
+          "total_count": 18156
+        },
+        "move": {
+          "blocked_count": 15977,
+          "denominator": 24742,
+          "numerator": 8765,
+          "operation": "move",
+          "ratio": 0.354256,
+          "resolution_counts": {
+            "Conditional": 653,
+            "Derived": 11,
+            "Dynamic": 206,
+            "Exact": 8754,
+            "Observed": 0,
+            "Unknown": 15118
+          },
+          "safe_count": 8765,
+          "total_count": 24742
+        },
+        "rename": {
+          "blocked_count": 15977,
+          "denominator": 24742,
+          "numerator": 8765,
+          "operation": "rename",
+          "ratio": 0.354256,
+          "resolution_counts": {
+            "Conditional": 653,
+            "Derived": 11,
+            "Dynamic": 206,
+            "Exact": 8754,
+            "Observed": 0,
+            "Unknown": 15118
+          },
+          "safe_count": 8765,
+          "total_count": 24742
+        }
+      },
+      "project": "celery",
+      "references": 24742,
+      "resolution_counts": {
+        "Conditional": 653,
+        "Derived": 11,
+        "Dynamic": 206,
+        "Exact": 8754,
+        "Observed": 0,
+        "Unknown": 15118
+      },
+      "scan_error": null,
+      "uncertain_kind_counts": {
+        "attribute": 3276,
+        "dynamic": 198,
+        "dynamic_import": 8,
+        "import": 2233,
+        "name": 9152,
+        "string_export": 537,
+        "unknown_name": 567,
+        "wildcard_import": 6
+      },
+      "uncertain_references": 15977,
+      "usable": {
+        "count": 8765,
+        "denominator": 24742,
+        "ratio": 0.354256
+      }
+    },
+    {
+      "calls": 440,
+      "category": "cli-library",
+      "entities": 1300,
+      "exact": {
+        "count": 1310,
+        "denominator": 6239,
+        "ratio": 0.20997
+      },
+      "hazard_counts": {
+        "dynamic_reference": 25,
+        "module_getattr": 4,
+        "uncertain_reference": 1
+      },
+      "hazards": 30,
+      "language_theoretical_upper_bound": {
+        "count": 4929,
+        "denominator": 4929,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 3890,
+          "denominator": 4377,
+          "numerator": 487,
+          "operation": "change_signature",
+          "ratio": 0.111263,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 0,
+            "Dynamic": 14,
+            "Exact": 734,
+            "Observed": 0,
+            "Unknown": 3629
+          },
+          "safe_count": 487,
+          "total_count": 4377
+        },
+        "move": {
+          "blocked_count": 4929,
+          "denominator": 6239,
+          "numerator": 1310,
+          "operation": "move",
+          "ratio": 0.20997,
+          "resolution_counts": {
+            "Conditional": 16,
+            "Derived": 0,
+            "Dynamic": 29,
+            "Exact": 1310,
+            "Observed": 0,
+            "Unknown": 4884
+          },
+          "safe_count": 1310,
+          "total_count": 6239
+        },
+        "rename": {
+          "blocked_count": 4929,
+          "denominator": 6239,
+          "numerator": 1310,
+          "operation": "rename",
+          "ratio": 0.20997,
+          "resolution_counts": {
+            "Conditional": 16,
+            "Derived": 0,
+            "Dynamic": 29,
+            "Exact": 1310,
+            "Observed": 0,
+            "Unknown": 4884
+          },
+          "safe_count": 1310,
+          "total_count": 6239
+        }
+      },
+      "project": "click",
+      "references": 6239,
+      "resolution_counts": {
+        "Conditional": 16,
+        "Derived": 0,
+        "Dynamic": 29,
+        "Exact": 1310,
+        "Observed": 0,
+        "Unknown": 4884
+      },
+      "scan_error": null,
+      "uncertain_kind_counts": {
+        "attribute": 3839,
+        "dynamic": 25,
+        "import": 225,
+        "module_getattr": 4,
+        "name": 767,
+        "unknown_name": 69
+      },
+      "uncertain_references": 4929,
+      "usable": {
+        "count": 1310,
+        "denominator": 6239,
+        "ratio": 0.20997
+      }
+    },
+    {
+      "calls": 101,
+      "category": "data-transformation",
+      "entities": 218,
+      "exact": {
+        "count": 127,
+        "denominator": 794,
+        "ratio": 0.15995
+      },
+      "hazard_counts": {
+        "dynamic_reference": 4,
+        "string_export": 11
+      },
+      "hazards": 15,
+      "language_theoretical_upper_bound": {
+        "count": 667,
+        "denominator": 667,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 342,
+          "denominator": 443,
+          "numerator": 101,
+          "operation": "change_signature",
+          "ratio": 0.227991,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 0,
+            "Dynamic": 1,
+            "Exact": 103,
+            "Observed": 0,
+            "Unknown": 339
+          },
+          "safe_count": 101,
+          "total_count": 443
+        },
+        "move": {
+          "blocked_count": 667,
+          "denominator": 794,
+          "numerator": 127,
+          "operation": "move",
+          "ratio": 0.15995,
+          "resolution_counts": {
+            "Conditional": 11,
+            "Derived": 0,
+            "Dynamic": 4,
+            "Exact": 127,
+            "Observed": 0,
+            "Unknown": 652
+          },
+          "safe_count": 127,
+          "total_count": 794
+        },
+        "rename": {
+          "blocked_count": 667,
+          "denominator": 794,
+          "numerator": 127,
+          "operation": "rename",
+          "ratio": 0.15995,
+          "resolution_counts": {
+            "Conditional": 11,
+            "Derived": 0,
+            "Dynamic": 4,
+            "Exact": 127,
+            "Observed": 0,
+            "Unknown": 652
+          },
+          "safe_count": 127,
+          "total_count": 794
+        }
+      },
+      "project": "dbt-core",
+      "references": 794,
+      "resolution_counts": {
+        "Conditional": 11,
+        "Derived": 0,
+        "Dynamic": 4,
+        "Exact": 127,
+        "Observed": 0,
+        "Unknown": 652
+      },
+      "scan_error": null,
+      "uncertain_kind_counts": {
+        "attribute": 156,
+        "dynamic": 4,
+        "import": 125,
+        "name": 330,
+        "string_export": 11,
+        "unknown_name": 41
+      },
+      "uncertain_references": 667,
+      "usable": {
+        "count": 127,
+        "denominator": 794,
+        "ratio": 0.15995
+      }
+    },
+    {
+      "calls": 3336,
+      "category": "backend-framework",
+      "entities": 5215,
+      "exact": {
+        "count": 6872,
+        "denominator": 20010,
+        "ratio": 0.343428
+      },
+      "hazard_counts": {
+        "dynamic_import": 3,
+        "dynamic_reference": 50
+      },
+      "hazards": 53,
+      "language_theoretical_upper_bound": {
+        "count": 13136,
+        "denominator": 13136,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 6648,
+          "denominator": 10007,
+          "numerator": 3359,
+          "operation": "change_signature",
+          "ratio": 0.335665,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 2,
+            "Dynamic": 31,
+            "Exact": 4246,
+            "Observed": 0,
+            "Unknown": 5728
+          },
+          "safe_count": 3359,
+          "total_count": 10007
+        },
+        "move": {
+          "blocked_count": 13136,
+          "denominator": 20010,
+          "numerator": 6874,
+          "operation": "move",
+          "ratio": 0.343528,
+          "resolution_counts": {
+            "Conditional": 5,
+            "Derived": 2,
+            "Dynamic": 53,
+            "Exact": 6872,
+            "Observed": 0,
+            "Unknown": 13078
+          },
+          "safe_count": 6874,
+          "total_count": 20010
+        },
+        "rename": {
+          "blocked_count": 13136,
+          "denominator": 20010,
+          "numerator": 6874,
+          "operation": "rename",
+          "ratio": 0.343528,
+          "resolution_counts": {
+            "Conditional": 5,
+            "Derived": 2,
+            "Dynamic": 53,
+            "Exact": 6872,
+            "Observed": 0,
+            "Unknown": 13078
+          },
+          "safe_count": 6874,
+          "total_count": 20010
+        }
+      },
+      "project": "fastapi",
+      "references": 20010,
+      "resolution_counts": {
+        "Conditional": 5,
+        "Derived": 2,
+        "Dynamic": 53,
+        "Exact": 6872,
+        "Observed": 0,
+        "Unknown": 13078
+      },
+      "scan_error": [],
+      "uncertain_kind_counts": {
+        "attribute": 2039,
+        "dynamic": 50,
+        "dynamic_import": 3,
+        "import": 2522,
+        "name": 8467,
+        "unknown_name": 55
+      },
+      "uncertain_references": 13136,
+      "usable": {
+        "count": 6874,
+        "denominator": 20010,
+        "ratio": 0.343528
+      }
+    },
+    {
+      "calls": 116,
+      "category": "backend-framework",
+      "entities": 917,
+      "exact": {
+        "count": 520,
+        "denominator": 3548,
+        "ratio": 0.146561
+      },
+      "hazard_counts": {
+        "dynamic_reference": 17,
+        "module_getattr": 2,
+        "uncertain_reference": 2
+      },
+      "hazards": 21,
+      "language_theoretical_upper_bound": {
+        "count": 3028,
+        "denominator": 3028,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 1721,
+          "denominator": 1846,
+          "numerator": 125,
+          "operation": "change_signature",
+          "ratio": 0.067714,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 0,
+            "Dynamic": 9,
+            "Exact": 229,
+            "Observed": 0,
+            "Unknown": 1608
+          },
+          "safe_count": 125,
+          "total_count": 1846
+        },
+        "move": {
+          "blocked_count": 3028,
+          "denominator": 3548,
+          "numerator": 520,
+          "operation": "move",
+          "ratio": 0.146561,
+          "resolution_counts": {
+            "Conditional": 24,
+            "Derived": 0,
+            "Dynamic": 19,
+            "Exact": 520,
+            "Observed": 0,
+            "Unknown": 2985
+          },
+          "safe_count": 520,
+          "total_count": 3548
+        },
+        "rename": {
+          "blocked_count": 3028,
+          "denominator": 3548,
+          "numerator": 520,
+          "operation": "rename",
+          "ratio": 0.146561,
+          "resolution_counts": {
+            "Conditional": 24,
+            "Derived": 0,
+            "Dynamic": 19,
+            "Exact": 520,
+            "Observed": 0,
+            "Unknown": 2985
+          },
+          "safe_count": 520,
+          "total_count": 3548
+        }
+      },
+      "project": "flask",
+      "references": 3548,
+      "resolution_counts": {
+        "Conditional": 24,
+        "Derived": 0,
+        "Dynamic": 19,
+        "Exact": 520,
+        "Observed": 0,
+        "Unknown": 2985
+      },
+      "scan_error": [],
+      "uncertain_kind_counts": {
+        "attribute": 1743,
+        "dynamic": 17,
+        "import": 390,
+        "module_getattr": 2,
+        "name": 807,
+        "unknown_name": 69
+      },
+      "uncertain_references": 3028,
+      "usable": {
+        "count": 520,
+        "denominator": 3548,
+        "ratio": 0.146561
+      }
+    },
+    {
+      "calls": 380,
+      "category": "http-client",
+      "entities": 1144,
+      "exact": {
+        "count": 1100,
+        "denominator": 4200,
+        "ratio": 0.261905
+      },
+      "hazard_counts": {
+        "dynamic_reference": 29,
+        "string_export": 143,
+        "wildcard_import": 16
+      },
+      "hazards": 188,
+      "language_theoretical_upper_bound": {
+        "count": 3100,
+        "denominator": 3100,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 2142,
+          "denominator": 2530,
+          "numerator": 388,
+          "operation": "change_signature",
+          "ratio": 0.15336,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 0,
+            "Dynamic": 2,
+            "Exact": 548,
+            "Observed": 0,
+            "Unknown": 1980
+          },
+          "safe_count": 388,
+          "total_count": 2530
+        },
+        "move": {
+          "blocked_count": 3100,
+          "denominator": 4200,
+          "numerator": 1100,
+          "operation": "move",
+          "ratio": 0.261905,
+          "resolution_counts": {
+            "Conditional": 143,
+            "Derived": 0,
+            "Dynamic": 29,
+            "Exact": 1100,
+            "Observed": 0,
+            "Unknown": 2928
+          },
+          "safe_count": 1100,
+          "total_count": 4200
+        },
+        "rename": {
+          "blocked_count": 3100,
+          "denominator": 4200,
+          "numerator": 1100,
+          "operation": "rename",
+          "ratio": 0.261905,
+          "resolution_counts": {
+            "Conditional": 143,
+            "Derived": 0,
+            "Dynamic": 29,
+            "Exact": 1100,
+            "Observed": 0,
+            "Unknown": 2928
+          },
+          "safe_count": 1100,
+          "total_count": 4200
+        }
+      },
+      "project": "httpx",
+      "references": 4200,
+      "resolution_counts": {
+        "Conditional": 143,
+        "Derived": 0,
+        "Dynamic": 29,
+        "Exact": 1100,
+        "Observed": 0,
+        "Unknown": 2928
+      },
+      "scan_error": [],
+      "uncertain_kind_counts": {
+        "attribute": 2240,
+        "dynamic": 29,
+        "import": 147,
+        "name": 481,
+        "string_export": 143,
+        "unknown_name": 44,
+        "wildcard_import": 16
+      },
+      "uncertain_references": 3100,
+      "usable": {
+        "count": 1100,
+        "denominator": 4200,
+        "ratio": 0.261905
+      }
+    },
+    {
+      "calls": 99,
+      "category": "data-pipeline",
+      "entities": 127,
+      "exact": {
+        "count": 168,
+        "denominator": 487,
+        "ratio": 0.344969
+      },
+      "hazard_counts": {
+        "dynamic_reference": 5,
+        "string_export": 9
+      },
+      "hazards": 14,
+      "language_theoretical_upper_bound": {
+        "count": 319,
+        "denominator": 319,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 121,
+          "denominator": 220,
+          "numerator": 99,
+          "operation": "change_signature",
+          "ratio": 0.45,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 0,
+            "Dynamic": 0,
+            "Exact": 123,
+            "Observed": 0,
+            "Unknown": 97
+          },
+          "safe_count": 99,
+          "total_count": 220
+        },
+        "move": {
+          "blocked_count": 319,
+          "denominator": 487,
+          "numerator": 168,
+          "operation": "move",
+          "ratio": 0.344969,
+          "resolution_counts": {
+            "Conditional": 9,
+            "Derived": 0,
+            "Dynamic": 5,
+            "Exact": 168,
+            "Observed": 0,
+            "Unknown": 305
+          },
+          "safe_count": 168,
+          "total_count": 487
+        },
+        "rename": {
+          "blocked_count": 319,
+          "denominator": 487,
+          "numerator": 168,
+          "operation": "rename",
+          "ratio": 0.344969,
+          "resolution_counts": {
+            "Conditional": 9,
+            "Derived": 0,
+            "Dynamic": 5,
+            "Exact": 168,
+            "Observed": 0,
+            "Unknown": 305
+          },
+          "safe_count": 168,
+          "total_count": 487
+        }
+      },
+      "project": "kedro",
+      "references": 487,
+      "resolution_counts": {
+        "Conditional": 9,
+        "Derived": 0,
+        "Dynamic": 5,
+        "Exact": 168,
+        "Observed": 0,
+        "Unknown": 305
+      },
+      "scan_error": [],
+      "uncertain_kind_counts": {
+        "attribute": 18,
+        "dynamic": 5,
+        "import": 67,
+        "name": 206,
+        "string_export": 9,
+        "unknown_name": 14
+      },
+      "uncertain_references": 319,
+      "usable": {
+        "count": 168,
+        "denominator": 487,
+        "ratio": 0.344969
+      }
+    },
+    {
+      "calls": 1817,
+      "category": "load-testing",
+      "entities": 1789,
+      "exact": {
+        "count": 3794,
+        "denominator": 7692,
+        "ratio": 0.49324
+      },
+      "hazard_counts": {
+        "dynamic_reference": 34,
+        "string_export": 28,
+        "uncertain_reference": 2
+      },
+      "hazards": 64,
+      "language_theoretical_upper_bound": {
+        "count": 3878,
+        "denominator": 3878,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 3213,
+          "denominator": 5058,
+          "numerator": 1845,
+          "operation": "change_signature",
+          "ratio": 0.364769,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 12,
+            "Dynamic": 4,
+            "Exact": 2300,
+            "Observed": 0,
+            "Unknown": 2742
+          },
+          "safe_count": 1845,
+          "total_count": 5058
+        },
+        "move": {
+          "blocked_count": 3878,
+          "denominator": 7692,
+          "numerator": 3814,
+          "operation": "move",
+          "ratio": 0.49584,
+          "resolution_counts": {
+            "Conditional": 35,
+            "Derived": 20,
+            "Dynamic": 34,
+            "Exact": 3794,
+            "Observed": 0,
+            "Unknown": 3809
+          },
+          "safe_count": 3814,
+          "total_count": 7692
+        },
+        "rename": {
+          "blocked_count": 3878,
+          "denominator": 7692,
+          "numerator": 3814,
+          "operation": "rename",
+          "ratio": 0.49584,
+          "resolution_counts": {
+            "Conditional": 35,
+            "Derived": 20,
+            "Dynamic": 34,
+            "Exact": 3794,
+            "Observed": 0,
+            "Unknown": 3809
+          },
+          "safe_count": 3814,
+          "total_count": 7692
+        }
+      },
+      "project": "locust",
+      "references": 7692,
+      "resolution_counts": {
+        "Conditional": 35,
+        "Derived": 20,
+        "Dynamic": 34,
+        "Exact": 3794,
+        "Observed": 0,
+        "Unknown": 3809
+      },
+      "scan_error": [],
+      "uncertain_kind_counts": {
+        "attribute": 1875,
+        "dynamic": 34,
+        "import": 490,
+        "name": 1286,
+        "string_export": 28,
+        "unknown_name": 165
+      },
+      "uncertain_references": 3878,
+      "usable": {
+        "count": 3814,
+        "denominator": 7692,
+        "ratio": 0.49584
+      }
+    },
+    {
+      "calls": 272,
+      "category": "serialization-library",
+      "entities": 1123,
+      "exact": {
+        "count": 528,
+        "denominator": 5080,
+        "ratio": 0.103937
+      },
+      "hazard_counts": {
+        "dynamic_reference": 20,
+        "string_export": 51
+      },
+      "hazards": 71,
+      "language_theoretical_upper_bound": {
+        "count": 4552,
+        "denominator": 4552,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 3430,
+          "denominator": 3709,
+          "numerator": 279,
+          "operation": "change_signature",
+          "ratio": 0.075222,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 0,
+            "Dynamic": 17,
+            "Exact": 374,
+            "Observed": 0,
+            "Unknown": 3318
+          },
+          "safe_count": 279,
+          "total_count": 3709
+        },
+        "move": {
+          "blocked_count": 4552,
+          "denominator": 5080,
+          "numerator": 528,
+          "operation": "move",
+          "ratio": 0.103937,
+          "resolution_counts": {
+            "Conditional": 59,
+            "Derived": 0,
+            "Dynamic": 20,
+            "Exact": 528,
+            "Observed": 0,
+            "Unknown": 4473
+          },
+          "safe_count": 528,
+          "total_count": 5080
+        },
+        "rename": {
+          "blocked_count": 4552,
+          "denominator": 5080,
+          "numerator": 528,
+          "operation": "rename",
+          "ratio": 0.103937,
+          "resolution_counts": {
+            "Conditional": 59,
+            "Derived": 0,
+            "Dynamic": 20,
+            "Exact": 528,
+            "Observed": 0,
+            "Unknown": 4473
+          },
+          "safe_count": 528,
+          "total_count": 5080
+        }
+      },
+      "project": "marshmallow",
+      "references": 5080,
+      "resolution_counts": {
+        "Conditional": 59,
+        "Derived": 0,
+        "Dynamic": 20,
+        "Exact": 528,
+        "Observed": 0,
+        "Unknown": 4473
+      },
+      "scan_error": null,
+      "uncertain_kind_counts": {
+        "attribute": 1280,
+        "dynamic": 20,
+        "import": 213,
+        "name": 2882,
+        "string_export": 51,
+        "unknown_name": 106
+      },
+      "uncertain_references": 4552,
+      "usable": {
+        "count": 528,
+        "denominator": 5080,
+        "ratio": 0.103937
+      }
+    },
+    {
+      "calls": 111,
+      "category": "plugin-architecture",
+      "entities": 294,
+      "exact": {
+        "count": 220,
+        "denominator": 970,
+        "ratio": 0.226804
+      },
+      "hazard_counts": {
+        "dynamic_reference": 8,
+        "module_getattr": 1,
+        "string_export": 14
+      },
+      "hazards": 23,
+      "language_theoretical_upper_bound": {
+        "count": 750,
+        "denominator": 750,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 372,
+          "denominator": 485,
+          "numerator": 113,
+          "operation": "change_signature",
+          "ratio": 0.23299,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 0,
+            "Dynamic": 5,
+            "Exact": 130,
+            "Observed": 0,
+            "Unknown": 350
+          },
+          "safe_count": 113,
+          "total_count": 485
+        },
+        "move": {
+          "blocked_count": 750,
+          "denominator": 970,
+          "numerator": 220,
+          "operation": "move",
+          "ratio": 0.226804,
+          "resolution_counts": {
+            "Conditional": 14,
+            "Derived": 0,
+            "Dynamic": 9,
+            "Exact": 220,
+            "Observed": 0,
+            "Unknown": 727
+          },
+          "safe_count": 220,
+          "total_count": 970
+        },
+        "rename": {
+          "blocked_count": 750,
+          "denominator": 970,
+          "numerator": 220,
+          "operation": "rename",
+          "ratio": 0.226804,
+          "resolution_counts": {
+            "Conditional": 14,
+            "Derived": 0,
+            "Dynamic": 9,
+            "Exact": 220,
+            "Observed": 0,
+            "Unknown": 727
+          },
+          "safe_count": 220,
+          "total_count": 970
+        }
+      },
+      "project": "pluggy",
+      "references": 970,
+      "resolution_counts": {
+        "Conditional": 14,
+        "Derived": 0,
+        "Dynamic": 9,
+        "Exact": 220,
+        "Observed": 0,
+        "Unknown": 727
+      },
+      "scan_error": null,
+      "uncertain_kind_counts": {
+        "attribute": 170,
+        "dynamic": 8,
+        "import": 138,
+        "module_getattr": 1,
+        "name": 394,
+        "string_export": 14,
+        "unknown_name": 25
+      },
+      "uncertain_references": 750,
+      "usable": {
+        "count": 220,
+        "denominator": 970,
+        "ratio": 0.226804
+      }
+    },
+    {
+      "calls": 1218,
+      "category": "test-framework",
+      "entities": 6187,
+      "exact": {
+        "count": 2243,
+        "denominator": 19279,
+        "ratio": 0.116344
+      },
+      "hazard_counts": {
+        "dynamic_reference": 218,
+        "module_getattr": 2,
+        "string_export": 118,
+        "uncertain_reference": 5
+      },
+      "hazards": 343,
+      "language_theoretical_upper_bound": {
+        "count": 17036,
+        "denominator": 17036,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 8449,
+          "denominator": 9746,
+          "numerator": 1297,
+          "operation": "change_signature",
+          "ratio": 0.13308,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 0,
+            "Dynamic": 100,
+            "Exact": 1491,
+            "Observed": 0,
+            "Unknown": 8155
+          },
+          "safe_count": 1297,
+          "total_count": 9746
+        },
+        "move": {
+          "blocked_count": 17036,
+          "denominator": 19279,
+          "numerator": 2243,
+          "operation": "move",
+          "ratio": 0.116344,
+          "resolution_counts": {
+            "Conditional": 152,
+            "Derived": 0,
+            "Dynamic": 220,
+            "Exact": 2243,
+            "Observed": 0,
+            "Unknown": 16664
+          },
+          "safe_count": 2243,
+          "total_count": 19279
+        },
+        "rename": {
+          "blocked_count": 17036,
+          "denominator": 19279,
+          "numerator": 2243,
+          "operation": "rename",
+          "ratio": 0.116344,
+          "resolution_counts": {
+            "Conditional": 152,
+            "Derived": 0,
+            "Dynamic": 220,
+            "Exact": 2243,
+            "Observed": 0,
+            "Unknown": 16664
+          },
+          "safe_count": 2243,
+          "total_count": 19279
+        }
+      },
+      "project": "pytest",
+      "references": 19279,
+      "resolution_counts": {
+        "Conditional": 152,
+        "Derived": 0,
+        "Dynamic": 220,
+        "Exact": 2243,
+        "Observed": 0,
+        "Unknown": 16664
+      },
+      "scan_error": null,
+      "uncertain_kind_counts": {
+        "attribute": 4921,
+        "dynamic": 218,
+        "import": 2308,
+        "module_getattr": 2,
+        "name": 9139,
+        "string_export": 118,
+        "unknown_name": 330
+      },
+      "uncertain_references": 17036,
+      "usable": {
+        "count": 2243,
+        "denominator": 19279,
+        "ratio": 0.116344
+      }
+    },
+    {
+      "calls": 2193,
+      "category": "bot-framework",
+      "entities": 7005,
+      "exact": {
+        "count": 5474,
+        "denominator": 36806,
+        "ratio": 0.148726
+      },
+      "hazard_counts": {
+        "dynamic_import": 1,
+        "dynamic_reference": 59,
+        "string_export": 555,
+        "uncertain_reference": 6
+      },
+      "hazards": 621,
+      "language_theoretical_upper_bound": {
+        "count": 31332,
+        "denominator": 31332,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 15922,
+          "denominator": 18233,
+          "numerator": 2311,
+          "operation": "change_signature",
+          "ratio": 0.126748,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 0,
+            "Dynamic": 9,
+            "Exact": 3873,
+            "Observed": 0,
+            "Unknown": 14351
+          },
+          "safe_count": 2311,
+          "total_count": 18233
+        },
+        "move": {
+          "blocked_count": 31332,
+          "denominator": 36806,
+          "numerator": 5474,
+          "operation": "move",
+          "ratio": 0.148726,
+          "resolution_counts": {
+            "Conditional": 577,
+            "Derived": 0,
+            "Dynamic": 60,
+            "Exact": 5474,
+            "Observed": 0,
+            "Unknown": 30695
+          },
+          "safe_count": 5474,
+          "total_count": 36806
+        },
+        "rename": {
+          "blocked_count": 31332,
+          "denominator": 36806,
+          "numerator": 5474,
+          "operation": "rename",
+          "ratio": 0.148726,
+          "resolution_counts": {
+            "Conditional": 577,
+            "Derived": 0,
+            "Dynamic": 60,
+            "Exact": 5474,
+            "Observed": 0,
+            "Unknown": 30695
+          },
+          "safe_count": 5474,
+          "total_count": 36806
+        }
+      },
+      "project": "python-telegram-bot",
+      "references": 36806,
+      "resolution_counts": {
+        "Conditional": 577,
+        "Derived": 0,
+        "Dynamic": 60,
+        "Exact": 5474,
+        "Observed": 0,
+        "Unknown": 30695
+      },
+      "scan_error": null,
+      "uncertain_kind_counts": {
+        "attribute": 3775,
+        "dynamic": 59,
+        "dynamic_import": 1,
+        "import": 4422,
+        "name": 21826,
+        "string_export": 555,
+        "unknown_name": 694
+      },
+      "uncertain_references": 31332,
+      "usable": {
+        "count": 5474,
+        "denominator": 36806,
+        "ratio": 0.148726
+      }
+    },
+    {
+      "calls": 237,
+      "category": "http-library",
+      "entities": 707,
+      "exact": {
+        "count": 557,
+        "denominator": 2890,
+        "ratio": 0.192734
+      },
+      "hazard_counts": {
+        "dynamic_reference": 42,
+        "string_export": 25
+      },
+      "hazards": 67,
+      "language_theoretical_upper_bound": {
+        "count": 2333,
+        "denominator": 2333,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 1358,
+          "denominator": 1607,
+          "numerator": 249,
+          "operation": "change_signature",
+          "ratio": 0.154947,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 0,
+            "Dynamic": 12,
+            "Exact": 277,
+            "Observed": 0,
+            "Unknown": 1318
+          },
+          "safe_count": 249,
+          "total_count": 1607
+        },
+        "move": {
+          "blocked_count": 2333,
+          "denominator": 2890,
+          "numerator": 557,
+          "operation": "move",
+          "ratio": 0.192734,
+          "resolution_counts": {
+            "Conditional": 33,
+            "Derived": 0,
+            "Dynamic": 42,
+            "Exact": 557,
+            "Observed": 0,
+            "Unknown": 2258
+          },
+          "safe_count": 557,
+          "total_count": 2890
+        },
+        "rename": {
+          "blocked_count": 2333,
+          "denominator": 2890,
+          "numerator": 557,
+          "operation": "rename",
+          "ratio": 0.192734,
+          "resolution_counts": {
+            "Conditional": 33,
+            "Derived": 0,
+            "Dynamic": 42,
+            "Exact": 557,
+            "Observed": 0,
+            "Unknown": 2258
+          },
+          "safe_count": 557,
+          "total_count": 2890
+        }
+      },
+      "project": "requests",
+      "references": 2890,
+      "resolution_counts": {
+        "Conditional": 33,
+        "Derived": 0,
+        "Dynamic": 42,
+        "Exact": 557,
+        "Observed": 0,
+        "Unknown": 2258
+      },
+      "scan_error": null,
+      "uncertain_kind_counts": {
+        "attribute": 788,
+        "dynamic": 42,
+        "import": 346,
+        "name": 1069,
+        "string_export": 25,
+        "unknown_name": 63
+      },
+      "uncertain_references": 2333,
+      "usable": {
+        "count": 557,
+        "denominator": 2890,
+        "ratio": 0.192734
+      }
+    },
+    {
+      "calls": 3390,
+      "category": "terminal-ui",
+      "entities": 1863,
+      "exact": {
+        "count": 5786,
+        "denominator": 9934,
+        "ratio": 0.582444
+      },
+      "hazard_counts": {},
+      "hazards": 43,
+      "language_theoretical_upper_bound": {
+        "count": 4120,
+        "denominator": 4120,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 1825,
+          "denominator": 5715,
+          "numerator": 3890,
+          "operation": "change_signature",
+          "ratio": 0.680665,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 28,
+            "Dynamic": 20,
+            "Exact": 4208,
+            "Observed": 0,
+            "Unknown": 1459
+          },
+          "safe_count": 3890,
+          "total_count": 5715
+        },
+        "move": {
+          "blocked_count": 4120,
+          "denominator": 9934,
+          "numerator": 5814,
+          "operation": "move",
+          "ratio": 0.585263,
+          "resolution_counts": {
+            "Conditional": 16,
+            "Derived": 28,
+            "Dynamic": 36,
+            "Exact": 5786,
+            "Observed": 0,
+            "Unknown": 4068
+          },
+          "safe_count": 5814,
+          "total_count": 9934
+        },
+        "rename": {
+          "blocked_count": 4120,
+          "denominator": 9934,
+          "numerator": 5814,
+          "operation": "rename",
+          "ratio": 0.585263,
+          "resolution_counts": {
+            "Conditional": 16,
+            "Derived": 28,
+            "Dynamic": 36,
+            "Exact": 5786,
+            "Observed": 0,
+            "Unknown": 4068
+          },
+          "safe_count": 5814,
+          "total_count": 9934
+        }
+      },
+      "project": "rich",
+      "references": 9934,
+      "resolution_counts": {
+        "Conditional": 16,
+        "Derived": 28,
+        "Dynamic": 36,
+        "Exact": 5786,
+        "Observed": 0,
+        "Unknown": 4068
+      },
+      "scan_error": null,
+      "uncertain_kind_counts": {
+        "attribute": 729,
+        "dynamic": 36,
+        "import": 801,
+        "name": 2493,
+        "string_export": 6,
+        "unknown_name": 55
+      },
+      "uncertain_references": 4120,
+      "usable": {
+        "count": 5814,
+        "denominator": 9934,
+        "ratio": 0.585263
+      }
+    },
+    {
+      "calls": 5149,
+      "category": "plugin-heavy-crawler",
+      "entities": 6331,
+      "exact": {
+        "count": 13482,
+        "denominator": 25561,
+        "ratio": 0.527444
+      },
+      "hazard_counts": {},
+      "hazards": 367,
+      "language_theoretical_upper_bound": {
+        "count": 11973,
+        "denominator": 11973,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 7278,
+          "denominator": 12618,
+          "numerator": 5340,
+          "operation": "change_signature",
+          "ratio": 0.423205,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 23,
+            "Dynamic": 29,
+            "Exact": 7746,
+            "Observed": 0,
+            "Unknown": 4820
+          },
+          "safe_count": 5340,
+          "total_count": 12618
+        },
+        "move": {
+          "blocked_count": 11973,
+          "denominator": 25561,
+          "numerator": 13588,
+          "operation": "move",
+          "ratio": 0.531591,
+          "resolution_counts": {
+            "Conditional": 241,
+            "Derived": 106,
+            "Dynamic": 132,
+            "Exact": 13482,
+            "Observed": 0,
+            "Unknown": 11600
+          },
+          "safe_count": 13588,
+          "total_count": 25561
+        },
+        "rename": {
+          "blocked_count": 11973,
+          "denominator": 25561,
+          "numerator": 13588,
+          "operation": "rename",
+          "ratio": 0.531591,
+          "resolution_counts": {
+            "Conditional": 241,
+            "Derived": 106,
+            "Dynamic": 132,
+            "Exact": 13482,
+            "Observed": 0,
+            "Unknown": 11600
+          },
+          "safe_count": 13588,
+          "total_count": 25561
+        }
+      },
+      "project": "scrapy",
+      "references": 25561,
+      "resolution_counts": {
+        "Conditional": 241,
+        "Derived": 106,
+        "Dynamic": 132,
+        "Exact": 13482,
+        "Observed": 0,
+        "Unknown": 11600
+      },
+      "scan_error": null,
+      "uncertain_kind_counts": {
+        "attribute": 2889,
+        "dynamic": 126,
+        "dynamic_import": 3,
+        "import": 2569,
+        "module_getattr": 3,
+        "name": 5925,
+        "string_export": 235,
+        "unknown_name": 223
+      },
+      "uncertain_references": 11973,
+      "usable": {
+        "count": 13588,
+        "denominator": 25561,
+        "ratio": 0.531591
+      }
+    },
+    {
+      "calls": 6825,
+      "category": "data-access-library",
+      "entities": 30340,
+      "exact": {
+        "count": 27638,
+        "denominator": 176509,
+        "ratio": 0.156581
+      },
+      "hazard_counts": {},
+      "hazards": 1009,
+      "language_theoretical_upper_bound": {
+        "count": 148871,
+        "denominator": 148871,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 111274,
+          "denominator": 118786,
+          "numerator": 7512,
+          "operation": "change_signature",
+          "ratio": 0.06324,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 0,
+            "Dynamic": 203,
+            "Exact": 13470,
+            "Observed": 0,
+            "Unknown": 105113
+          },
+          "safe_count": 7512,
+          "total_count": 118786
+        },
+        "move": {
+          "blocked_count": 148871,
+          "denominator": 176509,
+          "numerator": 27638,
+          "operation": "move",
+          "ratio": 0.156581,
+          "resolution_counts": {
+            "Conditional": 376,
+            "Derived": 0,
+            "Dynamic": 662,
+            "Exact": 27638,
+            "Observed": 0,
+            "Unknown": 147833
+          },
+          "safe_count": 27638,
+          "total_count": 176509
+        },
+        "rename": {
+          "blocked_count": 148871,
+          "denominator": 176509,
+          "numerator": 27638,
+          "operation": "rename",
+          "ratio": 0.156581,
+          "resolution_counts": {
+            "Conditional": 376,
+            "Derived": 0,
+            "Dynamic": 662,
+            "Exact": 27638,
+            "Observed": 0,
+            "Unknown": 147833
+          },
+          "safe_count": 27638,
+          "total_count": 176509
+        }
+      },
+      "project": "sqlalchemy",
+      "references": 176509,
+      "resolution_counts": {
+        "Conditional": 376,
+        "Derived": 0,
+        "Dynamic": 662,
+        "Exact": 27638,
+        "Observed": 0,
+        "Unknown": 147833
+      },
+      "scan_error": null,
+      "uncertain_kind_counts": {
+        "attribute": 5761,
+        "dynamic": 659,
+        "dynamic_namespace": 2,
+        "import": 13099,
+        "module_getattr": 1,
+        "name": 124442,
+        "string_export": 320,
+        "unknown_name": 4572,
+        "wildcard_import": 15
+      },
+      "uncertain_references": 148871,
+      "usable": {
+        "count": 27638,
+        "denominator": 176509,
+        "ratio": 0.156581
+      }
+    },
+    {
+      "calls": 1418,
+      "category": "async-backend",
+      "entities": 1310,
+      "exact": {
+        "count": 3028,
+        "denominator": 6790,
+        "ratio": 0.44595
+      },
+      "hazard_counts": {},
+      "hazards": 109,
+      "language_theoretical_upper_bound": {
+        "count": 3762,
+        "denominator": 3762,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 1287,
+          "denominator": 2707,
+          "numerator": 1420,
+          "operation": "change_signature",
+          "ratio": 0.524566,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 0,
+            "Dynamic": 6,
+            "Exact": 1816,
+            "Observed": 0,
+            "Unknown": 885
+          },
+          "safe_count": 1420,
+          "total_count": 2707
+        },
+        "move": {
+          "blocked_count": 3762,
+          "denominator": 6790,
+          "numerator": 3028,
+          "operation": "move",
+          "ratio": 0.44595,
+          "resolution_counts": {
+            "Conditional": 80,
+            "Derived": 0,
+            "Dynamic": 31,
+            "Exact": 3028,
+            "Observed": 0,
+            "Unknown": 3651
+          },
+          "safe_count": 3028,
+          "total_count": 6790
+        },
+        "rename": {
+          "blocked_count": 3762,
+          "denominator": 6790,
+          "numerator": 3028,
+          "operation": "rename",
+          "ratio": 0.44595,
+          "resolution_counts": {
+            "Conditional": 80,
+            "Derived": 0,
+            "Dynamic": 31,
+            "Exact": 3028,
+            "Observed": 0,
+            "Unknown": 3651
+          },
+          "safe_count": 3028,
+          "total_count": 6790
+        }
+      },
+      "project": "starlette",
+      "references": 6790,
+      "resolution_counts": {
+        "Conditional": 80,
+        "Derived": 0,
+        "Dynamic": 31,
+        "Exact": 3028,
+        "Observed": 0,
+        "Unknown": 3651
+      },
+      "scan_error": null,
+      "uncertain_kind_counts": {
+        "attribute": 923,
+        "dynamic": 28,
+        "dynamic_import": 2,
+        "import": 553,
+        "module_getattr": 1,
+        "name": 2142,
+        "string_export": 78,
+        "unknown_name": 35
+      },
+      "uncertain_references": 3762,
+      "usable": {
+        "count": 3028,
+        "denominator": 6790,
+        "ratio": 0.44595
+      }
+    },
+    {
+      "calls": 1748,
+      "category": "cli-framework",
+      "entities": 2144,
+      "exact": {
+        "count": 1592,
+        "denominator": 8120,
+        "ratio": 0.196059
+      },
+      "hazard_counts": {},
+      "hazards": 43,
+      "language_theoretical_upper_bound": {
+        "count": 5462,
+        "denominator": 5462,
+        "ratio": 1.0
+      },
+      "operation_coverage": {
+        "change_signature": {
+          "blocked_count": 2937,
+          "denominator": 4686,
+          "numerator": 1749,
+          "operation": "change_signature",
+          "ratio": 0.373239,
+          "resolution_counts": {
+            "Conditional": 0,
+            "Derived": 1004,
+            "Dynamic": 13,
+            "Exact": 960,
+            "Observed": 0,
+            "Unknown": 2709
+          },
+          "safe_count": 1749,
+          "total_count": 4686
+        },
+        "move": {
+          "blocked_count": 5462,
+          "denominator": 8120,
+          "numerator": 2658,
+          "operation": "move",
+          "ratio": 0.32734,
+          "resolution_counts": {
+            "Conditional": 22,
+            "Derived": 1066,
+            "Dynamic": 32,
+            "Exact": 1592,
+            "Observed": 0,
+            "Unknown": 5408
+          },
+          "safe_count": 2658,
+          "total_count": 8120
+        },
+        "rename": {
+          "blocked_count": 5462,
+          "denominator": 8120,
+          "numerator": 2658,
+          "operation": "rename",
+          "ratio": 0.32734,
+          "resolution_counts": {
+            "Conditional": 22,
+            "Derived": 1066,
+            "Dynamic": 32,
+            "Exact": 1592,
+            "Observed": 0,
+            "Unknown": 5408
+          },
+          "safe_count": 2658,
+          "total_count": 8120
+        }
+      },
+      "project": "typer",
+      "references": 8120,
+      "resolution_counts": {
+        "Conditional": 22,
+        "Derived": 1066,
+        "Dynamic": 32,
+        "Exact": 1592,
+        "Observed": 0,
+        "Unknown": 5408
+      },
+      "scan_error": null,
+      "uncertain_kind_counts": {
+        "attribute": 1765,
+        "dynamic": 32,
+        "import": 721,
+        "name": 2871,
+        "string_export": 11,
+        "unknown_name": 62
+      },
+      "uncertain_references": 5462,
+      "usable": {
+        "count": 2658,
+        "denominator": 8120,
+        "ratio": 0.32734
+      }
+    }
+  ],
+  "schema": 1,
+  "status": "measured"
+}

@@ -1,0 +1,115 @@
+{
+  "candidates": [
+    {
+      "candidate_id": "existing-disagreement-001",
+      "changed": true,
+      "explicit": false,
+      "new_entities": [
+        "src.pluggy._compat.DistFacade"
+      ],
+      "old_entities": [
+        "src.pluggy._manager.DistFacade"
+      ],
+      "resolver_reason": "true_positive",
+      "resolver_score": 0.0,
+      "resolver_status": "Probable",
+      "signals": [
+        "Class definition removed from _manager.py and introduced in _compat.py."
+      ],
+      "source": "prior_targeted_audit_unverified"
+    },
+    {
+      "candidate_id": "existing-disagreement-002",
+      "changed": true,
+      "explicit": false,
+      "new_entities": [
+        "src.pluggy._compat.DistFacade.__dir__"
+      ],
+      "old_entities": [
+        "src.pluggy._manager.DistFacade.__dir__"
+      ],
+      "resolver_reason": "true_positive",
+      "resolver_score": 0.0,
+      "resolver_status": "Probable",
+      "signals": [
+        "Method moved with DistFacade."
+      ],
+      "source": "prior_targeted_audit_unverified"
+    },
+    {
+      "candidate_id": "existing-disagreement-003",
+      "changed": true,
+      "explicit": false,
+      "new_entities": [
+        "src.pluggy._compat.DistFacade.__init__"
+      ],
+      "old_entities": [
+        "src.pluggy._manager.DistFacade.__init__"
+      ],
+      "resolver_reason": "true_positive",
+      "resolver_score": 0.0,
+      "resolver_status": "Probable",
+      "signals": [
+        "Method moved with DistFacade."
+      ],
+      "source": "prior_targeted_audit_unverified"
+    },
+    {
+      "candidate_id": "existing-disagreement-004",
+      "changed": true,
+      "explicit": false,
+      "new_entities": [
+        "src.pluggy._compat.DistFacade.project_name"
+      ],
+      "old_entities": [
+        "src.pluggy._manager.DistFacade.project_name"
+      ],
+      "resolver_reason": "true_positive",
+      "resolver_score": 0.0,
+      "resolver_status": "Probable",
+      "signals": [
+        "Method moved with DistFacade."
+      ],
+      "source": "prior_targeted_audit_unverified"
+    },
+    {
+      "candidate_id": "existing-disagreement-005",
+      "changed": true,
+      "explicit": false,
+      "new_entities": [
+        "src.pluggy._manager.PluginManager.list_plugin_distributions"
+      ],
+      "old_entities": [
+        "src.pluggy._manager.PluginManager.list_plugin_distinfo"
+      ],
+      "resolver_reason": "false_positive",
+      "resolver_score": 0.0,
+      "resolver_status": "Probable",
+      "signals": [
+        "list_plugin_distinfo remains at the same locator in the new revision; list_plugin_distributions is an additional method."
+      ],
+      "source": "prior_targeted_audit_unverified"
+    },
+    {
+      "candidate_id": "existing-disagreement-006",
+      "changed": true,
+      "explicit": false,
+      "new_entities": [
+        "tests.conftest._standard_os_environ"
+      ],
+      "old_entities": [
+        "tests.conftest._reset_os_environ"
+      ],
+      "resolver_reason": "proxy_ground_truth_error",
+      "resolver_score": 0.0,
+      "resolver_status": "Probable",
+      "signals": [
+        "_standard_os_environ already existed in the old revision; the new fixture combines/replaces behavior, so this is not an unambiguous rename from _reset_os_environ."
+      ],
+      "source": "prior_targeted_audit_unverified"
+    }
+  ],
+  "kind": "meldra.identity-review-queue",
+  "schema": 1,
+  "target": 600
+}

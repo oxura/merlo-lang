@@ -1,0 +1,23 @@
+fn mix(value: UInt64, index: UInt64, seed: UInt64) -> UInt64:
+    let shifted: UInt64 = seed + index * 17
+    let mixed: UInt64 = value ^ shifted
+    let product: UInt64 = mixed * 11400714819323198485
+    product ^ (product >> 29)
+
+fn main(n: UInt64, seed: UInt64, rounds: UInt64, slice_start: UInt64, slice_length: UInt64) -> UInt64:
+    let bytes: Bytes = Bytes.new(n)
+    for i in 0..n:
+        bytes[i] = mix(seed, i, seed) & 255
+    var round: UInt64 = 0
+    while round < rounds:
+        for i in 0..n:
+            let current: UInt64 = bytes[i]
+            bytes[i] = mix(current, i, seed + round) & 255
+        round = round + 1
+    let view: BytesView = bytes.slice(slice_start, slice_length)
+    var checksum: UInt64 = seed
+    for j in 0..slice_length:
+        checksum = checksum ^ ((view[j] + j) * 1099511628211)
+    let observed_length: UInt64 = view.len()
+    bytes[0] = (bytes[0] + checksum + observed_length) & 255
+    checksum ^ observed_length ^ bytes[0]

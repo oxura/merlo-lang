@@ -1,0 +1,15 @@
+{
+  "allocations_removed": 0,
+  "bounds_checks_removed": 0,
+  "calls_inlined": 0,
+  "drops_inserted": 0,
+  "heap_allocations": 0,
+  "in_place_reuses": 0,
+  "instructions_after": 84,
+  "instructions_before": 84,
+  "instructions_removed": 0,
+  "loops_fused": 0,
+  "name": "inlining",
+  "specializations_created": 0,
+  "stack_allocations": 0
+}

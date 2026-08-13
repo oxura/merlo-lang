@@ -1,0 +1,11 @@
+{
+  "hypothesis": "Direct synchronous calls transfer Bytes ownership and borrow BytesView without lifetime syntax, payload copies, extra allocation, reference counting, or ambiguous ownership.",
+  "competing_explanation_1": "Descriptor copies or optimizer inlining can hide a duplicated owner or payload copy.",
+  "competing_explanation_2": "A memory-bound call-heavy workload can hide an expensive ABI or retain/release traffic.",
+  "falsifier": "Any borrowed escape, hidden copy/allocation/RC, lost or duplicate owner, sanitizer defect, ambiguous HIR/MIR relation, valid<320, invalid<220, performance>1.10x best equivalent arm, or full-suite failure.",
+  "minimal_change": "Add only direct synchronous Bytes owned-transfer and BytesView call-scoped borrow lowering plus versioned evidence extensions.",
+  "required_evidence": "surface/HIR/MIR/native differential corpus, negative ownership fixtures, ASan/UBSan/LSan, no-inline ABI controls, structural counters, call-heavy three-arm timing, full suite, frozen hashes.",
+  "stop_condition": "Stop on confirmed safety defect; otherwise select one preregistered status after one Decision Run.",
+  "allowed_statuses": ["BYTES_CALL_BOUNDARY_SUPPORTED", "BYTES_CALL_BOUNDARY_INCOMPLETE", "BYTES_CALL_BOUNDARY_SAFETY_DEFECT"],
+  "gates": {"valid_minimum": 320, "invalid_minimum": 220, "warmups": 5, "measured_runs": 30, "relative_mad_max": 0.05, "meldra_over_best_max": 1.10}
+}

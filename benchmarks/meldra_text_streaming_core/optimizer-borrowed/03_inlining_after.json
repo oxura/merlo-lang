@@ -1,0 +1,184 @@
+{
+  "entry_function": "main",
+  "functions": [
+    {
+      "blocks": [
+        {
+          "id": "bb1_entry",
+          "instructions": [
+            {
+              "attributes": {
+                "diagnostic": "BytesSliceOutOfBounds",
+                "range_relation": "result_inside_receiver",
+                "receiver_kind": "BytesView",
+                "representation": "borrowed_pointer_length_v1"
+              },
+              "id": "i1",
+              "op": "bytes_slice",
+              "operands": [
+                "%data_1",
+                "%start_2",
+                "%length_3"
+              ],
+              "result": "%v_4",
+              "source": {
+                "column": 22,
+                "end_column": 47,
+                "end_line": 2,
+                "line": 2,
+                "path": "streaming/borrowed.meldra"
+              },
+              "type": {
+                "bits": null,
+                "element": null,
+                "kind": "record",
+                "length": null,
+                "name": "BytesView",
+                "record": "BytesView",
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "constructs_ast": false,
+                "consumer": "deterministic_fnv1a64_v1",
+                "receiver_kind": "BytesView",
+                "streaming": true
+              },
+              "id": "i2",
+              "op": "json_token_checksum",
+              "operands": [
+                "%v_4"
+              ],
+              "result": "%v_5",
+              "source": {
+                "column": 11,
+                "end_column": 36,
+                "end_line": 3,
+                "line": 3,
+                "path": "streaming/borrowed.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "return",
+            "source": {
+              "column": 4,
+              "end_column": 36,
+              "end_line": 3,
+              "line": 3,
+              "path": "streaming/borrowed.meldra"
+            },
+            "targets": [],
+            "value": "%v_5"
+          }
+        }
+      ],
+      "entry_block": "bb1_entry",
+      "generic_parameters": [],
+      "instruction_count": 2,
+      "name": "main",
+      "parameters": [
+        {
+          "name": "data",
+          "ownership": "borrowed",
+          "type": {
+            "bits": null,
+            "element": null,
+            "kind": "record",
+            "length": null,
+            "name": "BytesView",
+            "record": "BytesView",
+            "shared": false,
+            "unique": false
+          },
+          "value": "%data_1"
+        },
+        {
+          "name": "start",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%start_2"
+        },
+        {
+          "name": "length",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%length_3"
+        }
+      ],
+      "pure": true,
+      "return_type": {
+        "bits": 64,
+        "element": null,
+        "kind": "uint",
+        "length": null,
+        "name": "UInt64",
+        "record": null,
+        "shared": false,
+        "unique": false
+      },
+      "source": {
+        "column": 0,
+        "end_column": 36,
+        "end_line": 3,
+        "line": 1,
+        "path": "streaming/borrowed.meldra"
+      }
+    }
+  ],
+  "instruction_count": 2,
+  "records": [],
+  "schema_version": 1,
+  "source_sha256": "da67e99218ba2f7651d2c863cd9af499bcf6af09a1f66881bdc8b62c1051d775",
+  "subset_forms": [
+    "fn",
+    "let",
+    "var",
+    "if",
+    "match",
+    "for",
+    "while",
+    "direct_function_calls"
+  ],
+  "subset_types": [
+    "Int64",
+    "UInt64",
+    "Float32",
+    "Float64",
+    "Bool",
+    "records",
+    "arrays",
+    "slices"
+  ]
+}

@@ -1,0 +1,7 @@
+fn main(n: UInt64) -> UInt64:
+    var value: UInt64 = 1
+    var checksum: UInt64 = 0
+    for i in 0..n:
+        value = value * 1664525 + 1013904223
+        checksum = checksum ^ (value + i)
+    checksum

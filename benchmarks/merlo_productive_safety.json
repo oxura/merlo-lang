@@ -1,0 +1,233 @@
+{
+  "schema_version": 1,
+  "kind": "merlo.productive-safety",
+  "status": "PASSED",
+  "records": [
+    {
+      "scenario": "map_collisions_growth_updates",
+      "sanitizer": "asan",
+      "command": [
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/map_collisions_growth_updates_asan"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "b60a5cfe79efa27ddef5360cae359dc3c0605135e2dd669a9972b1b7e8e3548d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASSED",
+      "expectation": "success",
+      "reason": "marker OK result= observed; expected Map behavior and clean sanitizer run observed"
+    },
+    {
+      "scenario": "map_collisions_growth_updates",
+      "sanitizer": "ubsan",
+      "command": [
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/map_collisions_growth_updates_ubsan"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "b60a5cfe79efa27ddef5360cae359dc3c0605135e2dd669a9972b1b7e8e3548d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASSED",
+      "expectation": "success",
+      "reason": "marker OK result= observed; expected Map behavior and clean sanitizer run observed"
+    },
+    {
+      "scenario": "map_collisions_growth_updates",
+      "sanitizer": "lsan",
+      "command": [
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/map_collisions_growth_updates_lsan"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "b60a5cfe79efa27ddef5360cae359dc3c0605135e2dd669a9972b1b7e8e3548d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASSED",
+      "expectation": "success",
+      "reason": "marker OK result= observed; expected Map behavior and clean sanitizer run observed"
+    },
+    {
+      "scenario": "map_uint64_overflow",
+      "sanitizer": "asan",
+      "command": [
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/map_uint64_overflow_asan"
+      ],
+      "exit_code": -6,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "eacbc50fb82a9cfe4c7f1ca044e2f2ef57ad51ef9d45f05fbd183d58c725091d",
+      "status": "PASSED",
+      "expectation": "typed_failure",
+      "reason": "marker MerloOverflow:MapUInt64 observed; expected Map behavior and clean sanitizer run observed"
+    },
+    {
+      "scenario": "map_uint64_overflow",
+      "sanitizer": "ubsan",
+      "command": [
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/map_uint64_overflow_ubsan"
+      ],
+      "exit_code": -6,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "eacbc50fb82a9cfe4c7f1ca044e2f2ef57ad51ef9d45f05fbd183d58c725091d",
+      "status": "PASSED",
+      "expectation": "typed_failure",
+      "reason": "marker MerloOverflow:MapUInt64 observed; expected Map behavior and clean sanitizer run observed"
+    },
+    {
+      "scenario": "map_uint64_overflow",
+      "sanitizer": "lsan",
+      "command": [
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/map_uint64_overflow_lsan"
+      ],
+      "exit_code": -6,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "eacbc50fb82a9cfe4c7f1ca044e2f2ef57ad51ef9d45f05fbd183d58c725091d",
+      "status": "PASSED",
+      "expectation": "typed_failure",
+      "reason": "marker MerloOverflow:MapUInt64 observed; expected Map behavior and clean sanitizer run observed"
+    },
+    {
+      "scenario": "resource_repeated_processing",
+      "sanitizer": "none",
+      "command": [
+        "/usr/bin/python3",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/streaming_resource_probe.py",
+        "resource_repeated_processing",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/resource_repeated_processing.input"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "8d0b2ac4ae75daa0627730d8ca70fde3ac2e419ed619c436c3c26402505bb087",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASSED",
+      "expectation": "success",
+      "reason": "marker SAFETY_PROBE PASSED resource_repeated_processing observed; streaming resource invariant observed"
+    },
+    {
+      "scenario": "resource_early_failure",
+      "sanitizer": "none",
+      "command": [
+        "/usr/bin/python3",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/streaming_resource_probe.py",
+        "resource_early_failure",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/resource_early_failure.input"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "10fb61fcd3379c771092c5cfe1a7eec4b43242e00f6d3b6ae86c9be02b2b39c2",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASSED",
+      "expectation": "success",
+      "reason": "marker SAFETY_PROBE PASSED resource_early_failure observed; streaming resource invariant observed"
+    },
+    {
+      "scenario": "resource_late_failure",
+      "sanitizer": "none",
+      "command": [
+        "/usr/bin/python3",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/streaming_resource_probe.py",
+        "resource_late_failure",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/resource_late_failure.input"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "8c1702b661546212a893333f52d628252d0373e3baa88a758bb43dac08bb8421",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASSED",
+      "expectation": "success",
+      "reason": "marker SAFETY_PROBE PASSED resource_late_failure observed; streaming resource invariant observed"
+    },
+    {
+      "scenario": "resource_cleanup",
+      "sanitizer": "none",
+      "command": [
+        "/usr/bin/python3",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/streaming_resource_probe.py",
+        "resource_cleanup",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/resource_cleanup.input"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "eaddfddfca99357e8dffaf885d37c93f33b9f1438c3b7c34fcd6569f681f89a0",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASSED",
+      "expectation": "success",
+      "reason": "marker SAFETY_PROBE PASSED resource_cleanup observed; streaming resource invariant observed"
+    },
+    {
+      "scenario": "resource_line_reuse",
+      "sanitizer": "none",
+      "command": [
+        "/usr/bin/python3",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/streaming_resource_probe.py",
+        "resource_line_reuse",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/resource_line_reuse.input"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "38aeee6010e0bcc56a9f7e089e16b654d5d8f3daf937ce61f05b188de5e2e7bf",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASSED",
+      "expectation": "success",
+      "reason": "marker SAFETY_PROBE PASSED resource_line_reuse observed; streaming resource invariant observed"
+    },
+    {
+      "scenario": "resource_unicode",
+      "sanitizer": "none",
+      "command": [
+        "/usr/bin/python3",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/streaming_resource_probe.py",
+        "resource_unicode",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/resource_unicode.input"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "04e5321b1776e61e0ee3e05d07255acf9cd9d0046f93ff6761a61adb7e96d8bb",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASSED",
+      "expectation": "success",
+      "reason": "marker SAFETY_PROBE PASSED resource_unicode observed; streaming resource invariant observed"
+    },
+    {
+      "scenario": "resource_large_input",
+      "sanitizer": "none",
+      "command": [
+        "/usr/bin/python3",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/streaming_resource_probe.py",
+        "resource_large_input",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/resource_large_input.input"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "902f485edfd645ee0d56344ad640349451f539f18da97145ad31b1ece45a66ef",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASSED",
+      "expectation": "success",
+      "reason": "marker SAFETY_PROBE PASSED resource_large_input observed; streaming resource invariant observed"
+    },
+    {
+      "scenario": "resource_fd_stability",
+      "sanitizer": "none",
+      "command": [
+        "/usr/bin/python3",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/streaming_resource_probe.py",
+        "resource_fd_stability",
+        "/home/manera/orca/workspaces/Bedik-1/sablefish/productive-safety-x3qsi6uw/resource_fd_stability.input"
+      ],
+      "exit_code": 0,
+      "stdout_sha256": "cb8e959765310718ecfc88db0a0a4a76eda26dd8feac28b98eb38964e2955d80",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "PASSED",
+      "expectation": "success",
+      "reason": "marker SAFETY_PROBE PASSED resource_fd_stability observed; streaming resource invariant observed"
+    }
+  ],
+  "invariants": {
+    "map_collisions": "PASSED",
+    "map_growth": "PASSED",
+    "map_updates": "PASSED",
+    "map_cleanup": "PASSED",
+    "map_checked_overflow": "PASSED",
+    "resource_repeated_processing": "PASSED",
+    "resource_early_failure": "PASSED",
+    "resource_late_failure": "PASSED",
+    "resource_cleanup": "PASSED",
+    "resource_line_reuse": "PASSED",
+    "resource_unicode": "PASSED",
+    "resource_large_input": "PASSED",
+    "resource_fd_stability": "PASSED"
+  },
+  "aggregate_proofs": {
+    "map_safety": true,
+    "streaming_resource_safety": true,
+    "all_relevant_executable_checks": true
+  }
+}

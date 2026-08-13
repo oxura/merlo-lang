@@ -1,0 +1,507 @@
+{
+  "agent": {
+    "input_tokens": null,
+    "output_tokens": null,
+    "provider": null,
+    "status": "UNMEASURED",
+    "successful_tasks": null,
+    "task_success_denominator": null,
+    "tool_calls": null
+  },
+  "core": {
+    "arm": "core_ir",
+    "change_signature_attempt_denominator": 3,
+    "dynamic_reference_count": 0,
+    "foreign_reference_count": 3,
+    "identity_change_denominator": 9,
+    "identity_continuity_count": 9,
+    "interface_change_changed_packages": 3,
+    "interface_change_package_denominator": 6,
+    "internal_exact_numerator": 3,
+    "internal_reference_denominator": 3,
+    "move_attempt_denominator": 3,
+    "private_change_affected_packages": 3,
+    "private_change_affected_symbols": 3,
+    "private_change_interface_changed_packages": 0,
+    "private_change_package_denominator": 6,
+    "private_change_symbol_denominator": 9,
+    "public_contracts": [
+      "pricekit.api.format_price(value: str) -> str",
+      "routekit.api.format_route(value: str) -> str",
+      "shopapp.api.render_price(value: str) -> str",
+      "textapp.api.render_title(value: str) -> str",
+      "textkit.api.format_title(value: str) -> str",
+      "webapp.api.render_route(value: str) -> str"
+    ],
+    "reference_denominator": 6,
+    "rename_attempt_denominator": 3,
+    "safe_change_signature_count": 3,
+    "safe_move_count": 3,
+    "safe_rename_count": 3,
+    "serialized_context_bytes": 4436,
+    "unknown_reference_count": 0
+  },
+  "fixtures": [
+    {
+      "core": {
+        "arm": "core_ir",
+        "change_signature_attempt_denominator": 1,
+        "dynamic_reference_count": 0,
+        "foreign_reference_count": 1,
+        "identity_change_denominator": 3,
+        "identity_continuity_count": 3,
+        "interface_change_changed_packages": 1,
+        "interface_change_package_denominator": 2,
+        "internal_exact_numerator": 1,
+        "internal_reference_denominator": 1,
+        "move_attempt_denominator": 1,
+        "private_change_affected_packages": 1,
+        "private_change_affected_symbols": 1,
+        "private_change_interface_changed_packages": 0,
+        "private_change_package_denominator": 2,
+        "private_change_symbol_denominator": 3,
+        "public_contracts": [
+          "pricekit.api.format_price(value: str) -> str",
+          "shopapp.api.render_price(value: str) -> str"
+        ],
+        "reference_denominator": 2,
+        "rename_attempt_denominator": 1,
+        "safe_change_signature_count": 1,
+        "safe_move_count": 1,
+        "safe_rename_count": 1,
+        "serialized_context_bytes": 1483,
+        "unknown_reference_count": 0
+      },
+      "declared_public_contracts": [
+        "pricekit.api.format_price(value: str) -> str",
+        "shopapp.api.render_price(value: str) -> str"
+      ],
+      "fixture_id": "price",
+      "hypotheses": [
+        {
+          "denominator": 1,
+          "hypothesis": "core_context_is_smaller",
+          "numerator": 1,
+          "rationale": "Stable compact JSON byte counts are compared without estimating tokens.",
+          "status": "SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "core_identity_continuity_exceeds_python_sidecar",
+          "numerator": 0,
+          "rationale": "Core SymbolId continuity is compared with ChangeIR-preserved Python entity identity.",
+          "status": "NOT_SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "core_internal_resolution",
+          "numerator": 1,
+          "rationale": "All Core internal references must be Exact and Unknown must remain zero.",
+          "status": "SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "core_safe_changes_exceed_python_sidecar",
+          "numerator": 0,
+          "rationale": "Only successfully applied isolated semantic changes count in either arm.",
+          "status": "NOT_SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "declared_public_contract_equivalence",
+          "numerator": 1,
+          "rationale": "Both encodings are compared with the generated fixture contract, not human ground truth.",
+          "status": "SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "interface_revision_propagates",
+          "numerator": 1,
+          "rationale": "A public rename must produce an explicit, package-bounded interface revision change.",
+          "status": "SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "private_change_is_interface_bounded",
+          "numerator": 1,
+          "rationale": "A private implementation edit must not alter a package interface or invalidate every package.",
+          "status": "SUPPORTED"
+        }
+      ],
+      "provenance": {
+        "fixture_id": "price",
+        "human_ground_truth": false,
+        "label_source": "benchmark_policy",
+        "oracle": "declared_public_contract",
+        "source": "generated:meldra.core_bench:static_control"
+      },
+      "python": {
+        "arm": "python_sidecar",
+        "change_signature_attempt_denominator": 1,
+        "dynamic_reference_count": 0,
+        "foreign_reference_count": 1,
+        "identity_change_denominator": 3,
+        "identity_continuity_count": 3,
+        "interface_change_changed_packages": 2,
+        "interface_change_package_denominator": 2,
+        "internal_exact_numerator": 2,
+        "internal_reference_denominator": 2,
+        "move_attempt_denominator": 1,
+        "private_change_affected_packages": 1,
+        "private_change_affected_symbols": 1,
+        "private_change_interface_changed_packages": 0,
+        "private_change_package_denominator": 2,
+        "private_change_symbol_denominator": 3,
+        "public_contracts": [
+          "pricekit.api.format_price(value: str) -> str",
+          "shopapp.api.render_price(value: str) -> str"
+        ],
+        "reference_denominator": 3,
+        "rename_attempt_denominator": 1,
+        "safe_change_signature_count": 1,
+        "safe_move_count": 1,
+        "safe_rename_count": 1,
+        "serialized_context_bytes": 3590,
+        "unknown_reference_count": 0
+      }
+    },
+    {
+      "core": {
+        "arm": "core_ir",
+        "change_signature_attempt_denominator": 1,
+        "dynamic_reference_count": 0,
+        "foreign_reference_count": 1,
+        "identity_change_denominator": 3,
+        "identity_continuity_count": 3,
+        "interface_change_changed_packages": 1,
+        "interface_change_package_denominator": 2,
+        "internal_exact_numerator": 1,
+        "internal_reference_denominator": 1,
+        "move_attempt_denominator": 1,
+        "private_change_affected_packages": 1,
+        "private_change_affected_symbols": 1,
+        "private_change_interface_changed_packages": 0,
+        "private_change_package_denominator": 2,
+        "private_change_symbol_denominator": 3,
+        "public_contracts": [
+          "routekit.api.format_route(value: str) -> str",
+          "webapp.api.render_route(value: str) -> str"
+        ],
+        "reference_denominator": 2,
+        "rename_attempt_denominator": 1,
+        "safe_change_signature_count": 1,
+        "safe_move_count": 1,
+        "safe_rename_count": 1,
+        "serialized_context_bytes": 1479,
+        "unknown_reference_count": 0
+      },
+      "declared_public_contracts": [
+        "routekit.api.format_route(value: str) -> str",
+        "webapp.api.render_route(value: str) -> str"
+      ],
+      "fixture_id": "route",
+      "hypotheses": [
+        {
+          "denominator": 1,
+          "hypothesis": "core_context_is_smaller",
+          "numerator": 1,
+          "rationale": "Stable compact JSON byte counts are compared without estimating tokens.",
+          "status": "SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "core_identity_continuity_exceeds_python_sidecar",
+          "numerator": 0,
+          "rationale": "Core SymbolId continuity is compared with ChangeIR-preserved Python entity identity.",
+          "status": "NOT_SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "core_internal_resolution",
+          "numerator": 1,
+          "rationale": "All Core internal references must be Exact and Unknown must remain zero.",
+          "status": "SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "core_safe_changes_exceed_python_sidecar",
+          "numerator": 0,
+          "rationale": "Only successfully applied isolated semantic changes count in either arm.",
+          "status": "NOT_SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "declared_public_contract_equivalence",
+          "numerator": 1,
+          "rationale": "Both encodings are compared with the generated fixture contract, not human ground truth.",
+          "status": "SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "interface_revision_propagates",
+          "numerator": 1,
+          "rationale": "A public rename must produce an explicit, package-bounded interface revision change.",
+          "status": "SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "private_change_is_interface_bounded",
+          "numerator": 1,
+          "rationale": "A private implementation edit must not alter a package interface or invalidate every package.",
+          "status": "SUPPORTED"
+        }
+      ],
+      "provenance": {
+        "fixture_id": "route",
+        "human_ground_truth": false,
+        "label_source": "benchmark_policy",
+        "oracle": "declared_public_contract",
+        "source": "generated:meldra.core_bench:static_control"
+      },
+      "python": {
+        "arm": "python_sidecar",
+        "change_signature_attempt_denominator": 1,
+        "dynamic_reference_count": 0,
+        "foreign_reference_count": 1,
+        "identity_change_denominator": 3,
+        "identity_continuity_count": 3,
+        "interface_change_changed_packages": 2,
+        "interface_change_package_denominator": 2,
+        "internal_exact_numerator": 2,
+        "internal_reference_denominator": 2,
+        "move_attempt_denominator": 1,
+        "private_change_affected_packages": 1,
+        "private_change_affected_symbols": 1,
+        "private_change_interface_changed_packages": 0,
+        "private_change_package_denominator": 2,
+        "private_change_symbol_denominator": 3,
+        "public_contracts": [
+          "routekit.api.format_route(value: str) -> str",
+          "webapp.api.render_route(value: str) -> str"
+        ],
+        "reference_denominator": 3,
+        "rename_attempt_denominator": 1,
+        "safe_change_signature_count": 1,
+        "safe_move_count": 1,
+        "safe_rename_count": 1,
+        "serialized_context_bytes": 3585,
+        "unknown_reference_count": 0
+      }
+    },
+    {
+      "core": {
+        "arm": "core_ir",
+        "change_signature_attempt_denominator": 1,
+        "dynamic_reference_count": 0,
+        "foreign_reference_count": 1,
+        "identity_change_denominator": 3,
+        "identity_continuity_count": 3,
+        "interface_change_changed_packages": 1,
+        "interface_change_package_denominator": 2,
+        "internal_exact_numerator": 1,
+        "internal_reference_denominator": 1,
+        "move_attempt_denominator": 1,
+        "private_change_affected_packages": 1,
+        "private_change_affected_symbols": 1,
+        "private_change_interface_changed_packages": 0,
+        "private_change_package_denominator": 2,
+        "private_change_symbol_denominator": 3,
+        "public_contracts": [
+          "textapp.api.render_title(value: str) -> str",
+          "textkit.api.format_title(value: str) -> str"
+        ],
+        "reference_denominator": 2,
+        "rename_attempt_denominator": 1,
+        "safe_change_signature_count": 1,
+        "safe_move_count": 1,
+        "safe_rename_count": 1,
+        "serialized_context_bytes": 1474,
+        "unknown_reference_count": 0
+      },
+      "declared_public_contracts": [
+        "textapp.api.render_title(value: str) -> str",
+        "textkit.api.format_title(value: str) -> str"
+      ],
+      "fixture_id": "text",
+      "hypotheses": [
+        {
+          "denominator": 1,
+          "hypothesis": "core_context_is_smaller",
+          "numerator": 1,
+          "rationale": "Stable compact JSON byte counts are compared without estimating tokens.",
+          "status": "SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "core_identity_continuity_exceeds_python_sidecar",
+          "numerator": 1,
+          "rationale": "Core SymbolId continuity is compared with ChangeIR-preserved Python entity identity.",
+          "status": "SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "core_internal_resolution",
+          "numerator": 1,
+          "rationale": "All Core internal references must be Exact and Unknown must remain zero.",
+          "status": "SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "core_safe_changes_exceed_python_sidecar",
+          "numerator": 1,
+          "rationale": "Only successfully applied isolated semantic changes count in either arm.",
+          "status": "SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "declared_public_contract_equivalence",
+          "numerator": 1,
+          "rationale": "Both encodings are compared with the generated fixture contract, not human ground truth.",
+          "status": "SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "interface_revision_propagates",
+          "numerator": 1,
+          "rationale": "A public rename must produce an explicit, package-bounded interface revision change.",
+          "status": "SUPPORTED"
+        },
+        {
+          "denominator": 1,
+          "hypothesis": "private_change_is_interface_bounded",
+          "numerator": 1,
+          "rationale": "A private implementation edit must not alter a package interface or invalidate every package.",
+          "status": "SUPPORTED"
+        }
+      ],
+      "provenance": {
+        "fixture_id": "text",
+        "human_ground_truth": false,
+        "label_source": "benchmark_policy",
+        "oracle": "declared_public_contract",
+        "source": "generated:meldra.core_bench:fixed_getattr"
+      },
+      "python": {
+        "arm": "python_sidecar",
+        "change_signature_attempt_denominator": 1,
+        "dynamic_reference_count": 1,
+        "foreign_reference_count": 1,
+        "identity_change_denominator": 3,
+        "identity_continuity_count": 0,
+        "interface_change_changed_packages": 0,
+        "interface_change_package_denominator": 2,
+        "internal_exact_numerator": 0,
+        "internal_reference_denominator": 1,
+        "move_attempt_denominator": 1,
+        "private_change_affected_packages": 1,
+        "private_change_affected_symbols": 1,
+        "private_change_interface_changed_packages": 0,
+        "private_change_package_denominator": 2,
+        "private_change_symbol_denominator": 3,
+        "public_contracts": [
+          "textapp.api.render_title(value: str) -> str",
+          "textkit.api.format_title(value: str) -> str"
+        ],
+        "reference_denominator": 2,
+        "rename_attempt_denominator": 1,
+        "safe_change_signature_count": 0,
+        "safe_move_count": 0,
+        "safe_rename_count": 0,
+        "serialized_context_bytes": 2184,
+        "unknown_reference_count": 0
+      }
+    }
+  ],
+  "hypotheses": [
+    {
+      "denominator": null,
+      "hypothesis": "agent_assisted_task_success",
+      "numerator": null,
+      "rationale": "No agent provider was configured; success, token, and tool metrics are null.",
+      "status": "UNMEASURED"
+    },
+    {
+      "denominator": 3,
+      "hypothesis": "core_context_is_smaller",
+      "numerator": 3,
+      "rationale": "Stable compact JSON byte counts are compared without estimating tokens.",
+      "status": "SUPPORTED"
+    },
+    {
+      "denominator": 9,
+      "hypothesis": "core_identity_continuity_exceeds_python_sidecar",
+      "numerator": 9,
+      "rationale": "Core SymbolId continuity is compared with ChangeIR-preserved Python entity identity.",
+      "status": "SUPPORTED"
+    },
+    {
+      "denominator": 3,
+      "hypothesis": "core_internal_resolution",
+      "numerator": 3,
+      "rationale": "All Core internal references must be Exact and Unknown must remain zero.",
+      "status": "SUPPORTED"
+    },
+    {
+      "denominator": 9,
+      "hypothesis": "core_safe_changes_exceed_python_sidecar",
+      "numerator": 9,
+      "rationale": "Only successfully applied isolated semantic changes count in either arm.",
+      "status": "SUPPORTED"
+    },
+    {
+      "denominator": 3,
+      "hypothesis": "declared_public_contract_equivalence",
+      "numerator": 3,
+      "rationale": "Both encodings are compared with the generated fixture contract, not human ground truth.",
+      "status": "SUPPORTED"
+    },
+    {
+      "denominator": 3,
+      "hypothesis": "interface_revision_propagates",
+      "numerator": 3,
+      "rationale": "A public rename must produce an explicit, package-bounded interface revision change.",
+      "status": "SUPPORTED"
+    },
+    {
+      "denominator": 3,
+      "hypothesis": "private_change_is_interface_bounded",
+      "numerator": 3,
+      "rationale": "A private implementation edit must not alter a package interface or invalidate every package.",
+      "status": "SUPPORTED"
+    }
+  ],
+  "python": {
+    "arm": "python_sidecar",
+    "change_signature_attempt_denominator": 3,
+    "dynamic_reference_count": 1,
+    "foreign_reference_count": 3,
+    "identity_change_denominator": 9,
+    "identity_continuity_count": 6,
+    "interface_change_changed_packages": 4,
+    "interface_change_package_denominator": 6,
+    "internal_exact_numerator": 4,
+    "internal_reference_denominator": 5,
+    "move_attempt_denominator": 3,
+    "private_change_affected_packages": 3,
+    "private_change_affected_symbols": 3,
+    "private_change_interface_changed_packages": 0,
+    "private_change_package_denominator": 6,
+    "private_change_symbol_denominator": 9,
+    "public_contracts": [
+      "pricekit.api.format_price(value: str) -> str",
+      "routekit.api.format_route(value: str) -> str",
+      "shopapp.api.render_price(value: str) -> str",
+      "textapp.api.render_title(value: str) -> str",
+      "textkit.api.format_title(value: str) -> str",
+      "webapp.api.render_route(value: str) -> str"
+    ],
+    "reference_denominator": 8,
+    "rename_attempt_denominator": 3,
+    "safe_change_signature_count": 2,
+    "safe_move_count": 2,
+    "safe_rename_count": 2,
+    "serialized_context_bytes": 9359,
+    "unknown_reference_count": 0
+  },
+  "schema": 1
+}

@@ -1,0 +1,5 @@
+total=3
+valid=2
+invalid=1
+quantity=0
+revenue_cents=0

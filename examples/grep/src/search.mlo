@@ -1,0 +1,20 @@
+module search
+
+export find(lines: FileLines, needle: Text, ignore_case: Bool, count_only: Bool) -> Text:
+    matches: UInt64 = 0
+    for line in lines:
+        if contains(line, needle, ignore_case):
+            matches = matches + 1
+    output = TextBuilder.new()
+    if count_only:
+        output.append_uint64(matches)
+        output.append_byte(10)
+        return output.finish()
+    output.append_uint64(matches)
+    output.append_byte(10)
+    output.finish()
+
+contains(line: TextView, needle: Text, ignore_case: Bool) -> Bool:
+    if ignore_case:
+        return line.contains_ascii_case_insensitive(needle)
+    line.contains(needle)

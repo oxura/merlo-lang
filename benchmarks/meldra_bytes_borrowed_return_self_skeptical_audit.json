@@ -1,0 +1,26 @@
+{
+  "name": "SELF_SKEPTICAL_AUDIT",
+  "threats": [
+    "Origin inference may accidentally accept a syntactically named parameter while the returned descriptor comes from another root.",
+    "Line-based last-use analysis may end a transferred borrow before a nested expression or one control-flow branch finishes.",
+    "A two-function return chain may erase the original root identity or leave an unmatched parent transfer.",
+    "MIR optimization may inline calls and delete marker-only instructions even when their ordering is semantically required.",
+    "Generated C may copy payload data even if interpreter counters remain zero.",
+    "Descriptor equality alone is insufficient; pointer offset and nested range containment must be checked.",
+    "Compile-time rejects must not be counted as sanitizer executions.",
+    "A denominator built from repeated source text would overstate independent coverage.",
+    "Existing reborrow evidence cannot substitute for borrowed-return evidence.",
+    "Post-hoc weakening of status gates would invalidate the experiment."
+  ],
+  "controls": [
+    "Freeze exact status gates before implementation.",
+    "Require one borrowed source parameter and reject ambiguity with AmbiguousBorrowReturnOrigin.",
+    "Validate root parent child caller last-use identities in versioned HIR and MIR manifests.",
+    "Run an intentionally copying or wrong-origin falsification control through the structural auditor.",
+    "Compare surface HIR unoptimized MIR optimized MIR and native results.",
+    "Use ASan UBSan and LeakSanitizer only on actually executed native binaries.",
+    "Run one Decision corpus and one full tests invocation after rapid checks stabilize.",
+    "Freeze previous artifact hashes and do not rerun prior benchmarks."
+  ],
+  "post_hoc_status": "Status and every support gate remain fixed until final artifact validation."
+}

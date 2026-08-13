@@ -1,0 +1,15 @@
+module app.main
+use app.json
+use app.stats
+
+export enum AppError:
+    MissingArgument
+    InvalidPath: Text
+    ReadFailure: Text
+
+export main(path: Path) -> Result[Text, AppError]:
+    data = fs.read(path)?
+    report = analyze(data.view())
+    result = format_result(report)
+    console.write(result)
+    Ok(result)

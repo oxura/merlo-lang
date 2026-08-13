@@ -1,0 +1,50 @@
+fn same(data: BytesView, count: UInt64, flag: Bool) -> BytesView:
+    return data
+
+fn prefix(data: BytesView, count: UInt64, flag: Bool) -> BytesView:
+    if count < data.len():
+        return data.slice(0, count)
+    else:
+        return data
+
+fn suffix(data: BytesView, count: UInt64, flag: Bool) -> BytesView:
+    if count < data.len():
+        return data.slice(data.len() - count, count)
+    else:
+        return data
+
+fn middle(data: BytesView, count: UInt64, flag: Bool) -> BytesView:
+    if count < data.len():
+        return data.slice(count, data.len() - count)
+    else:
+        return data.slice(data.len(), 0)
+
+fn empty(data: BytesView, count: UInt64, flag: Bool) -> BytesView:
+    return data.slice(0, 0)
+
+fn branch(data: BytesView, count: UInt64, flag: Bool) -> BytesView:
+    if flag:
+        return data.slice(0, count)
+    else:
+        return data.slice(0, count)
+
+fn chain(data: BytesView, count: UInt64, flag: Bool) -> BytesView:
+    return prefix(data, data.len(), flag).slice(count, data.len() - count)
+
+fn checksum(data: BytesView, state: UInt64) -> UInt64:
+    var result: UInt64 = state
+    for i in 0..data.len():
+        result = (result ^ (data[i] + i + 31)) * 1099511628211
+    return result
+
+fn measure(data: BytesView, state: UInt64) -> UInt64:
+    return checksum(data, state)
+
+fn main(n: UInt64, seed: UInt64, start: UInt64, length: UInt64, count: UInt64, flag: Bool) -> UInt64:
+    let owner: Bytes = Bytes.new(n)
+    for i in 0..n:
+        owner[i] = (seed + i * 17 + (i >> 3) + 172) & 255
+    let source: BytesView = owner.slice(start, length)
+    let part: BytesView = chain(source, count, flag)
+    let result: UInt64 = checksum(part, seed)
+    return result

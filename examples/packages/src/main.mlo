@@ -1,0 +1,11 @@
+module main
+
+use greeting
+
+export enum AppError:
+    InvalidPath: Text
+
+export main(path: Path) -> Result[Text, AppError]:
+    message = greeting.message("alpha")
+    console.write(message)
+    Ok(message)

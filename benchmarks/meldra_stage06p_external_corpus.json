@@ -1,0 +1,4007 @@
+{
+  "executed_kernels": [
+    {
+      "arguments": [
+        7,
+        8
+      ],
+      "differential": {
+        "arguments": [
+          7,
+          8
+        ],
+        "mismatches": [],
+        "observations": {
+          "after_borrow_inference": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_bounds_check_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_collection_fusion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_constant_folding": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_dead_code_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_inlining": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_memory_model_lowering": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_monomorphization": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_owned_result_drop_insertion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "hir": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 4
+          },
+          "mir_optimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "mir_unoptimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "native": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 0
+          },
+          "surface": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 4
+          }
+        },
+        "ok": true,
+        "pass_digests": [
+          {
+            "after": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "before": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "pass": "monomorphization"
+          },
+          {
+            "after": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "before": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "pass": "collection_fusion"
+          },
+          {
+            "after": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "before": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "pass": "inlining"
+          },
+          {
+            "after": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "before": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "pass": "owned_result_drop_insertion"
+          },
+          {
+            "after": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "before": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "pass": "borrow_inference"
+          },
+          {
+            "after": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "before": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "pass": "constant_folding"
+          },
+          {
+            "after": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "before": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "pass": "bounds_check_elimination"
+          },
+          {
+            "after": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "before": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "pass": "memory_model_lowering"
+          },
+          {
+            "after": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "before": "783b955d1c5d0dc126645b11c648345651882d06edec0343db994629585e3863",
+            "pass": "dead_code_elimination"
+          }
+        ],
+        "source_sha256": "ea23caf174b6396f2a7d150e2ac44101f663013195039da1deb92928ade1b90b"
+      },
+      "expected": 15,
+      "expression": "arg2 + common_arg",
+      "locator": "testing/test_invocations.py:66:hello",
+      "ok": true,
+      "parameters": [
+        "arg2",
+        "common_arg"
+      ],
+      "project": "pluggy",
+      "rank": "055a19f357b97e47aeb20c34f78004768bfe35ebd86ed6aa14d04393b52e192d",
+      "source": "fn main(arg2: UInt64, common_arg: UInt64) -> UInt64:\n    arg2 + common_arg\n",
+      "source_sha256": "ea23caf174b6396f2a7d150e2ac44101f663013195039da1deb92928ade1b90b"
+    },
+    {
+      "arguments": [
+        7
+      ],
+      "differential": {
+        "arguments": [
+          7
+        ],
+        "mismatches": [],
+        "observations": {
+          "after_borrow_inference": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 70,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 70,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_bounds_check_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 70,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 70,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_collection_fusion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 70,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 70,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_constant_folding": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 70,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 70,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_dead_code_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 70,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 70,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_inlining": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 70,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 70,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_memory_model_lowering": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 70,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 70,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_monomorphization": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 70,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 70,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_owned_result_drop_insertion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 70,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 70,
+            "status": "OK",
+            "steps": 3
+          },
+          "hir": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 70,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 70,
+            "status": "OK",
+            "steps": 4
+          },
+          "mir_optimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 70,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 70,
+            "status": "OK",
+            "steps": 3
+          },
+          "mir_unoptimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 70,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 70,
+            "status": "OK",
+            "steps": 3
+          },
+          "native": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 70,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 70,
+            "status": "OK",
+            "steps": 0
+          },
+          "surface": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 70,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 70,
+            "status": "OK",
+            "steps": 4
+          }
+        },
+        "ok": true,
+        "pass_digests": [
+          {
+            "after": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "before": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "pass": "monomorphization"
+          },
+          {
+            "after": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "before": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "pass": "collection_fusion"
+          },
+          {
+            "after": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "before": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "pass": "inlining"
+          },
+          {
+            "after": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "before": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "pass": "owned_result_drop_insertion"
+          },
+          {
+            "after": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "before": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "pass": "borrow_inference"
+          },
+          {
+            "after": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "before": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "pass": "constant_folding"
+          },
+          {
+            "after": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "before": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "pass": "bounds_check_elimination"
+          },
+          {
+            "after": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "before": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "pass": "memory_model_lowering"
+          },
+          {
+            "after": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "before": "2a556c62423afd6039cf8bef2c7d6d8e4916ad823d71d167eb946552c5e20662",
+            "pass": "dead_code_elimination"
+          }
+        ],
+        "source_sha256": "cf5231fa68d7973d96b0e763b977e53092b1ef6023f6131dcaf9e28cd7bbe1ff"
+      },
+      "expected": 70,
+      "expression": "arg * 10",
+      "locator": "testing/test_pluginmanager.py:420:he_method1",
+      "ok": true,
+      "parameters": [
+        "arg"
+      ],
+      "project": "pluggy",
+      "rank": "186a0eaf26df0c2c6ad10aa1cdb2620e385dbc79bba768f9350603dee9f4c135",
+      "source": "fn main(arg: UInt64) -> UInt64:\n    arg * 10\n",
+      "source_sha256": "cf5231fa68d7973d96b0e763b977e53092b1ef6023f6131dcaf9e28cd7bbe1ff"
+    },
+    {
+      "arguments": [
+        7
+      ],
+      "differential": {
+        "arguments": [
+          7
+        ],
+        "mismatches": [],
+        "observations": {
+          "after_borrow_inference": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_bounds_check_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_collection_fusion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_constant_folding": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_dead_code_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_inlining": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_memory_model_lowering": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_monomorphization": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_owned_result_drop_insertion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "hir": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 4
+          },
+          "mir_optimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "mir_unoptimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "native": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 0
+          },
+          "surface": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 4
+          }
+        },
+        "ok": true,
+        "pass_digests": [
+          {
+            "after": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "before": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "pass": "monomorphization"
+          },
+          {
+            "after": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "before": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "pass": "collection_fusion"
+          },
+          {
+            "after": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "before": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "pass": "inlining"
+          },
+          {
+            "after": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "before": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "pass": "owned_result_drop_insertion"
+          },
+          {
+            "after": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "before": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "pass": "borrow_inference"
+          },
+          {
+            "after": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "before": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "pass": "constant_folding"
+          },
+          {
+            "after": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "before": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "pass": "bounds_check_elimination"
+          },
+          {
+            "after": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "before": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "pass": "memory_model_lowering"
+          },
+          {
+            "after": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "before": "8e2caaca618d31f9a452e1a258580ee7895bb02917779b5d2f387f7c9a27c87b",
+            "pass": "dead_code_elimination"
+          }
+        ],
+        "source_sha256": "a93401bfc40c4ce3c1c0c973d1a874b845112f24bfde9e241ee2e4823848e14b"
+      },
+      "expected": 8,
+      "expression": "x + 1",
+      "locator": "testing/test_multicall.py:33:f",
+      "ok": true,
+      "parameters": [
+        "x"
+      ],
+      "project": "pluggy",
+      "rank": "1983187d1ad8e185e4c85e551ee525aa556a10d6f6a3b9caeb158c67bc90bc45",
+      "source": "fn main(x: UInt64) -> UInt64:\n    x + 1\n",
+      "source_sha256": "a93401bfc40c4ce3c1c0c973d1a874b845112f24bfde9e241ee2e4823848e14b"
+    },
+    {
+      "arguments": [
+        7,
+        8
+      ],
+      "differential": {
+        "arguments": [
+          7,
+          8
+        ],
+        "mismatches": [],
+        "observations": {
+          "after_borrow_inference": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_bounds_check_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_collection_fusion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_constant_folding": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_dead_code_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_inlining": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_memory_model_lowering": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_monomorphization": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_owned_result_drop_insertion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "hir": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 4
+          },
+          "mir_optimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "mir_unoptimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "native": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 0
+          },
+          "surface": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 4
+          }
+        },
+        "ok": true,
+        "pass_digests": [
+          {
+            "after": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "before": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "pass": "monomorphization"
+          },
+          {
+            "after": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "before": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "pass": "collection_fusion"
+          },
+          {
+            "after": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "before": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "pass": "inlining"
+          },
+          {
+            "after": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "before": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "pass": "owned_result_drop_insertion"
+          },
+          {
+            "after": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "before": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "pass": "borrow_inference"
+          },
+          {
+            "after": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "before": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "pass": "constant_folding"
+          },
+          {
+            "after": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "before": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "pass": "bounds_check_elimination"
+          },
+          {
+            "after": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "before": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "pass": "memory_model_lowering"
+          },
+          {
+            "after": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "before": "23540e56b58aa0fa8a762b319f3a86ad43aa85140ae7b37cd85c87d3a356aa58",
+            "pass": "dead_code_elimination"
+          }
+        ],
+        "source_sha256": "e38132c3d5d6d0a6d95255287546221d1e5efa0edb67141a913ffb8a74c373e5"
+      },
+      "expected": 15,
+      "expression": "x + z",
+      "locator": "testing/test_multicall.py:47:f",
+      "ok": true,
+      "parameters": [
+        "x",
+        "z"
+      ],
+      "project": "pluggy",
+      "rank": "19ba7ad2d5a1ce9312301dd0ba48c1bf1e2c5aa2ee6f1eb9e7c8518cc89d9392",
+      "source": "fn main(x: UInt64, z: UInt64) -> UInt64:\n    x + z\n",
+      "source_sha256": "e38132c3d5d6d0a6d95255287546221d1e5efa0edb67141a913ffb8a74c373e5"
+    },
+    {
+      "arguments": [
+        7
+      ],
+      "differential": {
+        "arguments": [
+          7
+        ],
+        "mismatches": [],
+        "observations": {
+          "after_borrow_inference": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_bounds_check_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_collection_fusion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_constant_folding": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_dead_code_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_inlining": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_memory_model_lowering": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_monomorphization": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_owned_result_drop_insertion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "hir": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 4
+          },
+          "mir_optimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "mir_unoptimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "native": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 0
+          },
+          "surface": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 4
+          }
+        },
+        "ok": true,
+        "pass_digests": [
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "monomorphization"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "collection_fusion"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "inlining"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "owned_result_drop_insertion"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "borrow_inference"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "constant_folding"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "bounds_check_elimination"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "memory_model_lowering"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "dead_code_elimination"
+          }
+        ],
+        "source_sha256": "5b03ee404ad23eec7b87e31902c3c6f66c66b8e78bf56c69b187af39464a26d5"
+      },
+      "expected": 8,
+      "expression": "arg + 1",
+      "locator": "testing/test_hookcaller.py:417:hello",
+      "ok": true,
+      "parameters": [
+        "arg"
+      ],
+      "project": "pluggy",
+      "rank": "2f698c0c2a027579c051e8d025735ec12d20dd7e3647de8003ba6ccbb0ab5471",
+      "source": "fn main(arg: UInt64) -> UInt64:\n    arg + 1\n",
+      "source_sha256": "5b03ee404ad23eec7b87e31902c3c6f66c66b8e78bf56c69b187af39464a26d5"
+    },
+    {
+      "arguments": [
+        7
+      ],
+      "differential": {
+        "arguments": [
+          7
+        ],
+        "mismatches": [],
+        "observations": {
+          "after_borrow_inference": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_bounds_check_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_collection_fusion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_constant_folding": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_dead_code_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_inlining": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_memory_model_lowering": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_monomorphization": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_owned_result_drop_insertion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "hir": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 4
+          },
+          "mir_optimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "mir_unoptimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "native": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 0
+          },
+          "surface": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 4
+          }
+        },
+        "ok": true,
+        "pass_digests": [
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "monomorphization"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "collection_fusion"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "inlining"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "owned_result_drop_insertion"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "borrow_inference"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "constant_folding"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "bounds_check_elimination"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "memory_model_lowering"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "dead_code_elimination"
+          }
+        ],
+        "source_sha256": "5b03ee404ad23eec7b87e31902c3c6f66c66b8e78bf56c69b187af39464a26d5"
+      },
+      "expected": 8,
+      "expression": "arg + 1",
+      "locator": "testing/test_hookcaller.py:407:foo",
+      "ok": true,
+      "parameters": [
+        "arg"
+      ],
+      "project": "pluggy",
+      "rank": "35217089b121225d3a0cc5661c6d9b41f82e7e6a78236edd789f3efa7a5be138",
+      "source": "fn main(arg: UInt64) -> UInt64:\n    arg + 1\n",
+      "source_sha256": "5b03ee404ad23eec7b87e31902c3c6f66c66b8e78bf56c69b187af39464a26d5"
+    },
+    {
+      "arguments": [
+        7
+      ],
+      "differential": {
+        "arguments": [
+          7
+        ],
+        "mismatches": [],
+        "observations": {
+          "after_borrow_inference": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_bounds_check_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_collection_fusion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_constant_folding": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_dead_code_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_inlining": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_memory_model_lowering": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_monomorphization": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_owned_result_drop_insertion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "hir": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 4
+          },
+          "mir_optimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "mir_unoptimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "native": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 0
+          },
+          "surface": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 4
+          }
+        },
+        "ok": true,
+        "pass_digests": [
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "monomorphization"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "collection_fusion"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "inlining"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "owned_result_drop_insertion"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "borrow_inference"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "constant_folding"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "bounds_check_elimination"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "memory_model_lowering"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "dead_code_elimination"
+          }
+        ],
+        "source_sha256": "5b03ee404ad23eec7b87e31902c3c6f66c66b8e78bf56c69b187af39464a26d5"
+      },
+      "expected": 8,
+      "expression": "arg + 1",
+      "locator": "testing/conftest.py:16:he_method1",
+      "ok": true,
+      "parameters": [
+        "arg"
+      ],
+      "project": "pluggy",
+      "rank": "3b1989fae4a87847ee6e6874c523bb05d439ba466340a9d9bcbdcb113e49b60b",
+      "source": "fn main(arg: UInt64) -> UInt64:\n    arg + 1\n",
+      "source_sha256": "5b03ee404ad23eec7b87e31902c3c6f66c66b8e78bf56c69b187af39464a26d5"
+    },
+    {
+      "arguments": [
+        7,
+        8
+      ],
+      "differential": {
+        "arguments": [
+          7,
+          8
+        ],
+        "mismatches": [],
+        "observations": {
+          "after_borrow_inference": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_bounds_check_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_collection_fusion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_constant_folding": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_dead_code_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_inlining": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_memory_model_lowering": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_monomorphization": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_owned_result_drop_insertion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "hir": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 4
+          },
+          "mir_optimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "mir_unoptimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "native": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 0
+          },
+          "surface": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 4
+          }
+        },
+        "ok": true,
+        "pass_digests": [
+          {
+            "after": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "before": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "pass": "monomorphization"
+          },
+          {
+            "after": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "before": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "pass": "collection_fusion"
+          },
+          {
+            "after": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "before": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "pass": "inlining"
+          },
+          {
+            "after": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "before": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "pass": "owned_result_drop_insertion"
+          },
+          {
+            "after": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "before": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "pass": "borrow_inference"
+          },
+          {
+            "after": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "before": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "pass": "constant_folding"
+          },
+          {
+            "after": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "before": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "pass": "bounds_check_elimination"
+          },
+          {
+            "after": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "before": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "pass": "memory_model_lowering"
+          },
+          {
+            "after": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "before": "f32590bb37fcc7717fd7c8cfedb7e6f6382fae16401923cdd03968e24f6bbfc2",
+            "pass": "dead_code_elimination"
+          }
+        ],
+        "source_sha256": "e96bbd02ceb02373aebe5c888ed3e9ae387a8f0a1e42f90557cd684319a81481"
+      },
+      "expected": 15,
+      "expression": "arg1 + common_arg",
+      "locator": "testing/test_invocations.py:61:hello",
+      "ok": true,
+      "parameters": [
+        "arg1",
+        "common_arg"
+      ],
+      "project": "pluggy",
+      "rank": "4ff1e215c1e2a06fb815ade7ef969fcdf659474d6cdbe7457fb65397e7abd82e",
+      "source": "fn main(arg1: UInt64, common_arg: UInt64) -> UInt64:\n    arg1 + common_arg\n",
+      "source_sha256": "e96bbd02ceb02373aebe5c888ed3e9ae387a8f0a1e42f90557cd684319a81481"
+    },
+    {
+      "arguments": [
+        7
+      ],
+      "differential": {
+        "arguments": [
+          7
+        ],
+        "mismatches": [],
+        "observations": {
+          "after_borrow_inference": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_bounds_check_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_collection_fusion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_constant_folding": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_dead_code_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_inlining": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_memory_model_lowering": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_monomorphization": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "after_owned_result_drop_insertion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "hir": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 4
+          },
+          "mir_optimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "mir_unoptimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 3
+          },
+          "native": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 0
+          },
+          "surface": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 8,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 8,
+            "status": "OK",
+            "steps": 4
+          }
+        },
+        "ok": true,
+        "pass_digests": [
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "monomorphization"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "collection_fusion"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "inlining"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "owned_result_drop_insertion"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "borrow_inference"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "constant_folding"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "bounds_check_elimination"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "memory_model_lowering"
+          },
+          {
+            "after": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "before": "d29842995aacb3aa9b8cb154ecc68e8149b6a15658d2bcb8a336110e548525fc",
+            "pass": "dead_code_elimination"
+          }
+        ],
+        "source_sha256": "5b03ee404ad23eec7b87e31902c3c6f66c66b8e78bf56c69b187af39464a26d5"
+      },
+      "expected": 8,
+      "expression": "arg + 1",
+      "locator": "testing/test_invocations.py:185:hello",
+      "ok": true,
+      "parameters": [
+        "arg"
+      ],
+      "project": "pluggy",
+      "rank": "590f0534b193e0f043dd1e51b57d652af8d0a4c6205eaf8355a0cda65745682d",
+      "source": "fn main(arg: UInt64) -> UInt64:\n    arg + 1\n",
+      "source_sha256": "5b03ee404ad23eec7b87e31902c3c6f66c66b8e78bf56c69b187af39464a26d5"
+    },
+    {
+      "arguments": [
+        7,
+        8
+      ],
+      "differential": {
+        "arguments": [
+          7,
+          8
+        ],
+        "mismatches": [],
+        "observations": {
+          "after_borrow_inference": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_bounds_check_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_collection_fusion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_constant_folding": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_dead_code_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_inlining": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_memory_model_lowering": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_monomorphization": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_owned_result_drop_insertion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "hir": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 4
+          },
+          "mir_optimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "mir_unoptimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "native": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 0
+          },
+          "surface": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 4
+          }
+        },
+        "ok": true,
+        "pass_digests": [
+          {
+            "after": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "before": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "pass": "monomorphization"
+          },
+          {
+            "after": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "before": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "pass": "collection_fusion"
+          },
+          {
+            "after": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "before": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "pass": "inlining"
+          },
+          {
+            "after": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "before": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "pass": "owned_result_drop_insertion"
+          },
+          {
+            "after": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "before": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "pass": "borrow_inference"
+          },
+          {
+            "after": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "before": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "pass": "constant_folding"
+          },
+          {
+            "after": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "before": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "pass": "bounds_check_elimination"
+          },
+          {
+            "after": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "before": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "pass": "memory_model_lowering"
+          },
+          {
+            "after": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "before": "73c2cd1a265b77a18275f3bd1743609b83989262d6e6c4871de74bfc63e30a95",
+            "pass": "dead_code_elimination"
+          }
+        ],
+        "source_sha256": "2937b36573399d1a53ad674ed63de8d2834b3d6f6d592d2b52dd4258464d7a53"
+      },
+      "expected": 15,
+      "expression": "x + y",
+      "locator": "testing/test_multicall.py:38:f",
+      "ok": true,
+      "parameters": [
+        "x",
+        "y"
+      ],
+      "project": "pluggy",
+      "rank": "6b7e62467fe1c9610bbf41fd60319ce451d5b3e060103a823d9add14ea19f065",
+      "source": "fn main(x: UInt64, y: UInt64) -> UInt64:\n    x + y\n",
+      "source_sha256": "2937b36573399d1a53ad674ed63de8d2834b3d6f6d592d2b52dd4258464d7a53"
+    },
+    {
+      "arguments": [
+        7,
+        8
+      ],
+      "differential": {
+        "arguments": [
+          7,
+          8
+        ],
+        "mismatches": [],
+        "observations": {
+          "after_borrow_inference": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_bounds_check_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_collection_fusion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_constant_folding": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_dead_code_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_inlining": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_memory_model_lowering": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_monomorphization": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_owned_result_drop_insertion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "hir": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 4
+          },
+          "mir_optimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "mir_unoptimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 2
+          },
+          "native": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 0
+          },
+          "surface": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 15,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 15,
+            "status": "OK",
+            "steps": 4
+          }
+        },
+        "ok": true,
+        "pass_digests": [
+          {
+            "after": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "before": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "pass": "monomorphization"
+          },
+          {
+            "after": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "before": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "pass": "collection_fusion"
+          },
+          {
+            "after": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "before": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "pass": "inlining"
+          },
+          {
+            "after": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "before": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "pass": "owned_result_drop_insertion"
+          },
+          {
+            "after": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "before": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "pass": "borrow_inference"
+          },
+          {
+            "after": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "before": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "pass": "constant_folding"
+          },
+          {
+            "after": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "before": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "pass": "bounds_check_elimination"
+          },
+          {
+            "after": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "before": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "pass": "memory_model_lowering"
+          },
+          {
+            "after": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "before": "fe399a5305b51898c7bf6d08423b4108818c614ee67491769e80fc77ceea40e3",
+            "pass": "dead_code_elimination"
+          }
+        ],
+        "source_sha256": "d0d01f561e4074193bbd2df51ac754fac96ea1cb86bcd963b671e5301b4e2da5"
+      },
+      "expected": 15,
+      "expression": "a + b",
+      "locator": "examples/celery/src/task_app/tasks.py:8:add",
+      "ok": true,
+      "parameters": [
+        "a",
+        "b"
+      ],
+      "project": "flask",
+      "rank": "886852360cfc318e18567d5a2cf78b89effaefdb8dad2ba5c72ebf3a973f0337",
+      "source": "fn main(a: UInt64, b: UInt64) -> UInt64:\n    a + b\n",
+      "source_sha256": "d0d01f561e4074193bbd2df51ac754fac96ea1cb86bcd963b671e5301b4e2da5"
+    },
+    {
+      "arguments": [
+        7,
+        8
+      ],
+      "differential": {
+        "arguments": [
+          7,
+          8
+        ],
+        "mismatches": [],
+        "observations": {
+          "after_borrow_inference": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_bounds_check_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_collection_fusion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_constant_folding": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_dead_code_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_inlining": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_memory_model_lowering": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_monomorphization": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_owned_result_drop_insertion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "hir": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 4
+          },
+          "mir_optimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "mir_unoptimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "native": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 0
+          },
+          "surface": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 4
+          }
+        },
+        "ok": true,
+        "pass_digests": [
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "monomorphization"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "collection_fusion"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "inlining"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "owned_result_drop_insertion"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "borrow_inference"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "constant_folding"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "bounds_check_elimination"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "memory_model_lowering"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "dead_code_elimination"
+          }
+        ],
+        "source_sha256": "ed12be9f1403a1d5628a3609e00b223ac16a34d538cffd6fcdab3c4e391ba73e"
+      },
+      "expected": 56,
+      "expression": "a * b",
+      "locator": "tests/test_funcutils_fb_py3.py:351:g",
+      "ok": true,
+      "parameters": [
+        "a",
+        "b"
+      ],
+      "project": "boltons",
+      "rank": "4b329bef3864f8ffb710397843967a8df4e3c3695ccedd9596840f82c926ea8d",
+      "source": "fn main(a: UInt64, b: UInt64) -> UInt64:\n    a * b\n",
+      "source_sha256": "ed12be9f1403a1d5628a3609e00b223ac16a34d538cffd6fcdab3c4e391ba73e"
+    },
+    {
+      "arguments": [
+        7,
+        8
+      ],
+      "differential": {
+        "arguments": [
+          7,
+          8
+        ],
+        "mismatches": [],
+        "observations": {
+          "after_borrow_inference": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_bounds_check_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_collection_fusion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_constant_folding": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_dead_code_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_inlining": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_memory_model_lowering": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_monomorphization": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_owned_result_drop_insertion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "hir": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 4
+          },
+          "mir_optimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "mir_unoptimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "native": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 0
+          },
+          "surface": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 4
+          }
+        },
+        "ok": true,
+        "pass_digests": [
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "monomorphization"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "collection_fusion"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "inlining"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "owned_result_drop_insertion"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "borrow_inference"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "constant_folding"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "bounds_check_elimination"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "memory_model_lowering"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "dead_code_elimination"
+          }
+        ],
+        "source_sha256": "ed12be9f1403a1d5628a3609e00b223ac16a34d538cffd6fcdab3c4e391ba73e"
+      },
+      "expected": 56,
+      "expression": "a * b",
+      "locator": "tests/test_funcutils_fb_py3.py:377:g",
+      "ok": true,
+      "parameters": [
+        "a",
+        "b"
+      ],
+      "project": "boltons",
+      "rank": "87208b5acd9962e3991275a187a066ddd95e4c1fb6f68e863c9217f681e2cef1",
+      "source": "fn main(a: UInt64, b: UInt64) -> UInt64:\n    a * b\n",
+      "source_sha256": "ed12be9f1403a1d5628a3609e00b223ac16a34d538cffd6fcdab3c4e391ba73e"
+    },
+    {
+      "arguments": [
+        7,
+        8
+      ],
+      "differential": {
+        "arguments": [
+          7,
+          8
+        ],
+        "mismatches": [],
+        "observations": {
+          "after_borrow_inference": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_bounds_check_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_collection_fusion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_constant_folding": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_dead_code_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_inlining": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_memory_model_lowering": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_monomorphization": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_owned_result_drop_insertion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "hir": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 4
+          },
+          "mir_optimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "mir_unoptimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "native": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 0
+          },
+          "surface": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 4
+          }
+        },
+        "ok": true,
+        "pass_digests": [
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "monomorphization"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "collection_fusion"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "inlining"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "owned_result_drop_insertion"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "borrow_inference"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "constant_folding"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "bounds_check_elimination"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "memory_model_lowering"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "dead_code_elimination"
+          }
+        ],
+        "source_sha256": "ed12be9f1403a1d5628a3609e00b223ac16a34d538cffd6fcdab3c4e391ba73e"
+      },
+      "expected": 56,
+      "expression": "a * b",
+      "locator": "tests/test_funcutils_fb_py3.py:338:g",
+      "ok": true,
+      "parameters": [
+        "a",
+        "b"
+      ],
+      "project": "boltons",
+      "rank": "a79a3c3a75a5ab9d0975208f7bcb1e5aafd8c83a991e0dc701b247590c2daa3e",
+      "source": "fn main(a: UInt64, b: UInt64) -> UInt64:\n    a * b\n",
+      "source_sha256": "ed12be9f1403a1d5628a3609e00b223ac16a34d538cffd6fcdab3c4e391ba73e"
+    },
+    {
+      "arguments": [
+        7,
+        8
+      ],
+      "differential": {
+        "arguments": [
+          7,
+          8
+        ],
+        "mismatches": [],
+        "observations": {
+          "after_borrow_inference": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_bounds_check_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_collection_fusion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_constant_folding": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_dead_code_elimination": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_inlining": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_memory_model_lowering": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_monomorphization": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "after_owned_result_drop_insertion": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "hir": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 4
+          },
+          "mir_optimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "mir_unoptimized": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 2
+          },
+          "native": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 0
+          },
+          "surface": {
+            "allocations": 0,
+            "drops": 0,
+            "effect_trace": [],
+            "error_kind": null,
+            "final_ownership_state": {},
+            "printed_checksum": 56,
+            "releases": 0,
+            "retains": 0,
+            "return_value": 56,
+            "status": "OK",
+            "steps": 4
+          }
+        },
+        "ok": true,
+        "pass_digests": [
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "monomorphization"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "collection_fusion"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "inlining"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "owned_result_drop_insertion"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "borrow_inference"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "constant_folding"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "bounds_check_elimination"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "memory_model_lowering"
+          },
+          {
+            "after": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "before": "ebc8781f52cc951eaecc832967ec9e62bacb48fff7b9281a47ea0dd778a9223a",
+            "pass": "dead_code_elimination"
+          }
+        ],
+        "source_sha256": "ed12be9f1403a1d5628a3609e00b223ac16a34d538cffd6fcdab3c4e391ba73e"
+      },
+      "expected": 56,
+      "expression": "a * b",
+      "locator": "tests/test_funcutils_fb_py3.py:204:g",
+      "ok": true,
+      "parameters": [
+        "a",
+        "b"
+      ],
+      "project": "boltons",
+      "rank": "bcd2a2f5a514ceb7e9bc39c5ecdc477d42d1d0a94b141a98cac7c2a945aa3d06",
+      "source": "fn main(a: UInt64, b: UInt64) -> UInt64:\n    a * b\n",
+      "source_sha256": "ed12be9f1403a1d5628a3609e00b223ac16a34d538cffd6fcdab3c4e391ba73e"
+    }
+  ],
+  "kernel_failures": [],
+  "kind": "MeldraStage06PExternalCorpus",
+  "limitations": [
+    "This is whole-project syntax/feature coverage plus executable pure-kernel evidence, not a claim that Meldra compiles Python projects.",
+    "The kernel rule is fixed and deterministic but finds no arithmetic kernel in some dynamic projects.",
+    "Project dependencies and project test suites are outside this compiler-subset check."
+  ],
+  "project_count": 5,
+  "projects": [
+    {
+      "arithmetic_kernel_candidates": 0,
+      "blocker_counts": {
+        "calls": 1581,
+        "containers": 706,
+        "context_managers": 154,
+        "decorators": 764,
+        "dynamic_expressions": 123,
+        "exceptions": 182,
+        "generators": 49,
+        "object_or_container_access": 1670,
+        "text_or_bytes": 1401
+      },
+      "category": "cli-library",
+      "functions": 1749,
+      "parse_failures": [],
+      "project": "click",
+      "python_files": 78,
+      "revision": "9c4dfdaebe0e6b2aabc566eb81f6f10eb5cd6ea1",
+      "selected_kernels": 0,
+      "status": "SCANNED",
+      "tree_digest": "f5937d43899df7224366241eca702be4ddde3b4f6a2f45f58b7943f4f614c71b"
+    },
+    {
+      "arithmetic_kernel_candidates": 25,
+      "blocker_counts": {
+        "calls": 384,
+        "containers": 165,
+        "context_managers": 50,
+        "decorators": 268,
+        "dynamic_expressions": 27,
+        "exceptions": 68,
+        "generators": 95,
+        "object_or_container_access": 308,
+        "text_or_bytes": 272
+      },
+      "category": "plugin-architecture",
+      "functions": 542,
+      "parse_failures": [],
+      "project": "pluggy",
+      "python_files": 31,
+      "revision": "f632a4d1b69e32e210063a91a71ae32fb3ac150c",
+      "selected_kernels": 10,
+      "status": "SCANNED",
+      "tree_digest": "41c4d6ba42b398f7e7a65807f91e788ec2ecd5d0912afb1e41634062fe06f052"
+    },
+    {
+      "arithmetic_kernel_candidates": 1,
+      "blocker_counts": {
+        "async": 19,
+        "calls": 1287,
+        "containers": 427,
+        "context_managers": 137,
+        "decorators": 656,
+        "dynamic_expressions": 49,
+        "exceptions": 193,
+        "generators": 32,
+        "object_or_container_access": 1376,
+        "text_or_bytes": 1185
+      },
+      "category": "backend-framework",
+      "functions": 1459,
+      "parse_failures": [],
+      "project": "flask",
+      "python_files": 83,
+      "revision": "8b4fd5d18611e63080b826ecfefe8659dba7d2e4",
+      "selected_kernels": 1,
+      "status": "SCANNED",
+      "tree_digest": "d24d6d51fb951f85a2f487ed65e64fe127b5558a0994c8fe810c64ce9647f740"
+    },
+    {
+      "arithmetic_kernel_candidates": 4,
+      "blocker_counts": {
+        "async": 8,
+        "calls": 1242,
+        "containers": 525,
+        "context_managers": 71,
+        "decorators": 130,
+        "dynamic_expressions": 152,
+        "exceptions": 248,
+        "generators": 31,
+        "object_or_container_access": 1141,
+        "text_or_bytes": 854
+      },
+      "category": "utility-library",
+      "functions": 1445,
+      "parse_failures": [],
+      "project": "boltons",
+      "python_files": 65,
+      "revision": "580a9c2d12755d472e534ca3e277e8f7e3ada49e",
+      "selected_kernels": 4,
+      "status": "SCANNED",
+      "tree_digest": "1119688b345501fee9aa71a35ddf855f681a106cfe4457ada0906bf087998d19"
+    },
+    {
+      "arithmetic_kernel_candidates": 0,
+      "blocker_counts": {
+        "calls": 98,
+        "containers": 39,
+        "context_managers": 19,
+        "decorators": 32,
+        "dynamic_expressions": 2,
+        "exceptions": 17,
+        "generators": 2,
+        "object_or_container_access": 111,
+        "text_or_bytes": 87
+      },
+      "category": "security-signing",
+      "functions": 115,
+      "parse_failures": [],
+      "project": "itsdangerous",
+      "python_files": 15,
+      "revision": "672971d66a2ef9f85151e53283113f33d642dabd",
+      "selected_kernels": 0,
+      "status": "SCANNED",
+      "tree_digest": "90e3878551fcc3944564570c8f36045a882c0d15981293af15a65eff4dd66b3e"
+    }
+  ],
+  "scanned_project_count": 5,
+  "schema_version": 1,
+  "selected_kernel_count": 15,
+  "selection": {
+    "categories": [
+      "cli-library",
+      "plugin-architecture",
+      "backend-framework",
+      "utility-library",
+      "security-signing"
+    ],
+    "kernel_rule": "single-return nonnegative integer expression over parameters using arithmetic/bitwise operators",
+    "kernels_per_project_max": 10,
+    "projects": [
+      "click",
+      "pluggy",
+      "flask",
+      "boltons",
+      "itsdangerous"
+    ],
+    "seed": 3875930113
+  },
+  "total_files": 272,
+  "total_functions": 5310
+}

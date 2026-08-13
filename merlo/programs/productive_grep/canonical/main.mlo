@@ -1,0 +1,51 @@
+module productive_grep.canonical.main
+
+enum AppError:
+    MissingArgument
+    InvalidPath: Text
+    ReadFailure: Text
+    InvalidUtf8: UInt64
+    MissingContains
+    InvalidOption: Text
+
+record Options:
+    contains: Text
+    ignore_case: Bool
+    count_only: Bool
+
+record Match:
+    line_number: UInt64
+    line: Text
+
+fn contains(line: TextView, needle: Text, ignore_case: Bool) -> Bool:
+    if ignore_case:
+        return line.contains_ascii_case_insensitive(needle)
+    return line.contains(needle)
+
+fn search(lines: FileLines, options: Options) -> Result[Text,AppError]:
+    let matches = Vec.new()
+    var line_number: UInt64 = 0
+    for line in lines:
+        line_number = line_number + 1
+        if contains(line, options.contains, options.ignore_case):
+            matches.push(Match(line_number, line.to_text()))
+    let output = TextBuilder.new()
+    if options.count_only:
+        output.append_uint64(matches.len())
+        output.append_byte(10)
+        return Ok(output.finish())
+    for item in matches.view():
+        output.append_uint64(item.line_number)
+        output.append_byte(58)
+        output.append_text(item.line)
+        output.append_byte(10)
+    return Ok(output.finish())
+
+export task main(path: Path, options: Options) -> Result[Text,AppError]:
+    uses fs.read, console.write
+    if options.contains.len() == 0:
+        return Err(AppError.MissingContains)
+    let reader = fs.open_read(path)?
+    let output = search(reader.lines(), options)?
+    console.write(output)
+    return Ok(output)

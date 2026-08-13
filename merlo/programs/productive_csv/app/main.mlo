@@ -1,0 +1,10 @@
+module app.main
+
+use app.sales
+
+
+export main(path: Path) -> Result[Text, AppError]:
+    file = fs.open_read(path)?
+    result = sales.aggregate(file.lines(), sales.Options(44))?
+    console.write(result)
+    Ok(result)

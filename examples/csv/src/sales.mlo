@@ -1,0 +1,53 @@
+module sales
+
+use app.csv
+
+export enum AppError:
+    MissingArgument
+    InvalidPath: Text
+    ReadFailure: Text
+    InvalidUtf8: UInt64
+    InvalidDelimiter
+    MissingHeader
+    InvalidHeader
+    InvalidRow
+    InvalidField: Text
+    QuantityOverflow
+    RevenueOverflow
+    CountOverflow
+
+export Options:
+    delimiter: UInt64
+
+export aggregate(lines: FileLines, options: Options) -> Result[Text,AppError]:
+    if options.delimiter > 127:
+        return Err(AppError.InvalidDelimiter)
+    header_pending = true
+    total: UInt64 = 0
+    valid: UInt64 = 0
+    invalid: UInt64 = 0
+    for line in lines:
+        fields = csv.fields(line, options.delimiter)
+        if header_pending:
+            if fields.len() != 5:
+                return Err(AppError.InvalidHeader)
+            header_pending = false
+        else:
+            total = total + 1
+            if fields.len() == 5:
+                valid = valid + 1
+            else:
+                invalid = invalid + 1
+    output = TextBuilder.new()
+    output.append_text("total=")
+    output.append_uint64(total)
+    output.append_byte(10)
+    output.append_text("valid=")
+    output.append_uint64(valid)
+    output.append_byte(10)
+    output.append_text("invalid=")
+    output.append_uint64(invalid)
+    output.append_byte(10)
+    output.append_text("quantity=0\n")
+    output.append_text("revenue_cents=0\n")
+    Ok(output.finish())

@@ -1,0 +1,345 @@
+{
+  "invalid": {
+    "failure_count": 0,
+    "failures": [],
+    "families": {
+      "capability_effect_mismatch": 222,
+      "double_move": 223,
+      "invalid_borrow": 222,
+      "invalid_mutation": 222,
+      "missing_drop_path": 222,
+      "out_of_scope": 222,
+      "shared_cycle": 222,
+      "type_mismatch": 222,
+      "use_after_move": 223
+    },
+    "invalid_programs": 2000,
+    "observed_diagnostics": {
+      "CapabilityEffectMismatch": 222,
+      "DoubleMove": 223,
+      "InvalidBorrow": 222,
+      "InvalidMutation": 222,
+      "MissingDropPath": 222,
+      "OutOfScope": 222,
+      "SharedCycleUnsupported": 222,
+      "TypeMismatch": 222,
+      "UseAfterMove": 223
+    },
+    "schema_version": 2,
+    "seeds": [
+      3134193665,
+      3134193666
+    ]
+  },
+  "kind": "MeldraStage06PCorrectness",
+  "manifests": {
+    "invalid_count": 2000,
+    "invalid_manifest_sha256": "00840139789d8631ace15c6a32c23955952ecd30f72cb92b66ac9f903fb18ae7",
+    "valid_count": 5000,
+    "valid_manifest_sha256": "f79aaa7ea879cbf4b5aea8770d5ba52da772be37bb6fa3bdcbb639ee29ee4fcd"
+  },
+  "schema_version": 2,
+  "valid": {
+    "execution_level_totals": {
+      "after_borrow_inference": {
+        "allocations": 2185,
+        "drops": 1561,
+        "errors": 0,
+        "final_ownership_states": {
+          "Dropped": 1561,
+          "Unique": 624
+        },
+        "observations": 5000,
+        "releases": 1561,
+        "retains": 0,
+        "steps": 315119
+      },
+      "after_bounds_check_elimination": {
+        "allocations": 2185,
+        "drops": 1561,
+        "errors": 0,
+        "final_ownership_states": {
+          "Dropped": 1561,
+          "Unique": 624
+        },
+        "observations": 5000,
+        "releases": 1561,
+        "retains": 0,
+        "steps": 313559
+      },
+      "after_collection_fusion": {
+        "allocations": 2185,
+        "drops": 312,
+        "errors": 0,
+        "final_ownership_states": {
+          "Dropped": 312,
+          "Unique": 1873
+        },
+        "observations": 5000,
+        "releases": 312,
+        "retains": 0,
+        "steps": 314496
+      },
+      "after_constant_folding": {
+        "allocations": 2185,
+        "drops": 1561,
+        "errors": 0,
+        "final_ownership_states": {
+          "Dropped": 1561,
+          "Unique": 624
+        },
+        "observations": 5000,
+        "releases": 1561,
+        "retains": 0,
+        "steps": 315119
+      },
+      "after_dead_code_elimination": {
+        "allocations": 0,
+        "drops": 1561,
+        "errors": 0,
+        "final_ownership_states": {
+          "Dropped": 1561,
+          "Unique": 624
+        },
+        "observations": 5000,
+        "releases": 1561,
+        "retains": 0,
+        "steps": 309599
+      },
+      "after_inlining": {
+        "allocations": 2185,
+        "drops": 312,
+        "errors": 0,
+        "final_ownership_states": {
+          "Dropped": 312,
+          "Unique": 1873
+        },
+        "observations": 5000,
+        "releases": 312,
+        "retains": 0,
+        "steps": 313870
+      },
+      "after_memory_model_lowering": {
+        "allocations": 0,
+        "drops": 1561,
+        "errors": 0,
+        "final_ownership_states": {
+          "Dropped": 1561,
+          "Unique": 624
+        },
+        "observations": 5000,
+        "releases": 1561,
+        "retains": 0,
+        "steps": 313559
+      },
+      "after_monomorphization": {
+        "allocations": 2185,
+        "drops": 312,
+        "errors": 0,
+        "final_ownership_states": {
+          "Dropped": 312,
+          "Unique": 1873
+        },
+        "observations": 5000,
+        "releases": 312,
+        "retains": 0,
+        "steps": 314496
+      },
+      "after_owned_result_drop_insertion": {
+        "allocations": 2185,
+        "drops": 1561,
+        "errors": 0,
+        "final_ownership_states": {
+          "Dropped": 1561,
+          "Unique": 624
+        },
+        "observations": 5000,
+        "releases": 1561,
+        "retains": 0,
+        "steps": 315119
+      },
+      "hir": {
+        "allocations": 2185,
+        "drops": 312,
+        "errors": 0,
+        "final_ownership_states": {
+          "Dropped": 312,
+          "Unique": 1873
+        },
+        "observations": 5000,
+        "releases": 312,
+        "retains": 0,
+        "steps": 202369
+      },
+      "mir_optimized": {
+        "allocations": 0,
+        "drops": 1561,
+        "errors": 0,
+        "final_ownership_states": {
+          "Dropped": 1561,
+          "Unique": 624
+        },
+        "observations": 5000,
+        "releases": 1561,
+        "retains": 0,
+        "steps": 309599
+      },
+      "mir_unoptimized": {
+        "allocations": 2185,
+        "drops": 312,
+        "errors": 0,
+        "final_ownership_states": {
+          "Dropped": 312,
+          "Unique": 1873
+        },
+        "observations": 5000,
+        "releases": 312,
+        "retains": 0,
+        "steps": 314496
+      },
+      "surface": {
+        "allocations": 2185,
+        "drops": 312,
+        "errors": 0,
+        "final_ownership_states": {
+          "Dropped": 312,
+          "Unique": 1873
+        },
+        "observations": 5000,
+        "releases": 312,
+        "retains": 0,
+        "steps": 202369
+      }
+    },
+    "families": {
+      "arithmetic": 313,
+      "array": 313,
+      "borrow": 312,
+      "bounds_safe": 312,
+      "branch": 313,
+      "direct_call": 313,
+      "early_return": 312,
+      "for_loop": 313,
+      "match": 312,
+      "move": 312,
+      "mutable_borrow": 312,
+      "nested_control": 313,
+      "record": 313,
+      "shared_value": 312,
+      "slice": 312,
+      "while_loop": 313
+    },
+    "interpreter_elapsed_ms": 21147.439908,
+    "interpreter_mismatch_count": 0,
+    "interpreter_mismatches": [],
+    "native_batches": [
+      {
+        "batch": 0,
+        "binary_sha256": "51d8d503e917183730672e31a0b8bedd60ed25da88f9ba3a6a5b568c89c6170e",
+        "binary_size": 20688,
+        "compile_time_ms": 251.037268,
+        "count": 500,
+        "source_sha256": "462c27e849c6d050eb315dc037ef1942fa76927ac8399a33a88a97297763786f",
+        "status": "MEASURED"
+      },
+      {
+        "batch": 1,
+        "binary_sha256": "ca90d309d526856a21b86a82f56e5ee63b040eb2714c132c7c46cd773da46a21",
+        "binary_size": 20688,
+        "compile_time_ms": 249.679726,
+        "count": 500,
+        "source_sha256": "45936aa6a5055d8cb3f61afbda3ea8ec46c60c21344ad028346e2bcc005879ac",
+        "status": "MEASURED"
+      },
+      {
+        "batch": 2,
+        "binary_sha256": "8e18c2a543e498c5a5dcf2c63285d3fa1dfe544946d7505e7a51f177c592724d",
+        "binary_size": 20688,
+        "compile_time_ms": 244.580603,
+        "count": 500,
+        "source_sha256": "fd9bff487142291784fbaa648bf53608909d303bb7459f727474bbfa8f09f368",
+        "status": "MEASURED"
+      },
+      {
+        "batch": 3,
+        "binary_sha256": "a1412b0753cad86441c03ac05eb72d28693fa3f12209800b03ab0718e29c0609",
+        "binary_size": 20688,
+        "compile_time_ms": 247.351944,
+        "count": 500,
+        "source_sha256": "74f033eba229846ccc7860cac73e6f69e434f288986bf9125088554e06e4f48d",
+        "status": "MEASURED"
+      },
+      {
+        "batch": 4,
+        "binary_sha256": "fc71cad968eb66ca03789cc6bb79f4f3827617964da312f51052106276bca5ed",
+        "binary_size": 20688,
+        "compile_time_ms": 250.957459,
+        "count": 500,
+        "source_sha256": "edf85369a70437182acfe49ed72768254cf602cb7251d414392bb6cac843a25c",
+        "status": "MEASURED"
+      },
+      {
+        "batch": 5,
+        "binary_sha256": "f2562c5a74604633e549701931d97e292bc0c2ce598658e3f6155cd72c8cf2ee",
+        "binary_size": 20688,
+        "compile_time_ms": 244.029941,
+        "count": 500,
+        "source_sha256": "c91e4bfc87be15ea547c8af4bf00d71691155d950684cc6081c9bc29d43162a4",
+        "status": "MEASURED"
+      },
+      {
+        "batch": 6,
+        "binary_sha256": "88494ece49d4876b1c9249738400cee0954ba414020f4b76e6d6a7b187be4a5a",
+        "binary_size": 20688,
+        "compile_time_ms": 252.80162,
+        "count": 500,
+        "source_sha256": "ced86b3bbb82db2d39361e0304979e3158f8bd01354acd4f25d76535717cc676",
+        "status": "MEASURED"
+      },
+      {
+        "batch": 7,
+        "binary_sha256": "d41ed041450caaeb5408c132f67f84cfdbed7c4e30d01dffa35b280882e349c4",
+        "binary_size": 20688,
+        "compile_time_ms": 245.692812,
+        "count": 500,
+        "source_sha256": "caaf5632791149ef46767d34f8eff7981a94a8df3beb0740198b7f4ae7068d85",
+        "status": "MEASURED"
+      },
+      {
+        "batch": 8,
+        "binary_sha256": "d1a6f7bf86489649ba83e448798ddbb9b36e4be33fd017b42cddfdfe51c11c92",
+        "binary_size": 20688,
+        "compile_time_ms": 253.35371,
+        "count": 500,
+        "source_sha256": "778962e82f04144c2a0249d936e7f6d91eb1408eb2e2ff8ef5115d9f4375f55a",
+        "status": "MEASURED"
+      },
+      {
+        "batch": 9,
+        "binary_sha256": "4b7f9e2f446ecf00532db6eb1a250ba5c0681fde9e56df2eda460e93ff04fd2a",
+        "binary_size": 20688,
+        "compile_time_ms": 246.74466,
+        "count": 500,
+        "source_sha256": "4f4c29ad4ea9d820d5f823d075327c754e5344fcf7f07f1f6966576e58dd3690",
+        "status": "MEASURED"
+      }
+    ],
+    "native_mismatches": 0,
+    "native_results": 5000,
+    "observation_mismatch_count": 0,
+    "observation_mismatches": [],
+    "ownership_balance_failure_count": 0,
+    "ownership_balance_failures": [],
+    "per_pass_mismatch_count": 0,
+    "per_pass_mismatches": [],
+    "schema_version": 2,
+    "seeds": [
+      1611464705,
+      1611464706,
+      1611464707,
+      1611464708,
+      1611464709
+    ],
+    "valid_programs": 5000
+  }
+}

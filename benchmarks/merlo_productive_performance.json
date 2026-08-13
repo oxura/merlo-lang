@@ -1,0 +1,1208 @@
+{
+  "affinity": {
+    "applied": true,
+    "available_cpus": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "requested_cpu": 0,
+    "restored": true
+  },
+  "algorithms": {
+    "arms": [
+      "concise_merlo",
+      "canonical_merlo",
+      "python",
+      "native"
+    ],
+    "digest": "c773cf47ecd8a0364986ef826857fe3ea4949de44469421b13f6cd8a29faf549"
+  },
+  "applications": [
+    {
+      "application": "ndjson",
+      "arms": {
+        "canonical_merlo": {
+          "artifacts": [
+            "merlo/programs/productive_ndjson/canonical/main.mlo"
+          ],
+          "bootstrap_median_95_ci": null,
+          "mad": null,
+          "median": null,
+          "reason": "NO_MEASUREMENT_RUNNER",
+          "relative_mad": null,
+          "sample_count": 0,
+          "samples": [],
+          "status": "UNMEASURED"
+        },
+        "concise_merlo": {
+          "artifacts": [
+            "merlo/programs/productive_ndjson/app/main.mlo",
+            "merlo/programs/productive_ndjson/app/report.mlo"
+          ],
+          "bootstrap_median_95_ci": [
+            8907285.0,
+            10603711.5
+          ],
+          "mad": 377028.0,
+          "median": 9093828.0,
+          "reason": null,
+          "relative_mad": 0.0414597680976592,
+          "sample_count": 30,
+          "samples": [
+            8941578.0,
+            9024111.0,
+            10186556.0,
+            8798263.0,
+            10225654.0,
+            12011093.0,
+            8714915.0,
+            12457873.0,
+            9704242.0,
+            8893842.0,
+            8841172.0,
+            10430442.0,
+            8870249.0,
+            8976691.0,
+            8902785.0,
+            13167873.0,
+            13138271.0,
+            8718685.0,
+            8811058.0,
+            12220655.0,
+            10776981.0,
+            13210363.0,
+            13181004.0,
+            11623839.0,
+            12711053.0,
+            8782255.0,
+            9158256.0,
+            8911785.0,
+            8805345.0,
+            9029400.0
+          ],
+          "status": "MEASURED"
+        },
+        "native": {
+          "artifacts": [
+            "benchmarks/productive_performance/ndjson/native_fed4fb85beedf584",
+            "benchmarks/productive_performance/ndjson/native_fed4fb85beedf584.c",
+            "benchmarks/productive_simplicity/ndjson/reference.c"
+          ],
+          "bootstrap_median_95_ci": [
+            3652647.0,
+            3840956.5
+          ],
+          "mad": 143649.0,
+          "median": 3767551.5,
+          "reason": null,
+          "relative_mad": 0.03812794596172076,
+          "sample_count": 30,
+          "samples": [
+            4046981.0,
+            3756700.0,
+            3751221.0,
+            3799646.0,
+            5030011.0,
+            3703264.0,
+            3970624.0,
+            3999627.0,
+            3849434.0,
+            3596239.0,
+            3749195.0,
+            3629890.0,
+            3661107.0,
+            3778403.0,
+            3618905.0,
+            3456176.0,
+            4418160.0,
+            4558910.0,
+            3832479.0,
+            4583726.0,
+            3819970.0,
+            4421116.0,
+            4465144.0,
+            3580902.0,
+            3563767.0,
+            3644187.0,
+            3632658.0,
+            3550321.0,
+            3628900.0,
+            3801708.0
+          ],
+          "status": "MEASURED"
+        },
+        "python": {
+          "artifacts": [
+            "benchmarks/productive_simplicity/ndjson/reference.py"
+          ],
+          "bootstrap_median_95_ci": [
+            32537745.5,
+            35236673.0
+          ],
+          "mad": 2918270.5,
+          "median": 34630469.5,
+          "reason": null,
+          "relative_mad": 0.08426886906630013,
+          "sample_count": 30,
+          "samples": [
+            32788263.0,
+            31792174.0,
+            34850270.0,
+            33155324.0,
+            32583038.0,
+            34835446.0,
+            34829540.0,
+            31485080.0,
+            33519002.0,
+            34583706.0,
+            32492453.0,
+            35290168.0,
+            31448281.0,
+            31500085.0,
+            35183178.0,
+            38345750.0,
+            55012571.0,
+            34677233.0,
+            36957394.0,
+            54205216.0,
+            57450644.0,
+            55358090.0,
+            55362497.0,
+            55061619.0,
+            49115870.0,
+            31390503.0,
+            30275239.0,
+            31402764.0,
+            31632224.0,
+            32301768.0
+          ],
+          "status": "MEASURED"
+        }
+      },
+      "result_equivalence": {
+        "digest": "eca3053bda42dfc900af171698e6b6d9b9f4da0815b91d3b41401d0cf7bc4d12",
+        "reason": null,
+        "status": "MEASURED"
+      },
+      "workload": {
+        "bytes": 548337,
+        "digest": "ca9aca6d54d49e5f9203b985c763ae0fc91600027cd56fa043b7474e81c23bb1",
+        "fixture": "benchmarks/productive_performance/ndjson/workload.ndjson",
+        "observation": {
+          "expected_bytes": 548337,
+          "expected_sha256": "ca9aca6d54d49e5f9203b985c763ae0fc91600027cd56fa043b7474e81c23bb1",
+          "observed_bytes": 548337,
+          "observed_sha256": "ca9aca6d54d49e5f9203b985c763ae0fc91600027cd56fa043b7474e81c23bb1",
+          "path": "benchmarks/productive_performance/ndjson/workload.ndjson",
+          "reason": null,
+          "status": "READY"
+        },
+        "operation": "Map[Text,UInt64]"
+      }
+    },
+    {
+      "application": "csv",
+      "arms": {
+        "canonical_merlo": {
+          "artifacts": [
+            "merlo/programs/productive_csv/canonical/main.mlo"
+          ],
+          "bootstrap_median_95_ci": null,
+          "mad": null,
+          "median": null,
+          "reason": "NO_MEASUREMENT_RUNNER",
+          "relative_mad": null,
+          "sample_count": 0,
+          "samples": [],
+          "status": "UNMEASURED"
+        },
+        "concise_merlo": {
+          "artifacts": [
+            "merlo/programs/productive_csv/app/main.mlo",
+            "merlo/programs/productive_csv/app/sales.mlo"
+          ],
+          "bootstrap_median_95_ci": [
+            4179704.0,
+            5452001.5
+          ],
+          "mad": 418207.5,
+          "median": 4415725.5,
+          "reason": null,
+          "relative_mad": 0.09470867244804959,
+          "sample_count": 30,
+          "samples": [
+            4179704.0,
+            4174086.0,
+            4181515.0,
+            4615326.0,
+            6353620.0,
+            6163776.0,
+            3992906.0,
+            6076533.0,
+            4562376.0,
+            4230018.0,
+            5652156.0,
+            5758049.0,
+            5004854.0,
+            4453161.0,
+            4112355.0,
+            5251847.0,
+            6105300.0,
+            4241082.0,
+            5668994.0,
+            5765059.0,
+            5872042.0,
+            4269796.0,
+            3993844.0,
+            4378290.0,
+            4001192.0,
+            6550856.0,
+            3986837.0,
+            4089883.0,
+            4036233.0,
+            4021029.0
+          ],
+          "status": "MEASURED"
+        },
+        "native": {
+          "artifacts": [
+            "benchmarks/productive_performance/csv/native_3de713c84d450d89",
+            "benchmarks/productive_performance/csv/native_3de713c84d450d89.c",
+            "benchmarks/productive_simplicity/csv/reference.c"
+          ],
+          "bootstrap_median_95_ci": [
+            2402722.0,
+            2646516.5
+          ],
+          "mad": 178899.5,
+          "median": 2486459.5,
+          "reason": null,
+          "relative_mad": 0.071949492843137,
+          "sample_count": 30,
+          "samples": [
+            2473367.0,
+            2318823.0,
+            2310659.0,
+            2304461.0,
+            3040132.0,
+            3135123.0,
+            2352833.0,
+            2395940.0,
+            3191374.0,
+            2546860.0,
+            2409504.0,
+            2998340.0,
+            2463453.0,
+            3259091.0,
+            2294236.0,
+            2235370.0,
+            2499552.0,
+            2298536.0,
+            2351880.0,
+            3128208.0,
+            2962814.0,
+            2958952.0,
+            2608870.0,
+            2440415.0,
+            2248602.0,
+            2462179.0,
+            2515732.0,
+            2684163.0,
+            3098362.0,
+            2605609.0
+          ],
+          "status": "MEASURED"
+        },
+        "python": {
+          "artifacts": [
+            "benchmarks/productive_simplicity/csv/reference.py"
+          ],
+          "bootstrap_median_95_ci": [
+            42151043.0,
+            45701878.0
+          ],
+          "mad": 2768513.0,
+          "median": 44747523.5,
+          "reason": null,
+          "relative_mad": 0.06186963620456001,
+          "sample_count": 30,
+          "samples": [
+            36290193.0,
+            35791486.0,
+            46218842.0,
+            46450910.0,
+            42696138.0,
+            44701951.0,
+            45477304.0,
+            45183086.0,
+            47688069.0,
+            48434182.0,
+            45477338.0,
+            62316674.0,
+            42151043.0,
+            36214216.0,
+            45111336.0,
+            43608259.0,
+            45701878.0,
+            43878284.0,
+            46571029.0,
+            62657781.0,
+            52007273.0,
+            36555091.0,
+            37729822.0,
+            36404280.0,
+            38210523.0,
+            38762027.0,
+            44793096.0,
+            43420382.0,
+            49350163.0,
+            38643226.0
+          ],
+          "status": "MEASURED"
+        }
+      },
+      "result_equivalence": {
+        "digest": "d070c570a17d06e284948b409662c5270a407540db55f55108343fcc18083e8b",
+        "reason": null,
+        "status": "MEASURED"
+      },
+      "workload": {
+        "bytes": 182104,
+        "digest": "d2f8f12ac2f5c59ab613b716b958d63e31ae87ae9f7458756c7e8d711c2a7599",
+        "fixture": "benchmarks/productive_performance/csv/workload.csv",
+        "observation": {
+          "expected_bytes": 182104,
+          "expected_sha256": "d2f8f12ac2f5c59ab613b716b958d63e31ae87ae9f7458756c7e8d711c2a7599",
+          "observed_bytes": 182104,
+          "observed_sha256": "d2f8f12ac2f5c59ab613b716b958d63e31ae87ae9f7458756c7e8d711c2a7599",
+          "path": "benchmarks/productive_performance/csv/workload.csv",
+          "reason": null,
+          "status": "READY"
+        },
+        "operation": "Map[Text,UInt64]"
+      }
+    },
+    {
+      "application": "grep",
+      "arms": {
+        "canonical_merlo": {
+          "artifacts": [
+            "merlo/programs/productive_grep/canonical/main.mlo"
+          ],
+          "bootstrap_median_95_ci": null,
+          "mad": null,
+          "median": null,
+          "reason": "NO_MEASUREMENT_RUNNER",
+          "relative_mad": null,
+          "sample_count": 0,
+          "samples": [],
+          "status": "UNMEASURED"
+        },
+        "concise_merlo": {
+          "artifacts": [
+            "merlo/programs/productive_grep/app/main.mlo",
+            "merlo/programs/productive_grep/app/search.mlo"
+          ],
+          "bootstrap_median_95_ci": [
+            4116334.5,
+            4355136.0
+          ],
+          "mad": 136320.5,
+          "median": 4189304.5,
+          "reason": null,
+          "relative_mad": 0.03254012688741055,
+          "sample_count": 30,
+          "samples": [
+            6900590.0,
+            4070719.0,
+            4068894.0,
+            4147181.0,
+            4009508.0,
+            4443818.0,
+            4028568.0,
+            4085846.0,
+            4523010.0,
+            4281276.0,
+            4129863.0,
+            4064018.0,
+            3942527.0,
+            4170793.0,
+            4102806.0,
+            4230756.0,
+            4041950.0,
+            4175472.0,
+            4572643.0,
+            5641638.0,
+            4203137.0,
+            5030756.0,
+            4037737.0,
+            4496035.0,
+            5747964.0,
+            5373775.0,
+            4428996.0,
+            4139297.0,
+            4215463.0,
+            4217426.0
+          ],
+          "status": "MEASURED"
+        },
+        "native": {
+          "artifacts": [
+            "benchmarks/productive_performance/grep/native_3a4039d080d5f8af",
+            "benchmarks/productive_performance/grep/native_3a4039d080d5f8af.c",
+            "benchmarks/productive_simplicity/grep/reference.c"
+          ],
+          "bootstrap_median_95_ci": [
+            2373125.5,
+            2830378.5
+          ],
+          "mad": 90248.5,
+          "median": 2412603.5,
+          "reason": null,
+          "relative_mad": 0.03740709984048353,
+          "sample_count": 30,
+          "samples": [
+            2301446.0,
+            2467547.0,
+            2373074.0,
+            2370078.0,
+            3183755.0,
+            2385126.0,
+            2382704.0,
+            2218281.0,
+            2342865.0,
+            2337919.0,
+            2419736.0,
+            2322113.0,
+            2480087.0,
+            2291852.0,
+            2322597.0,
+            2405471.0,
+            3167027.0,
+            3161808.0,
+            2373177.0,
+            3239796.0,
+            3147204.0,
+            2720069.0,
+            3334347.0,
+            2940688.0,
+            3179934.0,
+            2401886.0,
+            2484381.0,
+            2367678.0,
+            3138831.0,
+            3209696.0
+          ],
+          "status": "MEASURED"
+        },
+        "python": {
+          "artifacts": [
+            "benchmarks/productive_simplicity/grep/reference.py"
+          ],
+          "bootstrap_median_95_ci": [
+            11254262.0,
+            11759671.5
+          ],
+          "mad": 352193.5,
+          "median": 11450024.0,
+          "reason": null,
+          "relative_mad": 0.030759193168503403,
+          "sample_count": 30,
+          "samples": [
+            13086060.0,
+            11237072.0,
+            10977437.0,
+            11271452.0,
+            11548581.0,
+            11059537.0,
+            11079511.0,
+            11140868.0,
+            11075482.0,
+            11543581.0,
+            11454788.0,
+            11124147.0,
+            11329492.0,
+            11695091.0,
+            11076231.0,
+            11116150.0,
+            11430449.0,
+            11954792.0,
+            19201078.0,
+            11670976.0,
+            11445260.0,
+            18464678.0,
+            16850534.0,
+            11302749.0,
+            13271936.0,
+            17459325.0,
+            11151467.0,
+            18089080.0,
+            17637651.0,
+            11824252.0
+          ],
+          "status": "MEASURED"
+        }
+      },
+      "result_equivalence": {
+        "digest": "96cd04e7dbc91d288171226cf0b33876a07e55ed291d6b6961db17b80cb43ee5",
+        "reason": null,
+        "status": "MEASURED"
+      },
+      "workload": {
+        "bytes": 286389,
+        "digest": "7293083cbfcfe616ea3750158c02e717d85008eee9ce30a2010925fdad631a31",
+        "fixture": "benchmarks/productive_performance/grep/workload.txt",
+        "observation": {
+          "expected_bytes": 286389,
+          "expected_sha256": "7293083cbfcfe616ea3750158c02e717d85008eee9ce30a2010925fdad631a31",
+          "observed_bytes": 286389,
+          "observed_sha256": "7293083cbfcfe616ea3750158c02e717d85008eee9ce30a2010925fdad631a31",
+          "path": "benchmarks/productive_performance/grep/workload.txt",
+          "reason": null,
+          "status": "READY"
+        },
+        "operation": "Map[Text,UInt64]"
+      }
+    }
+  ],
+  "builds": {
+    "csv:canonical_merlo": {
+      "adapter": "canonical_main_options_default",
+      "binary": null,
+      "binary_sha256": null,
+      "error": "ConciseApplicationError: /tmp/productive-performance-eawx4k1g/csv/canonical_adapter/app/main.mlo:79:89: invalid syntax",
+      "reason": "MERLO_BUILD_FAILED",
+      "source": [
+        "merlo/programs/productive_csv/canonical/main.mlo"
+      ],
+      "source_sha256": "b6a30030d5f3372da0e051e7faccb9b0e22ed4ad5e456bea0ebe4f4a9dcd53b1",
+      "status": "FAILED"
+    },
+    "csv:concise_merlo": {
+      "adapter": "concise_main",
+      "binary": "/tmp/productive-performance-eawx4k1g/csv/concise_merlo/app",
+      "binary_sha256": "4ed384352f0606a1e95c1dfba3b8ab69cfb8d36eb04d401544cefa840e2a3f53",
+      "command": [
+        "/usr/bin/gcc",
+        "-std=c11",
+        "-O3",
+        "-fwrapv",
+        "-fno-strict-overflow",
+        "-fno-delete-null-pointer-checks",
+        "-ffp-contract=off",
+        "-fno-ident",
+        "-Werror",
+        "-Wl,--build-id=none",
+        "/tmp/productive-performance-eawx4k1g/csv/concise_merlo/app.c",
+        "-o",
+        "/tmp/productive-performance-eawx4k1g/csv/concise_merlo/app"
+      ],
+      "compiler": "/usr/bin/gcc",
+      "compiler_version": "gcc (GCC) 16.1.1 20260515 (Red Hat 16.1.1-2)",
+      "generated_source": "/tmp/productive-performance-eawx4k1g/csv/concise_merlo/app.c",
+      "generated_source_sha256": "15ce919f2302ce04307dd303f80a5dcd20f6179633a3bd5ff908773c8ff11ce1",
+      "source": [
+        "merlo/programs/productive_csv/app/main.mlo",
+        "merlo/programs/productive_csv/app/sales.mlo"
+      ],
+      "source_sha256": "1d30ab1a3d55b528351609d5f3c227a702cff9876bc7328149ac6850464811f4",
+      "status": "MEASURED",
+      "stderr": ""
+    },
+    "csv:native": {
+      "binary": "/tmp/productive-performance-eawx4k1g/csv/native/native_3de713c84d450d89",
+      "binary_sha256": "c719da4f03c5e5944c592c34dfc9e7322aa559d710b64291fd3f1aaf1a2c0d49",
+      "command": [
+        "/usr/bin/clang",
+        "-std=c11",
+        "-O3",
+        "-fwrapv",
+        "-fno-strict-overflow",
+        "-fno-delete-null-pointer-checks",
+        "-ffp-contract=off",
+        "-fno-ident",
+        "-Werror",
+        "-Wl,--build-id=none",
+        "/tmp/productive-performance-eawx4k1g/csv/native/native_3de713c84d450d89.c",
+        "-o",
+        "/tmp/productive-performance-eawx4k1g/csv/native/native_3de713c84d450d89"
+      ],
+      "compiler": "/usr/bin/clang",
+      "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+      "generated_source": "/tmp/productive-performance-eawx4k1g/csv/native/native_3de713c84d450d89.c",
+      "generated_source_sha256": "3de713c84d450d8925370a5449f728c424bb846fbff27a39ce509273f4427698",
+      "source": [
+        "benchmarks/productive_simplicity/csv/reference.c"
+      ],
+      "source_sha256": "2c3fd15da202b4d9856388947bafbdce7eaf1198df3c6e448cab5d27d469c683",
+      "status": "MEASURED",
+      "stderr": ""
+    },
+    "grep:canonical_merlo": {
+      "adapter": "canonical_main_options_default",
+      "binary": null,
+      "binary_sha256": null,
+      "error": "ConciseApplicationError: /tmp/productive-performance-eawx4k1g/grep/canonical_adapter/app/main.mlo:48: UnresolvedName 'error'",
+      "reason": "MERLO_BUILD_FAILED",
+      "source": [
+        "merlo/programs/productive_grep/canonical/main.mlo"
+      ],
+      "source_sha256": "dd096860648ffe2904a0ced4dc2837d5c448c8dcac37df5f3579bfcb91bf7cd8",
+      "status": "FAILED"
+    },
+    "grep:concise_merlo": {
+      "adapter": "concise_main",
+      "binary": "/tmp/productive-performance-eawx4k1g/grep/concise_merlo/app",
+      "binary_sha256": "7cb223bca72a8004c8f72d396cdad645798f3f2822b29dce19124ceed3d8f598",
+      "command": [
+        "/usr/bin/gcc",
+        "-std=c11",
+        "-O3",
+        "-fwrapv",
+        "-fno-strict-overflow",
+        "-fno-delete-null-pointer-checks",
+        "-ffp-contract=off",
+        "-fno-ident",
+        "-Werror",
+        "-Wl,--build-id=none",
+        "/tmp/productive-performance-eawx4k1g/grep/concise_merlo/app.c",
+        "-o",
+        "/tmp/productive-performance-eawx4k1g/grep/concise_merlo/app"
+      ],
+      "compiler": "/usr/bin/gcc",
+      "compiler_version": "gcc (GCC) 16.1.1 20260515 (Red Hat 16.1.1-2)",
+      "generated_source": "/tmp/productive-performance-eawx4k1g/grep/concise_merlo/app.c",
+      "generated_source_sha256": "8e0aca6007f1eb10f3aa0bd5ab5731ef7d685b2580a63be7038fc63c6cd175c7",
+      "source": [
+        "merlo/programs/productive_grep/app/main.mlo",
+        "merlo/programs/productive_grep/app/search.mlo"
+      ],
+      "source_sha256": "1cf327fa972bd0147640ccd8b5ae15fa972b4a0382cba59171af6cc7c631930f",
+      "status": "MEASURED",
+      "stderr": ""
+    },
+    "grep:native": {
+      "binary": "/tmp/productive-performance-eawx4k1g/grep/native/native_3a4039d080d5f8af",
+      "binary_sha256": "8e489a6d0b101b623ea2ae1314fd1b15cce2983010958de919a929ab6660f310",
+      "command": [
+        "/usr/bin/clang",
+        "-std=c11",
+        "-O3",
+        "-fwrapv",
+        "-fno-strict-overflow",
+        "-fno-delete-null-pointer-checks",
+        "-ffp-contract=off",
+        "-fno-ident",
+        "-Werror",
+        "-Wl,--build-id=none",
+        "/tmp/productive-performance-eawx4k1g/grep/native/native_3a4039d080d5f8af.c",
+        "-o",
+        "/tmp/productive-performance-eawx4k1g/grep/native/native_3a4039d080d5f8af"
+      ],
+      "compiler": "/usr/bin/clang",
+      "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+      "generated_source": "/tmp/productive-performance-eawx4k1g/grep/native/native_3a4039d080d5f8af.c",
+      "generated_source_sha256": "3a4039d080d5f8af3fb01ef8f4e7bd08d9867fbc308c47340a6b2ce2d78c28f6",
+      "source": [
+        "benchmarks/productive_simplicity/grep/reference.c"
+      ],
+      "source_sha256": "7cb11f5803c6834c8dff223316aee86c419b98a405cbcb82eb2d5cd7e8d89ea2",
+      "status": "MEASURED",
+      "stderr": ""
+    },
+    "ndjson:canonical_merlo": {
+      "adapter": "canonical_main_options_default",
+      "binary": null,
+      "binary_sha256": null,
+      "error": "ConciseApplicationError: /tmp/productive-performance-eawx4k1g/ndjson/canonical_adapter/app/main.mlo:368: UnresolvedName 'error'",
+      "reason": "MERLO_BUILD_FAILED",
+      "source": [
+        "merlo/programs/productive_ndjson/canonical/main.mlo"
+      ],
+      "source_sha256": "acaad90c4dfac1b33dfaeddf6a8452db8c37f5621da7de802b2178074bb1bff1",
+      "status": "FAILED"
+    },
+    "ndjson:concise_merlo": {
+      "adapter": "concise_main",
+      "binary": "/tmp/productive-performance-eawx4k1g/ndjson/concise_merlo/app",
+      "binary_sha256": "82cb5a5bfff8f676cbbe104a4830aea95ef6f72b1e63432bc059b61d0f7e66ec",
+      "command": [
+        "/usr/bin/gcc",
+        "-std=c11",
+        "-O3",
+        "-fwrapv",
+        "-fno-strict-overflow",
+        "-fno-delete-null-pointer-checks",
+        "-ffp-contract=off",
+        "-fno-ident",
+        "-Werror",
+        "-Wl,--build-id=none",
+        "/tmp/productive-performance-eawx4k1g/ndjson/concise_merlo/app.c",
+        "-o",
+        "/tmp/productive-performance-eawx4k1g/ndjson/concise_merlo/app"
+      ],
+      "compiler": "/usr/bin/gcc",
+      "compiler_version": "gcc (GCC) 16.1.1 20260515 (Red Hat 16.1.1-2)",
+      "generated_source": "/tmp/productive-performance-eawx4k1g/ndjson/concise_merlo/app.c",
+      "generated_source_sha256": "36e761583a9cba5fadd78e99e55df7606d3f68ac19aee89d33b1dcea171577fc",
+      "source": [
+        "merlo/programs/productive_ndjson/app/main.mlo",
+        "merlo/programs/productive_ndjson/app/report.mlo"
+      ],
+      "source_sha256": "f43755300ea451a96990e03140a1a00839b9dca03f457ae84ba481dee1b7fe12",
+      "status": "MEASURED",
+      "stderr": ""
+    },
+    "ndjson:native": {
+      "binary": "/tmp/productive-performance-eawx4k1g/ndjson/native/native_fed4fb85beedf584",
+      "binary_sha256": "69f717048f9b2780d956d55a8eef60a5c65ade35dbe6856591044ea25dcb64e6",
+      "command": [
+        "/usr/bin/clang",
+        "-std=c11",
+        "-O3",
+        "-fwrapv",
+        "-fno-strict-overflow",
+        "-fno-delete-null-pointer-checks",
+        "-ffp-contract=off",
+        "-fno-ident",
+        "-Werror",
+        "-Wl,--build-id=none",
+        "/tmp/productive-performance-eawx4k1g/ndjson/native/native_fed4fb85beedf584.c",
+        "-o",
+        "/tmp/productive-performance-eawx4k1g/ndjson/native/native_fed4fb85beedf584"
+      ],
+      "compiler": "/usr/bin/clang",
+      "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+      "generated_source": "/tmp/productive-performance-eawx4k1g/ndjson/native/native_fed4fb85beedf584.c",
+      "generated_source_sha256": "fed4fb85beedf584b3557679ae07eac381fd08866a313e7d8c72e832f6930f35",
+      "source": [
+        "benchmarks/productive_simplicity/ndjson/reference.c"
+      ],
+      "source_sha256": "c5d86160aac3f27c85e5d3a8c8ff228ea96f5a76d9145aa3168fe38e9ad0d220",
+      "status": "MEASURED",
+      "stderr": ""
+    }
+  },
+  "frozen_workloads": {
+    "digest": "23125ec01415983c77fab3181ab0e07dabe6529c176225658bb9c338644e5ec8",
+    "items": [
+      {
+        "application": "ndjson",
+        "expected_bytes": 548337,
+        "expected_sha256": "ca9aca6d54d49e5f9203b985c763ae0fc91600027cd56fa043b7474e81c23bb1",
+        "fixture": "benchmarks/productive_performance/ndjson/workload.ndjson",
+        "operation": "Map[Text,UInt64]"
+      },
+      {
+        "application": "csv",
+        "expected_bytes": 182104,
+        "expected_sha256": "d2f8f12ac2f5c59ab613b716b958d63e31ae87ae9f7458756c7e8d711c2a7599",
+        "fixture": "benchmarks/productive_performance/csv/workload.csv",
+        "operation": "Map[Text,UInt64]"
+      },
+      {
+        "application": "grep",
+        "expected_bytes": 286389,
+        "expected_sha256": "7293083cbfcfe616ea3750158c02e717d85008eee9ce30a2010925fdad631a31",
+        "fixture": "benchmarks/productive_performance/grep/workload.txt",
+        "operation": "Map[Text,UInt64]"
+      }
+    ]
+  },
+  "gates": {
+    "algorithms_frozen": true,
+    "all_four_arms_measured": false,
+    "all_measured_mad_at_most_0_05": false,
+    "artifact_result_equivalence": true,
+    "csv_within_native_1_5": false,
+    "grep_within_native_1_5": false,
+    "identical_input_semantics": true,
+    "mutation_lock": true,
+    "ndjson_within_native_1_5": false
+  },
+  "mutation_lock": {
+    "digest": "086c3b2bae68460cf6946e75e7fe19ed14273ef9bbefdf67c30a7de47553ec01",
+    "verified": true
+  },
+  "passed": false,
+  "protocol": {
+    "arm_order": "deterministically_randomized_sequential",
+    "bootstrap_replicates": 2000,
+    "bootstrap_seed": 20260813,
+    "mad_ratio_limit": 0.05,
+    "measured_runs": 30,
+    "native_ratio_limit": 1.5,
+    "warmups": 5
+  },
+  "randomized_schedule": {
+    "rounds": [
+      {
+        "arms": [
+          "concise_merlo",
+          "python",
+          "native",
+          "canonical_merlo"
+        ],
+        "iteration": 0,
+        "phase": "warmup"
+      },
+      {
+        "arms": [
+          "canonical_merlo",
+          "python",
+          "native",
+          "concise_merlo"
+        ],
+        "iteration": 1,
+        "phase": "warmup"
+      },
+      {
+        "arms": [
+          "native",
+          "canonical_merlo",
+          "python",
+          "concise_merlo"
+        ],
+        "iteration": 2,
+        "phase": "warmup"
+      },
+      {
+        "arms": [
+          "concise_merlo",
+          "native",
+          "python",
+          "canonical_merlo"
+        ],
+        "iteration": 3,
+        "phase": "warmup"
+      },
+      {
+        "arms": [
+          "canonical_merlo",
+          "native",
+          "python",
+          "concise_merlo"
+        ],
+        "iteration": 4,
+        "phase": "warmup"
+      },
+      {
+        "arms": [
+          "native",
+          "python",
+          "canonical_merlo",
+          "concise_merlo"
+        ],
+        "iteration": 0,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "native",
+          "python",
+          "concise_merlo",
+          "canonical_merlo"
+        ],
+        "iteration": 1,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "native",
+          "canonical_merlo",
+          "concise_merlo",
+          "python"
+        ],
+        "iteration": 2,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "concise_merlo",
+          "native",
+          "python",
+          "canonical_merlo"
+        ],
+        "iteration": 3,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "concise_merlo",
+          "native",
+          "canonical_merlo",
+          "python"
+        ],
+        "iteration": 4,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "python",
+          "canonical_merlo",
+          "concise_merlo",
+          "native"
+        ],
+        "iteration": 5,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "python",
+          "canonical_merlo",
+          "concise_merlo",
+          "native"
+        ],
+        "iteration": 6,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "native",
+          "canonical_merlo",
+          "python",
+          "concise_merlo"
+        ],
+        "iteration": 7,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "canonical_merlo",
+          "native",
+          "concise_merlo",
+          "python"
+        ],
+        "iteration": 8,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "concise_merlo",
+          "native",
+          "canonical_merlo",
+          "python"
+        ],
+        "iteration": 9,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "python",
+          "canonical_merlo",
+          "native",
+          "concise_merlo"
+        ],
+        "iteration": 10,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "canonical_merlo",
+          "native",
+          "concise_merlo",
+          "python"
+        ],
+        "iteration": 11,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "native",
+          "concise_merlo",
+          "canonical_merlo",
+          "python"
+        ],
+        "iteration": 12,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "python",
+          "concise_merlo",
+          "native",
+          "canonical_merlo"
+        ],
+        "iteration": 13,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "python",
+          "concise_merlo",
+          "native",
+          "canonical_merlo"
+        ],
+        "iteration": 14,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "native",
+          "python",
+          "canonical_merlo",
+          "concise_merlo"
+        ],
+        "iteration": 15,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "canonical_merlo",
+          "concise_merlo",
+          "python",
+          "native"
+        ],
+        "iteration": 16,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "native",
+          "canonical_merlo",
+          "python",
+          "concise_merlo"
+        ],
+        "iteration": 17,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "native",
+          "concise_merlo",
+          "python",
+          "canonical_merlo"
+        ],
+        "iteration": 18,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "python",
+          "canonical_merlo",
+          "native",
+          "concise_merlo"
+        ],
+        "iteration": 19,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "native",
+          "canonical_merlo",
+          "concise_merlo",
+          "python"
+        ],
+        "iteration": 20,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "canonical_merlo",
+          "concise_merlo",
+          "python",
+          "native"
+        ],
+        "iteration": 21,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "concise_merlo",
+          "python",
+          "canonical_merlo",
+          "native"
+        ],
+        "iteration": 22,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "canonical_merlo",
+          "python",
+          "concise_merlo",
+          "native"
+        ],
+        "iteration": 23,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "native",
+          "canonical_merlo",
+          "concise_merlo",
+          "python"
+        ],
+        "iteration": 24,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "native",
+          "python",
+          "concise_merlo",
+          "canonical_merlo"
+        ],
+        "iteration": 25,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "python",
+          "native",
+          "canonical_merlo",
+          "concise_merlo"
+        ],
+        "iteration": 26,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "python",
+          "concise_merlo",
+          "canonical_merlo",
+          "native"
+        ],
+        "iteration": 27,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "python",
+          "canonical_merlo",
+          "native",
+          "concise_merlo"
+        ],
+        "iteration": 28,
+        "phase": "measured"
+      },
+      {
+        "arms": [
+          "canonical_merlo",
+          "python",
+          "concise_merlo",
+          "native"
+        ],
+        "iteration": 29,
+        "phase": "measured"
+      }
+    ],
+    "seed": 20260813
+  },
+  "schema_version": 1,
+  "status": "MEASURED"
+}

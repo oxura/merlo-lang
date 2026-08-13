@@ -1,0 +1,66 @@
+{
+  "hypothesis": "A direct synchronous function can return a BytesView uniquely derived from exactly one borrowed BytesView parameter, preserving one root Bytes owner and transferring the borrow into the caller without surface lifetime syntax, allocation, payload copy, reference counting, or a new owner.",
+  "status_set": [
+    "BYTES_BORROWED_RETURN_SUPPORTED",
+    "BYTES_BORROWED_RETURN_INCOMPLETE",
+    "BYTES_BORROWED_RETURN_SAFETY_DEFECT"
+  ],
+  "scope": {
+    "calls": "direct_synchronous",
+    "borrowed_source_parameters": 1,
+    "borrowed_return_chain_maximum": 2,
+    "returns": ["same_view", "same_origin_subview"],
+    "view": "immutable",
+    "caller_use": "caller_local",
+    "lifetime_annotations": 0,
+    "general_lifetime_solver": false
+  },
+  "unsupported": [
+    "BytesBuilder",
+    "Text_UTF8",
+    "mutable_BytesView",
+    "recursive_values",
+    "interfaces",
+    "JSON",
+    "async",
+    "flow",
+    "machine",
+    "bounds_check_elimination",
+    "multiple_borrowed_origins",
+    "recursion",
+    "closures",
+    "dynamic_dispatch",
+    "record_with_BytesView",
+    "global_view_storage",
+    "heap_view_storage",
+    "arbitrary_lifetime_annotations"
+  ],
+  "support_gates": {
+    "valid_cases_minimum": 256,
+    "invalid_cases_minimum": 224,
+    "unique_origin_required": true,
+    "root_identity_required": true,
+    "last_use_required": true,
+    "allocations_during_call": 0,
+    "frees_during_call": 0,
+    "payload_copies": 0,
+    "retains": 0,
+    "releases": 0,
+    "sanitizer_violations": 0,
+    "full_suite_failures": 0,
+    "decision_runs": 1,
+    "timing_benchmark_runs": 0
+  },
+  "falsifiers": [
+    "surface lifetime syntax is required",
+    "returned view loses root owner identity",
+    "owner can mutate move or drop before returned-view last use",
+    "returned view outlives root owner",
+    "allocation payload copy retain or release appears",
+    "view of local or temporary owned Bytes escapes",
+    "multiple borrowed origins are guessed",
+    "optimizer removes or reorders transfer metadata",
+    "HIR or MIR cannot express transfer unambiguously"
+  ],
+  "stop_condition": "Return BYTES_BORROWED_RETURN_INCOMPLETE without implementing a general lifetime solver if the restricted proof is insufficient."
+}

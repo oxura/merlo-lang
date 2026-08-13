@@ -1,0 +1,93 @@
+{
+  "artifact_hashes": {
+    "meldra_stage06p_benchmark.json": "45f94b5af65efa975f067369286e0177ffc0f04bc0c7aed2650399806185a242",
+    "meldra_stage06p_codegen.json": "eb1b98fc1de61367b1e0e3519d27eb1901aa111d8a8d72ecd5eaef030ca20d2b",
+    "meldra_stage06p_compile_phases.json": "9de49629b1700f5ecd08016817cd0750917cb55022b6ef9e83922820947efad2",
+    "meldra_stage06p_correctness.json": "e12783899c5707354503ee44b2ce27940d57517fffc48081f462d65916a968ef",
+    "meldra_stage06p_determinism.json": "820f6457f857b34d16f7d7f0bbddc4aa7a3cb925031bc744d54c097e729894ec",
+    "meldra_stage06p_ergonomics.json": "5fedacb624796f881ffca9e07907cc6c21491d05ce31a767d9a8ae3ca668ba2a",
+    "meldra_stage06p_extended.json": "82e7f62e395e0cf0608faba3e1c1d3275643af1eba461fdf70045b5e4db70058",
+    "meldra_stage06p_external_corpus.json": "f71a4fab36b33dca105a0ef859d6c3354e622e3617bfb7adc6ad2521d13bdd64",
+    "meldra_stage06p_memory.json": "05aa1ab937cc7f9614ceb867aa3dc2a5ab23d52bed0f5cd1a513a1ab0691694d",
+    "meldra_stage06p_optimizer.json": "dc263b18e05904a88e50cdd90fb3d66abc2010f587d197cc2af765e592d449e3",
+    "meldra_stage06p_overlap.json": "17926caae7acaf2d09af1e6120e93dd8f181cbedc66552576a2dfb1ee00965cb",
+    "meldra_stage06p_protocol.json": "b83c8829b03635aad532470cd183e21791f83d90cec43ad890629276efa6a6e9",
+    "meldra_stage06p_sanitizers.json": "57fd75fe309c0131dcdabe19c34f6826be94830d3bcee60734829aadeab80183",
+    "meldra_stage06p_stage05p_audit.json": "7e242b2de8280da70f1aafad309ed48f00badf53cd2535575508a2047d0c37e0"
+  },
+  "checks": {
+    "benchmark_calibration_reported": true,
+    "benchmark_correctness": true,
+    "benchmark_cpu_state": true,
+    "benchmark_full_distributions": true,
+    "benchmark_repetitions": true,
+    "changed_code_pyflakes": true,
+    "codegen_assembly_records": true,
+    "compile_phase_samples": true,
+    "compileall": true,
+    "deterministic_mir_c_binary": true,
+    "ergonomics_denominators": true,
+    "extended_external_arms": true,
+    "extended_meldra_limitations_explicit": true,
+    "external_projects": true,
+    "invalid_diagnostic_failures": true,
+    "invalid_program_count": true,
+    "key_native_baselines": true,
+    "memory_models": true,
+    "optimizer_pass_mismatches": true,
+    "optimizer_positive_negative_evidence": true,
+    "pytest": true,
+    "sanitizers": true,
+    "separate_external_compile_link_samples": true,
+    "stage04_overlap": true,
+    "stage05_measured_checksums": true,
+    "surface_hir_mir_native_mismatches": true,
+    "valid_program_count": true
+  },
+  "commands": {
+    "compileall": "PASS",
+    "pyflakes_changed_scope": "PASS",
+    "pytest": "435 passed in 82.38s",
+    "pytest_passed": 435
+  },
+  "failures": [],
+  "implementation_versions": {
+    "memory_model": 5,
+    "native_backend_implementation": 5,
+    "native_backend_schema": 1,
+    "native_hir_schema": 1,
+    "optimizer_passes": {
+      "borrow_inference": 1,
+      "bounds_check_elimination": 1,
+      "collection_fusion": 1,
+      "constant_folding": 3,
+      "dead_code_elimination": 1,
+      "inlining": 2,
+      "memory_model_lowering": 5,
+      "monomorphization": 1,
+      "owned_result_drop_insertion": 2,
+      "region_ownership_lowering": 1
+    },
+    "performance_frontend_implementation": 6,
+    "performance_frontend_schema": 1,
+    "performance_mir_schema": 1
+  },
+  "kind": "MeldraStage06PValidation",
+  "manifest_checks": {
+    "invalid_manifest_sha256": true,
+    "valid_manifest_sha256": true
+  },
+  "schema_checks": {
+    "hir_documents": 8,
+    "mir_documents": 179,
+    "optimizer_mir_documents": 40,
+    "stage06p_mir_extensions": [
+      "retain",
+      "release"
+    ],
+    "status": "PASS",
+    "validator": "4.26.0"
+  },
+  "schema_version": 2,
+  "status": "PASS"
+}

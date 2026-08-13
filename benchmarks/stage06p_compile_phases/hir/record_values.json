@@ -1,0 +1,1304 @@
+{
+  "contract": "meldra.native-typed-hir.v1",
+  "cst": {
+    "adapter": "stage05p_frozen_performance_parser",
+    "lossless": true,
+    "normalized_sha256": "193641d36afc62a998a0e956252981828b4ae4af996a0fe9570c45f0295f52a9",
+    "path": "compile-phases/record_values.meldra",
+    "source_sha256": "3fab8c92998a63adc5f314241b4e3aeeef6e7612b68e53298d0320a0d2c30a4f"
+  },
+  "entry_function": "main",
+  "invariants": {
+    "effects_and_capabilities_explicit": true,
+    "lossless_source": true,
+    "source_mappings": true,
+    "stable_symbol_ids": true
+  },
+  "nodes": [
+    {
+      "children": [
+        "nhirn_dc0b2227c7406c7ebecf120a25511b068c32bf33412c3a2dee12009dfa832f12",
+        "nhirn_cc53fd43b8818da9b940e1005f662a2d3b22e3f2d49054db88fe5585c2ffe547"
+      ],
+      "id": "nhirn_cf86a4bc392cfe3bb1024b890115fa83a0bce62ac71be1118131aedef7de17d4",
+      "kind": "Module",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_e549de334e725d0658571d1e9b0f03091f533df31f048882139d9e350c77a37a",
+        "nhirn_dbb15c7275e36bc5f2fa1a1da7f4f50447f3be1baf002ac6b92cf5a172a481e0"
+      ],
+      "id": "nhirn_dc0b2227c7406c7ebecf120a25511b068c32bf33412c3a2dee12009dfa832f12",
+      "kind": "ClassDef",
+      "name": "Point",
+      "operator": null,
+      "source": {
+        "column": 0,
+        "end_column": 13,
+        "end_line": 3,
+        "line": 1,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_9322036420ca4a5473dabc26181b5618b25dc80d5f68c9be23537b6d1c9dca4c",
+        "nhirn_1af2f38d0970a555cf4c26d0961661ffb1f00914ecd662dc8fdc3dbb4639ce49",
+        "nhirn_45a25ae4f01e71fc9fd399405034cd37c25dab7f60ea39aec7c96c158400cb51",
+        "nhirn_95ced23b95fea60a301dd302c8c2608c70f4ddd68fdbecd46d3424c3e5cc7090",
+        "nhirn_b32d6916ca6f14dc8e1569bd9e939b604a70f95479a92231326c4b532b34cf77"
+      ],
+      "id": "nhirn_cc53fd43b8818da9b940e1005f662a2d3b22e3f2d49054db88fe5585c2ffe547",
+      "kind": "FunctionDef",
+      "name": "main",
+      "operator": null,
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 10,
+        "line": 5,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_41748f87cb163d7ffb7b02f9517216fe94ae11699e1a17099511dd2d522a182f",
+        "nhirn_51688bddb67d9a74e27b4a4a35e97a4a185141d430bff491089536456012f59b"
+      ],
+      "id": "nhirn_e549de334e725d0658571d1e9b0f03091f533df31f048882139d9e350c77a37a",
+      "kind": "AnnAssign",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 13,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_9ac23bab579b1719ed4cd8cb830e48e7f5aaefff94b286a32e8aa9788881d97c",
+        "nhirn_74272250ff9bda4b34f302693472a36b9fd2ce8edd3194c41536acf63961e2e3"
+      ],
+      "id": "nhirn_dbb15c7275e36bc5f2fa1a1da7f4f50447f3be1baf002ac6b92cf5a172a481e0",
+      "kind": "AnnAssign",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 13,
+        "end_line": 3,
+        "line": 3,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_10cef747cde4d3d89f00dd02db66dab8b27d69af0e0cdcbf617fef737e800427"
+      ],
+      "id": "nhirn_9322036420ca4a5473dabc26181b5618b25dc80d5f68c9be23537b6d1c9dca4c",
+      "kind": "arguments",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_9e13d9ba87b16161cb05506ab3f01038b82aab7cf1df542114bd9b3a32e62030",
+        "nhirn_4c630a479ca409fb3944009f63bcc4459737f74f8dc61c87334f595a21eb254d",
+        "nhirn_08b42b9bca78b7aacb04b139993d9605d7e086a40f52d9ae11b9e63c31f95a9d"
+      ],
+      "id": "nhirn_1af2f38d0970a555cf4c26d0961661ffb1f00914ecd662dc8fdc3dbb4639ce49",
+      "kind": "AnnAssign",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 24,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_dbacd57f8561fc39ef8b559dd43ffce8c2dac11941e3ce4a7ec96610d3cec05b",
+        "nhirn_fc1733d827b8643bfb47c67d49be9887852458010e838c4b6a58d41f44f48ac6",
+        "nhirn_2cb1bb768a6c8f73966cf06c14a11e9619857be47d383557387c521d3ceba093",
+        "nhirn_918c065a8b022f87ec011218aacd0e00048985284abaa68711ba57e0a1d7a353"
+      ],
+      "id": "nhirn_45a25ae4f01e71fc9fd399405034cd37c25dab7f60ea39aec7c96c158400cb51",
+      "kind": "For",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 49,
+        "end_line": 9,
+        "line": 7,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_f46998be3745ab5d93978166dd51d05fcbd93f69faa49df9961e2bb4109d7536"
+      ],
+      "id": "nhirn_95ced23b95fea60a301dd302c8c2608c70f4ddd68fdbecd46d3424c3e5cc7090",
+      "kind": "Expr",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 10,
+        "line": 10,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_b32d6916ca6f14dc8e1569bd9e939b604a70f95479a92231326c4b532b34cf77",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 23,
+        "end_column": 29,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_5f859dce57d4a9f63ba00a1e0fe59af55c295e7bc0f4d60322841db069bb1324"
+      ],
+      "id": "nhirn_41748f87cb163d7ffb7b02f9517216fe94ae11699e1a17099511dd2d522a182f",
+      "kind": "Name",
+      "name": "x",
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 5,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_51688bddb67d9a74e27b4a4a35e97a4a185141d430bff491089536456012f59b",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 7,
+        "end_column": 13,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_5f859dce57d4a9f63ba00a1e0fe59af55c295e7bc0f4d60322841db069bb1324"
+      ],
+      "id": "nhirn_9ac23bab579b1719ed4cd8cb830e48e7f5aaefff94b286a32e8aa9788881d97c",
+      "kind": "Name",
+      "name": "y",
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 5,
+        "end_line": 3,
+        "line": 3,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_74272250ff9bda4b34f302693472a36b9fd2ce8edd3194c41536acf63961e2e3",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 7,
+        "end_column": 13,
+        "end_line": 3,
+        "line": 3,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_2d6caaab72a0b34c1578bb95eae5fd25cacbb0508fd1515ecf16f81126742f54"
+      ],
+      "id": "nhirn_10cef747cde4d3d89f00dd02db66dab8b27d69af0e0cdcbf617fef737e800427",
+      "kind": "arg",
+      "name": "n",
+      "operator": null,
+      "source": {
+        "column": 9,
+        "end_column": 18,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_5f859dce57d4a9f63ba00a1e0fe59af55c295e7bc0f4d60322841db069bb1324"
+      ],
+      "id": "nhirn_9e13d9ba87b16161cb05506ab3f01038b82aab7cf1df542114bd9b3a32e62030",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_4c630a479ca409fb3944009f63bcc4459737f74f8dc61c87334f595a21eb254d",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 14,
+        "end_column": 20,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_08b42b9bca78b7aacb04b139993d9605d7e086a40f52d9ae11b9e63c31f95a9d",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 23,
+        "end_column": 24,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": 0
+    },
+    {
+      "children": [
+        "nhirn_5f859dce57d4a9f63ba00a1e0fe59af55c295e7bc0f4d60322841db069bb1324"
+      ],
+      "id": "nhirn_dbacd57f8561fc39ef8b559dd43ffce8c2dac11941e3ce4a7ec96610d3cec05b",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 9,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_4b70b4ba2841f13546a2f9d052595d77acb1673416c2fb8eccbf98c5c390c050",
+        "nhirn_60635a710cc6c8bb75c76d81bb5358a9ced8ca5be976820ad78a10b409edb8ce",
+        "nhirn_5b3ca460dcb1c837a17c3f7cfa185a80c7ef27fd71a792da633141284792caf6"
+      ],
+      "id": "nhirn_fc1733d827b8643bfb47c67d49be9887852458010e838c4b6a58d41f44f48ac6",
+      "kind": "Call",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 13,
+        "end_column": 31,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_36e5ad9ee824f64d536c2b0b0272da974e6d1f376d3bccbf033cd6d05d00bafa",
+        "nhirn_db0dec9ee7cb95607c35a31cf7625a0fad4bbeb51907931d3827a661a01c038b",
+        "nhirn_5866f676b89308daf7a33142e152140e2476cd38b27882a0af300469c1fcdee2"
+      ],
+      "id": "nhirn_2cb1bb768a6c8f73966cf06c14a11e9619857be47d383557387c521d3ceba093",
+      "kind": "AnnAssign",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 46,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_10266664b735eb665116b78397c46ec57a5e18bc299cf02675fbc73e2494c27f",
+        "nhirn_a80d05bdde306009123bd7625c1ce5d1888f81ad5ecc12ef97a5992c8b6f1621"
+      ],
+      "id": "nhirn_918c065a8b022f87ec011218aacd0e00048985284abaa68711ba57e0a1d7a353",
+      "kind": "Assign",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 49,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_f46998be3745ab5d93978166dd51d05fcbd93f69faa49df9961e2bb4109d7536",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 10,
+        "line": 10,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a",
+      "kind": "Load",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_5f859dce57d4a9f63ba00a1e0fe59af55c295e7bc0f4d60322841db069bb1324",
+      "kind": "Store",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_2d6caaab72a0b34c1578bb95eae5fd25cacbb0508fd1515ecf16f81126742f54",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 12,
+        "end_column": 18,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_4b70b4ba2841f13546a2f9d052595d77acb1673416c2fb8eccbf98c5c390c050",
+      "kind": "Name",
+      "name": "meldra_range",
+      "operator": null,
+      "source": {
+        "column": 13,
+        "end_column": 25,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_60635a710cc6c8bb75c76d81bb5358a9ced8ca5be976820ad78a10b409edb8ce",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 26,
+        "end_column": 27,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": 0
+    },
+    {
+      "children": [
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_5b3ca460dcb1c837a17c3f7cfa185a80c7ef27fd71a792da633141284792caf6",
+      "kind": "Name",
+      "name": "n",
+      "operator": null,
+      "source": {
+        "column": 29,
+        "end_column": 30,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_5f859dce57d4a9f63ba00a1e0fe59af55c295e7bc0f4d60322841db069bb1324"
+      ],
+      "id": "nhirn_36e5ad9ee824f64d536c2b0b0272da974e6d1f376d3bccbf033cd6d05d00bafa",
+      "kind": "Name",
+      "name": "point",
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 13,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_db0dec9ee7cb95607c35a31cf7625a0fad4bbeb51907931d3827a661a01c038b",
+      "kind": "Name",
+      "name": "Point",
+      "operator": null,
+      "source": {
+        "column": 15,
+        "end_column": 20,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_9bf05848c3663f9f24bfa583437a98dae28a79656dc4bb7ccf097292c20deae9",
+        "nhirn_ee47810b048de58b772a20df392e7c78bed0ebe45f5970babe12c2f6bc91ade2",
+        "nhirn_6646a550fa151b3094f7fc28b9d6ebf1e2afca896903803695f9ba114257b5d0"
+      ],
+      "id": "nhirn_5866f676b89308daf7a33142e152140e2476cd38b27882a0af300469c1fcdee2",
+      "kind": "Call",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 23,
+        "end_column": 46,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "Point",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_5f859dce57d4a9f63ba00a1e0fe59af55c295e7bc0f4d60322841db069bb1324"
+      ],
+      "id": "nhirn_10266664b735eb665116b78397c46ec57a5e18bc299cf02675fbc73e2494c27f",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 16,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_6dc832453274132362fa52a7c993c3cb44949c0a2109a39484087d8732eae851",
+        "nhirn_9029677ad73840df0a982a0ad2ab2d70118b2dd0f458a2bf46ef016dbe401698",
+        "nhirn_43109faa66cadaaf47c1634bd70e7e1167eadc9841073f9907856383664ba28b"
+      ],
+      "id": "nhirn_a80d05bdde306009123bd7625c1ce5d1888f81ad5ecc12ef97a5992c8b6f1621",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Add",
+      "source": {
+        "column": 19,
+        "end_column": 49,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_9bf05848c3663f9f24bfa583437a98dae28a79656dc4bb7ccf097292c20deae9",
+      "kind": "Name",
+      "name": "Point",
+      "operator": null,
+      "source": {
+        "column": 23,
+        "end_column": 28,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "Point",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_e2a15bc712b34717116157353c8bdc47937ba3eceda983cd2783c6c80106ced2"
+      ],
+      "id": "nhirn_ee47810b048de58b772a20df392e7c78bed0ebe45f5970babe12c2f6bc91ade2",
+      "kind": "keyword",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 29,
+        "end_column": 32,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_0878cd0a5d552b1ecc66da9f62bca99697a18105c0a6ff27545e20074d058782"
+      ],
+      "id": "nhirn_6646a550fa151b3094f7fc28b9d6ebf1e2afca896903803695f9ba114257b5d0",
+      "kind": "keyword",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 34,
+        "end_column": 45,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_6dc832453274132362fa52a7c993c3cb44949c0a2109a39484087d8732eae851",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 19,
+        "end_column": 27,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_9029677ad73840df0a982a0ad2ab2d70118b2dd0f458a2bf46ef016dbe401698",
+      "kind": "Add",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_4900569e0a7a0d9960f8066f0bf70baf78721b8c904c507b911ed5f074ce308c",
+        "nhirn_88d5931d53b677f2872dbd800f0ea68170c425d24b92df2c8be0ab8a595e7041",
+        "nhirn_7242936b673b8bc821d27b99de9d0358ba678f5dc18688b0fdeca96033ff7402"
+      ],
+      "id": "nhirn_43109faa66cadaaf47c1634bd70e7e1167eadc9841073f9907856383664ba28b",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "BitXor",
+      "source": {
+        "column": 31,
+        "end_column": 48,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_e2a15bc712b34717116157353c8bdc47937ba3eceda983cd2783c6c80106ced2",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 31,
+        "end_column": 32,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_e420ff06b0d1bd2524e29c84b79260835e2a4c64c95a230854a2afc0007a6ea5",
+        "nhirn_9029677ad73840df0a982a0ad2ab2d70118b2dd0f458a2bf46ef016dbe401698",
+        "nhirn_b509ef468d02e27f67307f685779fa5bc21868edf287ab4b6360221769d348ab"
+      ],
+      "id": "nhirn_0878cd0a5d552b1ecc66da9f62bca99697a18105c0a6ff27545e20074d058782",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Add",
+      "source": {
+        "column": 36,
+        "end_column": 45,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_2b74bcfce9affa9ac4e7eb25dfc2b1c91926d411a621f46fe09974f2d3b875ab",
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_4900569e0a7a0d9960f8066f0bf70baf78721b8c904c507b911ed5f074ce308c",
+      "kind": "Attribute",
+      "name": "x",
+      "operator": null,
+      "source": {
+        "column": 31,
+        "end_column": 38,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_88d5931d53b677f2872dbd800f0ea68170c425d24b92df2c8be0ab8a595e7041",
+      "kind": "BitXor",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_95c2398e8f099068608b624364eff0ced4c7a7546ddf9638869c4728845ac84c",
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_7242936b673b8bc821d27b99de9d0358ba678f5dc18688b0fdeca96033ff7402",
+      "kind": "Attribute",
+      "name": "y",
+      "operator": null,
+      "source": {
+        "column": 41,
+        "end_column": 48,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_e6c45f4aa71d29ebecbcc77dd882c2d79287131db7f57a55aad2d45cd9fdd34a",
+        "nhirn_828d3c47fb6548fd274154841cf47308a7db7cf9a47a3e145c8488ee3c64e245",
+        "nhirn_d074fadc5e20236b973e2dd421ec7a99f1fc2bb196c355e3774c2ebe738ae6c4"
+      ],
+      "id": "nhirn_e420ff06b0d1bd2524e29c84b79260835e2a4c64c95a230854a2afc0007a6ea5",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Mult",
+      "source": {
+        "column": 36,
+        "end_column": 41,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_b509ef468d02e27f67307f685779fa5bc21868edf287ab4b6360221769d348ab",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 44,
+        "end_column": 45,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": 1
+    },
+    {
+      "children": [
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_2b74bcfce9affa9ac4e7eb25dfc2b1c91926d411a621f46fe09974f2d3b875ab",
+      "kind": "Name",
+      "name": "point",
+      "operator": null,
+      "source": {
+        "column": 31,
+        "end_column": 36,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_95c2398e8f099068608b624364eff0ced4c7a7546ddf9638869c4728845ac84c",
+      "kind": "Name",
+      "name": "point",
+      "operator": null,
+      "source": {
+        "column": 41,
+        "end_column": 46,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_48d3648084c64652826834a284dbf8057207978b9f1205a4fdeaaf1933ea352a"
+      ],
+      "id": "nhirn_e6c45f4aa71d29ebecbcc77dd882c2d79287131db7f57a55aad2d45cd9fdd34a",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 36,
+        "end_column": 37,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_828d3c47fb6548fd274154841cf47308a7db7cf9a47a3e145c8488ee3c64e245",
+      "kind": "Mult",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_d074fadc5e20236b973e2dd421ec7a99f1fc2bb196c355e3774c2ebe738ae6c4",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 40,
+        "end_column": 41,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "type": "UInt64",
+      "value": 3
+    }
+  ],
+  "references": [
+    {
+      "owner_symbol_id": "nhirs_ecd312fb536b969d7549c4011157ae82e1b122b4658203428c786a2fee70c156",
+      "source": {
+        "column": 12,
+        "end_column": 18,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_521d7156cd192ab55c4fb27c6a13fd16f0b01c4e94995d89af6c8b7402bdd011",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_ecd312fb536b969d7549c4011157ae82e1b122b4658203428c786a2fee70c156",
+      "source": {
+        "column": 23,
+        "end_column": 29,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_a37f9fe8b6f9bbb64076a00a2e9cf18459fc09d6c959ccb97039138088e20a7c",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_ecd312fb536b969d7549c4011157ae82e1b122b4658203428c786a2fee70c156",
+      "source": {
+        "column": 14,
+        "end_column": 20,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_71db1ecd5e13bd9850a6061239e26c645c209638adf96e0c7f0abcb3af266762",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_ecd312fb536b969d7549c4011157ae82e1b122b4658203428c786a2fee70c156",
+      "source": {
+        "column": 13,
+        "end_column": 25,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "spelling": "meldra_range",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_4d7a2c26a12900fb110d226010262efecada888fd5db8341770a9d8017c4e6c1",
+      "target_symbol_id": null,
+      "usage": "Call"
+    },
+    {
+      "owner_symbol_id": "nhirs_ecd312fb536b969d7549c4011157ae82e1b122b4658203428c786a2fee70c156",
+      "source": {
+        "column": 29,
+        "end_column": 30,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "spelling": "n",
+      "status": "Exact",
+      "syntax_node_id": "synref_b78fad0b7d2b7e100451010ea5bb8df24e97d023e1efbce239b39861f3c1a66b",
+      "target_symbol_id": "nhirs_5dd9d55175dcb78f487de1510de7a4fb496d406b6cdccc3d46cf5be904406070",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_ecd312fb536b969d7549c4011157ae82e1b122b4658203428c786a2fee70c156",
+      "source": {
+        "column": 15,
+        "end_column": 20,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "spelling": "Point",
+      "status": "Exact",
+      "syntax_node_id": "synref_9d25dbd69356dad139d09f4a41555cce4418d1a438ca353e5d5578d61c5bb58b",
+      "target_symbol_id": "nhirs_197b1e3e3bbeca45a7af459d2667b22ec85e0e661cdad28bcd3b9868acad0958",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_ecd312fb536b969d7549c4011157ae82e1b122b4658203428c786a2fee70c156",
+      "source": {
+        "column": 23,
+        "end_column": 28,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "spelling": "Point",
+      "status": "Exact",
+      "syntax_node_id": "synref_131cd5971e42021d9aa654926bb48bdda56f19941983776dc5e274628b6378ec",
+      "target_symbol_id": "nhirs_197b1e3e3bbeca45a7af459d2667b22ec85e0e661cdad28bcd3b9868acad0958",
+      "usage": "Call"
+    },
+    {
+      "owner_symbol_id": "nhirs_ecd312fb536b969d7549c4011157ae82e1b122b4658203428c786a2fee70c156",
+      "source": {
+        "column": 31,
+        "end_column": 32,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "spelling": "i",
+      "status": "Exact",
+      "syntax_node_id": "synref_4dd08f96f0fa230a651325002fcec2f5ba1e23f1e3b07ab6879b223eeeca7d78",
+      "target_symbol_id": "nhirs_ceae1ed2ad1033514e553655eb9bd652d0a2388f12eb5aa4ec13688ec8bcb629",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_ecd312fb536b969d7549c4011157ae82e1b122b4658203428c786a2fee70c156",
+      "source": {
+        "column": 36,
+        "end_column": 37,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "spelling": "i",
+      "status": "Exact",
+      "syntax_node_id": "synref_9ebc267289b36175b80e32300b3b45fa9391cdfc1b1885d10d5ade1370302085",
+      "target_symbol_id": "nhirs_ceae1ed2ad1033514e553655eb9bd652d0a2388f12eb5aa4ec13688ec8bcb629",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_ecd312fb536b969d7549c4011157ae82e1b122b4658203428c786a2fee70c156",
+      "source": {
+        "column": 19,
+        "end_column": 27,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "spelling": "checksum",
+      "status": "Exact",
+      "syntax_node_id": "synref_9082602caf993953325e03d35d5a358a0c63e6c423161d99ed13cb282815dd26",
+      "target_symbol_id": "nhirs_92ea2d30678cf9d0378a1c03f9c2f00a0432d61f32c9da97d55fefb1adf61ee6",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_ecd312fb536b969d7549c4011157ae82e1b122b4658203428c786a2fee70c156",
+      "source": {
+        "column": 31,
+        "end_column": 36,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "spelling": "point",
+      "status": "Exact",
+      "syntax_node_id": "synref_ae5d4205da0a829c8481b6a1ed840f6dbc083b7e0a468c2bc5e460e721d22f98",
+      "target_symbol_id": "nhirs_1d789cd713bdfbf3806d71ad48f1dfcb9726111076ae215c726fb38c210b83b8",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_ecd312fb536b969d7549c4011157ae82e1b122b4658203428c786a2fee70c156",
+      "source": {
+        "column": 41,
+        "end_column": 46,
+        "end_line": 9,
+        "line": 9,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "spelling": "point",
+      "status": "Exact",
+      "syntax_node_id": "synref_683a8c0df88d8513dd70939f6c64a651901869fc876a35878845b170e4cf6704",
+      "target_symbol_id": "nhirs_1d789cd713bdfbf3806d71ad48f1dfcb9726111076ae215c726fb38c210b83b8",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_ecd312fb536b969d7549c4011157ae82e1b122b4658203428c786a2fee70c156",
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 10,
+        "line": 10,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "spelling": "checksum",
+      "status": "Exact",
+      "syntax_node_id": "synref_abaab5fcc17aeae2142f20f0e686ab3b9cf8b4a4b763c5469b568315f6de9922",
+      "target_symbol_id": "nhirs_92ea2d30678cf9d0378a1c03f9c2f00a0432d61f32c9da97d55fefb1adf61ee6",
+      "usage": "Read"
+    }
+  ],
+  "schema_version": 1,
+  "source_kind": "stage05p_performance_adapter",
+  "symbols": [
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "field",
+      "name": "Point.x",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/record_values.meldra",
+      "return_type": null,
+      "revision_id": "rev_dfa2fa7725e69dac4cd2729fd3bab74cc0aa8901a76454e2b6e04e726c7d12b2",
+      "source": {
+        "column": 0,
+        "end_column": 13,
+        "end_line": 3,
+        "line": 1,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "symbol_id": "nhirs_640549bb386c6db5bc78411fd8230aad2129493f3075f7b3e496654ef21d01d8",
+      "syntax_node_id": "syn_252e374767ae84986d5207bcf0837b64f4060f9be343771a74854bf77838c3c8",
+      "type": "UInt64"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "field",
+      "name": "Point.y",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/record_values.meldra",
+      "return_type": null,
+      "revision_id": "rev_24c7d1c9257208b213aabe4d63ae3da8463ec1d04209d32cab7ad48ac3d89891",
+      "source": {
+        "column": 0,
+        "end_column": 13,
+        "end_line": 3,
+        "line": 1,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "symbol_id": "nhirs_6daeeb2eca0319ed2cfc1134a90d0e8cd1fb6415ae5be9c523ff75423d3aed52",
+      "syntax_node_id": "syn_aee3d5793fbd43e8b6d5136a07460239a9e2bb26b296bad06330dfc72d59855b",
+      "type": "UInt64"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": true,
+      "kind": "function",
+      "name": "main",
+      "origin": "native",
+      "parameter_types": [
+        "UInt64"
+      ],
+      "path": "compile-phases/record_values.meldra",
+      "return_type": "UInt64",
+      "revision_id": "rev_6e6424a149f9411e5d13daab592607ee27041f5397845f969cbac263b78a10b9",
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 10,
+        "line": 5,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "symbol_id": "nhirs_ecd312fb536b969d7549c4011157ae82e1b122b4658203428c786a2fee70c156",
+      "syntax_node_id": "syn_3cee35b5691a83b8b3cc7fee18d6c5e01191ec3ddadbe8a8ea3b7036043c9357",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "local",
+      "name": "main.checksum",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/record_values.meldra",
+      "return_type": null,
+      "revision_id": "rev_a2a8bf4975d574ab5006a0c0ec07add086d5a7f7259845bd1f0e7ea2974eb9f1",
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "symbol_id": "nhirs_92ea2d30678cf9d0378a1c03f9c2f00a0432d61f32c9da97d55fefb1adf61ee6",
+      "syntax_node_id": "syn_a3b050796482c954df444deb35e5860a9a3044daec3bfa3319678d022bb1f333",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "local",
+      "name": "main.i",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/record_values.meldra",
+      "return_type": null,
+      "revision_id": "rev_1055602d0d130bf4e7ecf255d4916775ddc082da8e30c41f6ee89c53b16f00fe",
+      "source": {
+        "column": 8,
+        "end_column": 9,
+        "end_line": 7,
+        "line": 7,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "symbol_id": "nhirs_ceae1ed2ad1033514e553655eb9bd652d0a2388f12eb5aa4ec13688ec8bcb629",
+      "syntax_node_id": "syn_32de7e8440157955aba3c681243e538af203e5bcb4959d1d39f56764c5277d5e",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "local",
+      "name": "main.point",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/record_values.meldra",
+      "return_type": null,
+      "revision_id": "rev_f99b5fd08c081fd50ed69a1ae27368f24e2bc323136e9aa3b4f744feded10af5",
+      "source": {
+        "column": 8,
+        "end_column": 13,
+        "end_line": 8,
+        "line": 8,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "symbol_id": "nhirs_1d789cd713bdfbf3806d71ad48f1dfcb9726111076ae215c726fb38c210b83b8",
+      "syntax_node_id": "syn_b5edfd92b8aa5fa189b7cbe5220c5d7bb8a111c82d2c6b77a7fd92eca9c933cb",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "parameter",
+      "name": "main.n",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/record_values.meldra",
+      "return_type": null,
+      "revision_id": "rev_162d0d8cd5e4b3558fddff4bc7e788a63ea273ce0c5e1bfd651349d0a7fd3b7c",
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 10,
+        "line": 5,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "symbol_id": "nhirs_5dd9d55175dcb78f487de1510de7a4fb496d406b6cdccc3d46cf5be904406070",
+      "syntax_node_id": "syn_bf9f41a3e85012a39bddb3870ca01907f0d8e70b0367a646c383a1c67c1ca439",
+      "type": "UInt64"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": true,
+      "kind": "record",
+      "name": "Point",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/record_values.meldra",
+      "return_type": null,
+      "revision_id": "rev_10b667b65b99cc09dd226809b5da3a62622e8001dd9d9a05883fefdd8b8e32fb",
+      "source": {
+        "column": 0,
+        "end_column": 13,
+        "end_line": 3,
+        "line": 1,
+        "path": "compile-phases/record_values.meldra"
+      },
+      "symbol_id": "nhirs_197b1e3e3bbeca45a7af459d2667b22ec85e0e661cdad28bcd3b9868acad0958",
+      "syntax_node_id": "syn_a98646239153ceb476dc5c78b5fc239afb6e8264233479cdf092bf6c9cd8aa0c",
+      "type": "Point"
+    }
+  ]
+}

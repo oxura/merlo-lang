@@ -1,0 +1,32 @@
+module app.search
+
+Match:
+    line_number: UInt64
+    line: Text
+
+export find(lines: FileLines, needle: Text, ignore_case: Bool, count_only: Bool) -> Text:
+    matches = Vec.new()
+    line_number = 0
+    for line in lines:
+        line_number = line_number + 1
+        if contains(line, needle, ignore_case):
+            matches.push(Match(line_number, line.to_text()))
+    format_matches(matches, count_only)
+
+contains(line: TextView, needle: Text, ignore_case: Bool) -> Bool:
+    if ignore_case:
+        return line.contains_ascii_case_insensitive(needle)
+    line.contains(needle)
+
+format_matches(matches: Vec[Match], count_only: Bool) -> Text:
+    output = TextBuilder.new()
+    if count_only:
+        output.append_uint64(matches.len())
+        output.append_byte(10)
+        return output.finish()
+    for item in matches.view():
+        output.append_uint64(item.line_number)
+        output.append_byte(58)
+        output.append_text(item.line)
+        output.append_byte(10)
+    output.finish()

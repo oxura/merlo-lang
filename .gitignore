@@ -1,0 +1,52 @@
+__pycache__/
+*.pyc
+.env
+server_err.log
+*.log
+.pytest_cache/
+data/sessions/
+data/*.json
+
+.merlo/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+graft/
+
+
+# Python environments and packaging output
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+.coverage
+coverage.xml
+htmlcov/
+
+# Native compiler and profiler output
+*.o
+*.so
+*.dylib
+*.exe
+gmon.out
+*.profraw
+*.profdata
+core.*
+
+# Generated corpus scratch directories
+alpha-corpus-*/
+
+# Reproducible benchmark build products
+benchmarks/**/bin/
+benchmarks/**/obj/
+benchmarks/**/publish/
+benchmarks/**/target/
+benchmarks/**/assembly/
+benchmarks/**/*sanitizers/
+benchmarks/**/*sanitizers/**
+benchmarks/**/native_batches/
+benchmarks/**/native_batches/**
+benchmarks/**/program
+benchmarks/**/program.sanitized
+benchmarks/**/compile-cache/
+benchmarks/**/*.sanitized

@@ -1,0 +1,132 @@
+module app.sales
+
+use app.csv
+export enum AppError:
+    MissingArgument
+    InvalidPath: Text
+    ReadFailure: Text
+    InvalidUtf8: UInt64
+    InvalidDelimiter
+    MissingHeader
+    InvalidHeader
+    InvalidRow
+    InvalidField: Text
+    QuantityOverflow
+    RevenueOverflow
+    CountOverflow
+
+
+export Options:
+    delimiter: UInt64
+
+Row:
+    date: Text
+    product: Text
+    region: Text
+    quantity: UInt64
+    unit_price_cents: UInt64
+
+Totals:
+    total: UInt64
+    valid: UInt64
+    invalid: UInt64
+    quantity: UInt64
+    revenue_cents: UInt64
+    by_product: Map[Text,UInt64]
+    by_region: Map[Text,UInt64]
+
+checked_add(left: UInt64, right: UInt64, error: AppError) -> Result[UInt64,AppError]:
+    if left > 18446744073709551615 - right:
+        return Err(error)
+    Ok(left + right)
+
+checked_multiply(left: UInt64, right: UInt64) -> Result[UInt64,AppError]:
+    if right != 0 and left > 18446744073709551615 / right:
+        return Err(AppError.RevenueOverflow)
+    Ok(left * right)
+
+parse_uint64(raw: TextView, field: Text) -> Result[UInt64,AppError]:
+    if raw.len() == 0:
+        return Err(AppError.InvalidField(field))
+    value = 0
+    index = 0
+    while index < raw.len():
+        byte = raw.byte(index)
+        if byte < 48 or byte > 57:
+            return Err(AppError.InvalidField(field))
+        digit = byte - 48
+        if value > (18446744073709551615 - digit) / 10:
+            return Err(AppError.InvalidField(field))
+        value = value * 10 + digit
+        index = index + 1
+    Ok(value)
+
+parse_row(line: TextView, delimiter: UInt64) -> Result[Row,AppError]:
+    fields = csv.fields(line, delimiter)
+    if fields.len() != 5:
+        return Err(AppError.InvalidRow)
+    if fields[0].len() == 0 or fields[1].len() == 0 or fields[2].len() == 0:
+        return Err(AppError.InvalidRow)
+    quantity = parse_uint64(fields[3].as_view(), "quantity")?
+    price = parse_uint64(fields[4].as_view(), "unit_price_cents")?
+    Ok(Row(fields[0], fields[1], fields[2], quantity, price))
+
+export aggregate(lines: FileLines, options: Options) -> Result[Text,AppError]:
+    if options.delimiter > 127:
+        return Err(AppError.InvalidDelimiter)
+    totals = Totals(0, 0, 0, 0, 0, Map.new(), Map.new())
+    header_pending = true
+    for line in lines:
+        if header_pending:
+            header_fields = csv.fields(line, options.delimiter)
+            if header_fields.len() != 5:
+                return Err(AppError.InvalidHeader)
+            if header_fields[0] != "date" or header_fields[1] != "product" or header_fields[2] != "region" or header_fields[3] != "quantity" or header_fields[4] != "unit_price_cents":
+                return Err(AppError.InvalidHeader)
+            header_pending = false
+        else:
+            totals.total = checked_add(totals.total, 1, AppError.CountOverflow)?
+            parsed = parse_row(line, options.delimiter)
+            match parsed:
+                case Result.Err(error):
+                    if error == AppError.QuantityOverflow or error == AppError.RevenueOverflow:
+                        return Err(error)
+                    totals.invalid = checked_add(totals.invalid, 1, AppError.CountOverflow)?
+                case Result.Ok(row):
+                    revenue = checked_multiply(row.quantity, row.unit_price_cents)?
+                    next_quantity = checked_add(totals.quantity, row.quantity, AppError.QuantityOverflow)?
+                    next_revenue = checked_add(totals.revenue_cents, revenue, AppError.RevenueOverflow)?
+                    totals.by_product.increment(row.product, revenue)
+                    totals.by_region.increment(row.region, revenue)
+                    totals.quantity = next_quantity
+                    totals.revenue_cents = next_revenue
+                    totals.valid = checked_add(totals.valid, 1, AppError.CountOverflow)?
+    output = TextBuilder.new()
+    output.append_text("total=")
+    output.append_uint64(totals.total)
+    output.append_byte(10)
+    output.append_text("valid=")
+    output.append_uint64(totals.valid)
+    output.append_byte(10)
+    output.append_text("invalid=")
+    output.append_uint64(totals.invalid)
+    output.append_byte(10)
+    output.append_text("quantity=")
+    output.append_uint64(totals.quantity)
+    output.append_byte(10)
+    output.append_text("revenue_cents=")
+    output.append_uint64(totals.revenue_cents)
+    output.append_byte(10)
+    for entry in totals.by_product.entries():
+        output.append_text("product ")
+        output.append_text(entry.key)
+        output.append_byte(61)
+        output.append_uint64(entry.value)
+        output.append_byte(10)
+    for entry in totals.by_region.entries():
+        output.append_text("region ")
+        output.append_text(entry.key)
+        output.append_byte(61)
+        output.append_uint64(entry.value)
+        output.append_byte(10)
+    Ok(output.finish())

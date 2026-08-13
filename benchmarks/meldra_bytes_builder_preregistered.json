@@ -1,0 +1,68 @@
+{
+  "hypothesis": "Meldra can support one unique growing BytesBuilder with automatic geometric capacity, safe reallocation, temporary zero-copy immutable BytesView borrows, zero-copy finish ownership transfer to Bytes, and automatic unfinished cleanup without surface lifetime, allocator, retain, or release syntax.",
+  "status_set": [
+    "BYTES_BUILDER_SUPPORTED",
+    "BYTES_BUILDER_INCOMPLETE",
+    "BYTES_BUILDER_SAFETY_DEFECT"
+  ],
+  "scope": {
+    "owner": "unique",
+    "state": ["Live", "Moved", "Finished", "Dropped"],
+    "api": ["new", "with_capacity", "len", "capacity", "reserve", "push", "extend", "as_view", "finish"],
+    "view": "immutable caller-local BytesView",
+    "lifetime_annotations": 0,
+    "allocator_annotations": 0,
+    "retain_release_syntax": 0,
+    "state_machine_corpus": true,
+    "decision_runs": 1
+  },
+  "growth_policy": {
+    "initial_capacity": 0,
+    "first_growth": "max(8, required)",
+    "next_growth": "max(required, current_capacity * 2)",
+    "overflow_checks": ["length + additional", "current_capacity * 2", "allocation byte size"],
+    "frozen_before_benchmark": true
+  },
+  "unsupported": [
+    "insert", "remove", "shrink", "concat", "shared_builder", "copy_on_write", "mutable_view", "Text", "UTF-8", "formatting", "recursive_values", "interfaces", "JSON", "flow", "machine", "async", "shared_or_cow_Bytes", "bounds_check_optimization"
+  ],
+  "support_gates": {
+    "valid_sequences_minimum": 600,
+    "invalid_sequences_minimum": 240,
+    "valid_families_minimum": 18,
+    "invalid_families_minimum": 16,
+    "growth_payload_preserved": true,
+    "growth_copy_bound": "growth_copied_bytes < 2 * final_capacity",
+    "active_view_blocks_mutation_growth_finish": true,
+    "finish_payload_copies": 0,
+    "unfinished_builder_automatic_drop": true,
+    "sanitizer_violations": 0,
+    "binary_frame_encoder": true,
+    "maximum_slowdown_ratio": 1.15,
+    "full_suite_failures": 0,
+    "decision_runs": 1
+  },
+  "benchmark_protocol": {
+    "arms": ["meldra_growth", "meldra_reserved", "c_growth", "c_reserved", "rust_vec_growth", "rust_vec_reserved"],
+    "warmups_per_arm": 5,
+    "measured_runs_per_arm": 30,
+    "order": "sequential randomized by deterministic seed",
+    "cpu_affinity": "one available CPU",
+    "relative_mad_maximum": 0.05,
+    "growth_factor_may_change_after_measurement": false
+  },
+  "falsifiers": [
+    "finish copies payload",
+    "append or reserve creates an owner alias",
+    "active view survives reallocation",
+    "builder mutates while a view is live",
+    "reallocation creates use-after-free",
+    "old buffer is freed twice",
+    "growth loses payload",
+    "capacity overflow is accepted",
+    "ordinary code requires manual allocation free or lifetime syntax",
+    "geometric growth copied bytes violate the expected linear bound",
+    "Meldra is stably more than 15 percent slower than the best equivalent C or Rust arm"
+  ],
+  "stop_condition": "Return BYTES_BUILDER_INCOMPLETE without expanding scope when any non-safety support gate is unmet; return BYTES_BUILDER_SAFETY_DEFECT for stale views, use-after-free, double-free, lost payload, duplicate ownership, hidden finish copy, or a missed ownership violation."
+}

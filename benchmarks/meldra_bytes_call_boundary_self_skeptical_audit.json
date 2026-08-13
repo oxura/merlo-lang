@@ -1,0 +1,19 @@
+{
+  "name": "SELF_SKEPTICAL_AUDIT",
+  "threats": [
+    ["weak_baseline", "equivalent C pointer/length plus owned descriptor and Rust slice plus Vec transfer"],
+    ["different_algorithms", "same runtime slices, transform, checksum, inputs, and output gate"],
+    ["compile_time_knowledge", "all size, seed, call count, and slices are runtime argv"],
+    ["constant_folding_or_DCE", "externally printed checksum depends on every call and returned owner"],
+    ["benchmark_leakage", "sequential randomized arms pinned to one CPU"],
+    ["measurement_noise", "30 runs, bootstrap interval, preregistered MAD<=5%"],
+    ["instrumentation_overhead", "timing and structural ABI builds are separate"],
+    ["generated_duplicates", "family/template/seed manifests and unique identities"],
+    ["common_mode_oracle", "independent Python reference, surface HIR, unoptimized MIR, optimized MIR, native"],
+    ["post_hoc_rules", "statuses and gates frozen before implementation"],
+    ["small_denominator", "valid>=320 and invalid>=220 across independent families"],
+    ["hidden_unsupported", "nested borrowed calls declared unsupported and every required escape represented by surface or HIR/MIR fixture"],
+    ["inlining_hides_ABI", "matching compile-only no-inline Meldra and C controls"],
+    ["memory_bound_hides_overhead", "allocation/copy/RC/ABI proofs decide independently of timing"]
+  ]
+}

@@ -1,0 +1,10 @@
+module main
+
+use std.fs
+
+export safe_write(path: Path, value: Text) -> Result[Unit, FsError]:
+    fs.fs_write_text(path, value)
+
+export main(path: Path) -> Int:
+    console.write("ffi=safe-write-wrapper\n")
+    0

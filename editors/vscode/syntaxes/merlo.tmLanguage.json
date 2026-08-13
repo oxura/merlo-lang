@@ -1,0 +1,80 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/imsaki/master/schemas/tmlanguage.json",
+  "name": "Merlo",
+  "scopeName": "source.merlo",
+  "fileTypes": ["mlo"],
+  "patterns": [
+    {"include": "#comments"},
+    {"include": "#strings"},
+    {"include": "#numbers"},
+    {"include": "#keywords"},
+    {"include": "#types"},
+    {"include": "#effects"},
+    {"include": "#modifiers"},
+    {"include": "#declarations"},
+    {"include": "#operators"}
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {"name": "comment.line.merlo", "match": "//.*$"},
+        {"name": "comment.block.merlo", "begin": "/\\*", "end": "\\*/"}
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {"name": "string.quoted.double.merlo", "begin": "\"", "end": "\"", "patterns": [{"name": "constant.character.escape.merlo", "match": "\\\\."}]},
+        {"name": "string.quoted.single.merlo", "begin": "'", "end": "'", "patterns": [{"name": "constant.character.escape.merlo", "match": "\\\\."}]}
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {"name": "constant.numeric.merlo", "match": "\\b(?:0[xX][0-9A-Fa-f]+|0[bB][01]+|[0-9]+(?:\\.[0-9]+)?)\\b"}
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        {"name": "entity.name.function.merlo", "match": "^\\s*(?:export\\s+)?[a-z_][A-Za-z0-9_]*(?=\\s*\\()"},
+        {"name": "entity.name.type.record.merlo", "match": "^\\s*(?:export\\s+)?[A-Z][A-Za-z0-9_]*(?=\\s*:)"}
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {"name": "keyword.control.merlo", "match": "\\b(?:module|use|export|return|if|else|match|case|for|while|in|break|continue|print|and|or|not)\\b"},
+        {"name": "storage.type.function.merlo", "match": "\\bfn\\b"},
+        {"name": "storage.type.task.merlo", "match": "\\btask\\b"},
+        {"name": "storage.type.record.merlo", "match": "\\brecord\\b"},
+        {"name": "storage.type.enum.merlo", "match": "\\benum\\b"},
+        {"name": "keyword.other.use.merlo", "match": "\\buse\\b"},
+        {"name": "keyword.other.export.merlo", "match": "\\bexport\\b"}
+      ]
+    },
+    "types": {
+      "patterns": [
+        {"name": "support.type.merlo", "match": "\\b(?:Int|UInt|Float|Bool|Text|Bytes|Path|Unit|Never|Result|Option|Vec|Map|Set|AppError)\\b"},
+        {"name": "entity.name.type.record.merlo", "match": "\\b[A-Z][A-Za-z0-9_]*\\b"},
+        {"name": "entity.name.type.enum.merlo", "match": "\\b[A-Z][A-Za-z0-9_]*\\b"},
+        {"name": "constant.language.boolean.merlo", "match": "\\b(?:true|false)\\b"},
+        {"name": "constant.language.unit.merlo", "match": "\\bnone\\b"}
+      ]
+    },
+    "effects": {
+      "patterns": [
+        {"name": "keyword.other.effect.merlo", "match": "\\buses\\b"},
+        {"name": "support.function.effect.merlo", "match": "\\b(?:fs|net|process|env|time|random|io|unsafe)\\b"}
+      ]
+    },
+    "modifiers": {
+      "patterns": [
+        {"name": "storage.modifier.unsafe.merlo", "match": "\\bunsafe\\b"},
+        {"name": "storage.modifier.extern.merlo", "match": "\\bextern\\b"},
+        {"name": "meta.annotation.repr.merlo", "match": "@repr(?:\\s*\\([^)]*\\))?"}
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {"name": "keyword.operator.merlo", "match": "(?:==|!=|<=|>=|->|=>|\\+|-|\\*|/|%|=|<|>|&&|\\|\\||!|\\?|\\.)"}
+      ]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "SELF_SKEPTICAL_AUDIT",
+  "threats": [
+    ["identity_erasure", "Require root, parent, child, depth, SymbolId, RevisionId, and source mapping in versioned HIR."],
+    ["metadata_only_proof", "Cross-check HIR, unoptimized MIR, optimized MIR, generated C, native counters, and assembly."],
+    ["inlining_erasure", "Ownership-bearing calls may remain uninlined; optimized MIR must retain every ancestry and end marker."],
+    ["hidden_descriptor_owner", "ABI descriptor contains only const pointer and length and no live/ownership/refcount fields."],
+    ["hidden_copy", "Inspect every no-inline helper and optimized assembly; inject a deliberate memcpy falsification control."],
+    ["conditional_imbalance", "Reject borrowed-parameter forwarding present on only one branch of an if."],
+    ["recursion_hides_unbounded_depth", "Reject cycles in the borrowed-call graph before lowering."],
+    ["depth_misclassification", "Propagate call-graph depth from root slice calls and reject depth greater than three."],
+    ["same_call_owner_overlap", "Reject one direct call that borrows a view and transfers its root owner."],
+    ["sanitizer_overclaim", "Only accepted native and runtime-diagnostic executions count as sanitizer-tested."],
+    ["duplicate_generated_cases", "Publish independent family/template/seed distributions and content hashes."],
+    ["common_mode_oracle", "Use independent Python references plus surface HIR, two MIR levels, and native binaries."],
+    ["old_benchmark_reuse", "Run no timing benchmark and do not reuse the prior Bytes timing result as reborrow proof."],
+    ["post_hoc_status", "Freeze statuses and every gate before implementation."]
+  ]
+}

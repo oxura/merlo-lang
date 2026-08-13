@@ -1,0 +1,35 @@
+module main
+
+use app.json
+
+export enum AppError:
+    MissingArgument
+    InvalidPath: Text
+    ReadFailure: Text
+
+summarize(data: Bytes) -> Text:
+    parsed = json.parse(data.to_text().view())
+    output = TextBuilder.new()
+    output.append_text("json-bytes=")
+    output.append_uint64(data.len())
+    match parsed:
+        case Result.Ok(value):
+            match value:
+                case Json.Array(items):
+                    output.append_text(" root=array items=")
+                    output.append_uint64(items.len())
+                case Json.Object(fields):
+                    output.append_text(" root=object fields=")
+                    output.append_uint64(fields.len())
+                case _:
+                    output.append_text(" root=scalar")
+        case Result.Err(_):
+            output.append_text(" invalid")
+    output.append_byte(10)
+    output.finish()
+
+export main(path: Path) -> Result[Text, AppError]:
+    data = fs.read(path)?
+    result = summarize(data)
+    console.write(result)
+    Ok(result)

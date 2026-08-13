@@ -1,0 +1,309 @@
+{
+  "$id": "https://meldra.dev/schema/native-hir/v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "contract": {
+      "const": "meldra.native-typed-hir.v1"
+    },
+    "cst": {
+      "$ref": "#/$defs/cst"
+    },
+    "entry_function": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "invariants": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "type": "object"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/node"
+      },
+      "type": "array"
+    },
+    "references": {
+      "items": {
+        "$ref": "#/$defs/reference"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "source_kind": {
+      "enum": [
+        "stage04_semantic_adapter",
+        "stage05p_performance_adapter"
+      ]
+    },
+    "symbols": {
+      "items": {
+        "$ref": "#/$defs/symbol"
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "contract",
+    "source_kind",
+    "entry_function",
+    "cst",
+    "symbols",
+    "references",
+    "nodes",
+    "invariants"
+  ],
+  "title": "Meldra Native Typed HIR v1",
+  "type": "object",
+  "$defs": {
+    "cst": {
+      "additionalProperties": false,
+      "properties": {
+        "adapter": {
+          "type": "string"
+        },
+        "lossless": {
+          "const": true
+        },
+        "normalized_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "path": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "required": [
+        "path",
+        "source_sha256",
+        "normalized_sha256",
+        "adapter",
+        "lossless"
+      ],
+      "type": "object"
+    },
+    "node": {
+      "additionalProperties": false,
+      "properties": {
+        "children": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "operator": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/source"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "value": {}
+      },
+      "required": [
+        "id",
+        "kind",
+        "source",
+        "type",
+        "name",
+        "value",
+        "operator",
+        "children"
+      ],
+      "type": "object"
+    },
+    "reference": {
+      "additionalProperties": false,
+      "properties": {
+        "owner_symbol_id": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "spelling": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "syntax_node_id": {
+          "type": "string"
+        },
+        "target_symbol_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "usage": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "syntax_node_id",
+        "owner_symbol_id",
+        "target_symbol_id",
+        "spelling",
+        "usage",
+        "source",
+        "status"
+      ],
+      "type": "object"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "source": {
+      "additionalProperties": false,
+      "properties": {
+        "column": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "end_column": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "end_line": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "line": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "line",
+        "column",
+        "end_line",
+        "end_column"
+      ],
+      "type": "object"
+    },
+    "symbol": {
+      "additionalProperties": false,
+      "properties": {
+        "capabilities": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "effects": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "exported": {
+          "type": "boolean"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "native",
+            "stage04"
+          ]
+        },
+        "parameter_types": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "path": {
+          "type": "string"
+        },
+        "return_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "revision_id": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "symbol_id": {
+          "type": "string"
+        },
+        "syntax_node_id": {
+          "type": "string"
+        },
+        "type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "syntax_node_id",
+        "symbol_id",
+        "revision_id",
+        "name",
+        "kind",
+        "path",
+        "source",
+        "type",
+        "parameter_types",
+        "return_type",
+        "effects",
+        "capabilities",
+        "exported",
+        "origin"
+      ],
+      "type": "object"
+    }
+  }
+}

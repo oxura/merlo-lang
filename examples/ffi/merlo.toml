@@ -1,0 +1,6 @@
+manifest = 1
+
+[project]
+name = "ffi"
+version = "0.1.0"
+edition = "alpha.1"

@@ -1,0 +1,3337 @@
+{
+  "abi_audit": {
+    "build": {
+      "binary_path": "benchmarks/meldra_bytes_builder/abi/program",
+      "binary_sha256": "85f4f6fb4ece5ae892bf1d67f5fa5d47c0ae7155f0a08298e63956104b9cb212",
+      "binary_size": 13352,
+      "command": [
+        "/usr/bin/clang",
+        "-std=c11",
+        "-O3",
+        "-fwrapv",
+        "-fno-strict-overflow",
+        "-fno-delete-null-pointer-checks",
+        "-ffp-contract=off",
+        "-fno-ident",
+        "-Werror",
+        "-Wl,--build-id=none",
+        "benchmarks/meldra_bytes_builder/abi/program.c",
+        "-o",
+        "benchmarks/meldra_bytes_builder/abi/program"
+      ],
+      "compile_time_ms": 65.488786,
+      "compiler": "/usr/bin/clang",
+      "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+      "source_path": "benchmarks/meldra_bytes_builder/abi/program.c",
+      "source_sha256": "7d00b7e8f57ef50d1b50b59541a94f0856ae47f34cadad4b6397980814a56db9",
+      "status": "MEASURED",
+      "stderr": ""
+    },
+    "checks": {
+      "append_without_growth_has_no_allocator": true,
+      "final_bytes_free_once": true,
+      "finish_copy_control_detected": true,
+      "finish_has_no_allocation": true,
+      "finish_has_no_memcpy": true,
+      "finish_payload_copy_zero": true,
+      "finish_pointer_is_builder_pointer": true,
+      "growth_copy_only_in_growth_path": true,
+      "live_view_append_control_detected": true,
+      "missing_free_control_detected": true,
+      "native_build": true,
+      "old_buffer_free_after_successful_growth": true,
+      "view_has_no_copy_loop": true
+    },
+    "finish_lines": [
+      "    meldra_bytes meldra_v_26 = { meldra_v_4.data, meldra_v_4.length, meldra_v_4.capacity, true };"
+    ],
+    "generated_c_sha256": "7d00b7e8f57ef50d1b50b59541a94f0856ae47f34cadad4b6397980814a56db9",
+    "passed": true,
+    "view_lines": [
+      "    meldra_bytes_view meldra_v_19 = { meldra_v_4.data, meldra_v_4.length };",
+      "    meldra_bytes_view meldra_v_29 = { meldra_v_26.data == NULL ? NULL : meldra_v_26.data + meldra_v_27, meldra_v_28 };"
+    ]
+  },
+  "binary_frame_encoder": {
+    "build": {
+      "binary_path": "benchmarks/meldra_bytes_builder/frame/frame_encoder",
+      "binary_sha256": "783576399a1c125d80ee39f88325e499a0ba9e685e27a2d8aa6102db8e23d4c5",
+      "binary_size": 13472,
+      "command": [
+        "/usr/bin/clang",
+        "-std=c11",
+        "-O3",
+        "-fwrapv",
+        "-fno-strict-overflow",
+        "-fno-delete-null-pointer-checks",
+        "-ffp-contract=off",
+        "-fno-ident",
+        "-Werror",
+        "-Wl,--build-id=none",
+        "benchmarks/meldra_bytes_builder/frame/frame_encoder.c",
+        "-o",
+        "benchmarks/meldra_bytes_builder/frame/frame_encoder"
+      ],
+      "compile_time_ms": 68.919464,
+      "compiler": "/usr/bin/clang",
+      "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+      "source_path": "benchmarks/meldra_bytes_builder/frame/frame_encoder.c",
+      "source_sha256": "f2a7913324d426fd3d691514a2e75d6e52eae0ee503a7ce2db0c9e93844c69a5",
+      "status": "MEASURED",
+      "stderr": ""
+    },
+    "case_count": 4,
+    "logic_uses_builder": true,
+    "passed": true,
+    "results": [
+      {
+        "arguments": [
+          0,
+          1,
+          7
+        ],
+        "passed": true,
+        "values": [
+          10717087335534593307,
+          10717087335534593307,
+          10717087335534593307,
+          10717087335534593307
+        ]
+      },
+      {
+        "arguments": [
+          1,
+          2,
+          257
+        ],
+        "passed": true,
+        "values": [
+          10531052678016863333,
+          10531052678016863333,
+          10531052678016863333,
+          10531052678016863333
+        ]
+      },
+      {
+        "arguments": [
+          31,
+          17,
+          4097
+        ],
+        "passed": true,
+        "values": [
+          10762498246179415811,
+          10762498246179415811,
+          10762498246179415811,
+          10762498246179415811
+        ]
+      },
+      {
+        "arguments": [
+          1024,
+          255,
+          65535
+        ],
+        "passed": true,
+        "values": [
+          8079772013208723655,
+          8079772013208723655,
+          8079772013208723655,
+          8079772013208723655
+        ]
+      }
+    ],
+    "source_sha256": "a7bafac500cbc42d2ab7fa321b5c935e5e7a430ecd22f65d4fc83ffa04a5d96e"
+  },
+  "contracts": {
+    "abi": {
+      "builder_descriptor": "uint8_t *data; uint64_t length; uint64_t capacity; uint64_t active_views; uint8_t state",
+      "bytes_descriptor": "uint8_t *data; uint64_t length; uint64_t capacity; bool live",
+      "contract": "meldra.bytes-builder-abi.v1",
+      "finish": {
+        "builder_state_after": "Finished",
+        "capacity": "builder.capacity",
+        "length": "builder.length",
+        "payload_copies": 0,
+        "pointer": "builder.data"
+      },
+      "growth": {
+        "algorithm": "malloc-copy-free",
+        "allocator_internal_metadata_excluded": true,
+        "old_buffer_free": "after successful allocation and copy"
+      },
+      "schema_version": 1,
+      "sha256": "b7f17e106c46ad19492aa734a319b2b5d0c4da3e8b0fac67e9f9f6fbe8f35708"
+    },
+    "hir": {
+      "allocator_annotations_in_surface": 0,
+      "base_native_hir_schema_version": 1,
+      "builders": [
+        {
+          "active_view": null,
+          "automatic_drop": false,
+          "capacity": "runtime_descriptor.capacity",
+          "finish_transfer": null,
+          "growth_policy": {
+            "first_growth": "max(8, required)",
+            "initial_capacity": 0,
+            "next_growth": "max(required, current_capacity * 2)",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ]
+          },
+          "length": "runtime_descriptor.length",
+          "operation": "builder_len",
+          "owner": "abandon.builder",
+          "source": {
+            "column": 11,
+            "end_column": 24,
+            "end_line": 3,
+            "line": 3,
+            "path": "builder-contract.meldra"
+          },
+          "symbol": null
+        },
+        {
+          "active_view": null,
+          "automatic_drop": false,
+          "capacity": "runtime_descriptor.capacity",
+          "finish_transfer": null,
+          "growth_policy": {
+            "first_growth": "max(8, required)",
+            "initial_capacity": 0,
+            "next_growth": "max(required, current_capacity * 2)",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ]
+          },
+          "length": "runtime_descriptor.length",
+          "operation": "builder_capacity",
+          "owner": "abandon.builder",
+          "source": {
+            "column": 27,
+            "end_column": 45,
+            "end_line": 3,
+            "line": 3,
+            "path": "builder-contract.meldra"
+          },
+          "symbol": null
+        },
+        {
+          "active_view": null,
+          "automatic_drop": false,
+          "capacity": "runtime_descriptor.capacity",
+          "finish_transfer": null,
+          "growth_policy": {
+            "first_growth": "max(8, required)",
+            "initial_capacity": 0,
+            "next_growth": "max(required, current_capacity * 2)",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ]
+          },
+          "length": "runtime_descriptor.length",
+          "operation": "builder_grow",
+          "owner": "main.builder",
+          "source": {
+            "column": 4,
+            "end_column": 28,
+            "end_line": 6,
+            "line": 6,
+            "path": "builder-contract.meldra"
+          },
+          "symbol": null
+        },
+        {
+          "active_view": null,
+          "automatic_drop": false,
+          "capacity": "runtime_descriptor.capacity",
+          "finish_transfer": null,
+          "growth_policy": {
+            "first_growth": "max(8, required)",
+            "initial_capacity": 0,
+            "next_growth": "max(required, current_capacity * 2)",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ]
+          },
+          "length": "runtime_descriptor.length",
+          "operation": "allocation",
+          "owner": "main.builder",
+          "source": {
+            "column": 4,
+            "end_column": 28,
+            "end_line": 6,
+            "line": 6,
+            "path": "builder-contract.meldra"
+          },
+          "symbol": null
+        },
+        {
+          "active_view": null,
+          "automatic_drop": false,
+          "capacity": "runtime_descriptor.capacity",
+          "finish_transfer": null,
+          "growth_policy": {
+            "first_growth": "max(8, required)",
+            "initial_capacity": 0,
+            "next_growth": "max(required, current_capacity * 2)",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ]
+          },
+          "length": "runtime_descriptor.length",
+          "operation": "payload_copy",
+          "owner": "main.builder",
+          "source": {
+            "column": 4,
+            "end_column": 28,
+            "end_line": 6,
+            "line": 6,
+            "path": "builder-contract.meldra"
+          },
+          "symbol": null
+        },
+        {
+          "active_view": null,
+          "automatic_drop": false,
+          "capacity": "runtime_descriptor.capacity",
+          "finish_transfer": null,
+          "growth_policy": {
+            "first_growth": "max(8, required)",
+            "initial_capacity": 0,
+            "next_growth": "max(required, current_capacity * 2)",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ]
+          },
+          "length": "runtime_descriptor.length",
+          "operation": "free",
+          "owner": "main.builder",
+          "source": {
+            "column": 4,
+            "end_column": 28,
+            "end_line": 6,
+            "line": 6,
+            "path": "builder-contract.meldra"
+          },
+          "symbol": null
+        },
+        {
+          "active_view": null,
+          "automatic_drop": false,
+          "capacity": "runtime_descriptor.capacity",
+          "finish_transfer": null,
+          "growth_policy": {
+            "first_growth": "max(8, required)",
+            "initial_capacity": 0,
+            "next_growth": "max(required, current_capacity * 2)",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ]
+          },
+          "length": "runtime_descriptor.length",
+          "operation": "builder_push",
+          "owner": "main.builder",
+          "source": {
+            "column": 4,
+            "end_column": 28,
+            "end_line": 6,
+            "line": 6,
+            "path": "builder-contract.meldra"
+          },
+          "symbol": null
+        },
+        {
+          "active_view": {
+            "borrow_id": "builder_view:main:view:7:22",
+            "last_use_line": 8
+          },
+          "automatic_drop": false,
+          "capacity": "runtime_descriptor.capacity",
+          "finish_transfer": null,
+          "growth_policy": {
+            "first_growth": "max(8, required)",
+            "initial_capacity": 0,
+            "next_growth": "max(required, current_capacity * 2)",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ]
+          },
+          "length": "runtime_descriptor.length",
+          "operation": "builder_view",
+          "owner": "main.builder",
+          "source": {
+            "column": 22,
+            "end_column": 39,
+            "end_line": 7,
+            "line": 7,
+            "path": "builder-contract.meldra"
+          },
+          "symbol": null
+        },
+        {
+          "active_view": {
+            "borrow_id": "builder_view:main:view:7:22",
+            "last_use_line": 8
+          },
+          "automatic_drop": false,
+          "capacity": "runtime_descriptor.capacity",
+          "finish_transfer": null,
+          "growth_policy": {
+            "first_growth": "max(8, required)",
+            "initial_capacity": 0,
+            "next_growth": "max(required, current_capacity * 2)",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ]
+          },
+          "length": "runtime_descriptor.length",
+          "operation": "borrow_end",
+          "owner": "main.builder",
+          "source": {
+            "column": 4,
+            "end_column": 33,
+            "end_line": 8,
+            "line": 8,
+            "path": "builder-contract.meldra"
+          },
+          "symbol": null
+        },
+        {
+          "active_view": null,
+          "automatic_drop": false,
+          "capacity": "runtime_descriptor.capacity",
+          "finish_transfer": null,
+          "growth_policy": {
+            "first_growth": "max(8, required)",
+            "initial_capacity": 0,
+            "next_growth": "max(required, current_capacity * 2)",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ]
+          },
+          "length": "runtime_descriptor.length",
+          "operation": "builder_grow",
+          "owner": "main.builder",
+          "source": {
+            "column": 4,
+            "end_column": 34,
+            "end_line": 9,
+            "line": 9,
+            "path": "builder-contract.meldra"
+          },
+          "symbol": null
+        },
+        {
+          "active_view": null,
+          "automatic_drop": false,
+          "capacity": "runtime_descriptor.capacity",
+          "finish_transfer": null,
+          "growth_policy": {
+            "first_growth": "max(8, required)",
+            "initial_capacity": 0,
+            "next_growth": "max(required, current_capacity * 2)",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ]
+          },
+          "length": "runtime_descriptor.length",
+          "operation": "allocation",
+          "owner": "main.builder",
+          "source": {
+            "column": 4,
+            "end_column": 34,
+            "end_line": 9,
+            "line": 9,
+            "path": "builder-contract.meldra"
+          },
+          "symbol": null
+        },
+        {
+          "active_view": null,
+          "automatic_drop": false,
+          "capacity": "runtime_descriptor.capacity",
+          "finish_transfer": null,
+          "growth_policy": {
+            "first_growth": "max(8, required)",
+            "initial_capacity": 0,
+            "next_growth": "max(required, current_capacity * 2)",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ]
+          },
+          "length": "runtime_descriptor.length",
+          "operation": "payload_copy",
+          "owner": "main.builder",
+          "source": {
+            "column": 4,
+            "end_column": 34,
+            "end_line": 9,
+            "line": 9,
+            "path": "builder-contract.meldra"
+          },
+          "symbol": null
+        },
+        {
+          "active_view": null,
+          "automatic_drop": false,
+          "capacity": "runtime_descriptor.capacity",
+          "finish_transfer": null,
+          "growth_policy": {
+            "first_growth": "max(8, required)",
+            "initial_capacity": 0,
+            "next_growth": "max(required, current_capacity * 2)",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ]
+          },
+          "length": "runtime_descriptor.length",
+          "operation": "free",
+          "owner": "main.builder",
+          "source": {
+            "column": 4,
+            "end_column": 34,
+            "end_line": 9,
+            "line": 9,
+            "path": "builder-contract.meldra"
+          },
+          "symbol": null
+        },
+        {
+          "active_view": null,
+          "automatic_drop": false,
+          "capacity": "runtime_descriptor.capacity",
+          "finish_transfer": null,
+          "growth_policy": {
+            "first_growth": "max(8, required)",
+            "initial_capacity": 0,
+            "next_growth": "max(required, current_capacity * 2)",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ]
+          },
+          "length": "runtime_descriptor.length",
+          "operation": "builder_push",
+          "owner": "main.builder",
+          "source": {
+            "column": 4,
+            "end_column": 34,
+            "end_line": 9,
+            "line": 9,
+            "path": "builder-contract.meldra"
+          },
+          "symbol": null
+        },
+        {
+          "active_view": null,
+          "automatic_drop": false,
+          "capacity": "runtime_descriptor.capacity",
+          "finish_transfer": {
+            "payload_copies": 0,
+            "pointer_identity": "preserved",
+            "state": "Finished"
+          },
+          "growth_policy": {
+            "first_growth": "max(8, required)",
+            "initial_capacity": 0,
+            "next_growth": "max(required, current_capacity * 2)",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ]
+          },
+          "length": "runtime_descriptor.length",
+          "operation": "builder_finish_transfer",
+          "owner": "main.builder",
+          "source": {
+            "column": 19,
+            "end_column": 35,
+            "end_line": 10,
+            "line": 10,
+            "path": "builder-contract.meldra"
+          },
+          "symbol": null
+        }
+      ],
+      "contract": "meldra.bytes-builder-hir.v1",
+      "growth_policy": {
+        "first_growth": "max(8, required)",
+        "initial_capacity": 0,
+        "next_growth": "max(required, current_capacity * 2)",
+        "overflow_checks": [
+          "length_plus_additional",
+          "capacity_times_two",
+          "allocation_byte_size"
+        ]
+      },
+      "lifetime_annotations_in_surface": 0,
+      "retain_release_syntax_in_surface": 0,
+      "schema_version": 1,
+      "source_mappings_present": true,
+      "source_sha256": "dafaed9870fbe0bb288b251ff61eb690499117517d331209d6458966049e7049",
+      "symbol_ids_present": false
+    },
+    "optimized_mir": {
+      "base_performance_mir_schema_version": 1,
+      "contract": "meldra.bytes-builder-mir.v1",
+      "events": [
+        {
+          "attributes": {
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "initial_state": "Live",
+            "overflow_diagnostic": "BytesBuilderAllocationSizeOverflow",
+            "representation": "unique_pointer_length_capacity_state_v1"
+          },
+          "block": "bb1_entry",
+          "function": "abandon",
+          "instruction_id": "i1",
+          "op": "builder_create",
+          "operands": [
+            "%n_1"
+          ],
+          "result": "%v_2",
+          "source": {
+            "column": 28,
+            "end_column": 57,
+            "end_line": 2,
+            "line": 2,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "abandon.builder",
+            "growth_policy": "zero_then_max_8_required_then_double"
+          },
+          "block": "bb1_entry",
+          "function": "abandon",
+          "instruction_id": "i2",
+          "op": "builder_len",
+          "operands": [
+            "%v_2"
+          ],
+          "result": "%v_3",
+          "source": {
+            "column": 11,
+            "end_column": 24,
+            "end_line": 3,
+            "line": 3,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "abandon.builder",
+            "growth_policy": "zero_then_max_8_required_then_double"
+          },
+          "block": "bb1_entry",
+          "function": "abandon",
+          "instruction_id": "i3",
+          "op": "builder_capacity",
+          "operands": [
+            "%v_2"
+          ],
+          "result": "%v_4",
+          "source": {
+            "column": 27,
+            "end_column": 45,
+            "end_line": 3,
+            "line": 3,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "automatic": true,
+            "owner_type": "BytesBuilder",
+            "state_transition": "Live_to_Dropped"
+          },
+          "block": "bb1_entry",
+          "function": "abandon",
+          "instruction_id": "i5",
+          "op": "builder_drop",
+          "operands": [
+            "%v_2"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 45,
+            "end_line": 3,
+            "line": 3,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "initial_state": "Live",
+            "overflow_diagnostic": "BytesBuilderAllocationSizeOverflow",
+            "representation": "unique_pointer_length_capacity_state_v1"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i2",
+          "op": "builder_create",
+          "operands": [
+            "%v_3"
+          ],
+          "result": "%v_4",
+          "source": {
+            "column": 28,
+            "end_column": 46,
+            "end_line": 5,
+            "line": 5,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ],
+            "reason": "push"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i6",
+          "op": "builder_grow",
+          "operands": [
+            "%v_4",
+            "%v_7"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 28,
+            "end_line": 6,
+            "line": 6,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "condition": "required_exceeds_capacity",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "reason": "push_growth"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i7",
+          "op": "allocation",
+          "operands": [
+            "%v_4",
+            "%v_7"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 28,
+            "end_line": 6,
+            "line": 6,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "condition": "required_exceeds_capacity",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "reason": "push_growth"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i8",
+          "op": "payload_copy",
+          "operands": [
+            "%v_4",
+            "%v_7"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 28,
+            "end_line": 6,
+            "line": 6,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "condition": "required_exceeds_capacity",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "reason": "push_growth"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i9",
+          "op": "free",
+          "operands": [
+            "%v_4",
+            "%v_7"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 28,
+            "end_line": 6,
+            "line": 6,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "byte_range_diagnostic": "BytesBuilderByteOutOfRange",
+            "growth_policy": "zero_then_max_8_required_then_double"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i10",
+          "op": "builder_push",
+          "operands": [
+            "%v_4",
+            "%v_6"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 28,
+            "end_line": 6,
+            "line": 6,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "borrow_id": "builder_view:main:view:7:22",
+            "builder_owner": "main.builder",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "last_use_line": 8,
+            "range_relation": "current_builder_payload",
+            "view_name": "view",
+            "zero_copy": true
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i11",
+          "op": "builder_view",
+          "operands": [
+            "%v_4"
+          ],
+          "result": "%v_8",
+          "source": {
+            "column": 22,
+            "end_column": 39,
+            "end_line": 7,
+            "line": 7,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "borrow_id": "builder_view:main:view:7:22",
+            "builder_owner": "main.builder",
+            "end_order": "child_before_parent",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "last_use_line": 8,
+            "range_relation": "current_builder_payload",
+            "view_name": "view",
+            "zero_copy": true
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i13",
+          "op": "borrow_end",
+          "operands": [
+            "%v_4"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 33,
+            "end_line": 8,
+            "line": 8,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ],
+            "reason": "push"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i19",
+          "op": "builder_grow",
+          "operands": [
+            "%v_4",
+            "%v_14"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 34,
+            "end_line": 9,
+            "line": 9,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "condition": "required_exceeds_capacity",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "reason": "push_growth"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i20",
+          "op": "allocation",
+          "operands": [
+            "%v_4",
+            "%v_14"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 34,
+            "end_line": 9,
+            "line": 9,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "condition": "required_exceeds_capacity",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "reason": "push_growth"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i21",
+          "op": "payload_copy",
+          "operands": [
+            "%v_4",
+            "%v_14"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 34,
+            "end_line": 9,
+            "line": 9,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "condition": "required_exceeds_capacity",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "reason": "push_growth"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i22",
+          "op": "free",
+          "operands": [
+            "%v_4",
+            "%v_14"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 34,
+            "end_line": 9,
+            "line": 9,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "byte_range_diagnostic": "BytesBuilderByteOutOfRange",
+            "growth_policy": "zero_then_max_8_required_then_double"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i23",
+          "op": "builder_push",
+          "operands": [
+            "%v_4",
+            "%v_13"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 34,
+            "end_line": 9,
+            "line": 9,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "payload_copies": 0,
+            "pointer_identity": "preserved",
+            "source_state": "Live",
+            "target_state": "Finished"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i24",
+          "op": "builder_finish_transfer",
+          "operands": [
+            "%v_4"
+          ],
+          "result": "%v_15",
+          "source": {
+            "column": 19,
+            "end_column": 35,
+            "end_line": 10,
+            "line": 10,
+            "path": "builder-contract.meldra"
+          }
+        }
+      ],
+      "growth_policy": {
+        "first_growth": "max(8, required)",
+        "initial_capacity": 0,
+        "next_growth": "max(required, current_capacity * 2)",
+        "overflow_checks": [
+          "length_plus_additional",
+          "capacity_times_two",
+          "allocation_byte_size"
+        ]
+      },
+      "operations": [
+        "allocation",
+        "borrow_end",
+        "builder_capacity",
+        "builder_create",
+        "builder_drop",
+        "builder_extend",
+        "builder_finish_transfer",
+        "builder_grow",
+        "builder_len",
+        "builder_push",
+        "builder_reserve",
+        "builder_view",
+        "free",
+        "payload_copy"
+      ],
+      "schema_version": 1,
+      "source_sha256": "dafaed9870fbe0bb288b251ff61eb690499117517d331209d6458966049e7049",
+      "validation": {
+        "automatic_drop_present": true,
+        "balanced_builder_views": true,
+        "borrow_end_count": 1,
+        "builder_create_count": 2,
+        "builder_drop_count": 1,
+        "builder_finish_count": 1,
+        "builder_grow_count": 2,
+        "builder_view_count": 1,
+        "finish_transfer_visible": true,
+        "growth_policy_explicit": true,
+        "source_mappings_complete": true,
+        "states": [
+          "Live",
+          "Moved",
+          "Finished",
+          "Dropped"
+        ]
+      }
+    },
+    "unoptimized_mir": {
+      "base_performance_mir_schema_version": 1,
+      "contract": "meldra.bytes-builder-mir.v1",
+      "events": [
+        {
+          "attributes": {
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "initial_state": "Live",
+            "overflow_diagnostic": "BytesBuilderAllocationSizeOverflow",
+            "representation": "unique_pointer_length_capacity_state_v1"
+          },
+          "block": "bb1_entry",
+          "function": "abandon",
+          "instruction_id": "i1",
+          "op": "builder_create",
+          "operands": [
+            "%n_1"
+          ],
+          "result": "%v_2",
+          "source": {
+            "column": 28,
+            "end_column": 57,
+            "end_line": 2,
+            "line": 2,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "abandon.builder",
+            "growth_policy": "zero_then_max_8_required_then_double"
+          },
+          "block": "bb1_entry",
+          "function": "abandon",
+          "instruction_id": "i2",
+          "op": "builder_len",
+          "operands": [
+            "%v_2"
+          ],
+          "result": "%v_3",
+          "source": {
+            "column": 11,
+            "end_column": 24,
+            "end_line": 3,
+            "line": 3,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "abandon.builder",
+            "growth_policy": "zero_then_max_8_required_then_double"
+          },
+          "block": "bb1_entry",
+          "function": "abandon",
+          "instruction_id": "i3",
+          "op": "builder_capacity",
+          "operands": [
+            "%v_2"
+          ],
+          "result": "%v_4",
+          "source": {
+            "column": 27,
+            "end_column": 45,
+            "end_line": 3,
+            "line": 3,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "automatic": true,
+            "owner_type": "BytesBuilder",
+            "state_transition": "Live_to_Dropped"
+          },
+          "block": "bb1_entry",
+          "function": "abandon",
+          "instruction_id": "i5",
+          "op": "builder_drop",
+          "operands": [
+            "%v_2"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 45,
+            "end_line": 3,
+            "line": 3,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "initial_state": "Live",
+            "overflow_diagnostic": "BytesBuilderAllocationSizeOverflow",
+            "representation": "unique_pointer_length_capacity_state_v1"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i2",
+          "op": "builder_create",
+          "operands": [
+            "%v_3"
+          ],
+          "result": "%v_4",
+          "source": {
+            "column": 28,
+            "end_column": 46,
+            "end_line": 5,
+            "line": 5,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ],
+            "reason": "push"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i6",
+          "op": "builder_grow",
+          "operands": [
+            "%v_4",
+            "%v_7"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 28,
+            "end_line": 6,
+            "line": 6,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "condition": "required_exceeds_capacity",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "reason": "push_growth"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i7",
+          "op": "allocation",
+          "operands": [
+            "%v_4",
+            "%v_7"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 28,
+            "end_line": 6,
+            "line": 6,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "condition": "required_exceeds_capacity",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "reason": "push_growth"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i8",
+          "op": "payload_copy",
+          "operands": [
+            "%v_4",
+            "%v_7"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 28,
+            "end_line": 6,
+            "line": 6,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "condition": "required_exceeds_capacity",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "reason": "push_growth"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i9",
+          "op": "free",
+          "operands": [
+            "%v_4",
+            "%v_7"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 28,
+            "end_line": 6,
+            "line": 6,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "byte_range_diagnostic": "BytesBuilderByteOutOfRange",
+            "growth_policy": "zero_then_max_8_required_then_double"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i10",
+          "op": "builder_push",
+          "operands": [
+            "%v_4",
+            "%v_6"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 28,
+            "end_line": 6,
+            "line": 6,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "borrow_id": "builder_view:main:view:7:22",
+            "builder_owner": "main.builder",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "last_use_line": 8,
+            "range_relation": "current_builder_payload",
+            "view_name": "view",
+            "zero_copy": true
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i11",
+          "op": "builder_view",
+          "operands": [
+            "%v_4"
+          ],
+          "result": "%v_8",
+          "source": {
+            "column": 22,
+            "end_column": 39,
+            "end_line": 7,
+            "line": 7,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "borrow_id": "builder_view:main:view:7:22",
+            "builder_owner": "main.builder",
+            "end_order": "child_before_parent",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "last_use_line": 8,
+            "range_relation": "current_builder_payload",
+            "view_name": "view",
+            "zero_copy": true
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i13",
+          "op": "borrow_end",
+          "operands": [
+            "%v_4"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 33,
+            "end_line": 8,
+            "line": 8,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "overflow_checks": [
+              "length_plus_additional",
+              "capacity_times_two",
+              "allocation_byte_size"
+            ],
+            "reason": "push"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i19",
+          "op": "builder_grow",
+          "operands": [
+            "%v_4",
+            "%v_14"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 34,
+            "end_line": 9,
+            "line": 9,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "condition": "required_exceeds_capacity",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "reason": "push_growth"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i20",
+          "op": "allocation",
+          "operands": [
+            "%v_4",
+            "%v_14"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 34,
+            "end_line": 9,
+            "line": 9,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "condition": "required_exceeds_capacity",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "reason": "push_growth"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i21",
+          "op": "payload_copy",
+          "operands": [
+            "%v_4",
+            "%v_14"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 34,
+            "end_line": 9,
+            "line": 9,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "condition": "required_exceeds_capacity",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "reason": "push_growth"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i22",
+          "op": "free",
+          "operands": [
+            "%v_4",
+            "%v_14"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 34,
+            "end_line": 9,
+            "line": 9,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "byte_range_diagnostic": "BytesBuilderByteOutOfRange",
+            "growth_policy": "zero_then_max_8_required_then_double"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i23",
+          "op": "builder_push",
+          "operands": [
+            "%v_4",
+            "%v_13"
+          ],
+          "result": null,
+          "source": {
+            "column": 4,
+            "end_column": 34,
+            "end_line": 9,
+            "line": 9,
+            "path": "builder-contract.meldra"
+          }
+        },
+        {
+          "attributes": {
+            "builder_owner": "main.builder",
+            "growth_policy": "zero_then_max_8_required_then_double",
+            "payload_copies": 0,
+            "pointer_identity": "preserved",
+            "source_state": "Live",
+            "target_state": "Finished"
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i24",
+          "op": "builder_finish_transfer",
+          "operands": [
+            "%v_4"
+          ],
+          "result": "%v_15",
+          "source": {
+            "column": 19,
+            "end_column": 35,
+            "end_line": 10,
+            "line": 10,
+            "path": "builder-contract.meldra"
+          }
+        }
+      ],
+      "growth_policy": {
+        "first_growth": "max(8, required)",
+        "initial_capacity": 0,
+        "next_growth": "max(required, current_capacity * 2)",
+        "overflow_checks": [
+          "length_plus_additional",
+          "capacity_times_two",
+          "allocation_byte_size"
+        ]
+      },
+      "operations": [
+        "allocation",
+        "borrow_end",
+        "builder_capacity",
+        "builder_create",
+        "builder_drop",
+        "builder_extend",
+        "builder_finish_transfer",
+        "builder_grow",
+        "builder_len",
+        "builder_push",
+        "builder_reserve",
+        "builder_view",
+        "free",
+        "payload_copy"
+      ],
+      "schema_version": 1,
+      "source_sha256": "dafaed9870fbe0bb288b251ff61eb690499117517d331209d6458966049e7049",
+      "validation": {
+        "automatic_drop_present": true,
+        "balanced_builder_views": true,
+        "borrow_end_count": 1,
+        "builder_create_count": 2,
+        "builder_drop_count": 1,
+        "builder_finish_count": 1,
+        "builder_grow_count": 2,
+        "builder_view_count": 1,
+        "finish_transfer_visible": true,
+        "growth_policy_explicit": true,
+        "source_mappings_complete": true,
+        "states": [
+          "Live",
+          "Moved",
+          "Finished",
+          "Dropped"
+        ]
+      }
+    }
+  },
+  "correctness": {
+    "invalid": {
+      "case_count": 285,
+      "compile_time_rejected": 240,
+      "failures": [],
+      "families": [
+        "push_live_view",
+        "extend_live_view",
+        "reserve_live_view",
+        "finish_live_view",
+        "drop_live_view",
+        "move_live_view",
+        "payload_mutation_live_view",
+        "self_extend",
+        "use_after_finish",
+        "double_finish",
+        "double_drop",
+        "use_after_move",
+        "finish_after_drop",
+        "byte_out_of_range",
+        "branch_ownership_mismatch",
+        "two_bytes_one_finish",
+        "capacity_overflow",
+        "length_overflow",
+        "allocation_size_overflow"
+      ],
+      "family_count": 19,
+      "native_sanitizer_executed": 60,
+      "runtime_diagnostic": 15,
+      "structural_runtime_diagnostic": 30,
+      "unexpected_acceptance": 0,
+      "unexpected_failure": 0,
+      "unique_compile_rejected_source_count": 225
+    },
+    "valid": {
+      "allocation_free_balances_checked": 640,
+      "case_count": 640,
+      "failures": [],
+      "families": [
+        "empty_finish",
+        "one_push",
+        "initial_boundary",
+        "one_growth",
+        "many_growths",
+        "reserve_exact",
+        "reserve_excess",
+        "reserve_noop",
+        "extend_empty",
+        "extend_prefix",
+        "extend_large",
+        "sequential_extend",
+        "view_read",
+        "mutation_after_view",
+        "finish_after_view",
+        "unfinished_drop",
+        "finished_drop",
+        "runtime_large",
+        "alternating",
+        "conditional_growth"
+      ],
+      "family_count": 20,
+      "final_capacities_checked": 640,
+      "final_lengths_checked": 640,
+      "growth_copy_bounds_checked": 640,
+      "layers": [
+        "reference_model",
+        "surface_hir",
+        "unoptimized_mir",
+        "optimized_mir",
+        "native_binary"
+      ],
+      "seed_count_per_template": 32,
+      "state_machine_runner": "parameterized compiler and native operation sequence runner",
+      "template_count": 20,
+      "unexpected_failure": 0
+    }
+  },
+  "date": "2026-08-12",
+  "decision_gates": {
+    "abi": true,
+    "automatic_drop": true,
+    "finish_zero_copy": true,
+    "frame_encoder": true,
+    "frozen_artifacts": true,
+    "full_suite": true,
+    "growth_bound": true,
+    "growth_payload": true,
+    "invalid_exact": true,
+    "invalid_families": true,
+    "invalid_minimum": true,
+    "performance": true,
+    "sanitizers": true,
+    "surface_annotations_zero": true,
+    "valid_agreement": true,
+    "valid_families": true,
+    "valid_minimum": true,
+    "view_safety": true
+  },
+  "discovered_defects": [
+    {
+      "fix": "split Bytes and BytesBuilder conditional ownership diagnostics",
+      "kind": "diagnostic_regression",
+      "observed": "Bytes conditional ownership mismatch replaced the established exact diagnostic",
+      "root_cause": "BytesBuilder branch-state validation shared the prior Bytes diagnostic branch",
+      "status": "FIXED",
+      "verification": "targeted diagnostic tests 35 passed; final full suite 578 passed"
+    }
+  ],
+  "environment": {
+    "cpu_count": 16,
+    "machine": "x86_64",
+    "platform": "Linux-7.1.7-200.fc44.x86_64-x86_64-with-glibc2.43",
+    "python": "3.14.6"
+  },
+  "frozen_artifacts": {
+    "checks": {
+      "benchmarks/meldra_bytes_borrowed_return.json": {
+        "expected_sha256": "6dc22cff8ebc57af367df5fb2ef61bc7458a28c7f55fc49013be33f566a8a1fc",
+        "match": true,
+        "observed_sha256": "6dc22cff8ebc57af367df5fb2ef61bc7458a28c7f55fc49013be33f566a8a1fc"
+      },
+      "benchmarks/meldra_bytes_borrowed_return_preregistered.json": {
+        "expected_sha256": "3fc87492090c30652136eb7fa4e773ae02511e9171936358f1216cc5eee309fa",
+        "match": true,
+        "observed_sha256": "3fc87492090c30652136eb7fa4e773ae02511e9171936358f1216cc5eee309fa"
+      },
+      "benchmarks/meldra_bytes_borrowed_return_self_skeptical_audit.json": {
+        "expected_sha256": "13e55a0bac1a3ebd09dc130fea51b21c78a1442f226c84ea86291bacadd9284e",
+        "match": true,
+        "observed_sha256": "13e55a0bac1a3ebd09dc130fea51b21c78a1442f226c84ea86291bacadd9284e"
+      },
+      "benchmarks/meldra_bytes_call_boundary.json": {
+        "expected_sha256": "b03add69373fc4646db0375b9a6ce70b0dc23b2fced2b4ca56e91e3d2b54b0df",
+        "match": true,
+        "observed_sha256": "b03add69373fc4646db0375b9a6ce70b0dc23b2fced2b4ca56e91e3d2b54b0df"
+      },
+      "benchmarks/meldra_bytes_call_boundary_preregistered.json": {
+        "expected_sha256": "4d928def7ef199538e249820848bbef7ce810696a674a4cb07b5e690eccacd16",
+        "match": true,
+        "observed_sha256": "4d928def7ef199538e249820848bbef7ce810696a674a4cb07b5e690eccacd16"
+      },
+      "benchmarks/meldra_bytes_call_boundary_self_skeptical_audit.json": {
+        "expected_sha256": "c1e7b9026b6bad27732bf6cd84c7d4bd6c55c6a312227fa89429807e964a79a0",
+        "match": true,
+        "observed_sha256": "c1e7b9026b6bad27732bf6cd84c7d4bd6c55c6a312227fa89429807e964a79a0"
+      },
+      "benchmarks/meldra_bytes_evidence_closure.json": {
+        "expected_sha256": "f9308bc4b34dbda6313118de20efd57636a9b97340bafa382ec30e814641f9a3",
+        "match": true,
+        "observed_sha256": "f9308bc4b34dbda6313118de20efd57636a9b97340bafa382ec30e814641f9a3"
+      },
+      "benchmarks/meldra_bytes_evidence_preregistered.json": {
+        "expected_sha256": "41fdb1bc2c54b7e19c061b438c7dd2b1888b66ce8b6b82c57a3633277f712267",
+        "match": true,
+        "observed_sha256": "41fdb1bc2c54b7e19c061b438c7dd2b1888b66ce8b6b82c57a3633277f712267"
+      },
+      "benchmarks/meldra_bytes_experiment.json": {
+        "expected_sha256": "123d31cf8d4855e7cdeb41ad0069e4d13e33bf9779c4a234b440535aa25f8157",
+        "match": true,
+        "observed_sha256": "123d31cf8d4855e7cdeb41ad0069e4d13e33bf9779c4a234b440535aa25f8157"
+      },
+      "benchmarks/meldra_bytes_reborrow.json": {
+        "expected_sha256": "010d7696d436314d1f660369d9d83cd29144b5523ceffc8a3e7b91b9ed0b4cdc",
+        "match": true,
+        "observed_sha256": "010d7696d436314d1f660369d9d83cd29144b5523ceffc8a3e7b91b9ed0b4cdc"
+      },
+      "benchmarks/meldra_bytes_reborrow_preregistered.json": {
+        "expected_sha256": "9f5dce3c5afb6e4a2bf4424102fcc420fb86bb92ebe9f903cdc5b3a5df61022c",
+        "match": true,
+        "observed_sha256": "9f5dce3c5afb6e4a2bf4424102fcc420fb86bb92ebe9f903cdc5b3a5df61022c"
+      },
+      "benchmarks/meldra_bytes_reborrow_self_skeptical_audit.json": {
+        "expected_sha256": "003ff481928c112a7e6f429607b781c0a4538f1dba0b250f38af3a05a9a35bc4",
+        "match": true,
+        "observed_sha256": "003ff481928c112a7e6f429607b781c0a4538f1dba0b250f38af3a05a9a35bc4"
+      },
+      "benchmarks/meldra_bytes_self_skeptical_audit.json": {
+        "expected_sha256": "79f3b81336ca13e04f691a9049963ac44dcb33687ca55c59af6885090bc04ef0",
+        "match": true,
+        "observed_sha256": "79f3b81336ca13e04f691a9049963ac44dcb33687ca55c59af6885090bc04ef0"
+      }
+    },
+    "passed": true
+  },
+  "full_suite": {
+    "failed_tests": 0,
+    "passed": true,
+    "passed_tests": 578,
+    "skipped_tests": 0,
+    "status": "PASS"
+  },
+  "kind": "MeldraBytesBuilderCapacityGrowthExperiment",
+  "limitations": [
+    "Rust was measured only when rustc was available on the host; standard Vec growth policy is implementation-defined and intentionally not forced to Meldra policy.",
+    "BytesBuilder is local and unique; function parameters, returned builders, shared ownership, records, heap storage, closures, recursion, and async are outside this slice.",
+    "Runtime counters describe Meldra payload operations, not allocator-internal metadata.",
+    "The state-machine corpus uses twenty independently defined semantic families and deterministic parameter seeds rather than hundreds of source files."
+  ],
+  "performance": {
+    "arms": {
+      "c_growth": {
+        "allocation_copy_counters": {
+          "allocations": 20,
+          "finish_copies": 0,
+          "frees": 20,
+          "growth_copied_bytes": 4194296,
+          "reallocations": 19
+        },
+        "allocation_copy_counters_stable": true,
+        "build": {
+          "binary_sha256": "1f6a1b3b8b1aa99796be4816ee930eb02b6a3edcedb1008e03b46a74bab807ab",
+          "binary_size": 13048,
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fno-ident",
+            "-Werror",
+            "benchmarks/meldra_bytes_builder/benchmark/c/program.c",
+            "-o",
+            "benchmarks/meldra_bytes_builder/benchmark/c/program"
+          ],
+          "compile_time_ms": 48.308319,
+          "compiler": "/usr/bin/clang",
+          "compiler_version": null,
+          "optimization_statistics": [],
+          "run_command": [
+            "benchmarks/meldra_bytes_builder/benchmark/c/program"
+          ],
+          "source_sha256": "3ffa8bf5a223274715bd94863074fed26e5e247000eabf98bae7245a3123bd96",
+          "source_size": 1661,
+          "status": "MEASURED",
+          "stderr": ""
+        },
+        "explicit_memory_operations": 3,
+        "measured_run_count": 30,
+        "peak_rss_kb": {
+          "bootstrap_median_95_ci": [
+            5652.0,
+            5756.0
+          ],
+          "mad": 40.0,
+          "maximum": 5828.0,
+          "mean": 5721.733333333334,
+          "median": 5680.0,
+          "minimum": 5640.0,
+          "relative_mad": 0.007042253521126761
+        },
+        "source_tokens": 578,
+        "status": "MEASURED",
+        "throughput_mb_s": 278.41054500755433,
+        "wall_ms": {
+          "bootstrap_median_95_ci": [
+            14.72841,
+            15.2599075
+          ],
+          "mad": 0.3893425000000006,
+          "maximum": 16.795367,
+          "mean": 15.078196333333333,
+          "median": 15.0651765,
+          "minimum": 14.303584,
+          "relative_mad": 0.025843872456456158
+        }
+      },
+      "c_reserved": {
+        "allocation_copy_counters": {
+          "allocations": 1,
+          "finish_copies": 0,
+          "frees": 1,
+          "growth_copied_bytes": 0,
+          "reallocations": 0
+        },
+        "allocation_copy_counters_stable": true,
+        "build": {
+          "binary_sha256": "1f6a1b3b8b1aa99796be4816ee930eb02b6a3edcedb1008e03b46a74bab807ab",
+          "binary_size": 13048,
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fno-ident",
+            "-Werror",
+            "benchmarks/meldra_bytes_builder/benchmark/c/program.c",
+            "-o",
+            "benchmarks/meldra_bytes_builder/benchmark/c/program"
+          ],
+          "compile_time_ms": 48.308319,
+          "compiler": "/usr/bin/clang",
+          "compiler_version": null,
+          "optimization_statistics": [],
+          "run_command": [
+            "benchmarks/meldra_bytes_builder/benchmark/c/program"
+          ],
+          "source_sha256": "3ffa8bf5a223274715bd94863074fed26e5e247000eabf98bae7245a3123bd96",
+          "source_size": 1661,
+          "status": "MEASURED",
+          "stderr": ""
+        },
+        "explicit_memory_operations": 3,
+        "measured_run_count": 30,
+        "peak_rss_kb": {
+          "bootstrap_median_95_ci": [
+            5416.0,
+            5452.0
+          ],
+          "mad": 12.0,
+          "maximum": 5504.0,
+          "mean": 5428.0,
+          "median": 5416.0,
+          "minimum": 5336.0,
+          "relative_mad": 0.0022156573116691287
+        },
+        "source_tokens": 578,
+        "status": "MEASURED",
+        "throughput_mb_s": 302.1154290453855,
+        "wall_ms": {
+          "bootstrap_median_95_ci": [
+            13.7391935,
+            14.114896000000002
+          ],
+          "mad": 0.3612979999999997,
+          "maximum": 15.182412,
+          "mean": 13.935075833333334,
+          "median": 13.8831175,
+          "minimum": 13.35489,
+          "relative_mad": 0.026024270125207805
+        }
+      },
+      "meldra_growth": {
+        "allocation_copy_counters": {
+          "allocations": 20,
+          "extend_copied_bytes": 0,
+          "finish_copies": 0,
+          "frees": 20,
+          "growth_copied_bytes": 4194296,
+          "reallocations": 19
+        },
+        "allocation_copy_counters_stable": true,
+        "build": {
+          "binary_sha256": "3316d9e660b9e9370229fe6b8df88896d5671c01063e2c8312f864f09ba7aaca",
+          "binary_size": 13296,
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-Werror",
+            "-Wl,--build-id=none",
+            "benchmarks/meldra_bytes_builder/benchmark/meldra/program.c",
+            "-o",
+            "benchmarks/meldra_bytes_builder/benchmark/meldra/program"
+          ],
+          "compile_time_ms": 61.391707,
+          "compiler": "/usr/bin/clang",
+          "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+          "optimization_statistics": [],
+          "run_command": [
+            "benchmarks/meldra_bytes_builder/benchmark/meldra/program"
+          ],
+          "source_sha256": "667a95ea92557b4b5771d73d9c4b93662e89b993ae93b7e721b99d5300bd7715",
+          "source_size": 553,
+          "status": "MEASURED",
+          "stderr": ""
+        },
+        "explicit_memory_operations": 0,
+        "measured_run_count": 30,
+        "peak_rss_kb": {
+          "bootstrap_median_95_ci": [
+            5652.0,
+            5740.0
+          ],
+          "mad": 34.0,
+          "maximum": 5828.0,
+          "mean": 5712.933333333333,
+          "median": 5678.0,
+          "minimum": 5644.0,
+          "relative_mad": 0.005988023952095809
+        },
+        "source_tokens": 154,
+        "status": "MEASURED",
+        "throughput_mb_s": 456.8241769905278,
+        "wall_ms": {
+          "bootstrap_median_95_ci": [
+            9.0728115,
+            9.3142245
+          ],
+          "mad": 0.1779775000000008,
+          "maximum": 10.012195,
+          "mean": 9.221701566666667,
+          "median": 9.1814405,
+          "minimum": 8.901675,
+          "relative_mad": 0.019384485473711972
+        }
+      },
+      "meldra_reserved": {
+        "allocation_copy_counters": {
+          "allocations": 1,
+          "extend_copied_bytes": 0,
+          "finish_copies": 0,
+          "frees": 1,
+          "growth_copied_bytes": 0,
+          "reallocations": 0
+        },
+        "allocation_copy_counters_stable": true,
+        "build": {
+          "binary_sha256": "3316d9e660b9e9370229fe6b8df88896d5671c01063e2c8312f864f09ba7aaca",
+          "binary_size": 13296,
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O3",
+            "-fwrapv",
+            "-fno-strict-overflow",
+            "-fno-delete-null-pointer-checks",
+            "-ffp-contract=off",
+            "-fno-ident",
+            "-Werror",
+            "-Wl,--build-id=none",
+            "benchmarks/meldra_bytes_builder/benchmark/meldra/program.c",
+            "-o",
+            "benchmarks/meldra_bytes_builder/benchmark/meldra/program"
+          ],
+          "compile_time_ms": 61.391707,
+          "compiler": "/usr/bin/clang",
+          "compiler_version": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+          "optimization_statistics": [],
+          "run_command": [
+            "benchmarks/meldra_bytes_builder/benchmark/meldra/program"
+          ],
+          "source_sha256": "667a95ea92557b4b5771d73d9c4b93662e89b993ae93b7e721b99d5300bd7715",
+          "source_size": 553,
+          "status": "MEASURED",
+          "stderr": ""
+        },
+        "explicit_memory_operations": 0,
+        "measured_run_count": 30,
+        "peak_rss_kb": {
+          "bootstrap_median_95_ci": [
+            5416.0,
+            5444.0
+          ],
+          "mad": 16.0,
+          "maximum": 5500.0,
+          "mean": 5422.533333333334,
+          "median": 5416.0,
+          "minimum": 5336.0,
+          "relative_mad": 0.0029542097488921715
+        },
+        "source_tokens": 154,
+        "status": "MEASURED",
+        "throughput_mb_s": 513.7043735376669,
+        "wall_ms": {
+          "bootstrap_median_95_ci": [
+            7.995302000000001,
+            8.275494
+          ],
+          "mad": 0.17637249999999938,
+          "maximum": 9.167183,
+          "mean": 8.202857999999999,
+          "median": 8.1648205,
+          "minimum": 7.839633,
+          "relative_mad": 0.021601515918200455
+        }
+      },
+      "rust_vec_growth": {
+        "allocation_copy_counters": null,
+        "allocation_copy_counters_stable": true,
+        "build": {
+          "binary_sha256": null,
+          "binary_size": null,
+          "command": [],
+          "compile_time_ms": null,
+          "compiler": null,
+          "compiler_version": null,
+          "optimization_statistics": [],
+          "run_command": [],
+          "source_sha256": "9bd88473e1ce1f9dcc29705c56f55bd3a0d5c4d7620cf1288b3a2f8aad5e8f4b",
+          "source_size": 489,
+          "status": "UNMEASURED_COMPILER_UNAVAILABLE",
+          "stderr": "rust compiler unavailable"
+        },
+        "explicit_memory_operations": 0,
+        "measured_run_count": 0,
+        "peak_rss_kb": {
+          "bootstrap_median_95_ci": null,
+          "mad": null,
+          "median": null,
+          "relative_mad": null
+        },
+        "source_tokens": 229,
+        "status": "UNMEASURED_COMPILER_UNAVAILABLE",
+        "throughput_mb_s": null,
+        "wall_ms": {
+          "bootstrap_median_95_ci": null,
+          "mad": null,
+          "median": null,
+          "relative_mad": null
+        }
+      },
+      "rust_vec_reserved": {
+        "allocation_copy_counters": null,
+        "allocation_copy_counters_stable": true,
+        "build": {
+          "binary_sha256": null,
+          "binary_size": null,
+          "command": [],
+          "compile_time_ms": null,
+          "compiler": null,
+          "compiler_version": null,
+          "optimization_statistics": [],
+          "run_command": [],
+          "source_sha256": "9bd88473e1ce1f9dcc29705c56f55bd3a0d5c4d7620cf1288b3a2f8aad5e8f4b",
+          "source_size": 489,
+          "status": "UNMEASURED_COMPILER_UNAVAILABLE",
+          "stderr": "rust compiler unavailable"
+        },
+        "explicit_memory_operations": 0,
+        "measured_run_count": 0,
+        "peak_rss_kb": {
+          "bootstrap_median_95_ci": null,
+          "mad": null,
+          "median": null,
+          "relative_mad": null
+        },
+        "source_tokens": 229,
+        "status": "UNMEASURED_COMPILER_UNAVAILABLE",
+        "throughput_mb_s": null,
+        "wall_ms": {
+          "bootstrap_median_95_ci": null,
+          "mad": null,
+          "median": null,
+          "relative_mad": null
+        }
+      }
+    },
+    "best_native_median_ms": 13.8831175,
+    "frozen_policy_counter_match": true,
+    "meldra_worst_slowdown_ratio": 0.6613385286121796,
+    "method": {
+      "cpu_affinity": 0,
+      "growth_policy": "Meldra and C exact frozen policy; Rust standard Vec policy may differ",
+      "measured_runs_per_available_arm": 30,
+      "n": 4194304,
+      "relative_mad_maximum": 0.05,
+      "sequential_randomized_order": true,
+      "warmups_per_available_arm": 5
+    },
+    "passed": true,
+    "rust_compiler_available": false,
+    "rust_policy": "standard Vec implementation-defined reserve growth",
+    "structural_evidence_required": true
+  },
+  "preregistration": {
+    "benchmark_protocol": {
+      "arms": [
+        "meldra_growth",
+        "meldra_reserved",
+        "c_growth",
+        "c_reserved",
+        "rust_vec_growth",
+        "rust_vec_reserved"
+      ],
+      "cpu_affinity": "one available CPU",
+      "growth_factor_may_change_after_measurement": false,
+      "measured_runs_per_arm": 30,
+      "order": "sequential randomized by deterministic seed",
+      "relative_mad_maximum": 0.05,
+      "warmups_per_arm": 5
+    },
+    "falsifiers": [
+      "finish copies payload",
+      "append or reserve creates an owner alias",
+      "active view survives reallocation",
+      "builder mutates while a view is live",
+      "reallocation creates use-after-free",
+      "old buffer is freed twice",
+      "growth loses payload",
+      "capacity overflow is accepted",
+      "ordinary code requires manual allocation free or lifetime syntax",
+      "geometric growth copied bytes violate the expected linear bound",
+      "Meldra is stably more than 15 percent slower than the best equivalent C or Rust arm"
+    ],
+    "growth_policy": {
+      "first_growth": "max(8, required)",
+      "frozen_before_benchmark": true,
+      "initial_capacity": 0,
+      "next_growth": "max(required, current_capacity * 2)",
+      "overflow_checks": [
+        "length + additional",
+        "current_capacity * 2",
+        "allocation byte size"
+      ]
+    },
+    "hypothesis": "Meldra can support one unique growing BytesBuilder with automatic geometric capacity, safe reallocation, temporary zero-copy immutable BytesView borrows, zero-copy finish ownership transfer to Bytes, and automatic unfinished cleanup without surface lifetime, allocator, retain, or release syntax.",
+    "scope": {
+      "allocator_annotations": 0,
+      "api": [
+        "new",
+        "with_capacity",
+        "len",
+        "capacity",
+        "reserve",
+        "push",
+        "extend",
+        "as_view",
+        "finish"
+      ],
+      "decision_runs": 1,
+      "lifetime_annotations": 0,
+      "owner": "unique",
+      "retain_release_syntax": 0,
+      "state": [
+        "Live",
+        "Moved",
+        "Finished",
+        "Dropped"
+      ],
+      "state_machine_corpus": true,
+      "view": "immutable caller-local BytesView"
+    },
+    "status_set": [
+      "BYTES_BUILDER_SUPPORTED",
+      "BYTES_BUILDER_INCOMPLETE",
+      "BYTES_BUILDER_SAFETY_DEFECT"
+    ],
+    "stop_condition": "Return BYTES_BUILDER_INCOMPLETE without expanding scope when any non-safety support gate is unmet; return BYTES_BUILDER_SAFETY_DEFECT for stale views, use-after-free, double-free, lost payload, duplicate ownership, hidden finish copy, or a missed ownership violation.",
+    "support_gates": {
+      "active_view_blocks_mutation_growth_finish": true,
+      "binary_frame_encoder": true,
+      "decision_runs": 1,
+      "finish_payload_copies": 0,
+      "full_suite_failures": 0,
+      "growth_copy_bound": "growth_copied_bytes < 2 * final_capacity",
+      "growth_payload_preserved": true,
+      "invalid_families_minimum": 16,
+      "invalid_sequences_minimum": 240,
+      "maximum_slowdown_ratio": 1.15,
+      "sanitizer_violations": 0,
+      "unfinished_builder_automatic_drop": true,
+      "valid_families_minimum": 18,
+      "valid_sequences_minimum": 600
+    },
+    "unsupported": [
+      "insert",
+      "remove",
+      "shrink",
+      "concat",
+      "shared_builder",
+      "copy_on_write",
+      "mutable_view",
+      "Text",
+      "UTF-8",
+      "formatting",
+      "recursive_values",
+      "interfaces",
+      "JSON",
+      "flow",
+      "machine",
+      "async",
+      "shared_or_cow_Bytes",
+      "bounds_check_optimization"
+    ]
+  },
+  "research_metrics": {
+    "bytes_builder_benchmark_runs": 1,
+    "decision_run_count": 1,
+    "external_python_benchmark_runs": 0,
+    "failed_full_suite_runs_before_final": 1,
+    "final_full_suite_runs": 1,
+    "full_suite_runs": 2,
+    "implementation_wall_time_s": 29.106710600997758,
+    "prior_bytes_benchmark_runs": 0,
+    "soak_runs": 0,
+    "stage06p_full_runs": 0
+  },
+  "safety": {
+    "asan": {
+      "diagnostic_controls": {
+        "active_view_ownership": {
+          "arguments": [
+            0,
+            17
+          ],
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/asan/active_view_ownership/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=address",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/active_view_ownership/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/active_view_ownership/program"
+            ],
+            "compile_time_ms": 108.40336,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "expected_diagnostic": "BytesBuilderActiveView",
+          "passed": true,
+          "returncode": -6
+        },
+        "allocation_overflow": {
+          "arguments": [
+            9223372036854775808
+          ],
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/asan/allocation_overflow/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=address",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/allocation_overflow/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/allocation_overflow/program"
+            ],
+            "compile_time_ms": 108.248238,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "expected_diagnostic": "BytesBuilderAllocationSizeOverflow",
+          "passed": true,
+          "returncode": -6
+        }
+      },
+      "failures": [],
+      "families": {
+        "alternating": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/asan/alternating/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=address",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/alternating/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/alternating/program"
+            ],
+            "compile_time_ms": 133.728314,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                0,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                16,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                511,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        },
+        "finish_after_view": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/asan/finish_after_view/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=address",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/finish_after_view/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/finish_after_view/program"
+            ],
+            "compile_time_ms": 117.092461,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                0,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                16,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                511,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        },
+        "many_growths": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/asan/many_growths/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=address",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/many_growths/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/many_growths/program"
+            ],
+            "compile_time_ms": 120.687114,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                0,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                16,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                511,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        },
+        "runtime_large": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/asan/runtime_large/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=address",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/runtime_large/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/runtime_large/program"
+            ],
+            "compile_time_ms": 122.422633,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                4096,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                4215,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                4351,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        },
+        "unfinished_drop": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/asan/unfinished_drop/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=address",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/unfinished_drop/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/unfinished_drop/program"
+            ],
+            "compile_time_ms": 117.711914,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                1,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                16,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                511,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        },
+        "view_read": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/asan/view_read/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=address",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/view_read/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/asan/view_read/program"
+            ],
+            "compile_time_ms": 125.815193,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                0,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                16,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                511,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        }
+      },
+      "native_executions": 20,
+      "status": "PASS",
+      "violations": 0
+    },
+    "checked_failures": {
+      "double_free": 0,
+      "duplicate_owner": 0,
+      "escaping_view": 0,
+      "leaks": 0,
+      "lost_payload": 0,
+      "ownership_balance_failures": 0,
+      "use_after_free": 0
+    },
+    "lsan": {
+      "diagnostic_controls": {
+        "active_view_ownership": {
+          "arguments": [
+            0,
+            17
+          ],
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/lsan/active_view_ownership/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=leak",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/active_view_ownership/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/active_view_ownership/program"
+            ],
+            "compile_time_ms": 76.298615,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "expected_diagnostic": "BytesBuilderActiveView",
+          "passed": true,
+          "returncode": -6
+        },
+        "allocation_overflow": {
+          "arguments": [
+            9223372036854775808
+          ],
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/lsan/allocation_overflow/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=leak",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/allocation_overflow/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/allocation_overflow/program"
+            ],
+            "compile_time_ms": 75.557203,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "expected_diagnostic": "BytesBuilderAllocationSizeOverflow",
+          "passed": true,
+          "returncode": -6
+        }
+      },
+      "failures": [],
+      "families": {
+        "alternating": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/lsan/alternating/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=leak",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/alternating/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/alternating/program"
+            ],
+            "compile_time_ms": 93.777027,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                0,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                16,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                511,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        },
+        "finish_after_view": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/lsan/finish_after_view/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=leak",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/finish_after_view/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/finish_after_view/program"
+            ],
+            "compile_time_ms": 87.301962,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                0,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                16,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                511,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        },
+        "many_growths": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/lsan/many_growths/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=leak",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/many_growths/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/many_growths/program"
+            ],
+            "compile_time_ms": 83.983432,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                0,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                16,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                511,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        },
+        "runtime_large": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/lsan/runtime_large/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=leak",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/runtime_large/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/runtime_large/program"
+            ],
+            "compile_time_ms": 84.707679,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                4096,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                4215,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                4351,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        },
+        "unfinished_drop": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/lsan/unfinished_drop/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=leak",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/unfinished_drop/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/unfinished_drop/program"
+            ],
+            "compile_time_ms": 78.692341,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                1,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                16,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                511,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        },
+        "view_read": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/lsan/view_read/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=leak",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/view_read/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/lsan/view_read/program"
+            ],
+            "compile_time_ms": 84.604061,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                0,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                16,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                511,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        }
+      },
+      "native_executions": 20,
+      "status": "PASS",
+      "violations": 0
+    },
+    "native_executions": 60,
+    "passed": true,
+    "ubsan": {
+      "diagnostic_controls": {
+        "active_view_ownership": {
+          "arguments": [
+            0,
+            17
+          ],
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/ubsan/active_view_ownership/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=undefined",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/active_view_ownership/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/active_view_ownership/program"
+            ],
+            "compile_time_ms": 79.689554,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "expected_diagnostic": "BytesBuilderActiveView",
+          "passed": true,
+          "returncode": -6
+        },
+        "allocation_overflow": {
+          "arguments": [
+            9223372036854775808
+          ],
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/ubsan/allocation_overflow/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=undefined",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/allocation_overflow/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/allocation_overflow/program"
+            ],
+            "compile_time_ms": 76.328239,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "expected_diagnostic": "BytesBuilderAllocationSizeOverflow",
+          "passed": true,
+          "returncode": -6
+        }
+      },
+      "failures": [],
+      "families": {
+        "alternating": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/ubsan/alternating/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=undefined",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/alternating/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/alternating/program"
+            ],
+            "compile_time_ms": 105.127097,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                0,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                16,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                511,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        },
+        "finish_after_view": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/ubsan/finish_after_view/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=undefined",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/finish_after_view/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/finish_after_view/program"
+            ],
+            "compile_time_ms": 90.96638,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                0,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                16,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                511,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        },
+        "many_growths": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/ubsan/many_growths/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=undefined",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/many_growths/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/many_growths/program"
+            ],
+            "compile_time_ms": 90.71089,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                0,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                16,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                511,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        },
+        "runtime_large": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/ubsan/runtime_large/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=undefined",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/runtime_large/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/runtime_large/program"
+            ],
+            "compile_time_ms": 93.962059,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                4096,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                4215,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                4351,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        },
+        "unfinished_drop": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/ubsan/unfinished_drop/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=undefined",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/unfinished_drop/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/unfinished_drop/program"
+            ],
+            "compile_time_ms": 81.310337,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                1,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                16,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                511,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        },
+        "view_read": {
+          "build": {
+            "binary": "benchmarks/meldra_bytes_builder/sanitizers/ubsan/view_read/program",
+            "command": [
+              "/usr/bin/clang",
+              "-std=c11",
+              "-O1",
+              "-g",
+              "-fno-omit-frame-pointer",
+              "-fsanitize=undefined",
+              "-fno-sanitize-recover=all",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/view_read/program.c",
+              "-o",
+              "benchmarks/meldra_bytes_builder/sanitizers/ubsan/view_read/program"
+            ],
+            "compile_time_ms": 93.449463,
+            "status": "MEASURED",
+            "stderr": ""
+          },
+          "runs": [
+            {
+              "arguments": [
+                0,
+                17
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                16,
+                934
+              ],
+              "passed": true,
+              "returncode": 0
+            },
+            {
+              "arguments": [
+                511,
+                1982
+              ],
+              "passed": true,
+              "returncode": 0
+            }
+          ]
+        }
+      },
+      "native_executions": 20,
+      "status": "PASS",
+      "violations": 0
+    }
+  },
+  "schema_version": 1,
+  "scope": {
+    "supported": "unique local BytesBuilder capacity growth and immutable caller-local views",
+    "unsupported": [
+      "Text",
+      "UTF-8",
+      "recursive values",
+      "interfaces",
+      "JSON",
+      "flow",
+      "machine",
+      "async",
+      "shared or COW Bytes",
+      "bounds-check optimization"
+    ]
+  },
+  "self_skeptical_audit": {
+    "controls": [
+      "Freeze policy, status gates, workload, warmup count, measured count, and slowdown threshold before implementation.",
+      "Use one parameterized state-machine corpus with independent family labels and deterministic seeds.",
+      "Compare reference, surface HIR, unoptimized MIR, optimized MIR, and actual native binary outputs.",
+      "Expose builder_create, builder_grow, payload_copy, finish transfer, and drop as auditable MIR operations.",
+      "Count allocations, frees, reallocations, growth bytes, extend bytes, and finish copies separately.",
+      "Use malloc-copy-free growth so old-buffer release ordering is visible and failure safe.",
+      "Run ASan, UBSan, and LeakSanitizer only on executed native builder paths.",
+      "Add deliberate finish-copy, missing-free, and live-view-append falsification controls.",
+      "Run the six benchmark arms with deterministic randomized sequential order and one-CPU affinity.",
+      "Run exactly one Decision corpus and one full test suite after quick-loop stabilization.",
+      "Freeze old Bytes artifact hashes and do not rerun their benchmarks."
+    ],
+    "name": "SELF_SKEPTICAL_AUDIT",
+    "post_hoc_status": "Status names, capacity policy, corpus minima, performance ratio, sanitizer requirement, and full-suite requirement remain fixed until final artifact validation.",
+    "threats": [
+      "A Python reference model could agree with itself while HIR MIR or native code uses different builder primitives.",
+      "A compiler marker could claim zero-copy finish while generated C allocates or copies in a helper.",
+      "A view may remain usable after growth if borrow_end is emitted too early or on only one branch.",
+      "A no-op reserve could be confused with a growth reserve and hide allocator activity.",
+      "Allocator calls and payload-copy bytes could be conflated, invalidating amortized-growth evidence.",
+      "Using realloc directly could obscure whether the old pointer remains valid on failure.",
+      "The final Bytes and finished builder could retain the same owner and double free it.",
+      "Compile-time rejects must not be counted as sanitizer executions.",
+      "Repeated parameter seeds must not be presented as independent semantic families.",
+      "Benchmark arms could implement different growth policies or checksum work.",
+      "Subprocess and scheduler noise could satisfy the timing gate without MAD control.",
+      "Post-hoc growth-factor or status-gate changes would invalidate the experiment.",
+      "Previous Bytes evidence cannot substitute for BytesBuilder growth, finish, or cleanup evidence."
+    ]
+  },
+  "status": "BYTES_BUILDER_SUPPORTED"
+}

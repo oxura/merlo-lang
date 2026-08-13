@@ -1,0 +1,808 @@
+{
+  "benchmark_repetitions": [
+    {
+      "correct": 26,
+      "measured": 26,
+      "observations": 54,
+      "report_sha256": "c37db83c12494faeb60aa872fe0c0cb286c5cf546a7959b21a142507aae446c0",
+      "run": 1,
+      "status_counts": {
+        "MEASURED": 26,
+        "UNMEASURED_TOOLCHAIN_UNAVAILABLE": 28
+      }
+    },
+    {
+      "correct": 26,
+      "measured": 26,
+      "observations": 54,
+      "report_sha256": "da8f1a88c6a7505f0b0ecd021dee0f2e70bdb4541d9c7de453c99da59ec9067d",
+      "run": 2,
+      "status_counts": {
+        "MEASURED": 26,
+        "UNMEASURED_TOOLCHAIN_UNAVAILABLE": 28
+      }
+    },
+    {
+      "correct": 26,
+      "measured": 26,
+      "observations": 54,
+      "report_sha256": "9596bd3f29169728b642f0bde9cc37a8565a9c9c1fb27fa4d4b4462e323272a1",
+      "run": 3,
+      "status_counts": {
+        "MEASURED": 26,
+        "UNMEASURED_TOOLCHAIN_UNAVAILABLE": 28
+      }
+    }
+  ],
+  "checks": {
+    "algorithm_data_audit": "Every arm is generated from the same frozen NativeWorkload id/input and validated against one language-neutral reference_checksum. Representation differences are disclosed.",
+    "all_external_sources_present": {
+      "c": true,
+      "csharp": true,
+      "go": true,
+      "python": true,
+      "rust": true
+    },
+    "all_measured_checksums_correct": true,
+    "allocation_instrumentation": {
+      "median_ms": {
+        "c_instrumented": 3.222944,
+        "c_plain": 3.1520515,
+        "meldra_instrumented": 5.689081,
+        "meldra_plain": 5.735716
+      },
+      "ratios": {
+        "c_instrumented_over_plain": 1.022490907905534,
+        "meldra_instrumented_over_plain": 0.9918693673117707
+      },
+      "runs_per_variant": 30,
+      "samples_ms": {
+        "c_instrumented": [
+          3.16342,
+          3.248856,
+          3.341358,
+          3.61575,
+          3.214104,
+          3.369598,
+          3.099377,
+          3.246421,
+          3.408516,
+          3.268198,
+          3.231784,
+          3.060338,
+          3.376532,
+          3.17827,
+          3.251785,
+          3.649712,
+          3.138753,
+          3.148009,
+          3.115167,
+          3.129341,
+          3.297652,
+          3.153118,
+          3.383959,
+          3.058677,
+          3.019232,
+          3.314919,
+          3.319395,
+          3.025716,
+          3.128779,
+          3.054927
+        ],
+        "c_plain": [
+          3.04417,
+          3.01296,
+          3.03072,
+          3.046425,
+          3.10153,
+          3.332612,
+          3.513196,
+          3.369687,
+          3.808146,
+          3.157515,
+          3.578914,
+          3.259474,
+          3.095538,
+          3.019887,
+          3.22568,
+          3.208717,
+          3.136885,
+          3.022655,
+          3.47356,
+          3.105302,
+          3.295863,
+          3.1782,
+          3.281461,
+          3.313896,
+          3.146588,
+          3.046559,
+          3.110657,
+          3.178746,
+          3.02122,
+          3.029353
+        ],
+        "meldra_instrumented": [
+          6.496827,
+          5.842959,
+          5.676047,
+          5.821551,
+          5.636981,
+          5.868291,
+          5.594583,
+          5.604879,
+          5.731681,
+          5.539724,
+          6.563486,
+          5.598997,
+          5.665956,
+          6.016163,
+          5.558746,
+          5.650788,
+          5.716662,
+          6.290703,
+          5.857534,
+          5.539191,
+          5.764928,
+          5.698698,
+          5.634408,
+          6.107078,
+          5.75571,
+          5.985602,
+          5.679464,
+          5.576107,
+          5.604441,
+          5.5428
+        ],
+        "meldra_plain": [
+          5.511061,
+          6.012332,
+          5.709976,
+          5.623869,
+          6.162145,
+          5.521107,
+          5.544057,
+          5.729841,
+          5.726166,
+          5.775999,
+          5.459014,
+          5.554128,
+          5.80559,
+          5.829443,
+          5.745376,
+          5.823057,
+          5.741591,
+          6.115178,
+          5.537315,
+          5.623419,
+          6.454023,
+          6.230912,
+          5.645312,
+          5.665691,
+          5.502146,
+          5.913209,
+          5.688281,
+          8.403441,
+          5.860509,
+          5.93463
+        ]
+      },
+      "seed": 20260811
+    },
+    "determinism": {
+      "evidence": {
+        "binary_equal": true,
+        "binary_sha256_a": "6c1e98614ea96486c66d76fe8df4e0a901ca65d853174ce3763e2cd836a03635",
+        "binary_sha256_b": "6c1e98614ea96486c66d76fe8df4e0a901ca65d853174ce3763e2cd836a03635",
+        "build_statuses": [
+          "MEASURED",
+          "MEASURED"
+        ],
+        "c_source_equal": true,
+        "c_source_sha256_a": "e8a144277004a239c57a1fda4820605f62aefd5ac8667452bd63edc8fbb699f4",
+        "c_source_sha256_b": "e8a144277004a239c57a1fda4820605f62aefd5ac8667452bd63edc8fbb699f4",
+        "compiler": "/usr/bin/clang",
+        "mir_digest_a": "fcd6d86a2b24ff09541dc305329b266e6ae79988ce0c0d2fdbcfb1b2ee3fe6fb",
+        "mir_digest_b": "fcd6d86a2b24ff09541dc305329b266e6ae79988ce0c0d2fdbcfb1b2ee3fe6fb",
+        "mir_equal": true
+      },
+      "id": "deterministic_source_produces_deterministic_native_output",
+      "scope": "same compiler, flags, source mapping, and host; separate output directories",
+      "status": "PASS"
+    },
+    "generated_c_ub_audit": "-fwrapv freezes Int64 wrapping; UInt64 uses defined unsigned wrapping; bounds checks precede indexed loads unless proven; combined ASan/UBSan/LSan passed all 8 supported generated sources.",
+    "handwritten_c_ub_audit": "All arithmetic is uint64_t wrapping. No signed overflow or out-of-range shifts are used. Every malloc is checked. Combined ASan/UBSan/LSan passed all 9 C sources.",
+    "mir_schema_digest_expected": "d73168485cff917a16b97f97983c96079335dd754cf5928b2d94cc4ee4ac0f8a",
+    "mir_schema_digest_matches": true,
+    "mir_schema_digest_observed": "d73168485cff917a16b97f97983c96079335dd754cf5928b2d94cc4ee4ac0f8a",
+    "pass_statistics_files_per_run": {
+      "1": 56,
+      "2": 56,
+      "3": 56
+    },
+    "runtime_input_checks": {
+      "c_wrapper_uses_argv": true,
+      "checksums_printed": true,
+      "meldra_wrapper_uses_argv": true,
+      "python_wrapper_uses_argv": true
+    },
+    "sanitizer_sources": {
+      "passed": 17,
+      "results": [
+        {
+          "arm": "c",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/arithmetic_lcg/c/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/arithmetic_lcg-c"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "BENCH_ALLOCATIONS=0\n",
+          "run_stdout": "12630180546796697088\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/arithmetic_lcg/c/program.c",
+          "workload": "arithmetic_lcg"
+        },
+        {
+          "arm": "meldra",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/arithmetic_lcg/meldra/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/arithmetic_lcg-meldra"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "MELDRA_ALLOCATIONS=0\n",
+          "run_stdout": "12630180546796697088\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/arithmetic_lcg/meldra/program.c",
+          "workload": "arithmetic_lcg"
+        },
+        {
+          "arm": "c",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/bubble_sort_8/c/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/bubble_sort_8-c"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "BENCH_ALLOCATIONS=0\n",
+          "run_stdout": "140\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/bubble_sort_8/c/program.c",
+          "workload": "bubble_sort_8"
+        },
+        {
+          "arm": "meldra",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/bubble_sort_8/meldra/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/bubble_sort_8-meldra"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "MELDRA_ALLOCATIONS=0\n",
+          "run_stdout": "140\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/bubble_sort_8/meldra/program.c",
+          "workload": "bubble_sort_8"
+        },
+        {
+          "arm": "c",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/fixed_array_scan/c/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/fixed_array_scan-c"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "BENCH_ALLOCATIONS=0\n",
+          "run_stdout": "775000095000000\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/fixed_array_scan/c/program.c",
+          "workload": "fixed_array_scan"
+        },
+        {
+          "arm": "meldra",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/fixed_array_scan/meldra/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/fixed_array_scan-meldra"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "MELDRA_ALLOCATIONS=0\n",
+          "run_stdout": "775000095000000\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/fixed_array_scan/meldra/program.c",
+          "workload": "fixed_array_scan"
+        },
+        {
+          "arm": "c",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/fnv_ascii/c/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/fnv_ascii-c"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "BENCH_ALLOCATIONS=0\n",
+          "run_stdout": "9468894880917082044\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/fnv_ascii/c/program.c",
+          "workload": "fnv_ascii"
+        },
+        {
+          "arm": "c",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/implicit_tree/c/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/implicit_tree-c"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "BENCH_ALLOCATIONS=0\n",
+          "run_stdout": "4368487137060864\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/implicit_tree/c/program.c",
+          "workload": "implicit_tree"
+        },
+        {
+          "arm": "meldra",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/implicit_tree/meldra/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/implicit_tree-meldra"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "MELDRA_ALLOCATIONS=0\n",
+          "run_stdout": "4368487137060864\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/implicit_tree/meldra/program.c",
+          "workload": "implicit_tree"
+        },
+        {
+          "arm": "c",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/map_filter_fold/c/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/map_filter_fold-c"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "BENCH_ALLOCATIONS=0\n",
+          "run_stdout": "10526524361746373504\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/map_filter_fold/c/program.c",
+          "workload": "map_filter_fold"
+        },
+        {
+          "arm": "meldra",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/map_filter_fold/meldra/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/map_filter_fold-meldra"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "MELDRA_ALLOCATIONS=0\n",
+          "run_stdout": "10526524361746373504\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/map_filter_fold/meldra/program.c",
+          "workload": "map_filter_fold"
+        },
+        {
+          "arm": "c",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/record_values/c/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/record_values-c"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "BENCH_ALLOCATIONS=0\n",
+          "run_stdout": "497448184770816\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/record_values/c/program.c",
+          "workload": "record_values"
+        },
+        {
+          "arm": "meldra",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/record_values/meldra/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/record_values-meldra"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "MELDRA_ALLOCATIONS=0\n",
+          "run_stdout": "497448184770816\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/record_values/meldra/program.c",
+          "workload": "record_values"
+        },
+        {
+          "arm": "c",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/shared_allocations/c/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/shared_allocations-c"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "BENCH_ALLOCATIONS=500000\n",
+          "run_stdout": "250003000000\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/shared_allocations/c/program.c",
+          "workload": "shared_allocations"
+        },
+        {
+          "arm": "meldra",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/shared_allocations/meldra/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/shared_allocations-meldra"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "MELDRA_ALLOCATIONS=500000\n",
+          "run_stdout": "250003000000\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/shared_allocations/meldra/program.c",
+          "workload": "shared_allocations"
+        },
+        {
+          "arm": "c",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/startup/c/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/startup-c"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "BENCH_ALLOCATIONS=0\n",
+          "run_stdout": "42\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/startup/c/program.c",
+          "workload": "startup"
+        },
+        {
+          "arm": "meldra",
+          "build_returncode": 0,
+          "build_stderr": "",
+          "command": [
+            "/usr/bin/clang",
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fwrapv",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined,leak",
+            "-fno-sanitize-recover=all",
+            "benchmarks/stage05p_audit/run_1/corpus/startup/meldra/program.c",
+            "-o",
+            "/tmp/stage05p-sanitize-xj_eirvg/startup-meldra"
+          ],
+          "run_returncode": 0,
+          "run_stderr": "MELDRA_ALLOCATIONS=0\n",
+          "run_stdout": "42\n",
+          "source": "benchmarks/stage05p_audit/run_1/corpus/startup/meldra/program.c",
+          "workload": "startup"
+        }
+      ],
+      "total": 17
+    },
+    "whole_program_elimination_audit": "Runtime argv inputs are parsed in C/Meldra/Python wrappers. Stateful pipeline input mutates every iteration. Startup intentionally returns a constant and is classified separately."
+  },
+  "commands": {
+    "compileall": {
+      "command": [
+        "python3",
+        "-m",
+        "compileall",
+        "-q",
+        "meldra",
+        "tests"
+      ],
+      "result": "PASS"
+    },
+    "full_tests": {
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "tests/",
+        "-q"
+      ],
+      "result": "421 passed in 68.24s"
+    },
+    "stage05p_tests": {
+      "command": [
+        "python3",
+        "-m",
+        "pytest",
+        "tests/test_meldra_stage05p.py",
+        "-q"
+      ],
+      "result": "11 passed in 22.67s"
+    }
+  },
+  "environment": {
+    "architecture": "x86_64",
+    "compiler_flags": [
+      "-O3",
+      "-fwrapv",
+      "-fno-ident",
+      "-Werror",
+      "-Wl,--build-id=none"
+    ],
+    "container_toolchains": {
+      "csharp": {
+        "command": [
+          "docker",
+          "run",
+          "--rm",
+          "mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim",
+          "dotnet",
+          "--version"
+        ],
+        "output": "8.0.423",
+        "returncode": 0
+      },
+      "go": {
+        "command": [
+          "docker",
+          "run",
+          "--rm",
+          "golang:1.24-bookworm",
+          "go",
+          "version"
+        ],
+        "output": "go version go1.24.13 linux/amd64",
+        "returncode": 0
+      },
+      "rust": {
+        "command": [
+          "docker",
+          "run",
+          "--rm",
+          "rust:1.88-slim",
+          "rustc",
+          "--version"
+        ],
+        "output": "rustc 1.88.0 (6b00bc388 2025-06-23)",
+        "returncode": 0
+      }
+    },
+    "cpu": "11th Gen Intel(R) Core(TM) i7-11700 @ 2.50GHz",
+    "cpu_cores": 8,
+    "cpu_threads": 16,
+    "governor": "powersave",
+    "libc": [
+      "glibc",
+      "2.43"
+    ],
+    "platform": "Linux-7.1.7-200.fc44.x86_64-x86_64-with-glibc2.43",
+    "python": "3.14.6 (main, Jun 11 2026, 00:00:00) [GCC 16.1.1 20260515 (Red Hat 16.1.1-2)]",
+    "toolchains": {
+      "cargo": {
+        "path": null,
+        "version": null
+      },
+      "clang": {
+        "path": "/usr/bin/clang",
+        "version": {
+          "command": [
+            "/usr/bin/clang",
+            "--version"
+          ],
+          "output": "clang version 22.1.8 (Fedora 22.1.8-4.fc44)",
+          "returncode": 0
+        }
+      },
+      "docker": {
+        "path": "/usr/bin/docker",
+        "version": {
+          "command": [
+            "/usr/bin/docker",
+            "--version"
+          ],
+          "output": "Docker version 29.7.2, build a7dcaa6",
+          "returncode": 0
+        }
+      },
+      "dotnet": {
+        "path": null,
+        "version": null
+      },
+      "gcc": {
+        "path": "/usr/bin/gcc",
+        "version": {
+          "command": [
+            "/usr/bin/gcc",
+            "--version"
+          ],
+          "output": "gcc (GCC) 16.1.1 20260515 (Red Hat 16.1.1-2)",
+          "returncode": 0
+        }
+      },
+      "go": {
+        "path": null,
+        "version": null
+      },
+      "podman": {
+        "path": "/usr/bin/podman",
+        "version": {
+          "command": [
+            "/usr/bin/podman",
+            "--version"
+          ],
+          "output": "podman version 5.8.4",
+          "returncode": 0
+        }
+      },
+      "rustc": {
+        "path": null,
+        "version": null
+      }
+    },
+    "turbo_enabled": true
+  },
+  "kind": "MeldraStage06PStage05PAudit",
+  "limitations": [
+    "Stage 0.5P timings use 1 warmup and 3 measured processes, below Stage 0.6P methodology.",
+    "Original host PATH lacked Rust, Go, and C#; Stage 0.6P later acquired reproducible container toolchains.",
+    "Stage 0.5P tree is indexed rather than recursively allocated.",
+    "Text/Bytes and closed interfaces remain unmeasured in this audit."
+  ],
+  "measurement_explanation": {
+    "declared_arms": 6,
+    "declared_workloads": 9,
+    "measured": 26,
+    "observations": 54,
+    "reason": "Meldra measured 8/9 because Text/Bytes was outside Stage 0.5P; C and Python measured 9/9; Rust, Go, and C# host toolchains were absent, producing 27 explicit UNMEASURED_TOOLCHAIN_UNAVAILABLE observations."
+  },
+  "schema_version": 1,
+  "source_revision": "e8fdfc078a3017759bf7feb1677be42fb536eacc",
+  "workspace_stage05_sources": {
+    "meldra/native_bench.py": "2599a621277e9c3277fef33ac11c18c101ec4cfef6b29864663fe7861908eb76",
+    "meldra/native_c_backend.py": "4cd0ebf55b95ba03feabeb46e20282e073bc5beb5ecdf7feb0e0219b578767b3",
+    "meldra/native_hypotheses.py": "36a9e4ae37508ccf7c087773f584f7cda157269a0e7c24e34364cb1f64f3f18b",
+    "meldra/performance_frontend.py": "f001590a67abda6ff124e35883739c63a6e3d6fe373f5b4f3d107ab405d9b5f6",
+    "meldra/performance_mir.py": "6557e2fdf9d2e220f166132431671b7d23b9f6446f6a040eb5d80a6e9c790259",
+    "meldra/performance_opt.py": "52b661783099910ff8e9c55509da7834c6df3fb4c752659260da74f79f94f39a",
+    "meldra/stage05p_decision.py": "fb1f88f9e2af11d1d2fb9bb2a824f2b5ea98e87e52a372a0d56708d4983d040a",
+    "meldra/stage05p_freeze.py": "6541732bb7fdd86afef1d1994d0a2f439b0b38640936dc96042c47fecd1825a6",
+    "meldra/stage05p_protocol.py": "8851e7f78765a8208f1a3c32463b30b5d54a3cf9e02946543d2963732834d7e3"
+  }
+}

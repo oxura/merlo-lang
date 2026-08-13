@@ -1,0 +1,41 @@
+{
+  "hypothesis": "A BytesView borrowed parameter can be compositionally reborrowed through direct synchronous call chains of depth 1-3 without lifetime syntax, ownership duplication, allocation, payload copy, reference counting, or escape beyond the originating chain.",
+  "competing_explanations": [
+    "Descriptor passing looks zero-copy only because ownership ancestry is absent from HIR/MIR.",
+    "Inlining can erase reborrow boundaries or their end order.",
+    "A child descriptor may silently outlive its parent even when native execution happens to succeed.",
+    "Conditional control flow may terminate child reborrows on only one path."
+  ],
+  "falsifier": "Any lifetime annotation, new owner, allocation, free, payload copy, retain/release, escaping child, child ending after parent, owner access before the full chain ends, lost optimized metadata, branch imbalance, sanitizer violation, valid<256, invalid<192, or full-suite failure prevents PASS.",
+  "minimal_change": "Permit immutable BytesView parameter forwarding only across non-recursive direct synchronous calls to depth three and add versioned reborrow evidence extensions.",
+  "scope": {
+    "calls": "direct_synchronous",
+    "reborrow_depths": [1, 2, 3],
+    "view_mutability": "immutable",
+    "returns": ["scalar", "owned_non_view"],
+    "recursion": false,
+    "closures": false,
+    "async": false,
+    "dynamic_dispatch": false,
+    "returned_borrowed_values": false,
+    "general_lifetime_inference": false
+  },
+  "required_evidence": "surface/HIR/MIR/native differential corpus, exact negative diagnostics, no-inline ABI per level, optimized assembly, structural allocation/copy/RC counters, ASan/UBSan/LSan, one full suite, frozen hashes.",
+  "stop_condition": "Stop on confirmed safety defect; otherwise choose exactly one preregistered status after one Decision Run.",
+  "allowed_statuses": [
+    "BYTES_REBORROW_SUPPORTED",
+    "BYTES_REBORROW_INCOMPLETE",
+    "BYTES_REBORROW_SAFETY_DEFECT"
+  ],
+  "gates": {
+    "valid_minimum": 256,
+    "invalid_minimum": 192,
+    "maximum_reborrow_depth": 3,
+    "lifetime_annotations": 0,
+    "allocations": 0,
+    "frees": 0,
+    "payload_copies": 0,
+    "retains": 0,
+    "releases": 0
+  }
+}

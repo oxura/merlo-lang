@@ -1,0 +1,15 @@
+module app.main
+
+use app.search
+
+export enum AppError:
+    MissingArgument
+    InvalidPath: Text
+    ReadFailure: Text
+    InvalidUtf8: UInt64
+
+export main(path: Path) -> Result[Text, AppError]:
+    file = fs.open_read(path)?
+    result = search.find(file.lines(), "needle", false, false)
+    console.write(result)
+    Ok(result)

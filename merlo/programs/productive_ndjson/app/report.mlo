@@ -1,0 +1,170 @@
+module app.report
+
+use app.json
+export enum AppError:
+    MissingArgument
+    InvalidPath: Text
+    ReadFailure: Text
+    InvalidUtf8: UInt64
+    InvalidOption: Text
+    InvalidField: Text
+    InvalidEvent
+    InvalidMinimumDuration
+    DurationOverflow
+    CountOverflow
+
+
+export Options:
+    level: Option[Text]
+    service: Option[Text]
+    contains: Option[Text]
+    minimum_duration_ms: Option[UInt64]
+
+Event:
+    timestamp: Text
+    level: Text
+    service: Text
+    message: Text
+    duration_ms: Option[UInt64]
+
+Report:
+    total: UInt64
+    valid: UInt64
+    invalid: UInt64
+    matching: UInt64
+    duration_sum_ms: UInt64
+    duration_count: UInt64
+    duration_max_ms: UInt64
+    by_level: Map[Text,UInt64]
+    by_service: Map[Text,UInt64]
+
+checked_add(left: UInt64, right: UInt64, error: AppError) -> Result[UInt64,AppError]:
+    if left > 18446744073709551615 - right:
+        return Err(error)
+    Ok(left + right)
+
+required_text(value: Json, field: Text) -> Result[Text,AppError]:
+    match value:
+        case Json.String(text):
+            return Ok(text)
+        case _:
+            return Err(AppError.InvalidField(field))
+
+parse_text_uint64(raw: Text, field: Text) -> Result[UInt64,AppError]:
+    if raw.len() == 0:
+        return Err(AppError.InvalidField(field))
+    value = 0
+    index = 0
+    while index < raw.len():
+        byte = raw.byte(index)
+        if byte < 48 or byte > 57:
+            return Err(AppError.InvalidField(field))
+        digit = byte - 48
+        if value > (18446744073709551615 - digit) / 10:
+            return Err(AppError.InvalidField(field))
+        value = value * 10 + digit
+        index = index + 1
+    Ok(value)
+
+optional_uint64(json_value: Json, field: Text) -> Result[Option[UInt64],AppError]:
+    match json_value:
+        case Json.Null:
+            return Ok(None)
+        case Json.Number(raw):
+            number = parse_text_uint64(raw, field)
+            match number:
+                case Result.Ok(parsed_number):
+                    if parsed_number > 18446744073709551615:
+                        return Err(AppError.InvalidField(field))
+                    return Ok(Some(parsed_number))
+                case Result.Err(_):
+                    return Err(AppError.InvalidField(field))
+        case _:
+            return Err(AppError.InvalidField(field))
+
+event_from_json(value: Json) -> Result[Event,AppError]:
+    match value:
+        case Json.Object(fields):
+            timestamp = required_text(json.required(fields, "timestamp"), "timestamp")?
+            level = required_text(json.required(fields, "level"), "level")?
+            service = required_text(json.required(fields, "service"), "service")?
+            message = required_text(json.required(fields, "message"), "message")?
+            duration_json = json.optional(fields, "duration_ms", Json.Null)
+            duration = optional_uint64(duration_json, "duration_ms")?
+            return Ok(Event(timestamp, level, service, message, duration))
+        case _:
+            return Err(AppError.InvalidEvent)
+
+export analyze(lines: FileLines, options: Options) -> Result[Text,AppError]:
+    report = Report(0, 0, 0, 0, 0, 0, 0, Map.new(), Map.new())
+    for line in lines:
+        report.total = checked_add(report.total, 1, AppError.CountOverflow)?
+        parsed = json.parse(line)
+        match parsed:
+            case Result.Err(_):
+                report.invalid = checked_add(report.invalid, 1, AppError.CountOverflow)?
+            case Result.Ok(value):
+                event = event_from_json(value)
+                match event:
+                    case Result.Err(_):
+                        report.invalid = checked_add(report.invalid, 1, AppError.CountOverflow)?
+                    case Result.Ok(item):
+                        report.valid = checked_add(report.valid, 1, AppError.CountOverflow)?
+                        if options.level.is_some() and item.level != options.level.unwrap():
+                            continue
+                        if options.service.is_some() and item.service != options.service.unwrap():
+                            continue
+                        if options.contains.is_some() and not item.message.contains(options.contains.unwrap()):
+                            continue
+                        if options.minimum_duration_ms.is_some():
+                            if item.duration_ms.is_none() or item.duration_ms.unwrap() < options.minimum_duration_ms.unwrap():
+                                continue
+                        report.matching = checked_add(report.matching, 1, AppError.CountOverflow)?
+                        report.by_level.increment(item.level, 1)
+                        report.by_service.increment(item.service, 1)
+                        match item.duration_ms:
+                            case Option.Some(duration):
+                                report.duration_sum_ms = checked_add(report.duration_sum_ms, duration, AppError.DurationOverflow)?
+                                report.duration_count = checked_add(report.duration_count, 1, AppError.CountOverflow)?
+                                if duration > report.duration_max_ms:
+                                    report.duration_max_ms = duration
+                            case Option.None:
+                                pass
+    average = 0
+    if report.duration_count != 0:
+        average = report.duration_sum_ms / report.duration_count
+    output = TextBuilder.new()
+    output.append_text("total=")
+    output.append_uint64(report.total)
+    output.append_byte(10)
+    output.append_text("valid=")
+    output.append_uint64(report.valid)
+    output.append_byte(10)
+    output.append_text("invalid=")
+    output.append_uint64(report.invalid)
+    output.append_byte(10)
+    output.append_text("matching=")
+    output.append_uint64(report.matching)
+    output.append_byte(10)
+    output.append_text("duration_sum_ms=")
+    output.append_uint64(report.duration_sum_ms)
+    output.append_byte(10)
+    output.append_text("duration_average_ms=")
+    output.append_uint64(average)
+    output.append_byte(10)
+    output.append_text("duration_max_ms=")
+    output.append_uint64(report.duration_max_ms)
+    output.append_byte(10)
+    for entry in report.by_level.entries():
+        output.append_text("level ")
+        output.append_text(entry.key)
+        output.append_byte(61)
+        output.append_uint64(entry.value)
+        output.append_byte(10)
+    for entry in report.by_service.entries():
+        output.append_text("service ")
+        output.append_text(entry.key)
+        output.append_byte(61)
+        output.append_uint64(entry.value)
+        output.append_byte(10)
+    Ok(output.finish())

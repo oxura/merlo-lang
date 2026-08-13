@@ -1,0 +1,17 @@
+fn checksum(data: BytesView, seed: UInt64) -> UInt64:
+    var result: UInt64 = seed
+    for i in 0..data.len():
+        result = (result * 1099511628211) ^ (data[i] + i)
+    return result
+fn main(n: UInt64, seed: UInt64) -> UInt64:
+    let source: Bytes = Bytes.new(n)
+    for i in 0..n:
+        source[i] = (seed + i * 17) & 255
+    let builder: BytesBuilder = BytesBuilder.new()
+    let input: BytesView = source.slice(0, n)
+    builder.extend(input)
+    let final_length: UInt64 = builder.len()
+    let final_capacity: UInt64 = builder.capacity()
+    let bytes: Bytes = builder.finish()
+    let output: BytesView = bytes.slice(0, bytes.len())
+    return checksum(output, seed) ^ final_length ^ (final_capacity << 32)

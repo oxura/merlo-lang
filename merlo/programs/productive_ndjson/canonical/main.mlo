@@ -1,0 +1,192 @@
+module productive_ndjson.canonical.main
+
+use app.json
+
+
+enum AppError:
+    MissingArgument
+    InvalidPath: Text
+    ReadFailure: Text
+    InvalidUtf8: UInt64
+    InvalidOption: Text
+    InvalidField: Text
+    InvalidEvent
+    InvalidMinimumDuration
+    DurationOverflow
+    CountOverflow
+
+record Options:
+    level: Option[Text]
+    service: Option[Text]
+    contains: Option[Text]
+    minimum_duration_ms: Option[UInt64]
+
+record Event:
+    timestamp: Text
+    level: Text
+    service: Text
+    message: Text
+    duration_ms: Option[UInt64]
+
+record Report:
+    total: UInt64
+    valid: UInt64
+    invalid: UInt64
+    matching: UInt64
+    duration_sum_ms: UInt64
+    duration_count: UInt64
+    duration_max_ms: UInt64
+    by_level: Map[Text,UInt64]
+    by_service: Map[Text,UInt64]
+
+fn checked_add(left: UInt64, right: UInt64, overflow: AppError) -> Result[UInt64,AppError]:
+    if left > 18446744073709551615 - right:
+        return Err(overflow)
+    return Ok(left + right)
+
+fn required_text(value: Json, field: Text) -> Result[Text,AppError]:
+    match value:
+        case Json.String(text):
+            return Ok(text)
+        case _:
+            return Err(AppError.InvalidField(field))
+
+fn optional_uint64(value: Json, field: Text) -> Result[Option[UInt64],AppError]:
+    match value:
+        case Json.Null:
+            return Ok(None)
+        case Json.Number(raw):
+            if raw.len() == 0:
+                return Err(AppError.InvalidField(field))
+            var number: UInt64 = 0
+            var index: UInt64 = 0
+            while index < raw.len():
+                let byte = raw.byte(index)
+                if byte < 48 or byte > 57:
+                    return Err(AppError.InvalidField(field))
+                let digit = byte - 48
+                if number > (18446744073709551615 - digit) / 10:
+                    return Err(AppError.InvalidField(field))
+                number = number * 10 + digit
+                index = index + 1
+            return Ok(Some(number))
+        case _:
+            return Err(AppError.InvalidField(field))
+
+fn event_from_json(value: Json) -> Result[Event,AppError]:
+    match value:
+        case Json.Object(fields):
+            var timestamp = ""
+            var level = ""
+            var service = ""
+            var message = ""
+            var duration: Option[UInt64] = None
+            var has_timestamp = false
+            var has_level = false
+            var has_service = false
+            var has_message = false
+            for entry in fields.view():
+                if entry.key == "timestamp":
+                    match entry.value:
+                        case Json.String(text):
+                            timestamp = text.clone()
+                            has_timestamp = true
+                        case _:
+                            return Err(AppError.InvalidField("timestamp"))
+                if entry.key == "level":
+                    match entry.value:
+                        case Json.String(text):
+                            level = text.clone()
+                            has_level = true
+                        case _:
+                            return Err(AppError.InvalidField("level"))
+                if entry.key == "service":
+                    match entry.value:
+                        case Json.String(text):
+                            service = text.clone()
+                            has_service = true
+                        case _:
+                            return Err(AppError.InvalidField("service"))
+                if entry.key == "message":
+                    match entry.value:
+                        case Json.String(text):
+                            message = text.clone()
+                            has_message = true
+                        case _:
+                            return Err(AppError.InvalidField("message"))
+                if entry.key == "duration_ms":
+                    duration = optional_uint64(entry.value, "duration_ms")?
+            if not has_timestamp:
+                return Err(AppError.InvalidField("timestamp"))
+            if not has_level:
+                return Err(AppError.InvalidField("level"))
+            if not has_service:
+                return Err(AppError.InvalidField("service"))
+            if not has_message:
+                return Err(AppError.InvalidField("message"))
+            return Ok(Event(timestamp, level, service, message, duration))
+        case _:
+            return Err(AppError.InvalidEvent)
+
+fn analyze(lines: FileLines, options: Options) -> Result[Text,AppError]:
+    let report = Report(0, 0, 0, 0, 0, 0, 0, Map.new(), Map.new())
+    for line in lines:
+        report.total = checked_add(report.total, 1, AppError.CountOverflow)?
+        let parsed = json.parse(line)
+        match parsed:
+            case Result.Err(_):
+                report.invalid = checked_add(report.invalid, 1, AppError.CountOverflow)?
+            case Result.Ok(value):
+                let event = event_from_json(value)
+                match event:
+                    case Result.Err(_):
+                        report.invalid = checked_add(report.invalid, 1, AppError.CountOverflow)?
+                    case Result.Ok(item):
+                        report.valid = checked_add(report.valid, 1, AppError.CountOverflow)?
+                        if options.level.is_some() and item.level != options.level.unwrap():
+                            continue
+                        if options.service.is_some() and item.service != options.service.unwrap():
+                            continue
+                        if options.contains.is_some() and not item.message.contains(options.contains.unwrap()):
+                            continue
+                        if options.minimum_duration_ms.is_some():
+                            if item.duration_ms.is_none() or item.duration_ms.unwrap() < options.minimum_duration_ms.unwrap():
+                                continue
+                        report.matching = checked_add(report.matching, 1, AppError.CountOverflow)?
+                        let level_count = checked_add(report.by_level.get(item.level), 1, AppError.CountOverflow)?
+                        report.by_level.insert(item.level, level_count)
+                        let service_count = checked_add(report.by_service.get(item.service), 1, AppError.CountOverflow)?
+                        report.by_service.insert(item.service, service_count)
+                        match item.duration_ms:
+                            case Option.Some(duration):
+                                report.duration_sum_ms = checked_add(report.duration_sum_ms, duration, AppError.DurationOverflow)?
+                                report.duration_count = checked_add(report.duration_count, 1, AppError.CountOverflow)?
+                                if duration > report.duration_max_ms:
+                                    report.duration_max_ms = duration
+                            case Option.None:
+                                pass
+    let average = 0
+    if report.duration_count != 0:
+        average = report.duration_sum_ms / report.duration_count
+    let output = TextBuilder.new()
+    output.append_text("total="); output.append_uint64(report.total); output.append_byte(10)
+    output.append_text("valid="); output.append_uint64(report.valid); output.append_byte(10)
+    output.append_text("invalid="); output.append_uint64(report.invalid); output.append_byte(10)
+    output.append_text("matching="); output.append_uint64(report.matching); output.append_byte(10)
+    output.append_text("duration_sum_ms="); output.append_uint64(report.duration_sum_ms); output.append_byte(10)
+    output.append_text("duration_average_ms="); output.append_uint64(average); output.append_byte(10)
+    output.append_text("duration_max_ms="); output.append_uint64(report.duration_max_ms); output.append_byte(10)
+    for entry in report.by_level.entries():
+        output.append_text("level "); output.append_text(entry.key); output.append_byte(61)
+        output.append_uint64(entry.value); output.append_byte(10)
+    for entry in report.by_service.entries():
+        output.append_text("service "); output.append_text(entry.key); output.append_byte(61)
+        output.append_uint64(entry.value); output.append_byte(10)
+    return Ok(output.finish())
+
+export task main(path: Path, options: Options) -> Result[Text,AppError]:
+    uses fs.read, console.write
+    let reader = fs.open_read(path)?
+    let output = analyze(reader.lines(), options)?
+    console.write(output)
+    return Ok(output)

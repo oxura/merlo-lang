@@ -1,0 +1,21 @@
+{
+  "name": "merlo-language-support",
+  "displayName": "Merlo Language Support",
+  "description": "Syntax highlighting and semantic tooling for Merlo.",
+  "version": "0.1.0",
+  "publisher": "merlo",
+  "engines": {"vscode": "^1.85.0"},
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [{
+      "id": "merlo",
+      "aliases": ["Merlo", "merlo"],
+      "extensions": [".mlo"]
+    }],
+    "grammars": [{
+      "language": "merlo",
+      "scopeName": "source.merlo",
+      "path": "./syntaxes/merlo.tmLanguage.json"
+    }]
+  }
+}

@@ -1,0 +1,852 @@
+{
+  "entry_function": "main",
+  "functions": [
+    {
+      "blocks": [
+        {
+          "id": "bb1_entry",
+          "instructions": [
+            {
+              "attributes": {
+                "value": 1
+              },
+              "id": "i1",
+              "op": "const",
+              "operands": [],
+              "result": "%v_2",
+              "source": {
+                "column": 20,
+                "end_column": 21,
+                "end_line": 2,
+                "line": 2,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "bytes": 0,
+                "local": "value"
+              },
+              "id": "i2",
+              "op": "alloc_stack",
+              "operands": [],
+              "result": "%v_3",
+              "source": {
+                "column": 4,
+                "end_column": 21,
+                "end_line": 2,
+                "line": 2,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i3",
+              "op": "store_local",
+              "operands": [
+                "%v_3",
+                "%v_2"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 21,
+                "end_line": 2,
+                "line": 2,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i4",
+              "op": "const",
+              "operands": [],
+              "result": "%v_4",
+              "source": {
+                "column": 23,
+                "end_column": 24,
+                "end_line": 3,
+                "line": 3,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "bytes": 0,
+                "local": "checksum"
+              },
+              "id": "i5",
+              "op": "alloc_stack",
+              "operands": [],
+              "result": "%v_5",
+              "source": {
+                "column": 4,
+                "end_column": 24,
+                "end_line": 3,
+                "line": 3,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i6",
+              "op": "store_local",
+              "operands": [
+                "%v_5",
+                "%v_4"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 24,
+                "end_line": 3,
+                "line": 3,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {
+                "value": 0
+              },
+              "id": "i7",
+              "op": "const",
+              "operands": [],
+              "result": "%v_6",
+              "source": {
+                "column": 26,
+                "end_column": 27,
+                "end_line": 4,
+                "line": 4,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "local": "i"
+              },
+              "id": "i8",
+              "op": "alloc_stack",
+              "operands": [],
+              "result": "%v_7",
+              "source": {
+                "column": 4,
+                "end_column": 41,
+                "end_line": 6,
+                "line": 4,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i9",
+              "op": "store_local",
+              "operands": [
+                "%v_7",
+                "%v_6"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 41,
+                "end_line": 6,
+                "line": 4,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 4,
+              "end_column": 41,
+              "end_line": 6,
+              "line": 4,
+              "path": "corpus/arithmetic_lcg.meldra"
+            },
+            "targets": [
+              "bb2_for_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb2_for_header",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i10",
+              "op": "load_local",
+              "operands": [
+                "%v_7"
+              ],
+              "result": "%v_8",
+              "source": {
+                "column": 4,
+                "end_column": 41,
+                "end_line": 6,
+                "line": 4,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "lt",
+                "range_guard": true
+              },
+              "id": "i11",
+              "op": "compare",
+              "operands": [
+                "%v_8",
+                "%n_1"
+              ],
+              "result": "%v_9",
+              "source": {
+                "column": 4,
+                "end_column": 41,
+                "end_line": 6,
+                "line": 4,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 8,
+                "element": null,
+                "kind": "bool",
+                "length": null,
+                "name": "Bool",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": "%v_9",
+            "kind": "branch",
+            "source": {
+              "column": 4,
+              "end_column": 41,
+              "end_line": 6,
+              "line": 4,
+              "path": "corpus/arithmetic_lcg.meldra"
+            },
+            "targets": [
+              "bb3_for_body",
+              "bb4_for_exit"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb3_for_body",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i12",
+              "op": "load_local",
+              "operands": [
+                "%v_3"
+              ],
+              "result": "%v_10",
+              "source": {
+                "column": 16,
+                "end_column": 21,
+                "end_line": 5,
+                "line": 5,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 1664525
+              },
+              "id": "i13",
+              "op": "const",
+              "operands": [],
+              "result": "%v_11",
+              "source": {
+                "column": 24,
+                "end_column": 31,
+                "end_line": 5,
+                "line": 5,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "mul"
+              },
+              "id": "i14",
+              "op": "binary",
+              "operands": [
+                "%v_10",
+                "%v_11"
+              ],
+              "result": "%v_12",
+              "source": {
+                "column": 16,
+                "end_column": 31,
+                "end_line": 5,
+                "line": 5,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 1013904223
+              },
+              "id": "i15",
+              "op": "const",
+              "operands": [],
+              "result": "%v_13",
+              "source": {
+                "column": 34,
+                "end_column": 44,
+                "end_line": 5,
+                "line": 5,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i16",
+              "op": "binary",
+              "operands": [
+                "%v_12",
+                "%v_13"
+              ],
+              "result": "%v_14",
+              "source": {
+                "column": 16,
+                "end_column": 44,
+                "end_line": 5,
+                "line": 5,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i17",
+              "op": "store_local",
+              "operands": [
+                "%v_3",
+                "%v_14"
+              ],
+              "result": null,
+              "source": {
+                "column": 8,
+                "end_column": 44,
+                "end_line": 5,
+                "line": 5,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i18",
+              "op": "load_local",
+              "operands": [
+                "%v_5"
+              ],
+              "result": "%v_15",
+              "source": {
+                "column": 19,
+                "end_column": 27,
+                "end_line": 6,
+                "line": 6,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i19",
+              "op": "load_local",
+              "operands": [
+                "%v_3"
+              ],
+              "result": "%v_16",
+              "source": {
+                "column": 31,
+                "end_column": 36,
+                "end_line": 6,
+                "line": 6,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i20",
+              "op": "load_local",
+              "operands": [
+                "%v_7"
+              ],
+              "result": "%v_17",
+              "source": {
+                "column": 39,
+                "end_column": 40,
+                "end_line": 6,
+                "line": 6,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i21",
+              "op": "binary",
+              "operands": [
+                "%v_16",
+                "%v_17"
+              ],
+              "result": "%v_18",
+              "source": {
+                "column": 31,
+                "end_column": 40,
+                "end_line": 6,
+                "line": 6,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "bit_xor"
+              },
+              "id": "i22",
+              "op": "binary",
+              "operands": [
+                "%v_15",
+                "%v_18"
+              ],
+              "result": "%v_19",
+              "source": {
+                "column": 19,
+                "end_column": 41,
+                "end_line": 6,
+                "line": 6,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i23",
+              "op": "store_local",
+              "operands": [
+                "%v_5",
+                "%v_19"
+              ],
+              "result": null,
+              "source": {
+                "column": 8,
+                "end_column": 41,
+                "end_line": 6,
+                "line": 6,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i24",
+              "op": "load_local",
+              "operands": [
+                "%v_7"
+              ],
+              "result": "%v_20",
+              "source": {
+                "column": 4,
+                "end_column": 41,
+                "end_line": 6,
+                "line": 4,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "value": 1
+              },
+              "id": "i25",
+              "op": "const",
+              "operands": [],
+              "result": "%v_21",
+              "source": {
+                "column": 4,
+                "end_column": 41,
+                "end_line": 6,
+                "line": 4,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "operator": "add"
+              },
+              "id": "i26",
+              "op": "binary",
+              "operands": [
+                "%v_20",
+                "%v_21"
+              ],
+              "result": "%v_22",
+              "source": {
+                "column": 4,
+                "end_column": 41,
+                "end_line": 6,
+                "line": 4,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i27",
+              "op": "store_local",
+              "operands": [
+                "%v_7",
+                "%v_22"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 41,
+                "end_line": 6,
+                "line": 4,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "jump",
+            "source": {
+              "column": 4,
+              "end_column": 41,
+              "end_line": 6,
+              "line": 4,
+              "path": "corpus/arithmetic_lcg.meldra"
+            },
+            "targets": [
+              "bb2_for_header"
+            ],
+            "value": null
+          }
+        },
+        {
+          "id": "bb4_for_exit",
+          "instructions": [
+            {
+              "attributes": {},
+              "id": "i28",
+              "op": "load_local",
+              "operands": [
+                "%v_5"
+              ],
+              "result": "%v_23",
+              "source": {
+                "column": 4,
+                "end_column": 12,
+                "end_line": 7,
+                "line": 7,
+                "path": "corpus/arithmetic_lcg.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "return",
+            "source": {
+              "column": 4,
+              "end_column": 12,
+              "end_line": 7,
+              "line": 7,
+              "path": "corpus/arithmetic_lcg.meldra"
+            },
+            "targets": [],
+            "value": "%v_23"
+          }
+        }
+      ],
+      "entry_block": "bb1_entry",
+      "generic_parameters": [],
+      "instruction_count": 28,
+      "name": "main",
+      "parameters": [
+        {
+          "name": "n",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%n_1"
+        }
+      ],
+      "pure": true,
+      "return_type": {
+        "bits": 64,
+        "element": null,
+        "kind": "uint",
+        "length": null,
+        "name": "UInt64",
+        "record": null,
+        "shared": false,
+        "unique": false
+      },
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 7,
+        "line": 1,
+        "path": "corpus/arithmetic_lcg.meldra"
+      }
+    }
+  ],
+  "instruction_count": 28,
+  "records": [],
+  "schema_version": 1,
+  "source_sha256": "de4877e1e2de326ed49b545bafb25a3093dd4e09cebc73905ae97e23f1c2b4ae",
+  "subset_forms": [
+    "fn",
+    "let",
+    "var",
+    "if",
+    "match",
+    "for",
+    "while",
+    "direct_function_calls"
+  ],
+  "subset_types": [
+    "Int64",
+    "UInt64",
+    "Float32",
+    "Float64",
+    "Bool",
+    "records",
+    "arrays",
+    "slices"
+  ]
+}

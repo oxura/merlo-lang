@@ -1,0 +1,8 @@
+module greeting
+
+export message(name: Text) -> Text:
+    output = TextBuilder.new()
+    output.append_text("hello, ")
+    output.append_text(name)
+    output.append_text(" from local package\n")
+    output.finish()

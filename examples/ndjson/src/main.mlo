@@ -1,0 +1,9 @@
+module main
+
+use report
+
+export main(path: Path) -> Result[Text, AppError]:
+    file = fs.open_read(path)?
+    result = report.analyze(file.lines(), report.Options(None, None, None, None))?
+    console.write(result)
+    Ok(result)

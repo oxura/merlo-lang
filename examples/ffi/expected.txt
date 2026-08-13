@@ -1,0 +1,1 @@
+ffi=safe-write-wrapper

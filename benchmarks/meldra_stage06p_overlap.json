@@ -1,0 +1,103 @@
+{
+  "contracts_equal": true,
+  "independent_frontends": true,
+  "kind": "MeldraStage04NativeOverlap",
+  "native_contracts": {
+    "compute": {
+      "capabilities": [],
+      "effects": [],
+      "parameters": [
+        "Int64"
+      ],
+      "return_type": "Int64"
+    },
+    "helper": {
+      "capabilities": [],
+      "effects": [],
+      "parameters": [
+        "Int64"
+      ],
+      "return_type": "Int64"
+    }
+  },
+  "native_references": [
+    [
+      "helper",
+      "Call",
+      1
+    ],
+    [
+      "value",
+      "Read",
+      2
+    ]
+  ],
+  "ok": true,
+  "references_equal": true,
+  "schema_version": 1,
+  "stage04_contracts": {
+    "compute": {
+      "capabilities": [],
+      "effects": [],
+      "parameters": [
+        "Int64"
+      ],
+      "return_type": "Int64"
+    },
+    "helper": {
+      "capabilities": [],
+      "effects": [],
+      "parameters": [
+        "Int64"
+      ],
+      "return_type": "Int64"
+    }
+  },
+  "stage04_references": [
+    [
+      "helper",
+      "Call",
+      1
+    ],
+    [
+      "value",
+      "Read",
+      2
+    ]
+  ],
+  "values": [
+    {
+      "argument": 0,
+      "equal": true,
+      "native": 2,
+      "native_effect_trace": [],
+      "stage04": 2,
+      "stage04_effect_trace": []
+    },
+    {
+      "argument": 1,
+      "equal": true,
+      "native": 4,
+      "native_effect_trace": [],
+      "stage04": 4,
+      "stage04_effect_trace": []
+    },
+    {
+      "argument": 20,
+      "equal": true,
+      "native": 42,
+      "native_effect_trace": [],
+      "stage04": 42,
+      "stage04_effect_trace": []
+    },
+    {
+      "argument": -7,
+      "equal": true,
+      "native": -12,
+      "native_effect_trace": [],
+      "stage04": -12,
+      "stage04_effect_trace": []
+    }
+  ],
+  "values_equal": true
+}

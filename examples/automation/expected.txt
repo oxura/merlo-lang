@@ -1,0 +1,4 @@
+automation
+draft.txt -> published.txt
+notes.txt -> archive/notes.txt
+applied=2

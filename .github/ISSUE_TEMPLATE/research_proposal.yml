@@ -1,0 +1,38 @@
+name: Language or research proposal
+description: Propose a language, compiler, runtime, tooling, or evaluation change
+title: "proposal: "
+labels: [proposal]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Give concrete programs, diagnostics, or evaluation cases that expose the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: semantics
+    attributes:
+      label: Proposed behavior
+      description: State the observable semantics, not only the surface syntax.
+    validations:
+      required: true
+  - type: textarea
+    id: consequences
+    attributes:
+      label: Ownership, effects, and compatibility consequences
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Acceptance evidence
+      description: Name the tests, corpus cases, or measurements that would distinguish success from failure.
+    validations:
+      required: true

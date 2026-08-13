@@ -1,0 +1,20 @@
+{
+  "name": "SELF_SKEPTICAL_AUDIT",
+  "validity_threats": [
+    {"threat": "weak_baseline", "control": "reuse exact Rust Vec and preallocated C arms only after binary/source/flags/toolchain cache validation"},
+    {"threat": "different_algorithms", "control": "retain identical checksum, inputs, rounds, slice, and logical traffic; differential result gate"},
+    {"threat": "different_compile_time_knowledge", "control": "all timing inputs remain runtime argv; compare saved commands and inputs"},
+    {"threat": "constant_folding", "control": "runtime seed and size plus externally observed checksum"},
+    {"threat": "dead_code_elimination", "control": "checksum depends on initialized, mutated, viewed, and post-view-mutated payload"},
+    {"threat": "benchmark_leakage", "control": "sequential randomized arms with fixed preregistered workload"},
+    {"threat": "measurement_noise", "control": "30 runs, MAD<=5%, bootstrap intervals; do not retime unchanged binaries"},
+    {"threat": "instrumentation_overhead", "control": "timing counters print after workload; zero-copy proof also uses untimed structural and native probes"},
+    {"threat": "generated_case_duplication", "control": "report exact family/template/seed distributions and reject duplicate case identities"},
+    {"threat": "common_mode_oracle", "control": "independent Python reference, surface HIR, unoptimized MIR, optimized MIR, and native executable"},
+    {"threat": "post_hoc_rules", "control": "status, gates, falsifier, thresholds, and cache rule frozen in preregistration"},
+    {"threat": "small_denominator", "control": "valid>=500 and invalid>=300 with all required independent families"},
+    {"threat": "hidden_unsupported_cases", "control": "boundary and negative family manifests separate compile rejection from runtime and sanitizer execution"},
+    {"threat": "clang_hides_copy", "control": "audit pre-optimization MIR and generated C, prove runtime pointer relation, and require a deliberate-copy control to trip the auditor"},
+    {"threat": "memory_bound_hides_overhead", "control": "decision does not use timing as zero-copy proof; allocations, frees, addresses, MIR/C, assembly, and payload-copy counters are decisive"}
+  ]
+}

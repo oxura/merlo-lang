@@ -1,0 +1,2119 @@
+{
+  "kind": "MeldraExternal30x3TrialManifest",
+  "label_source": "generated_planner_preflight_not_human",
+  "operation_counts": {
+    "change_signature": 30,
+    "move": 30,
+    "rename": 30
+  },
+  "projects": [
+    {
+      "category": "plugin-architecture",
+      "entity_kinds": [],
+      "held_out_count": 0,
+      "id": "pluggy",
+      "metadata": {
+        "revision": "f632a4d1b69e32e210063a91a71ae32fb3ac150c",
+        "url": "https://github.com/pytest-dev/pluggy.git"
+      },
+      "root": "/tmp/meldra-external-corpus/pluggy"
+    },
+    {
+      "category": "cli-library",
+      "entity_kinds": [],
+      "held_out_count": 0,
+      "id": "click",
+      "metadata": {
+        "revision": "9c4dfdaebe0e6b2aabc566eb81f6f10eb5cd6ea1",
+        "url": "https://github.com/pallets/click.git"
+      },
+      "root": "/tmp/meldra-external-corpus/click"
+    },
+    {
+      "category": "utility-library",
+      "entity_kinds": [],
+      "held_out_count": 0,
+      "id": "boltons",
+      "metadata": {
+        "revision": "580a9c2d12755d472e534ca3e277e8f7e3ada49e",
+        "url": "https://github.com/mahmoud/boltons.git"
+      },
+      "root": "/tmp/meldra-external-corpus/boltons"
+    }
+  ],
+  "schema_version": 1,
+  "seed": 20260810,
+  "selection": "Planner-ready module/source candidates excluding tests, docs, demos, examples, samples, and tutorials; 14 per operation from Pluggy, 2 from Click, and 14 from Boltons.",
+  "targets": [
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._manager.PluginManager.__init__",
+      "old_locator": "pluggy._manager.PluginManager.__init__",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:change_signature:planner_preflight_candidate:00",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "9dee15aafcebf2d8b3483fa89779538168ec3d73ddd6fed04fe6726019542622"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, project_name: str, meldra_optional_0=None)",
+        "project": "pluggy",
+        "target": "ent_d770bf1c49f1c632"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._compat.DistFacade.__init__",
+      "old_locator": "pluggy._compat.DistFacade.__init__",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:change_signature:planner_preflight_candidate:01",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "3d6ac606852bff7f30b8edc4cc71417dca844e8a4c6bef55eb2c12e9c1233b9b"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, dist: importlib.metadata.Distribution, meldra_optional_2=None)",
+        "project": "pluggy",
+        "target": "ent_d6bba6c4285a9195"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._manager.PluginManager.is_blocked",
+      "old_locator": "pluggy._manager.PluginManager.is_blocked",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:change_signature:planner_preflight_candidate:02",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "6988fca9166b8c3d69c6aa3f3cac47fafca15a7d802da99b748c60958a33c8b6"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, name: str, meldra_optional_3=None)",
+        "project": "pluggy",
+        "target": "ent_926b2a6a4328af83"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._hooks.HookCaller.has_spec",
+      "old_locator": "pluggy._hooks.HookCaller.has_spec",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:change_signature:planner_preflight_candidate:03",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "f9b540518f9f45d63c5c47c363a597319362c3577b8839f1a08c740f3cf634f9"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, meldra_optional_4=None)",
+        "project": "pluggy",
+        "target": "ent_dbee4b5de9a1283d"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._result.Result.exception",
+      "old_locator": "pluggy._result.Result.exception",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:change_signature:planner_preflight_candidate:04",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "03d09856a1a0d183ae3f942be9aa30fb57632c5e671fd534b75bbdd3776b28c8"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, meldra_optional_5=None)",
+        "project": "pluggy",
+        "target": "ent_e431c46bd9ff9d78"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._manager.PluginManager.enable_tracing",
+      "old_locator": "pluggy._manager.PluginManager.enable_tracing",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:change_signature:planner_preflight_candidate:05",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "0913f1312dabf407c78330e5332e1e50e3ab959502b05ec5a6e484aabcba4d1f"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, meldra_optional_6=None)",
+        "project": "pluggy",
+        "target": "ent_be57c70ff70f90a9"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._manager.PluginManager.is_registered",
+      "old_locator": "pluggy._manager.PluginManager.is_registered",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:change_signature:planner_preflight_candidate:06",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "0753b33ec3216a058a563249755b967e679305d50bc45a24619ab290dd09a387"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, plugin: _Plugin, meldra_optional_7=None)",
+        "project": "pluggy",
+        "target": "ent_43ff59cfa66fbf48"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._manager.PluginManager.set_blocked",
+      "old_locator": "pluggy._manager.PluginManager.set_blocked",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:change_signature:planner_preflight_candidate:07",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "04dbb1d4679b936e4052afe8e0ac0c40358df26df5670e386c27fac51a6a9976"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, name: str, meldra_optional_8=None)",
+        "project": "pluggy",
+        "target": "ent_c6a6e4b2ef17030b"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._hooks.HookCaller.is_historic",
+      "old_locator": "pluggy._hooks.HookCaller.is_historic",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:change_signature:planner_preflight_candidate:08",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "dc406cfc4ac2334d0e2fab14b02a2397e8f12032d36c337e899839c84e9aa162"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, meldra_optional_9=None)",
+        "project": "pluggy",
+        "target": "ent_2ebda9dd3a0efac9"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._compat.DistFacade.__getattr__",
+      "old_locator": "pluggy._compat.DistFacade.__getattr__",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:change_signature:planner_preflight_candidate:09",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "f53bd09240bfbcbf114c26f6c56f90b9519144a1936c8f92b3ab593b5549ca31"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, attr: str, meldra_optional_10=None)",
+        "project": "pluggy",
+        "target": "ent_e0b84ce27e4430cd"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._hooks._SubsetHookCaller._call_history",
+      "old_locator": "pluggy._hooks._SubsetHookCaller._call_history",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:change_signature:planner_preflight_candidate:10",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "2c6a93133cd3cd2375bab206e8d532ee77f7feacfc401cd82d1d76a7b783f14b"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, meldra_optional_12=None)",
+        "project": "pluggy",
+        "target": "ent_c9c23c23a799c44a"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._manager.PluginManager.get_plugin",
+      "old_locator": "pluggy._manager.PluginManager.get_plugin",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:change_signature:planner_preflight_candidate:11",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "7c71ceaef115744b2296942b9d6231d103957bec54d207b8f14e9b9b84cc1e9b"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, name: str, meldra_optional_13=None)",
+        "project": "pluggy",
+        "target": "ent_8d26b9f2bf9f084f"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._hooks.HookCaller.__repr__",
+      "old_locator": "pluggy._hooks.HookCaller.__repr__",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:change_signature:planner_preflight_candidate:12",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "c4b81afa11f6ff4a0a770176d4c856b5a46e23a3229f95c513e12e3bd21555ca"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, meldra_optional_14=None)",
+        "project": "pluggy",
+        "target": "ent_d11d5554756fac63"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "scripts.release.main",
+      "old_locator": "scripts.release.main",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:change_signature:planner_preflight_candidate:13",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "cf0a91567d5d89e2487982e0550927f2a0a59366b7ab0c9d9bcc4379ab5ec417"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(meldra_optional_16=None)",
+        "project": "pluggy",
+        "target": "ent_dcb36609e171a3a9"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._hooks._formatdef",
+      "old_locator": "pluggy._manager._formatdef",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:move:planner_preflight_candidate:00",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "239f1e53381620f4b189cbc9fee092305a23521086b4db58c88a38f924488daf"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "pluggy._hooks",
+        "project": "pluggy",
+        "target": "ent_159dbde892b92025"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._callers._formatdef",
+      "old_locator": "pluggy._manager._formatdef",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:move:planner_preflight_candidate:01",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "239f1e53381620f4b189cbc9fee092305a23521086b4db58c88a38f924488daf"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "pluggy._callers",
+        "project": "pluggy",
+        "target": "ent_159dbde892b92025"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._compat._formatdef",
+      "old_locator": "pluggy._manager._formatdef",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:move:planner_preflight_candidate:02",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "239f1e53381620f4b189cbc9fee092305a23521086b4db58c88a38f924488daf"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "pluggy._compat",
+        "project": "pluggy",
+        "target": "ent_159dbde892b92025"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._tracing._formatdef",
+      "old_locator": "pluggy._manager._formatdef",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:move:planner_preflight_candidate:03",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "239f1e53381620f4b189cbc9fee092305a23521086b4db58c88a38f924488daf"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "pluggy._tracing",
+        "project": "pluggy",
+        "target": "ent_159dbde892b92025"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "scripts.release._formatdef",
+      "old_locator": "pluggy._manager._formatdef",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:move:planner_preflight_candidate:04",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "239f1e53381620f4b189cbc9fee092305a23521086b4db58c88a38f924488daf"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "scripts.release",
+        "project": "pluggy",
+        "target": "ent_159dbde892b92025"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._warnings._formatdef",
+      "old_locator": "pluggy._manager._formatdef",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:move:planner_preflight_candidate:05",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "239f1e53381620f4b189cbc9fee092305a23521086b4db58c88a38f924488daf"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "pluggy._warnings",
+        "project": "pluggy",
+        "target": "ent_159dbde892b92025"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._result._formatdef",
+      "old_locator": "pluggy._manager._formatdef",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:move:planner_preflight_candidate:06",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "239f1e53381620f4b189cbc9fee092305a23521086b4db58c88a38f924488daf"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "pluggy._result",
+        "project": "pluggy",
+        "target": "ent_159dbde892b92025"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "downstream.run_downstream._formatdef",
+      "old_locator": "pluggy._manager._formatdef",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:move:planner_preflight_candidate:07",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "239f1e53381620f4b189cbc9fee092305a23521086b4db58c88a38f924488daf"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "downstream.run_downstream",
+        "project": "pluggy",
+        "target": "ent_159dbde892b92025"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "scripts.release.TestStep",
+      "old_locator": "downstream.run_downstream.TestStep",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:move:planner_preflight_candidate:08",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "1f14a2d4908a816b90202f2ea9485914c6985c70b1fb27b6b0a29d743328c1cb"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "scripts.release",
+        "project": "pluggy",
+        "target": "ent_faa1883de35b5873"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "scripts.release.venv_bin_dir",
+      "old_locator": "downstream.run_downstream.venv_bin_dir",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:move:planner_preflight_candidate:09",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "9197f1084aee3f6c69e9b16c15fb3485c48a7b03967f0f2a44f8b51e0965d939"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "scripts.release",
+        "project": "pluggy",
+        "target": "ent_315ca894b10d89e7"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "scripts.release.GitConfig",
+      "old_locator": "downstream.run_downstream.GitConfig",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:move:planner_preflight_candidate:10",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "3d45f56a9bd7f7bb3875d5d9a297294a06719f00ec4190f72fc44c1ff8b9d38d"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "scripts.release",
+        "project": "pluggy",
+        "target": "ent_991d350759d0ceae"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "scripts.release.format_validation_error",
+      "old_locator": "downstream.run_downstream.format_validation_error",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:move:planner_preflight_candidate:11",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "1cb0a41296bbba933b93bdcd26331de58883bba737dda393ae11c0d6f874bde3"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "scripts.release",
+        "project": "pluggy",
+        "target": "ent_403494af69b05f64"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "scripts.release.list_recipes",
+      "old_locator": "downstream.run_downstream.list_recipes",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:move:planner_preflight_candidate:12",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "4194b585bac1ea7b75afaa2d9aa462d190675b7a1643d5d7fb8ff489fa16e20e"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "scripts.release",
+        "project": "pluggy",
+        "target": "ent_91544ce9c1732bec"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy.list_recipes",
+      "old_locator": "downstream.run_downstream.list_recipes",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:move:planner_preflight_candidate:13",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "4194b585bac1ea7b75afaa2d9aa462d190675b7a1643d5d7fb8ff489fa16e20e"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "pluggy",
+        "project": "pluggy",
+        "target": "ent_91544ce9c1732bec"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "scripts.release.meldra_safe_rename_18",
+      "old_locator": "scripts.release.main",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:rename:planner_preflight_candidate:00",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "cf0a91567d5d89e2487982e0550927f2a0a59366b7ab0c9d9bcc4379ab5ec417"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_18",
+        "project": "pluggy",
+        "target": "ent_dcb36609e171a3a9"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "downstream.run_downstream.meldra_safe_rename_19",
+      "old_locator": "downstream.run_downstream.RecipeFile",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:rename:planner_preflight_candidate:01",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "cce97572f925acc1e5fb1ca4dad226748b7c73a47c666b192b3e3a299f75f458"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_19",
+        "project": "pluggy",
+        "target": "ent_a2f671bf99388c88"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "downstream.run_downstream.meldra_safe_rename_25",
+      "old_locator": "downstream.run_downstream.EnvironmentUv",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:rename:planner_preflight_candidate:02",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "fe87b2f18baefeedc1a43f05733154231654bc2bcbd615172237d7bcddedd364"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_25",
+        "project": "pluggy",
+        "target": "ent_60916420ba7e7a48"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "downstream.run_downstream.meldra_safe_rename_26",
+      "old_locator": "downstream.run_downstream.EnvironmentScript",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:rename:planner_preflight_candidate:03",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "201693c607098620adefd136df3b047d0951a99820b8d17d7099d7d3388cd877"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_26",
+        "project": "pluggy",
+        "target": "ent_12c9b529d0eee613"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._callers.meldra_safe_rename_27",
+      "old_locator": "pluggy._callers._warn_teardown_exception",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:rename:planner_preflight_candidate:04",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "986fe3b84a48eb36a671660fe883fc12831e9731b8ddf90f83a601929c6b98c8"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_27",
+        "project": "pluggy",
+        "target": "ent_ddc31f4b14d52416"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "downstream.run_downstream.meldra_safe_rename_30",
+      "old_locator": "downstream.run_downstream.build_parser",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:rename:planner_preflight_candidate:05",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "beaf8d2ac302a39e1807ce3ca459477571974c5f183015591e56e94875c6ae82"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_30",
+        "project": "pluggy",
+        "target": "ent_6cf54104a40fe004"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "scripts.release.meldra_safe_rename_34",
+      "old_locator": "scripts.release.get_upstream",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:rename:planner_preflight_candidate:06",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "e46a84ae11fa9100d4f4f9a5e4778483e3e397f6d70b15dd96f0fe516f9f0c6d"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_34",
+        "project": "pluggy",
+        "target": "ent_38d1e58c9b0abd4e"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "scripts.release.meldra_safe_rename_36",
+      "old_locator": "scripts.release.create_branch",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:rename:planner_preflight_candidate:07",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a9820fa39a2df22f8bd82b6cbfb824ec8274e33d67d1259b633ec9f9b3e6e8c3"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_36",
+        "project": "pluggy",
+        "target": "ent_39ad65a48cac3fdb"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._callers.meldra_safe_rename_41",
+      "old_locator": "pluggy._callers._raise_wrapfail",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:rename:planner_preflight_candidate:08",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "0be6f971cbd8861b14ef150c555a259d82d5f6f5e042b98aa950a153a588697b"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_41",
+        "project": "pluggy",
+        "target": "ent_53f07cae2085599d"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "scripts.release.meldra_safe_rename_45",
+      "old_locator": "scripts.release.changelog",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:rename:planner_preflight_candidate:09",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "4d66a0f92ea397ff65f79d7786f868db763a24197f8d51f062df87b29dd7cafe"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_45",
+        "project": "pluggy",
+        "target": "ent_a131e81562f4b606"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._hooks.meldra_safe_rename_46",
+      "old_locator": "pluggy._hooks._SubsetHookCaller",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:rename:planner_preflight_candidate:10",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "706709010dba6978e9d78e243ba52859802763246699e8d930a22001b71a06b3"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_46",
+        "project": "pluggy",
+        "target": "ent_cc100f132a57b291"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "downstream.run_downstream.meldra_safe_rename_51",
+      "old_locator": "downstream.run_downstream.main",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:rename:planner_preflight_candidate:11",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "e6d81febc0cd19f763598c5cc186c58628fec0031ee734b9e378e06a7481ec60"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_51",
+        "project": "pluggy",
+        "target": "ent_63c6d0b83f7be948"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._callers.meldra_safe_rename_62",
+      "old_locator": "pluggy._callers._multicall",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:rename:planner_preflight_candidate:12",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "fdd9148c4d8fbfe9df7150f90f28df9fc1e457c239c9befbdd1512e652057f08"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_62",
+        "project": "pluggy",
+        "target": "ent_7ceafb610aa96f0b"
+      }
+    },
+    {
+      "expected_world_revision": "175e91ae41aef58f255a966af71d9c3bd4d669877754bace7902d039c6608f64",
+      "new_locator": "pluggy._manager.meldra_safe_rename_63",
+      "old_locator": "pluggy._manager._formatdef",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "pluggy:safe:rename:planner_preflight_candidate:13",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "239f1e53381620f4b189cbc9fee092305a23521086b4db58c88a38f924488daf"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_63",
+        "project": "pluggy",
+        "target": "ent_159dbde892b92025"
+      }
+    },
+    {
+      "expected_world_revision": "c09b38dbe67c1867750c91e3dacd6cf6120739390a128a4bf6487f09075ec96a",
+      "new_locator": "click._winconsole.ConsoleStream.__repr__",
+      "old_locator": "click._winconsole.ConsoleStream.__repr__",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "click:safe:change_signature:planner_preflight_candidate:00",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "761e1f091fbfc85462b0655d09ad1fceecbca763ae762822584742801d8808fa"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, meldra_optional_0=None)",
+        "project": "click",
+        "target": "ent_a673722139e2fb92"
+      }
+    },
+    {
+      "expected_world_revision": "c09b38dbe67c1867750c91e3dacd6cf6120739390a128a4bf6487f09075ec96a",
+      "new_locator": "click.types.StringParamType.__repr__",
+      "old_locator": "click.types.StringParamType.__repr__",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "click:safe:change_signature:planner_preflight_candidate:01",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "e1637bcc88daca2e86d697aa0b3fec57a1e59e7327615003d3f312a0040f9e96"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, meldra_optional_2=None)",
+        "project": "click",
+        "target": "ent_e9bc6802e8fc7a72"
+      }
+    },
+    {
+      "expected_world_revision": "c09b38dbe67c1867750c91e3dacd6cf6120739390a128a4bf6487f09075ec96a",
+      "new_locator": "click.raw_terminal",
+      "old_locator": "click.termui.raw_terminal",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "click:safe:move:planner_preflight_candidate:00",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "5f973403fa5816c06f0ee323b05382f21ef77d2618e1546ccc8762a35c00165f"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "click",
+        "project": "click",
+        "target": "ent_d206478026450f12"
+      }
+    },
+    {
+      "expected_world_revision": "c09b38dbe67c1867750c91e3dacd6cf6120739390a128a4bf6487f09075ec96a",
+      "new_locator": "click._utils.raw_terminal",
+      "old_locator": "click.termui.raw_terminal",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "click:safe:move:planner_preflight_candidate:01",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "5f973403fa5816c06f0ee323b05382f21ef77d2618e1546ccc8762a35c00165f"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "click._utils",
+        "project": "click",
+        "target": "ent_d206478026450f12"
+      }
+    },
+    {
+      "expected_world_revision": "c09b38dbe67c1867750c91e3dacd6cf6120739390a128a4bf6487f09075ec96a",
+      "new_locator": "click.decorators.meldra_safe_rename_18",
+      "old_locator": "click.decorators.version_option",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "click:safe:rename:planner_preflight_candidate:00",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "3a9eb1eeaf8162f07624c109d8576b3a4ea5972ee19e5bb68c01b867a52ef443"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_18",
+        "project": "click",
+        "target": "ent_7be5c4c5e1ff9c70"
+      }
+    },
+    {
+      "expected_world_revision": "c09b38dbe67c1867750c91e3dacd6cf6120739390a128a4bf6487f09075ec96a",
+      "new_locator": "click.types.meldra_safe_rename_19",
+      "old_locator": "click.types._guess_type",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "click:safe:rename:planner_preflight_candidate:01",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "4485a0dd0b18f2e16a07ff1ea465432dcb45a2403d73bc5f97d1233f9e904122"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_19",
+        "project": "click",
+        "target": "ent_ee27c8dd763d0668"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.typeutils.classproperty.__get__",
+      "old_locator": "boltons.typeutils.classproperty.__get__",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:change_signature:planner_preflight_candidate:00",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "cca41efba6bffd24bfb2d52af36953d76ac409d44c9f09f08ae2b85081e7019a"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, instance, cls, meldra_optional_0=None)",
+        "project": "boltons",
+        "target": "ent_ee342c49eddeb749"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.funcutils.mro_items",
+      "old_locator": "boltons.funcutils.mro_items",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:change_signature:planner_preflight_candidate:01",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "304c451171907b6fa9a04f4767ea2c81cfea32a4267bdfd8489a468211d46893"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(type_obj, meldra_optional_1=None)",
+        "project": "boltons",
+        "target": "ent_52cbb4ae2e93a96e"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.fileutils.AtomicSaver.__exit__",
+      "old_locator": "boltons.fileutils.AtomicSaver.__exit__",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:change_signature:planner_preflight_candidate:02",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "d357a886fba6870b75e7ff48e38de5a11382847c3511f7bd9686bacb7c0d502e"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, exc_type, exc_val, exc_tb, meldra_optional_2=None)",
+        "project": "boltons",
+        "target": "ent_1a222ebf6201a20d"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.jsonutils.JSONLIterator.next",
+      "old_locator": "boltons.jsonutils.JSONLIterator.next",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:change_signature:planner_preflight_candidate:03",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "b133fb7074fa4bbbfd40b003fae0fa6dc44dd01c445a7ce205b94f36e22cec08"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, meldra_optional_3=None)",
+        "project": "boltons",
+        "target": "ent_e12e5281ebafd608"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.ioutils.SpooledIOBase.__exit__",
+      "old_locator": "boltons.ioutils.SpooledIOBase.__exit__",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:change_signature:planner_preflight_candidate:04",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "807c46ed8ee5bd76f4ef5e90801249b2e99b25afc143749a144c32350acc35f0"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, *args, meldra_optional_4=None)",
+        "project": "boltons",
+        "target": "ent_007db8f1ceedaffe"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.strutils.MultiReplace._get_value",
+      "old_locator": "boltons.strutils.MultiReplace._get_value",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:change_signature:planner_preflight_candidate:05",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "71e349602b89c55b480a99634147a52da3741452f6324c8802c5b9afa7edabfc"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, match, meldra_optional_5=None)",
+        "project": "boltons",
+        "target": "ent_05b25573da69210f"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "misc.table_html_app.BasicRender.__init__",
+      "old_locator": "misc.table_html_app.BasicRender.__init__",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:change_signature:planner_preflight_candidate:06",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "86b7acf40dbee2adbe3719f48cc0a34e26c59ec6a76a37423ec159920ca9cbde"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, dev_mode=True, qp_name='format', meldra_optional_6=None)",
+        "project": "boltons",
+        "target": "ent_5bf872c89ee0d760"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.timeutils.LocalTZInfo.tzname",
+      "old_locator": "boltons.timeutils.LocalTZInfo.tzname",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:change_signature:planner_preflight_candidate:07",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "d27fb27dbd9c325c97b0cb11e0b6267ab06dfb9ed0620cfff327003f1a38caf4"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, dt, meldra_optional_7=None)",
+        "project": "boltons",
+        "target": "ent_1b845b2b1d5a2d8f"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.listutils.BarrelList.from_iterable",
+      "old_locator": "boltons.listutils.BarrelList.from_iterable",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:change_signature:planner_preflight_candidate:08",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "dc059aed1980439aa48f351a639247b9ed343cef8d893daa49dfdb09d05057d0"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(cls, it, meldra_optional_8=None)",
+        "project": "boltons",
+        "target": "ent_667771f62c8c661b"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.setutils.IndexedSet.add",
+      "old_locator": "boltons.setutils.IndexedSet.add",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:change_signature:planner_preflight_candidate:09",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "36947b1bac67ab29d2bb5a797dc0179877e31b07fce70544a1afd97b033a4f4d"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, item, meldra_optional_9=None)",
+        "project": "boltons",
+        "target": "ent_13e7136a97c83f65"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.tbutils.TracebackInfo.__len__",
+      "old_locator": "boltons.tbutils.TracebackInfo.__len__",
+      "public": false,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:change_signature:planner_preflight_candidate:10",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "55c7e6c6a3a9d756bd9a016a210428761b1f4f8dc2d0e9e72046045c1e75bf7e"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, meldra_optional_10=None)",
+        "project": "boltons",
+        "target": "ent_7d77b406f1e5ae9c"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.ioutils.SpooledStringIO.readline",
+      "old_locator": "boltons.ioutils.SpooledStringIO.readline",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:change_signature:planner_preflight_candidate:11",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "c991ac5adb02aa46c08ba61b96e2b50bf99c504d0741f7f16e2b3ff86c09b655"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, length=None, meldra_optional_11=None)",
+        "project": "boltons",
+        "target": "ent_a218e27b94049e5a"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.socketutils.BufferedSocket.proto",
+      "old_locator": "boltons.socketutils.BufferedSocket.proto",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:change_signature:planner_preflight_candidate:12",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "665d1a71fedc083087f7b8e8b6698441996de8de4f46990d34f877983169e407"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(self, meldra_optional_12=None)",
+        "project": "boltons",
+        "target": "ent_5101013287ba000e"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.funcutils.dir_dict",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:change_signature:planner_preflight_candidate:13",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "change_signature",
+        "oracle": "planner_preflight_candidate",
+        "payload": "(obj, raise_exc=False, meldra_optional_13=None)",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.iterutils.dir_dict",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:move:planner_preflight_candidate:00",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "boltons.iterutils",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.ecoutils.dir_dict",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:move:planner_preflight_candidate:01",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "boltons.ecoutils",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.socketutils.dir_dict",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:move:planner_preflight_candidate:02",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "boltons.socketutils",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.fileutils.dir_dict",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:move:planner_preflight_candidate:03",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "boltons.fileutils",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "misc.linkify_changelog.dir_dict",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:move:planner_preflight_candidate:04",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "misc.linkify_changelog",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "misc.table_html_app.dir_dict",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:move:planner_preflight_candidate:05",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "misc.table_html_app",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.tbutils.dir_dict",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:move:planner_preflight_candidate:06",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "boltons.tbutils",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.ioutils.dir_dict",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:move:planner_preflight_candidate:07",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "boltons.ioutils",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.mathutils.dir_dict",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:move:planner_preflight_candidate:08",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "boltons.mathutils",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.debugutils.dir_dict",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:move:planner_preflight_candidate:09",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "boltons.debugutils",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.dir_dict",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:move:planner_preflight_candidate:10",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "boltons",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.cacheutils.dir_dict",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:move:planner_preflight_candidate:11",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "boltons.cacheutils",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.gcutils.dir_dict",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:move:planner_preflight_candidate:12",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "boltons.gcutils",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.timeutils.dir_dict",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:move:planner_preflight_candidate:13",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "move",
+        "oracle": "planner_preflight_candidate",
+        "payload": "boltons.timeutils",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.funcutils.meldra_safe_rename_1",
+      "old_locator": "boltons.funcutils.mro_items",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:rename:planner_preflight_candidate:00",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "304c451171907b6fa9a04f4767ea2c81cfea32a4267bdfd8489a468211d46893"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_1",
+        "project": "boltons",
+        "target": "ent_52cbb4ae2e93a96e"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "misc.table_html_app.meldra_safe_rename_13",
+      "old_locator": "misc.table_html_app.BasicRender",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:rename:planner_preflight_candidate:01",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "f4e028a967a9014d28292f9a6ba54a16d064aa896cb1ce6f9980cc32ec734242"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_13",
+        "project": "boltons",
+        "target": "ent_ce083046851a71c2"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.funcutils.meldra_safe_rename_14",
+      "old_locator": "boltons.funcutils.dir_dict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:rename:planner_preflight_candidate:02",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "a10ae28ad3a0aaa571eea60fb35b09d6b70fec19dd8a5dd427e0df5b857f88d3"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_14",
+        "project": "boltons",
+        "target": "ent_3616b7c61937c497"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.iterutils.meldra_safe_rename_21",
+      "old_locator": "boltons.iterutils.pairwise_iter",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:rename:planner_preflight_candidate:03",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "178dca5eb3b8fb0cfc8e47d88e6c4fd4f2e05315ab34a90fdab116d987214960"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_21",
+        "project": "boltons",
+        "target": "ent_6187d61e7b6e157e"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.tableutils.meldra_safe_rename_26",
+      "old_locator": "boltons.tableutils.NamedTupleInputType",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:rename:planner_preflight_candidate:04",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "9e9278fc14ee6bf9d9f9b4b5378fdaf3cdd509bf78d02e8a9a1f7884c9456a58"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_26",
+        "project": "boltons",
+        "target": "ent_4c70174b5bb704aa"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.socketutils.meldra_safe_rename_27",
+      "old_locator": "boltons.socketutils.NetstringProtocolError",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:rename:planner_preflight_candidate:05",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "8c1dc7b8df3e2794f7270e8223f5cc87056ad00935f6e61e814089acc08916d7"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_27",
+        "project": "boltons",
+        "target": "ent_c22701ec4523004e"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.excutils.meldra_safe_rename_36",
+      "old_locator": "boltons.excutils.math_lol",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:rename:planner_preflight_candidate:06",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "fe3fa0a2a57c24f64753d6c88ddcaa73762cd929867759c4cb732835e767291a"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_36",
+        "project": "boltons",
+        "target": "ent_9e330ebf9a356057"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.iterutils.meldra_safe_rename_46",
+      "old_locator": "boltons.iterutils.lstrip",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:rename:planner_preflight_candidate:07",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "10910935ffe0ae5695f490d380a158bdb31f8b0ed4401abccc344011037a535e"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_46",
+        "project": "boltons",
+        "target": "ent_c4b3aefd6c24a157"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.urlutils.meldra_safe_rename_52",
+      "old_locator": "boltons.urlutils.QueryParamDict",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:rename:planner_preflight_candidate:08",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "fa4f34a0541d43a29099b78049ab8aabb81907fb9ded38eb3adab04ec42852a5"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_52",
+        "project": "boltons",
+        "target": "ent_d74436a0f8451150"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.tableutils.meldra_safe_rename_74",
+      "old_locator": "boltons.tableutils.DictInputType",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:rename:planner_preflight_candidate:09",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "d5b534d6be2fe87ca3f3b1c820b935b985d0e913ad3e827e83a79244aead05f0"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_74",
+        "project": "boltons",
+        "target": "ent_69b0f8d0d1644320"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.funcutils.meldra_safe_rename_81",
+      "old_locator": "boltons.funcutils.InstancePartial",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:rename:planner_preflight_candidate:10",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "e5085c417ee8b0365a2ebfb5ac77a3ff89df7714227cd28875437777dade7c23"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_81",
+        "project": "boltons",
+        "target": "ent_2a396e6b1a4049f5"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.mathutils.meldra_safe_rename_88",
+      "old_locator": "boltons.mathutils.clamp",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:rename:planner_preflight_candidate:11",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "db0ae0e1940cd4da4feca797bc665c143e29c1711bfda0ad8d1df8f12fb9c6dd"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_88",
+        "project": "boltons",
+        "target": "ent_c3f2d5b5cc1928ac"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.iterutils.meldra_safe_rename_91",
+      "old_locator": "boltons.iterutils.same",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:rename:planner_preflight_candidate:12",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "cfe6542ddb9fa4b657e1febbe08c1d2fb83a6dfb9f2c4e38817a5ba9acf10763"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_91",
+        "project": "boltons",
+        "target": "ent_2fc8d521ebf63909"
+      }
+    },
+    {
+      "expected_world_revision": "194cb40030123a49d7c7aaf7e1e7ff5193ccf6503c05bfb5a446d6fc61f2484b",
+      "new_locator": "boltons.cacheutils.meldra_safe_rename_96",
+      "old_locator": "boltons.cacheutils.LRU",
+      "public": true,
+      "task": {
+        "allow_new_dependencies": true,
+        "allow_public_api_break": true,
+        "argument_values": {},
+        "expectation": "safe",
+        "expected_safe": true,
+        "id": "boltons:safe:rename:planner_preflight_candidate:13",
+        "label_source": "validated_fixture",
+        "metadata": {
+          "target_revision": "22cec3f0e5b2a5a881e833a9d3098fb1b58b1e507c2a4e1edb57a15e9c1884e6"
+        },
+        "operation": "rename",
+        "oracle": "planner_preflight_candidate",
+        "payload": "meldra_safe_rename_96",
+        "project": "boltons",
+        "target": "ent_7c5cee99ad9250c7"
+      }
+    }
+  ]
+}

@@ -1,0 +1,411 @@
+{
+  "arguments": [
+    41
+  ],
+  "mismatches": [
+    {
+      "baseline": "surface",
+      "differences": {
+        "error_kind": {
+          "baseline": null,
+          "observed": "InvalidSlot"
+        },
+        "printed_checksum": {
+          "baseline": 42,
+          "observed": null
+        },
+        "return_value": {
+          "baseline": 42,
+          "observed": null
+        },
+        "status": {
+          "baseline": "OK",
+          "observed": "ERROR"
+        }
+      },
+      "level": "mir_unoptimized"
+    },
+    {
+      "baseline": "surface",
+      "differences": {
+        "error_kind": {
+          "baseline": null,
+          "observed": "InvalidSlot"
+        },
+        "printed_checksum": {
+          "baseline": 42,
+          "observed": null
+        },
+        "return_value": {
+          "baseline": 42,
+          "observed": null
+        },
+        "status": {
+          "baseline": "OK",
+          "observed": "ERROR"
+        }
+      },
+      "level": "after_monomorphization"
+    },
+    {
+      "baseline": "surface",
+      "differences": {
+        "error_kind": {
+          "baseline": null,
+          "observed": "InvalidSlot"
+        },
+        "printed_checksum": {
+          "baseline": 42,
+          "observed": null
+        },
+        "return_value": {
+          "baseline": 42,
+          "observed": null
+        },
+        "status": {
+          "baseline": "OK",
+          "observed": "ERROR"
+        }
+      },
+      "level": "after_collection_fusion"
+    },
+    {
+      "baseline": "surface",
+      "differences": {
+        "error_kind": {
+          "baseline": null,
+          "observed": "InvalidSlot"
+        },
+        "printed_checksum": {
+          "baseline": 42,
+          "observed": null
+        },
+        "return_value": {
+          "baseline": 42,
+          "observed": null
+        },
+        "status": {
+          "baseline": "OK",
+          "observed": "ERROR"
+        }
+      },
+      "level": "after_inlining"
+    },
+    {
+      "baseline": "surface",
+      "differences": {
+        "error_kind": {
+          "baseline": null,
+          "observed": "InvalidSlot"
+        },
+        "printed_checksum": {
+          "baseline": 42,
+          "observed": null
+        },
+        "return_value": {
+          "baseline": 42,
+          "observed": null
+        },
+        "status": {
+          "baseline": "OK",
+          "observed": "ERROR"
+        }
+      },
+      "level": "after_constant_folding"
+    },
+    {
+      "baseline": "surface",
+      "differences": {
+        "error_kind": {
+          "baseline": null,
+          "observed": "InvalidSlot"
+        },
+        "printed_checksum": {
+          "baseline": 42,
+          "observed": null
+        },
+        "return_value": {
+          "baseline": 42,
+          "observed": null
+        },
+        "status": {
+          "baseline": "OK",
+          "observed": "ERROR"
+        }
+      },
+      "level": "after_bounds_check_elimination"
+    },
+    {
+      "baseline": "surface",
+      "differences": {
+        "error_kind": {
+          "baseline": null,
+          "observed": "InvalidSlot"
+        },
+        "printed_checksum": {
+          "baseline": 42,
+          "observed": null
+        },
+        "return_value": {
+          "baseline": 42,
+          "observed": null
+        },
+        "status": {
+          "baseline": "OK",
+          "observed": "ERROR"
+        }
+      },
+      "level": "after_memory_model_lowering"
+    },
+    {
+      "baseline": "surface",
+      "differences": {
+        "error_kind": {
+          "baseline": null,
+          "observed": "InvalidSlot"
+        },
+        "printed_checksum": {
+          "baseline": 42,
+          "observed": null
+        },
+        "return_value": {
+          "baseline": 42,
+          "observed": null
+        },
+        "status": {
+          "baseline": "OK",
+          "observed": "ERROR"
+        }
+      },
+      "level": "after_dead_code_elimination"
+    },
+    {
+      "baseline": "surface",
+      "differences": {
+        "error_kind": {
+          "baseline": null,
+          "observed": "InvalidSlot"
+        },
+        "printed_checksum": {
+          "baseline": 42,
+          "observed": null
+        },
+        "return_value": {
+          "baseline": 42,
+          "observed": null
+        },
+        "status": {
+          "baseline": "OK",
+          "observed": "ERROR"
+        }
+      },
+      "level": "mir_optimized"
+    }
+  ],
+  "observations": {
+    "after_bounds_check_elimination": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": "InvalidSlot",
+      "final_ownership_state": {
+        "Unique": 2
+      },
+      "printed_checksum": null,
+      "releases": 0,
+      "retains": 0,
+      "return_value": null,
+      "status": "ERROR",
+      "steps": 9
+    },
+    "after_collection_fusion": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": "InvalidSlot",
+      "final_ownership_state": {
+        "Unique": 2
+      },
+      "printed_checksum": null,
+      "releases": 0,
+      "retains": 0,
+      "return_value": null,
+      "status": "ERROR",
+      "steps": 9
+    },
+    "after_constant_folding": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": "InvalidSlot",
+      "final_ownership_state": {
+        "Unique": 2
+      },
+      "printed_checksum": null,
+      "releases": 0,
+      "retains": 0,
+      "return_value": null,
+      "status": "ERROR",
+      "steps": 9
+    },
+    "after_dead_code_elimination": {
+      "allocations": 0,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": "InvalidSlot",
+      "final_ownership_state": {
+        "Unique": 2
+      },
+      "printed_checksum": null,
+      "releases": 0,
+      "retains": 0,
+      "return_value": null,
+      "status": "ERROR",
+      "steps": 9
+    },
+    "after_inlining": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": "InvalidSlot",
+      "final_ownership_state": {
+        "Unique": 2
+      },
+      "printed_checksum": null,
+      "releases": 0,
+      "retains": 0,
+      "return_value": null,
+      "status": "ERROR",
+      "steps": 9
+    },
+    "after_memory_model_lowering": {
+      "allocations": 0,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": "InvalidSlot",
+      "final_ownership_state": {
+        "Unique": 2
+      },
+      "printed_checksum": null,
+      "releases": 0,
+      "retains": 0,
+      "return_value": null,
+      "status": "ERROR",
+      "steps": 9
+    },
+    "after_monomorphization": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": "InvalidSlot",
+      "final_ownership_state": {
+        "Unique": 2
+      },
+      "printed_checksum": null,
+      "releases": 0,
+      "retains": 0,
+      "return_value": null,
+      "status": "ERROR",
+      "steps": 9
+    },
+    "hir": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Unique": 1
+      },
+      "printed_checksum": 42,
+      "releases": 0,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 20
+    },
+    "mir_optimized": {
+      "allocations": 0,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": "InvalidSlot",
+      "final_ownership_state": {
+        "Unique": 2
+      },
+      "printed_checksum": null,
+      "releases": 0,
+      "retains": 0,
+      "return_value": null,
+      "status": "ERROR",
+      "steps": 9
+    },
+    "mir_unoptimized": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": "InvalidSlot",
+      "final_ownership_state": {
+        "Unique": 2
+      },
+      "printed_checksum": null,
+      "releases": 0,
+      "retains": 0,
+      "return_value": null,
+      "status": "ERROR",
+      "steps": 9
+    },
+    "surface": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Unique": 1
+      },
+      "printed_checksum": 42,
+      "releases": 0,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 20
+    }
+  },
+  "ok": false,
+  "pass_digests": [
+    {
+      "after": "6ac6d5f78db2369f8fcd45dec2116e21ef0d000777950774028547dfcd892633",
+      "before": "6ac6d5f78db2369f8fcd45dec2116e21ef0d000777950774028547dfcd892633",
+      "pass": "monomorphization"
+    },
+    {
+      "after": "6ac6d5f78db2369f8fcd45dec2116e21ef0d000777950774028547dfcd892633",
+      "before": "6ac6d5f78db2369f8fcd45dec2116e21ef0d000777950774028547dfcd892633",
+      "pass": "collection_fusion"
+    },
+    {
+      "after": "6ac6d5f78db2369f8fcd45dec2116e21ef0d000777950774028547dfcd892633",
+      "before": "6ac6d5f78db2369f8fcd45dec2116e21ef0d000777950774028547dfcd892633",
+      "pass": "inlining"
+    },
+    {
+      "after": "6ac6d5f78db2369f8fcd45dec2116e21ef0d000777950774028547dfcd892633",
+      "before": "6ac6d5f78db2369f8fcd45dec2116e21ef0d000777950774028547dfcd892633",
+      "pass": "constant_folding"
+    },
+    {
+      "after": "6ac6d5f78db2369f8fcd45dec2116e21ef0d000777950774028547dfcd892633",
+      "before": "6ac6d5f78db2369f8fcd45dec2116e21ef0d000777950774028547dfcd892633",
+      "pass": "bounds_check_elimination"
+    },
+    {
+      "after": "5e08f201e795e1fb124f1bacad62177a73a6c2da2abe453fea345d75ce415e95",
+      "before": "6ac6d5f78db2369f8fcd45dec2116e21ef0d000777950774028547dfcd892633",
+      "pass": "memory_model_lowering"
+    },
+    {
+      "after": "5e08f201e795e1fb124f1bacad62177a73a6c2da2abe453fea345d75ce415e95",
+      "before": "5e08f201e795e1fb124f1bacad62177a73a6c2da2abe453fea345d75ce415e95",
+      "pass": "dead_code_elimination"
+    }
+  ],
+  "source_sha256": "031b93aa15336db6ad5bd503f090da8d0a313cc48467548908c3d8417c9011fc"
+}

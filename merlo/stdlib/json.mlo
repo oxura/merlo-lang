@@ -1,0 +1,236 @@
+module app.json
+
+export enum JsonError:
+    InvalidUtf8
+    UnexpectedEnd
+    UnexpectedToken
+    InvalidString
+    InvalidNumber
+    InvalidEscape
+    ExpectedColon
+    ExpectedComma
+    TrailingTokens
+
+export JsonField:
+    key: Text
+    value: Json
+
+export enum Json:
+    Null
+    Bool: Bool
+    Number: Text
+    String: Text
+    Array: Vec[Json]
+    Object: Vec[JsonField]
+
+Parser:
+    input: TextView
+    index: UInt64
+    error: Option[JsonError]
+
+fail(parser: Parser, error: JsonError) -> Unit:
+    if parser.error.is_none():
+        parser.error = Some(error)
+
+space(byte: UInt64) -> Bool:
+    byte == 32 or byte == 9 or byte == 10 or byte == 13
+
+skip_space(parser: Parser) -> Unit:
+    while parser.index < parser.input.len() and space(parser.input.byte(parser.index)):
+        parser.index = parser.index + 1
+
+hex(byte: UInt64) -> UInt64:
+    if byte >= 48 and byte <= 57:
+        return byte - 48
+    if byte >= 65 and byte <= 70:
+        return byte - 55
+    if byte >= 97 and byte <= 102:
+        return byte - 87
+    256
+
+parse_string(parser: Parser) -> Text:
+    builder = TextBuilder.new()
+    parser.index = parser.index + 1
+    while parser.index < parser.input.len():
+        byte = parser.input.byte(parser.index)
+        if byte == 34:
+            parser.index = parser.index + 1
+            return builder.finish()
+        if byte < 32:
+            fail(parser, JsonError.InvalidString)
+            return builder.finish()
+        if byte != 92:
+            builder.append_byte(byte)
+            parser.index = parser.index + 1
+        else:
+            parser.index = parser.index + 1
+            if parser.index >= parser.input.len():
+                fail(parser, JsonError.UnexpectedEnd)
+                return builder.finish()
+            escaped = parser.input.byte(parser.index)
+            if escaped == 34 or escaped == 92 or escaped == 47:
+                builder.append_byte(escaped)
+                parser.index = parser.index + 1
+            else:
+                if escaped == 98 or escaped == 102 or escaped == 110 or escaped == 114 or escaped == 116:
+                    if escaped == 98:
+                        builder.append_byte(8)
+                    if escaped == 102:
+                        builder.append_byte(12)
+                    if escaped == 110:
+                        builder.append_byte(10)
+                    if escaped == 114:
+                        builder.append_byte(13)
+                    if escaped == 116:
+                        builder.append_byte(9)
+                    parser.index = parser.index + 1
+                else:
+                    if escaped != 117 or parser.index + 4 >= parser.input.len():
+                        fail(parser, JsonError.InvalidEscape)
+                        return builder.finish()
+                    scalar = 0
+                    digit = 1
+                    while digit <= 4:
+                        value = hex(parser.input.byte(parser.index + digit))
+                        if value == 256:
+                            fail(parser, JsonError.InvalidEscape)
+                        scalar = scalar * 16 + value
+                        digit = digit + 1
+                    if parser.error.is_some() or scalar >= 55296 and scalar <= 57343:
+                        fail(parser, JsonError.InvalidEscape)
+                        return builder.finish()
+                    builder.append_scalar(scalar)
+                    parser.index = parser.index + 5
+    fail(parser, JsonError.UnexpectedEnd)
+    builder.finish()
+
+parse_number(parser: Parser) -> Text:
+    start = parser.index
+    if parser.input.byte(parser.index) == 45:
+        parser.index = parser.index + 1
+    if parser.index >= parser.input.len() or parser.input.byte(parser.index) < 48 or parser.input.byte(parser.index) > 57:
+        fail(parser, JsonError.InvalidNumber)
+        return ""
+    if parser.input.byte(parser.index) == 48:
+        parser.index = parser.index + 1
+    else:
+        while parser.index < parser.input.len() and parser.input.byte(parser.index) >= 48 and parser.input.byte(parser.index) <= 57:
+            parser.index = parser.index + 1
+    if parser.index < parser.input.len() and parser.input.byte(parser.index) == 46:
+        parser.index = parser.index + 1
+        if parser.index >= parser.input.len() or parser.input.byte(parser.index) < 48 or parser.input.byte(parser.index) > 57:
+            fail(parser, JsonError.InvalidNumber)
+            return ""
+        while parser.index < parser.input.len() and parser.input.byte(parser.index) >= 48 and parser.input.byte(parser.index) <= 57:
+            parser.index = parser.index + 1
+    if parser.index < parser.input.len() and (parser.input.byte(parser.index) == 101 or parser.input.byte(parser.index) == 69):
+        parser.index = parser.index + 1
+        if parser.index < parser.input.len() and (parser.input.byte(parser.index) == 43 or parser.input.byte(parser.index) == 45):
+            parser.index = parser.index + 1
+        if parser.index >= parser.input.len() or parser.input.byte(parser.index) < 48 or parser.input.byte(parser.index) > 57:
+            fail(parser, JsonError.InvalidNumber)
+            return ""
+        while parser.index < parser.input.len() and parser.input.byte(parser.index) >= 48 and parser.input.byte(parser.index) <= 57:
+            parser.index = parser.index + 1
+    parser.input.slice_bytes(start, parser.index - start).to_text()
+
+parse_value(parser: Parser, depth: UInt64) -> Json:
+    skip_space(parser)
+    if depth > 128 or parser.index >= parser.input.len():
+        fail(parser, JsonError.UnexpectedEnd)
+        return Json.Null
+    byte = parser.input.byte(parser.index)
+    if byte == 34:
+        return Json.String(parse_string(parser))
+    if byte == 45 or byte >= 48 and byte <= 57:
+        return Json.Number(parse_number(parser))
+    if byte == 110 and parser.index + 4 <= parser.input.len() and parser.input.slice_bytes(parser.index, 4).to_text() == "null":
+        parser.index = parser.index + 4
+        return Json.Null
+    if byte == 116 and parser.index + 4 <= parser.input.len() and parser.input.slice_bytes(parser.index, 4).to_text() == "true":
+        parser.index = parser.index + 4
+        return Json.Bool(true)
+    if byte == 102 and parser.index + 5 <= parser.input.len() and parser.input.slice_bytes(parser.index, 5).to_text() == "false":
+        parser.index = parser.index + 5
+        return Json.Bool(false)
+    if byte == 123:
+        fields = Vec.new()
+        parser.index = parser.index + 1
+        skip_space(parser)
+        if parser.index < parser.input.len() and parser.input.byte(parser.index) == 125:
+            parser.index = parser.index + 1
+            return Json.Object(fields)
+        key: Text = ""
+        value: Json = Json.Null
+        while parser.error.is_none() and parser.index < parser.input.len():
+            skip_space(parser)
+            if parser.input.byte(parser.index) != 34:
+                fail(parser, JsonError.UnexpectedToken)
+                return Json.Object(fields)
+            key = parse_string(parser)
+            skip_space(parser)
+            if parser.index >= parser.input.len() or parser.input.byte(parser.index) != 58:
+                fail(parser, JsonError.ExpectedColon)
+                return Json.Object(fields)
+            parser.index = parser.index + 1
+            value = parse_value(parser, depth + 1)
+            fields.push(JsonField(key.clone(), value.clone()))
+            skip_space(parser)
+            if parser.index < parser.input.len() and parser.input.byte(parser.index) == 125:
+                parser.index = parser.index + 1
+                return Json.Object(fields)
+            if parser.index >= parser.input.len() or parser.input.byte(parser.index) != 44:
+                fail(parser, JsonError.ExpectedComma)
+                return Json.Object(fields)
+            parser.index = parser.index + 1
+        fail(parser, JsonError.UnexpectedEnd)
+        return Json.Object(fields)
+    if byte == 91:
+        items = Vec.new()
+        parser.index = parser.index + 1
+        skip_space(parser)
+        if parser.index < parser.input.len() and parser.input.byte(parser.index) == 93:
+            parser.index = parser.index + 1
+            return Json.Array(items)
+        while parser.error.is_none() and parser.index < parser.input.len():
+            items.push(parse_value(parser, depth + 1))
+            skip_space(parser)
+            if parser.index < parser.input.len() and parser.input.byte(parser.index) == 93:
+                parser.index = parser.index + 1
+                return Json.Array(items)
+            if parser.index >= parser.input.len() or parser.input.byte(parser.index) != 44:
+                fail(parser, JsonError.ExpectedComma)
+                return Json.Array(items)
+            parser.index = parser.index + 1
+        fail(parser, JsonError.UnexpectedEnd)
+        return Json.Array(items)
+    fail(parser, JsonError.UnexpectedToken)
+    Json.Null
+
+export parse(input: TextView) -> Result[Json,JsonError]:
+    parser = Parser(input, 0, None)
+    value = parse_value(parser, 0)
+    skip_space(parser)
+    if parser.error.is_some():
+        return Err(parser.error.unwrap())
+    if parser.index != parser.input.len():
+        return Err(JsonError.TrailingTokens)
+    Ok(value)
+
+export required(fields: Vec[JsonField], key: Text) -> Json:
+    index = 0
+    while index < fields.len():
+        field = fields.get(index)
+        if field.key == key:
+            return field.value
+        index = index + 1
+    Json.Null
+
+export optional(fields: Vec[JsonField], key: Text, fallback: Json) -> Json:
+    index = 0
+    while index < fields.len():
+        field = fields.get(index)
+        if field.key == key:
+            return field.value
+        index = index + 1
+    fallback

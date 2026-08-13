@@ -1,0 +1,10 @@
+record Point:
+    x: UInt64
+    y: UInt64
+
+fn main(n: UInt64) -> UInt64:
+    var checksum: UInt64 = 0
+    for i in 0..n:
+        let point: Point = Point(x=i, y=i * 3 + 1)
+        checksum = checksum + (point.x ^ point.y)
+    checksum

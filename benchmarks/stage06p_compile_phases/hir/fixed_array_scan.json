@@ -1,0 +1,1211 @@
+{
+  "contract": "meldra.native-typed-hir.v1",
+  "cst": {
+    "adapter": "stage05p_frozen_performance_parser",
+    "lossless": true,
+    "normalized_sha256": "506e3021b1647fcbf24d6a93f5bf357cbdb586fe5f8fe6adb6c3ead6a92bcbc5",
+    "path": "compile-phases/fixed_array_scan.meldra",
+    "source_sha256": "e6afbbe65edb9ad56fe14a29b47b0bce7def5266a70225cd4a93848a8acf9f26"
+  },
+  "entry_function": "main",
+  "invariants": {
+    "effects_and_capabilities_explicit": true,
+    "lossless_source": true,
+    "source_mappings": true,
+    "stable_symbol_ids": true
+  },
+  "nodes": [
+    {
+      "children": [
+        "nhirn_8d9f8182f31989d1188c76987582fee06f4d0c716339ba2f82f28638cbdf417d"
+      ],
+      "id": "nhirn_47d340c98d5f9e1253386c547f0fb38a09fcfe1c0113bc1a0634220c485cf792",
+      "kind": "Module",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_0536951e4e109682f6bfde5a30c5a3e6dd5a8b5a41ef28ce0cb930857e4bad43",
+        "nhirn_86ff71e06ac68675cb3dd55dab231a61512d73bcbe13397cec2fa30a36876c36",
+        "nhirn_b3ea355401fef141bb91266ed996fff4085910fd846669f42a59014ed603bc6c",
+        "nhirn_447ae2f12db9e2a2255a5a3f3c0629093b49ca42650772d6ce2235546b67ea55",
+        "nhirn_8944cd174f45236fd6c7e2e7499b1957e302036c37000db60e00c9c2a5174187",
+        "nhirn_9b4a61b5804a3b37cde58e09c37b775786de52a33948a55af68f8e04a464816c"
+      ],
+      "id": "nhirn_8d9f8182f31989d1188c76987582fee06f4d0c716339ba2f82f28638cbdf417d",
+      "kind": "FunctionDef",
+      "name": "main",
+      "operator": null,
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 6,
+        "line": 1,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_fe9e17a9aff6f442bb86b2dc679c2352ee0b9197aa5d365251bb04cb9d48b15b"
+      ],
+      "id": "nhirn_0536951e4e109682f6bfde5a30c5a3e6dd5a8b5a41ef28ce0cb930857e4bad43",
+      "kind": "arguments",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_a5b01c2e503803df5eb1da832c02d17c831c4048c2859ed09045e4d97edd8059",
+        "nhirn_21a5220627fd46a7537930553ed4f2c279e788008dc15a33859a7250a43bed63",
+        "nhirn_31526633e70c58e04acb224b3ae98d8d0c45a792de37f2f667b0dd7ebcca4022"
+      ],
+      "id": "nhirn_86ff71e06ac68675cb3dd55dab231a61512d73bcbe13397cec2fa30a36876c36",
+      "kind": "AnnAssign",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 55,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_969e94b58e044f389f48184617e8549b1920dd67e68fce30e0dbb8bf32895dea",
+        "nhirn_c557fe9e9b464e1b79526969f49a03ee25f156254efdc8898b5c11dedfb58cd7",
+        "nhirn_6c4371e4fc978a6940bb734346ed6ab2112d739c79cd94c7c13bec555697d8c9"
+      ],
+      "id": "nhirn_b3ea355401fef141bb91266ed996fff4085910fd846669f42a59014ed603bc6c",
+      "kind": "AnnAssign",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 24,
+        "end_line": 3,
+        "line": 3,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_1ec350cb36a0542a4357d9d7d5d536ab3eae25e065889535be028105a61fd37b",
+        "nhirn_c1cf435cf8c9d5b6ed7c897e6e9c52b8575f449a6dc961b02d1f0657193d4227",
+        "nhirn_efd699b7c0b5588a7fc1553023e9bf36c27d6a172b5f25418bef9e3cabd29719"
+      ],
+      "id": "nhirn_447ae2f12db9e2a2255a5a3f3c0629093b49ca42650772d6ce2235546b67ea55",
+      "kind": "For",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 53,
+        "end_line": 5,
+        "line": 4,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_6ec42c72eb66d76d5587e3523bf05fe5862c5630211e83d04dfaa16db07bfbfa"
+      ],
+      "id": "nhirn_8944cd174f45236fd6c7e2e7499b1957e302036c37000db60e00c9c2a5174187",
+      "kind": "Expr",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_9b4a61b5804a3b37cde58e09c37b775786de52a33948a55af68f8e04a464816c",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 23,
+        "end_column": 29,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_4a946ea536fa5ee544dfcb59e46fb45276458292409107402a36844a45fe354f"
+      ],
+      "id": "nhirn_fe9e17a9aff6f442bb86b2dc679c2352ee0b9197aa5d365251bb04cb9d48b15b",
+      "kind": "arg",
+      "name": "n",
+      "operator": null,
+      "source": {
+        "column": 9,
+        "end_column": 18,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_2d3a8cfbb093192293ecc0fbf86590c2253f9cfe5b16a359d9396c08e647b39e"
+      ],
+      "id": "nhirn_a5b01c2e503803df5eb1da832c02d17c831c4048c2859ed09045e4d97edd8059",
+      "kind": "Name",
+      "name": "values",
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 10,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_e004f98e21c315e8172283172d02107f3604f67fe207d4dd28afd7dcca9de6c9",
+        "nhirn_4ca0909a552e0d030fec2ab3a3bbce7d4f3922322a6d289e65a33053de7e5a75",
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_21a5220627fd46a7537930553ed4f2c279e788008dc15a33859a7250a43bed63",
+      "kind": "Subscript",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 12,
+        "end_column": 28,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_0c6588b21a43dd528bddad9a57f3be0371f72e9c20d14a6e8ab942487a24c145",
+        "nhirn_ccc87fcd9aa3a30f73e6057927c85a2eb1500fc2f59a47451a9984e2c1bceb97",
+        "nhirn_ebe5c57b830e01b072cb9a3861cdc5a5b272315a7bdb0811301daeb2cdc5b7fe",
+        "nhirn_a2b74eb4709acab9a48452da60a6d83ad6e5ef6b3a63b6532da6211fd06d439b",
+        "nhirn_66ed25f02d1f6a0c22712b91c2db7c1adc39ee0b2c5268f6cc8c0e2fddfe3a67",
+        "nhirn_8edd783204c9ab6e9404a0ce92377f392803cde26163a0a39f04a6efa3e2aec1",
+        "nhirn_9d1f57e134271ef1315d76d20f69c062262addb475a914ccd787b5b854de884c",
+        "nhirn_374517a13a50bc4b1aab107b6b7275cf21b5288777b38659ddc6ee84c1845fab",
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_31526633e70c58e04acb224b3ae98d8d0c45a792de37f2f667b0dd7ebcca4022",
+      "kind": "List",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 31,
+        "end_column": 55,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "Array[UInt64;8]",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_2d3a8cfbb093192293ecc0fbf86590c2253f9cfe5b16a359d9396c08e647b39e"
+      ],
+      "id": "nhirn_969e94b58e044f389f48184617e8549b1920dd67e68fce30e0dbb8bf32895dea",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 3,
+        "line": 3,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_c557fe9e9b464e1b79526969f49a03ee25f156254efdc8898b5c11dedfb58cd7",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 14,
+        "end_column": 20,
+        "end_line": 3,
+        "line": 3,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_6c4371e4fc978a6940bb734346ed6ab2112d739c79cd94c7c13bec555697d8c9",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 23,
+        "end_column": 24,
+        "end_line": 3,
+        "line": 3,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": 0
+    },
+    {
+      "children": [
+        "nhirn_2d3a8cfbb093192293ecc0fbf86590c2253f9cfe5b16a359d9396c08e647b39e"
+      ],
+      "id": "nhirn_1ec350cb36a0542a4357d9d7d5d536ab3eae25e065889535be028105a61fd37b",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 9,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_6e25b652c417e04e3c0000567415289b4df93bf29079be9d860312bfceb1b63e",
+        "nhirn_dfb0d904e598cac17e7128f0f72cee1f622447e29a5651b32a9c49e5fe450e74",
+        "nhirn_38336d35c1317b9d964e09a71cdc53c071bfe65b92e2aab474d7ff0506c59374"
+      ],
+      "id": "nhirn_c1cf435cf8c9d5b6ed7c897e6e9c52b8575f449a6dc961b02d1f0657193d4227",
+      "kind": "Call",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 13,
+        "end_column": 31,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_e6d9d92311ae96cf55060493393444dd1a9f3cd6ff6d5aefce683a3cbdec4cf4",
+        "nhirn_e6ab0edaa38044a1fed85ee896eec9c468ed64246f659d6e53b8fe72c7c80a71"
+      ],
+      "id": "nhirn_efd699b7c0b5588a7fc1553023e9bf36c27d6a172b5f25418bef9e3cabd29719",
+      "kind": "Assign",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 53,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_6ec42c72eb66d76d5587e3523bf05fe5862c5630211e83d04dfaa16db07bfbfa",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43",
+      "kind": "Load",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_4a946ea536fa5ee544dfcb59e46fb45276458292409107402a36844a45fe354f",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 12,
+        "end_column": 18,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_2d3a8cfbb093192293ecc0fbf86590c2253f9cfe5b16a359d9396c08e647b39e",
+      "kind": "Store",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_e004f98e21c315e8172283172d02107f3604f67fe207d4dd28afd7dcca9de6c9",
+      "kind": "Name",
+      "name": "Array",
+      "operator": null,
+      "source": {
+        "column": 12,
+        "end_column": 17,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_41e243607c5d89253a8b76716f457a2f8bed82a65e2291128307823a6b21865d",
+        "nhirn_bd7ffb7c5104dc12d9c0c51531c2709e58741583eab99a067765c74b8b44e650",
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_4ca0909a552e0d030fec2ab3a3bbce7d4f3922322a6d289e65a33053de7e5a75",
+      "kind": "Tuple",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 18,
+        "end_column": 27,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_0c6588b21a43dd528bddad9a57f3be0371f72e9c20d14a6e8ab942487a24c145",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 32,
+        "end_column": 33,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": 3
+    },
+    {
+      "children": [],
+      "id": "nhirn_ccc87fcd9aa3a30f73e6057927c85a2eb1500fc2f59a47451a9984e2c1bceb97",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 35,
+        "end_column": 36,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": 1
+    },
+    {
+      "children": [],
+      "id": "nhirn_ebe5c57b830e01b072cb9a3861cdc5a5b272315a7bdb0811301daeb2cdc5b7fe",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 38,
+        "end_column": 39,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": 4
+    },
+    {
+      "children": [],
+      "id": "nhirn_a2b74eb4709acab9a48452da60a6d83ad6e5ef6b3a63b6532da6211fd06d439b",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 41,
+        "end_column": 42,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": 1
+    },
+    {
+      "children": [],
+      "id": "nhirn_66ed25f02d1f6a0c22712b91c2db7c1adc39ee0b2c5268f6cc8c0e2fddfe3a67",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 44,
+        "end_column": 45,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": 5
+    },
+    {
+      "children": [],
+      "id": "nhirn_8edd783204c9ab6e9404a0ce92377f392803cde26163a0a39f04a6efa3e2aec1",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 47,
+        "end_column": 48,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": 9
+    },
+    {
+      "children": [],
+      "id": "nhirn_9d1f57e134271ef1315d76d20f69c062262addb475a914ccd787b5b854de884c",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 50,
+        "end_column": 51,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": 2
+    },
+    {
+      "children": [],
+      "id": "nhirn_374517a13a50bc4b1aab107b6b7275cf21b5288777b38659ddc6ee84c1845fab",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 53,
+        "end_column": 54,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": 6
+    },
+    {
+      "children": [
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_6e25b652c417e04e3c0000567415289b4df93bf29079be9d860312bfceb1b63e",
+      "kind": "Name",
+      "name": "meldra_range",
+      "operator": null,
+      "source": {
+        "column": 13,
+        "end_column": 25,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_dfb0d904e598cac17e7128f0f72cee1f622447e29a5651b32a9c49e5fe450e74",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 26,
+        "end_column": 27,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": 0
+    },
+    {
+      "children": [
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_38336d35c1317b9d964e09a71cdc53c071bfe65b92e2aab474d7ff0506c59374",
+      "kind": "Name",
+      "name": "n",
+      "operator": null,
+      "source": {
+        "column": 29,
+        "end_column": 30,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_2d3a8cfbb093192293ecc0fbf86590c2253f9cfe5b16a359d9396c08e647b39e"
+      ],
+      "id": "nhirn_e6d9d92311ae96cf55060493393444dd1a9f3cd6ff6d5aefce683a3cbdec4cf4",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 8,
+        "end_column": 16,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_60decf9505b4d509f682a4763f83819e11a5b6e58d5a78513c19ea886aef74b0",
+        "nhirn_2e8417fcb5feff37b8c281d8b7c8986ec7635ad8d1358c501f728e341387db81",
+        "nhirn_4c3c12bc3a823cc4c6048859ba4ea29ec65301bf0cccf88f2a93e994d95dc7de"
+      ],
+      "id": "nhirn_e6ab0edaa38044a1fed85ee896eec9c468ed64246f659d6e53b8fe72c7c80a71",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Add",
+      "source": {
+        "column": 19,
+        "end_column": 53,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_41e243607c5d89253a8b76716f457a2f8bed82a65e2291128307823a6b21865d",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 18,
+        "end_column": 24,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_bd7ffb7c5104dc12d9c0c51531c2709e58741583eab99a067765c74b8b44e650",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 26,
+        "end_column": 27,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": null,
+      "value": 8
+    },
+    {
+      "children": [
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_60decf9505b4d509f682a4763f83819e11a5b6e58d5a78513c19ea886aef74b0",
+      "kind": "Name",
+      "name": "checksum",
+      "operator": null,
+      "source": {
+        "column": 19,
+        "end_column": 27,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_2e8417fcb5feff37b8c281d8b7c8986ec7635ad8d1358c501f728e341387db81",
+      "kind": "Add",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_04307320257cdaa791dc1e5ac95167d4d1b0b5e4802560e8d9ac9476da897588",
+        "nhirn_1200fa6b8749757019674a32eb22ac0b1891d702dad93adadf9b15d9f0d3df7d",
+        "nhirn_aaa552b530b627b033a4a14dce7a5f27eb3865e1b33969296848e06fcf308555"
+      ],
+      "id": "nhirn_4c3c12bc3a823cc4c6048859ba4ea29ec65301bf0cccf88f2a93e994d95dc7de",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Mult",
+      "source": {
+        "column": 30,
+        "end_column": 53,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_08d5f9b22fcba8a8ec9231b3f03441327cfd65ac8bc04b927821425598ae0966",
+        "nhirn_05cc4310d0a257cb286bd53896217ede1712c1de632fe4b0f7ee6ec1c87462a1",
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_04307320257cdaa791dc1e5ac95167d4d1b0b5e4802560e8d9ac9476da897588",
+      "kind": "Subscript",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 30,
+        "end_column": 43,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_1200fa6b8749757019674a32eb22ac0b1891d702dad93adadf9b15d9f0d3df7d",
+      "kind": "Mult",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_e0fdfd3ab31580d712ecccc701a1e5d7c51ba57c99692335887947a784060c56",
+        "nhirn_2e8417fcb5feff37b8c281d8b7c8986ec7635ad8d1358c501f728e341387db81",
+        "nhirn_cc0bef1d850e58a6d42a1acb50ad4aba452d890156e9b65ed237a6e44d667072"
+      ],
+      "id": "nhirn_aaa552b530b627b033a4a14dce7a5f27eb3865e1b33969296848e06fcf308555",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "Add",
+      "source": {
+        "column": 47,
+        "end_column": 52,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_08d5f9b22fcba8a8ec9231b3f03441327cfd65ac8bc04b927821425598ae0966",
+      "kind": "Name",
+      "name": "values",
+      "operator": null,
+      "source": {
+        "column": 30,
+        "end_column": 36,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_7372701accd66e3cdb1cce0fdfc07942c4300c1af3d4f20c42782716d7e57888",
+        "nhirn_6313e41d6eb611ec71037480490c48d0c9305a7dd9e47317edcbfba2c888c41b",
+        "nhirn_faaab7fc546b7376119d8e83fd3d0da986b5e5046e5299e4dcc40b26da1f884e"
+      ],
+      "id": "nhirn_05cc4310d0a257cb286bd53896217ede1712c1de632fe4b0f7ee6ec1c87462a1",
+      "kind": "BinOp",
+      "name": null,
+      "operator": "BitAnd",
+      "source": {
+        "column": 37,
+        "end_column": 42,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_e0fdfd3ab31580d712ecccc701a1e5d7c51ba57c99692335887947a784060c56",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 47,
+        "end_column": 48,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_cc0bef1d850e58a6d42a1acb50ad4aba452d890156e9b65ed237a6e44d667072",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 51,
+        "end_column": 52,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": 1
+    },
+    {
+      "children": [
+        "nhirn_2463252b614d2e84e1644e46565d56a2614012ea97ba989ed2ac03a12eb86e43"
+      ],
+      "id": "nhirn_7372701accd66e3cdb1cce0fdfc07942c4300c1af3d4f20c42782716d7e57888",
+      "kind": "Name",
+      "name": "i",
+      "operator": null,
+      "source": {
+        "column": 37,
+        "end_column": 38,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_6313e41d6eb611ec71037480490c48d0c9305a7dd9e47317edcbfba2c888c41b",
+      "kind": "BitAnd",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_faaab7fc546b7376119d8e83fd3d0da986b5e5046e5299e4dcc40b26da1f884e",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 41,
+        "end_column": 42,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "type": "UInt64",
+      "value": 7
+    }
+  ],
+  "references": [
+    {
+      "owner_symbol_id": "nhirs_656da47fe5568fff34a42e8883d3c3a8890fcc49937075be629c00caa3d43ad6",
+      "source": {
+        "column": 12,
+        "end_column": 18,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_16debdf06bf90b9d2f91887bc30ce74f74f41624ecca0ea055da866e36eb5d37",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_656da47fe5568fff34a42e8883d3c3a8890fcc49937075be629c00caa3d43ad6",
+      "source": {
+        "column": 23,
+        "end_column": 29,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_73ff0a5852449e3a6cfe02d800d7fe2cba612823927e09866ec9b14f80739811",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_656da47fe5568fff34a42e8883d3c3a8890fcc49937075be629c00caa3d43ad6",
+      "source": {
+        "column": 12,
+        "end_column": 17,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "spelling": "Array",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_c67915cddce444893a1e5af8322fab5b957075ead1f1ff3c3e936ac6026d467f",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_656da47fe5568fff34a42e8883d3c3a8890fcc49937075be629c00caa3d43ad6",
+      "source": {
+        "column": 18,
+        "end_column": 24,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_5728db42081f1c83f0c7e7a0f542bc58196d6350d1712a5aa23a845ed32f7c45",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_656da47fe5568fff34a42e8883d3c3a8890fcc49937075be629c00caa3d43ad6",
+      "source": {
+        "column": 14,
+        "end_column": 20,
+        "end_line": 3,
+        "line": 3,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_a024a497960ddeb4bb73029bd84a7611ff4212f9ead0b90a8451b0d87ea18bb3",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_656da47fe5568fff34a42e8883d3c3a8890fcc49937075be629c00caa3d43ad6",
+      "source": {
+        "column": 13,
+        "end_column": 25,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "spelling": "meldra_range",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_9c89abc8486772bfc62fa06128c73132d578fd930a321b1e823311294daadc64",
+      "target_symbol_id": null,
+      "usage": "Call"
+    },
+    {
+      "owner_symbol_id": "nhirs_656da47fe5568fff34a42e8883d3c3a8890fcc49937075be629c00caa3d43ad6",
+      "source": {
+        "column": 29,
+        "end_column": 30,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "spelling": "n",
+      "status": "Exact",
+      "syntax_node_id": "synref_83e3009133745bb592f310789227b33862a4d0ad1ec0cdfe023e7c933e2d0d47",
+      "target_symbol_id": "nhirs_caf42b51fbe78e59067f0b5edd90c4890a1a483466c6818a7ab6c16a1c941ff8",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_656da47fe5568fff34a42e8883d3c3a8890fcc49937075be629c00caa3d43ad6",
+      "source": {
+        "column": 19,
+        "end_column": 27,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "spelling": "checksum",
+      "status": "Exact",
+      "syntax_node_id": "synref_2a78dbc299d5926b7680463efeae64b87362db15ffb180fd62dc40429b6d4f49",
+      "target_symbol_id": "nhirs_3aabc9e75cb249d2c7eca86b22c80d6dfda6f9e9c78c6c4182f3701965b54792",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_656da47fe5568fff34a42e8883d3c3a8890fcc49937075be629c00caa3d43ad6",
+      "source": {
+        "column": 30,
+        "end_column": 36,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "spelling": "values",
+      "status": "Exact",
+      "syntax_node_id": "synref_0ecb3f6894f0a47254adea975217a1c1603102969f7812426de7fee49a9f6308",
+      "target_symbol_id": "nhirs_bbfa2a6009ac907d3e3d64ce106588ee26bad3dc506a64c8a95ce56f247c458c",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_656da47fe5568fff34a42e8883d3c3a8890fcc49937075be629c00caa3d43ad6",
+      "source": {
+        "column": 37,
+        "end_column": 38,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "spelling": "i",
+      "status": "Exact",
+      "syntax_node_id": "synref_b2728c5c43805bebf8598f62f9ea516e0fcd18dfebb0a70930e75292618d59e1",
+      "target_symbol_id": "nhirs_f1d68c793d49f2f7aa0e0895d9fbf6588bbe0bf86eeedd61afb72cc5fdeea088",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_656da47fe5568fff34a42e8883d3c3a8890fcc49937075be629c00caa3d43ad6",
+      "source": {
+        "column": 47,
+        "end_column": 48,
+        "end_line": 5,
+        "line": 5,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "spelling": "i",
+      "status": "Exact",
+      "syntax_node_id": "synref_46c4c0cb6460af05564633731f61e64032e7ff8890a556e80c8bc078e1151747",
+      "target_symbol_id": "nhirs_f1d68c793d49f2f7aa0e0895d9fbf6588bbe0bf86eeedd61afb72cc5fdeea088",
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_656da47fe5568fff34a42e8883d3c3a8890fcc49937075be629c00caa3d43ad6",
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 6,
+        "line": 6,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "spelling": "checksum",
+      "status": "Exact",
+      "syntax_node_id": "synref_0c7499b4c49efb516eb2c007bca4ed5667069dc008c2741bbfd7de6e0ac6cbe2",
+      "target_symbol_id": "nhirs_3aabc9e75cb249d2c7eca86b22c80d6dfda6f9e9c78c6c4182f3701965b54792",
+      "usage": "Read"
+    }
+  ],
+  "schema_version": 1,
+  "source_kind": "stage05p_performance_adapter",
+  "symbols": [
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": true,
+      "kind": "function",
+      "name": "main",
+      "origin": "native",
+      "parameter_types": [
+        "UInt64"
+      ],
+      "path": "compile-phases/fixed_array_scan.meldra",
+      "return_type": "UInt64",
+      "revision_id": "rev_6e6424a149f9411e5d13daab592607ee27041f5397845f969cbac263b78a10b9",
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 6,
+        "line": 1,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "symbol_id": "nhirs_656da47fe5568fff34a42e8883d3c3a8890fcc49937075be629c00caa3d43ad6",
+      "syntax_node_id": "syn_1871e52c43961eae7ef079cd82a929b4c6bf28427c22aa67a9a633d9a31d4de4",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "local",
+      "name": "main.checksum",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/fixed_array_scan.meldra",
+      "return_type": null,
+      "revision_id": "rev_b408d8d5d1ffbf857f987710c34ac9999b43956e7fe286d342ca8515b0c24cc4",
+      "source": {
+        "column": 4,
+        "end_column": 12,
+        "end_line": 3,
+        "line": 3,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "symbol_id": "nhirs_3aabc9e75cb249d2c7eca86b22c80d6dfda6f9e9c78c6c4182f3701965b54792",
+      "syntax_node_id": "syn_388d86a89a2f2bfcd7d0e5d01aef87bfbc05cbcef3fad0c6e4e0d8245ebb3fa3",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "local",
+      "name": "main.i",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/fixed_array_scan.meldra",
+      "return_type": null,
+      "revision_id": "rev_c54f8d781b8ddca14060dfff7963464b74dedbb8b2f1de2e9b67c11e1127d22a",
+      "source": {
+        "column": 8,
+        "end_column": 9,
+        "end_line": 4,
+        "line": 4,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "symbol_id": "nhirs_f1d68c793d49f2f7aa0e0895d9fbf6588bbe0bf86eeedd61afb72cc5fdeea088",
+      "syntax_node_id": "syn_05e2fb801e645b169c590067aa6c10812c1329c7683a312448e5daad5fcb175a",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "local",
+      "name": "main.values",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/fixed_array_scan.meldra",
+      "return_type": null,
+      "revision_id": "rev_0a163ca3a1ffc91bc5477549eed6f6f9bd207d0a0fbde38e287d192f1812b157",
+      "source": {
+        "column": 4,
+        "end_column": 10,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "symbol_id": "nhirs_bbfa2a6009ac907d3e3d64ce106588ee26bad3dc506a64c8a95ce56f247c458c",
+      "syntax_node_id": "syn_d5ccda0ea40b0d416a1fec6d69980ef5b75769b610bba0d97ddd85ef31f7c77f",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "parameter",
+      "name": "main.n",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/fixed_array_scan.meldra",
+      "return_type": null,
+      "revision_id": "rev_162d0d8cd5e4b3558fddff4bc7e788a63ea273ce0c5e1bfd651349d0a7fd3b7c",
+      "source": {
+        "column": 0,
+        "end_column": 12,
+        "end_line": 6,
+        "line": 1,
+        "path": "compile-phases/fixed_array_scan.meldra"
+      },
+      "symbol_id": "nhirs_caf42b51fbe78e59067f0b5edd90c4890a1a483466c6818a7ab6c16a1c941ff8",
+      "syntax_node_id": "syn_121f02fc2f6e26725471a387ca0329291d1983c84d1228902c41c3e65ff5b055",
+      "type": "UInt64"
+    }
+  ]
+}

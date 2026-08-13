@@ -1,0 +1,11 @@
+record Node:
+    value: UInt64
+    left: UInt64
+    right: UInt64
+
+fn main(n: UInt64) -> UInt64:
+    var checksum: UInt64 = 0
+    for i in 0..n:
+        let node: Node = Node(value=i * 3 + 1, left=i * 2 + 1, right=i * 2 + 2)
+        checksum = checksum ^ (node.value * (node.left + node.right + 1))
+    checksum

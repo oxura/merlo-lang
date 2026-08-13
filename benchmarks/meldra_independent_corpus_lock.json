@@ -1,0 +1,18 @@
+{
+  "acceptance_assertions": 120,
+  "acceptance_sha256": "a0d0f1d433823c0bd4a2707c19be597298e149801a55e17e5aa41685599534aa",
+  "adversarial_negatives_required": 300,
+  "behavior_changes_required": 200,
+  "compiler_feedback_policy": "No frozen grammar, binder, type, effect, capability, lowering, or evaluator rule may change in response to corpus outcomes. Objective defect fixes require pre/post retained results and a new semantic version.",
+  "corpus_sha256": "180acace2936bf63eb39aa331940e21f517b042e958c88111d91f2071288ad7f",
+  "harness_correction": "v1 verified the imported module path instead of the requested root; corpus, acceptance tests, compiler, evaluator, and benchmark outcomes were unchanged.",
+  "harness_sha256": "71634efce9994f8eb526dafe791c607d1018ae04b19a71a8def1f37b3c32d8d2",
+  "kind": "MeldraIndependentCorpusLock",
+  "parent_freeze_id": "stage04_cdabcc45ff1c8d377517c8861967f577aba61a08c5491d5f228cde745c0066e1",
+  "programs": 40,
+  "protocol_sha256": "29b4401c31871f219554985a253c80757ee3bdfb718d052fea4eabd41d0df1c7",
+  "schema_version": 1,
+  "status": "LOCKED_BEFORE_FRONTEND_HARDENING",
+  "supersedes": "meldra_independent_corpus_lock_pre_hardening_v1.json",
+  "visibility": "REPOSITORY_VISIBLE_DIGEST_LOCKED_NOT_SECRET"
+}

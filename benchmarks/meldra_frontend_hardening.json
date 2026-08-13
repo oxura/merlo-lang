@@ -1,0 +1,123 @@
+{
+  "decision": "NO_GO_LANGUAGE_ALPHA",
+  "determinism": {
+    "all_byte_identical": true,
+    "baseline_sha256": "3860746f0121a7cac489c2023bf13d0efbabc0eefd0668d48cd95c55d4efc60b",
+    "file_order": {
+      "denominator": 24,
+      "matches": 24
+    },
+    "hash_seed": {
+      "denominator": 8,
+      "matches": 8
+    },
+    "multiprocess": {
+      "denominator": 8,
+      "matches": 8
+    }
+  },
+  "differential_semantics": {
+    "all_effect_traces_equal": true,
+    "all_values_equal": true,
+    "effect_trace_denominator": 40,
+    "effect_trace_matches": 40,
+    "effectful_value_denominator": 40,
+    "effectful_value_matches": 40,
+    "pure_value_denominator": 120,
+    "pure_value_matches": 120
+  },
+  "gates": {
+    "cross_process_hash_seed_file_order_determinism": true,
+    "differential_values_and_traces": true,
+    "metamorphic_relations": true,
+    "mutation_score_minimum_0_90": true,
+    "parser_crashes_zero": true,
+    "parser_fuzz_minimum_10000": true
+  },
+  "independent_corpus_lock_sha256": "8e7bd1ac8fff105fea9fbe7a31918369b5a03c50c8785021d2c37d1e0a2927fe",
+  "limitations": [
+    "Mutation probes corrupt semantic outputs and expected relations; they are not source-level mutants of the frozen compiler implementation.",
+    "Fuzz inputs are deterministic generated cases, not an external parser corpus.",
+    "Effectful differential cases use one generated clock-capability template repeated across 40 packages."
+  ],
+  "metamorphic_revisions": {
+    "denominator": 200,
+    "passes": 200
+  },
+  "mutation_probes": {
+    "denominator": 100,
+    "families": [
+      {
+        "family": "binder",
+        "killed": 20,
+        "method": "Corrupt an Exact target to missing/wrong and compare the frozen reference oracle.",
+        "mutants": 20,
+        "score": 1.0
+      },
+      {
+        "family": "effects",
+        "killed": 20,
+        "method": "Drop or widen the checked task effect row and compare the frozen declaration oracle.",
+        "mutants": 20,
+        "score": 1.0
+      },
+      {
+        "family": "capabilities",
+        "killed": 20,
+        "method": "Drop or substitute the required capability set and compare the frozen authority oracle.",
+        "mutants": 20,
+        "score": 1.0
+      },
+      {
+        "family": "interface_hashing",
+        "killed": 20,
+        "method": "Invert private/public revision relations and compare metamorphic expectations.",
+        "mutants": 20,
+        "score": 1.0
+      },
+      {
+        "family": "lowering",
+        "killed": 20,
+        "method": "Delete or alter canonical CoreIR declarations and compare canonical/evaluator expectations.",
+        "mutants": 20,
+        "score": 1.0
+      }
+    ],
+    "killed": 100,
+    "level": "SEMANTIC_OUTPUT_MUTATION_PROBES_NOT_SOURCE_MUTATION",
+    "score": 1.0
+  },
+  "parser_fuzz": {
+    "cases": 10000,
+    "crashes": 0,
+    "families": [
+      {
+        "accepted": 3000,
+        "byte_exact_roundtrips": 3000,
+        "cases": 3000,
+        "crashes": 0,
+        "expected_rejections": 0,
+        "family": "unicode_and_newlines"
+      },
+      {
+        "accepted": 473,
+        "byte_exact_roundtrips": 473,
+        "cases": 4000,
+        "crashes": 0,
+        "expected_rejections": 3527,
+        "family": "malformed_and_partial"
+      },
+      {
+        "accepted": 3000,
+        "byte_exact_roundtrips": 3000,
+        "cases": 3000,
+        "crashes": 0,
+        "expected_rejections": 0,
+        "family": "nesting_and_large_files"
+      }
+    ],
+    "seed": 20260810
+  },
+  "protocol_sha256": "29b4401c31871f219554985a253c80757ee3bdfb718d052fea4eabd41d0df1c7",
+  "schema_version": 1
+}

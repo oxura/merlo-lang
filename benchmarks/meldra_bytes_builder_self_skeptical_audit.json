@@ -1,0 +1,32 @@
+{
+  "name": "SELF_SKEPTICAL_AUDIT",
+  "threats": [
+    "A Python reference model could agree with itself while HIR MIR or native code uses different builder primitives.",
+    "A compiler marker could claim zero-copy finish while generated C allocates or copies in a helper.",
+    "A view may remain usable after growth if borrow_end is emitted too early or on only one branch.",
+    "A no-op reserve could be confused with a growth reserve and hide allocator activity.",
+    "Allocator calls and payload-copy bytes could be conflated, invalidating amortized-growth evidence.",
+    "Using realloc directly could obscure whether the old pointer remains valid on failure.",
+    "The final Bytes and finished builder could retain the same owner and double free it.",
+    "Compile-time rejects must not be counted as sanitizer executions.",
+    "Repeated parameter seeds must not be presented as independent semantic families.",
+    "Benchmark arms could implement different growth policies or checksum work.",
+    "Subprocess and scheduler noise could satisfy the timing gate without MAD control.",
+    "Post-hoc growth-factor or status-gate changes would invalidate the experiment.",
+    "Previous Bytes evidence cannot substitute for BytesBuilder growth, finish, or cleanup evidence."
+  ],
+  "controls": [
+    "Freeze policy, status gates, workload, warmup count, measured count, and slowdown threshold before implementation.",
+    "Use one parameterized state-machine corpus with independent family labels and deterministic seeds.",
+    "Compare reference, surface HIR, unoptimized MIR, optimized MIR, and actual native binary outputs.",
+    "Expose builder_create, builder_grow, payload_copy, finish transfer, and drop as auditable MIR operations.",
+    "Count allocations, frees, reallocations, growth bytes, extend bytes, and finish copies separately.",
+    "Use malloc-copy-free growth so old-buffer release ordering is visible and failure safe.",
+    "Run ASan, UBSan, and LeakSanitizer only on executed native builder paths.",
+    "Add deliberate finish-copy, missing-free, and live-view-append falsification controls.",
+    "Run the six benchmark arms with deterministic randomized sequential order and one-CPU affinity.",
+    "Run exactly one Decision corpus and one full test suite after quick-loop stabilization.",
+    "Freeze old Bytes artifact hashes and do not rerun their benchmarks."
+  ],
+  "post_hoc_status": "Status names, capacity policy, corpus minima, performance ratio, sanitizer requirement, and full-suite requirement remain fixed until final artifact validation."
+}

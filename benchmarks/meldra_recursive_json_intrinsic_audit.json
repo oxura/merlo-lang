@@ -1,0 +1,353 @@
+{
+  "allowed_runtime_primitives": [
+    "malloc",
+    "realloc",
+    "free",
+    "memcpy",
+    "memmove",
+    "byte_load",
+    "byte_store",
+    "host_file_read",
+    "host_file_write",
+    "proven_Bytes_Text_Builder_primitives"
+  ],
+  "architecture_blockers": [
+    {
+      "capability": "generic_or_monomorphized_Box",
+      "evidence": {
+        "accepted": false,
+        "diagnostic": "unsupported type: Box[Root]",
+        "diagnostic_type": "PerformanceCompileError"
+      }
+    },
+    {
+      "capability": "recursive_layout_through_indirection",
+      "evidence": {
+        "accepted": false,
+        "diagnostic": "SharedCycleUnsupported: recursive record Node",
+        "diagnostic_type": "PerformanceCompileError"
+      }
+    },
+    {
+      "capability": "nested_owning_records",
+      "evidence": {
+        "accepted": false,
+        "diagnostic": "nested record Leaf is outside Stage 0.6P layout scope",
+        "diagnostic_type": "PerformanceCompileError"
+      }
+    },
+    {
+      "capability": "enum_declarations_and_payload_variants",
+      "evidence": {
+        "accepted": false,
+        "diagnostic": "audit/enum_declaration.meldra:1:6: invalid syntax",
+        "diagnostic_type": "PerformanceCompileError"
+      }
+    },
+    {
+      "capability": "recursive_descent_over_borrowed_input",
+      "evidence": {
+        "accepted": false,
+        "diagnostic": "recursive borrowed call chain involving scan",
+        "diagnostic_type": "PerformanceCompileError"
+      }
+    },
+    {
+      "accepted": false,
+      "capability": "recursive_drop_glue",
+      "evidence": "PerformanceMIR has no enum/box/vec type descriptors or variant-directed drop representation."
+    },
+    {
+      "accepted": false,
+      "capability": "independent_typed_HIR_lowering",
+      "evidence": "compile_native_hir labels source_kind stage05p_performance_adapter and stores frontend.mir; lower_native_hir_to_performance returns it."
+    }
+  ],
+  "artifact_payload_sha256": "5272d797805a96eb55ba442c09fcd2316367ff7ff7f05b206a07d3b77932d118",
+  "decision": {
+    "byte_scanner_decomposition_possible_without_new_types": true,
+    "current_final_path_acceptable": false,
+    "frontend_hir_mir_redesign_required": true,
+    "handwritten_c_contains_json_semantics": true,
+    "json_semantics_in_hir": false,
+    "json_semantics_in_mir_cfg": false,
+    "json_semantics_in_ordinary_surface": false,
+    "opaque_runtime_json_calls": 1,
+    "owning_recursive_ast_possible_in_current_type_ir": false,
+    "selected_status": "OPAQUE_INTRINSIC_BLOCKER"
+  },
+  "forbidden_runtime_semantics_observed": [
+    "complete_JSON_state_machine",
+    "whitespace_grammar",
+    "delimiter_grammar",
+    "literal_grammar",
+    "number_grammar",
+    "string_and_escape_grammar",
+    "JSON_diagnostic_branching"
+  ],
+  "frozen_hashes": {
+    "json_streaming_c_sha256": "c72b0a6b3df2107027c91edae1dfdf0225921c33f337e6aa3e024fd84fae6fd8",
+    "native_c_backend_sha256": "56d9b29a896feb0c218ce200a39acfa88ce3df619bd265112b9c77c3535adc78",
+    "native_hir_sha256": "737b843bf39f83b1b8a4918bf8fef91a217486e0a5ff38506b38735c1a8a3a06",
+    "performance_frontend_sha256": "6e4115e58965ade613942a32373b5c3ce7304b0d8f475615fe4e9755f3330391",
+    "performance_mir_sha256": "1deb1e470f392db710f30c9d00c24503c607254f43af0fde13c416c5a2b74ad5",
+    "text_streaming_artifact_sha256": "f6739fcd79952f369dfafab1ba86b0a8d13a217f02b033ba2933b8ae23aacd07"
+  },
+  "kind": "MeldraRecursiveJsonIntrinsicBoundaryAudit",
+  "limitations": [
+    "This is a boundary audit, not a Recursive JSON implementation.",
+    "No recursive corpus, sanitizer, soak, or performance claims are made.",
+    "The ordinary control-flow probe proves only byte-loop expressibility, not recursive ownership support."
+  ],
+  "next_action": "Create a representation-IR milestone first: typed Vec/Box/enum descriptors, recursive layout validation, and generated drop glue; then port the tokenizer to ordinary Meldra CFG before retrying JSON AST.",
+  "ordinary_control_flow_probe": {
+    "accepted": true,
+    "interpretation": "Byte scanning, loops, branches and direct helper calls can be expressed in ordinary MIR. The current tokenizer has not been lowered that way.",
+    "mir_digest": "d964928757ee45247b1e31ee69f5ccd8f4a0ac57206e304e6b1a2b14e19d2154",
+    "mir_operations": [
+      "alloc_stack",
+      "binary",
+      "bytes_bounds_check",
+      "bytes_len",
+      "bytes_load",
+      "call",
+      "compare",
+      "const",
+      "load_local",
+      "store_local"
+    ],
+    "source": "fn is_ws(byte: UInt64) -> Bool:\n    return byte == 32 or byte == 9 or byte == 10 or byte == 13\nfn main(data: BytesView) -> UInt64:\n    var index: UInt64 = 0\n    var count: UInt64 = 0\n    while index < data.len():\n        if is_ws(data[index]):\n            count = count + 1\n        index = index + 1\n    return count\n"
+  },
+  "recursive_representation_probes": {
+    "enum_declaration": {
+      "accepted": false,
+      "diagnostic": "audit/enum_declaration.meldra:1:6: invalid syntax",
+      "diagnostic_type": "PerformanceCompileError"
+    },
+    "generic_box": {
+      "accepted": false,
+      "diagnostic": "unsupported type: Box[Root]",
+      "diagnostic_type": "PerformanceCompileError"
+    },
+    "nested_record": {
+      "accepted": false,
+      "diagnostic": "nested record Leaf is outside Stage 0.6P layout scope",
+      "diagnostic_type": "PerformanceCompileError"
+    },
+    "recursive_borrowed_call": {
+      "accepted": false,
+      "diagnostic": "recursive borrowed call chain involving scan",
+      "diagnostic_type": "PerformanceCompileError"
+    },
+    "recursive_record": {
+      "accepted": false,
+      "diagnostic": "SharedCycleUnsupported: recursive record Node",
+      "diagnostic_type": "PerformanceCompileError"
+    }
+  },
+  "required_architecture_before_retry": [
+    "First-class monomorphized Vec and Box type descriptors in typed HIR/MIR.",
+    "Enum payload layouts and exhaustive variant match lowering.",
+    "Recursive layout graph with explicit indirection validation.",
+    "Type-directed recursive drop glue preserved by optimization.",
+    "Tokenizer state machine lowered from ordinary Meldra functions into CFG.",
+    "A real HIR-to-MIR lowering boundary rather than a stored PerformanceMIR adapter."
+  ],
+  "schema_version": 1,
+  "scope": {
+    "checkpoint": "Intrinsic Boundary Audit",
+    "early_stop_rule": "Current tokenizer is a monolithic opaque C/MIR operation and an owning recursive AST cannot be represented by the current frontend/HIR/MIR without a new representation architecture.",
+    "later_milestone_phases_executed": false
+  },
+  "skipped_by_early_stop": {
+    "ast_parser": true,
+    "benchmark": true,
+    "full_suite": true,
+    "integrated_corpus": true,
+    "json_tool": true,
+    "query_and_pretty": true,
+    "recursive_enum_implementation": true,
+    "sanitizers": true,
+    "soak": true,
+    "vec_box_implementation": true
+  },
+  "status": "OPAQUE_INTRINSIC_BLOCKER",
+  "tokenizer_path": {
+    "components": [
+      {
+        "component": "tokenizer_entry",
+        "handwritten_c_logic": true,
+        "implementation_location": "surface json_token_checksum call -> MIR json_token_checksum -> meldra_json_token_checksum",
+        "opaque_runtime_call": true,
+        "visible_in_hir": true,
+        "visible_in_mir": true,
+        "visible_in_surface": true
+      },
+      {
+        "component": "json_state_machine",
+        "handwritten_c_logic": true,
+        "implementation_location": "meldra/json_streaming_c.py:meldra_json_token_checksum",
+        "opaque_runtime_call": true,
+        "visible_in_hir": false,
+        "visible_in_mir": false,
+        "visible_in_surface": false
+      },
+      {
+        "component": "whitespace_handling",
+        "handwritten_c_logic": true,
+        "implementation_location": "meldra/json_streaming_c.py:meldra_json_ws",
+        "opaque_runtime_call": true,
+        "visible_in_hir": false,
+        "visible_in_mir": false,
+        "visible_in_surface": false
+      },
+      {
+        "component": "delimiter_handling",
+        "handwritten_c_logic": true,
+        "implementation_location": "meldra/json_streaming_c.py:meldra_json_delimiter and meldra_json_token_checksum",
+        "opaque_runtime_call": true,
+        "visible_in_hir": false,
+        "visible_in_mir": false,
+        "visible_in_surface": false
+      },
+      {
+        "component": "literal_recognition",
+        "handwritten_c_logic": true,
+        "implementation_location": "meldra/json_streaming_c.py:meldra_json_parse_literal",
+        "opaque_runtime_call": true,
+        "visible_in_hir": false,
+        "visible_in_mir": false,
+        "visible_in_surface": false
+      },
+      {
+        "component": "number_grammar",
+        "handwritten_c_logic": true,
+        "implementation_location": "meldra/json_streaming_c.py:meldra_json_parse_number",
+        "opaque_runtime_call": true,
+        "visible_in_hir": false,
+        "visible_in_mir": false,
+        "visible_in_surface": false
+      },
+      {
+        "component": "string_scanning",
+        "handwritten_c_logic": true,
+        "implementation_location": "meldra/json_streaming_c.py:meldra_json_parse_string",
+        "opaque_runtime_call": true,
+        "visible_in_hir": false,
+        "visible_in_mir": false,
+        "visible_in_surface": false
+      },
+      {
+        "component": "escape_handling",
+        "handwritten_c_logic": true,
+        "implementation_location": "meldra/json_streaming_c.py:meldra_json_parse_string and meldra_json_scratch_scalar",
+        "opaque_runtime_call": true,
+        "visible_in_hir": false,
+        "visible_in_mir": false,
+        "visible_in_surface": false
+      },
+      {
+        "component": "diagnostic_control_flow",
+        "handwritten_c_logic": true,
+        "implementation_location": "meldra/json_streaming_c.py:meldra_panic_json and parser branches",
+        "opaque_runtime_call": true,
+        "visible_in_hir": false,
+        "visible_in_mir": false,
+        "visible_in_surface": false
+      }
+    ],
+    "hir": {
+      "contract": "Native Typed HIR v1",
+      "digest": "666e7176fae3e883de9e403df25e5c46a02325b01fce9e616c7db58c46bd858f",
+      "json_call_nodes": [
+        {
+          "children": [
+            "nhirn_8b0cd6028acfac6cea7e08d917791c30281255128d2e23ae18db7891c073c111"
+          ],
+          "id": "nhirn_df1bfb98c0b02fce4de78974fc87e6ff602688eba6952febfa4f878380023325",
+          "kind": "Name",
+          "name": "json_token_checksum",
+          "operator": null,
+          "source": {
+            "column": 11,
+            "end_column": 30,
+            "end_line": 2,
+            "line": 2,
+            "path": "audit/current-tokenizer.meldra"
+          },
+          "type": "UInt64",
+          "value": null
+        }
+      ],
+      "node_kinds": [
+        "Module",
+        "FunctionDef",
+        "arguments",
+        "Return",
+        "Name",
+        "arg",
+        "Call",
+        "Load",
+        "Name",
+        "Name",
+        "Name"
+      ],
+      "observation": "HIR is an AST/symbol projection plus a stored PerformanceMIR adapter; it contains the call but not tokenizer internals.",
+      "semantic_control_flow_nodes": 0,
+      "source_kind": "stage05p_performance_adapter"
+    },
+    "mir": {
+      "digest": "bbd9adc429a2bdcc008847959435d571a8e062df9d5b32c4cf8cc93291aaf3dc",
+      "instruction_count": 1,
+      "instructions": [
+        {
+          "attributes": {
+            "constructs_ast": false,
+            "consumer": "deterministic_fnv1a64_v1",
+            "receiver_kind": "BytesView",
+            "streaming": true
+          },
+          "block": "bb1_entry",
+          "function": "main",
+          "instruction_id": "i1",
+          "op": "json_token_checksum",
+          "source": {
+            "column": 11,
+            "end_column": 36,
+            "end_line": 2,
+            "line": 2,
+            "path": "audit/current-tokenizer.meldra"
+          }
+        }
+      ],
+      "json_semantic_basic_blocks": 0,
+      "opaque_json_instruction_count": 1,
+      "optimized_digest": "bbd9adc429a2bdcc008847959435d571a8e062df9d5b32c4cf8cc93291aaf3dc",
+      "optimizer_passes": [
+        "monomorphization",
+        "collection_fusion",
+        "inlining",
+        "owned_result_drop_insertion",
+        "borrow_inference",
+        "constant_folding",
+        "bounds_check_elimination",
+        "memory_model_lowering",
+        "dead_code_elimination"
+      ],
+      "optimizer_preserved_opaque_instruction": true
+    },
+    "native_backend": {
+      "emitted_helper_definition_count": 1,
+      "emitted_helper_reference_count": 2,
+      "handwritten_runtime_sha256": "0ae3f01e40a43c3d6c2a1de9ff182caf9e5d120abaa3e4ad9e223eb99e82cc28",
+      "handwritten_runtime_source_lines": 587,
+      "implementation": "meldra/json_streaming_c.py"
+    },
+    "surface_and_hir_evaluator": {
+      "behavior": "Copies the view into Python bytes and calls the independent Python tokenize_json implementation; it does not execute HIR JSON flow.",
+      "implementation": "meldra/native_differential.py:_json_token_checksum"
+    },
+    "surface_observation": "The source exposes one call name and no JSON control flow.",
+    "surface_source": "fn main(data: BytesView) -> UInt64:\n    return json_token_checksum(data)\n"
+  }
+}

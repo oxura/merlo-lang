@@ -1,0 +1,243 @@
+{
+  "contract": "meldra.native-typed-hir.v1",
+  "cst": {
+    "adapter": "stage05p_frozen_performance_parser",
+    "lossless": true,
+    "normalized_sha256": "6c769771058a20a3434d8a51546d94788e69b2cfe16fa6eab2bdfe3becc8c2a8",
+    "path": "compile-phases/startup.meldra",
+    "source_sha256": "fdf8f7251a3de1daee9d86687626a6472c87e00de333bc024bb217167c899a96"
+  },
+  "entry_function": "main",
+  "invariants": {
+    "effects_and_capabilities_explicit": true,
+    "lossless_source": true,
+    "source_mappings": true,
+    "stable_symbol_ids": true
+  },
+  "nodes": [
+    {
+      "children": [
+        "nhirn_bb9e228d95c1509ef32f2ddd3c56ee5a2e6c41e069b2c1f234c8e973256e68d1"
+      ],
+      "id": "nhirn_de9b3d71f786c48e481be1e75461eed51446e3b0dce66f1443e1fd67ff5c6d0e",
+      "kind": "Module",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_26331f62aa06b7d3d97e95b4ffb1b6b4279b2c69607344e0453a60172bd25db7",
+        "nhirn_52ac44b4adfaab7d9cbd4120734dfd1e45ff856bd8db166d75c5abf6acc16344",
+        "nhirn_2c79170940663259da1ac9dc02f035dfd63bda3c5ccad669f0f49523a3d00e31"
+      ],
+      "id": "nhirn_bb9e228d95c1509ef32f2ddd3c56ee5a2e6c41e069b2c1f234c8e973256e68d1",
+      "kind": "FunctionDef",
+      "name": "main",
+      "operator": null,
+      "source": {
+        "column": 0,
+        "end_column": 6,
+        "end_line": 2,
+        "line": 1,
+        "path": "compile-phases/startup.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_94354a4c862499f0288f69d807558eca76a088c02602ff23cdcab3c7af276aad"
+      ],
+      "id": "nhirn_26331f62aa06b7d3d97e95b4ffb1b6b4279b2c69607344e0453a60172bd25db7",
+      "kind": "arguments",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_f57d9ae35b3e691e61cc6e032017ba8dabfeed65f41d6b9d7dd1add237c06e11"
+      ],
+      "id": "nhirn_52ac44b4adfaab7d9cbd4120734dfd1e45ff856bd8db166d75c5abf6acc16344",
+      "kind": "Expr",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 6,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/startup.meldra"
+      },
+      "type": "UInt64",
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_d2922581326e656d6c18278920da0fdc74702834ddbd47ad6c77ed77c68e08ae"
+      ],
+      "id": "nhirn_2c79170940663259da1ac9dc02f035dfd63bda3c5ccad669f0f49523a3d00e31",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 23,
+        "end_column": 29,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/startup.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_e8c53743a4818dbb9b077dcd3b9ade9f28d425d7901851a61ffc10fdd14d15b6"
+      ],
+      "id": "nhirn_94354a4c862499f0288f69d807558eca76a088c02602ff23cdcab3c7af276aad",
+      "kind": "arg",
+      "name": "n",
+      "operator": null,
+      "source": {
+        "column": 9,
+        "end_column": 18,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/startup.meldra"
+      },
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [],
+      "id": "nhirn_f57d9ae35b3e691e61cc6e032017ba8dabfeed65f41d6b9d7dd1add237c06e11",
+      "kind": "Constant",
+      "name": null,
+      "operator": null,
+      "source": {
+        "column": 4,
+        "end_column": 6,
+        "end_line": 2,
+        "line": 2,
+        "path": "compile-phases/startup.meldra"
+      },
+      "type": "UInt64",
+      "value": 42
+    },
+    {
+      "children": [],
+      "id": "nhirn_d2922581326e656d6c18278920da0fdc74702834ddbd47ad6c77ed77c68e08ae",
+      "kind": "Load",
+      "name": null,
+      "operator": null,
+      "source": null,
+      "type": null,
+      "value": null
+    },
+    {
+      "children": [
+        "nhirn_d2922581326e656d6c18278920da0fdc74702834ddbd47ad6c77ed77c68e08ae"
+      ],
+      "id": "nhirn_e8c53743a4818dbb9b077dcd3b9ade9f28d425d7901851a61ffc10fdd14d15b6",
+      "kind": "Name",
+      "name": "UInt64",
+      "operator": null,
+      "source": {
+        "column": 12,
+        "end_column": 18,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/startup.meldra"
+      },
+      "type": null,
+      "value": null
+    }
+  ],
+  "references": [
+    {
+      "owner_symbol_id": "nhirs_2677625cb4009b1c0a797377db4771a2f62796ea18c0b28b81b5a97416059739",
+      "source": {
+        "column": 12,
+        "end_column": 18,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/startup.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_2e27ab198c5e2cef7576e0dd08a9c690494a499e278cf33f6603459da80a8b95",
+      "target_symbol_id": null,
+      "usage": "Read"
+    },
+    {
+      "owner_symbol_id": "nhirs_2677625cb4009b1c0a797377db4771a2f62796ea18c0b28b81b5a97416059739",
+      "source": {
+        "column": 23,
+        "end_column": 29,
+        "end_line": 1,
+        "line": 1,
+        "path": "compile-phases/startup.meldra"
+      },
+      "spelling": "UInt64",
+      "status": "BuiltinOrUnknown",
+      "syntax_node_id": "synref_5a01c7486a339a0f433a95204a7037c3f9aa6095c187633334c7b8e2a4da12f8",
+      "target_symbol_id": null,
+      "usage": "Read"
+    }
+  ],
+  "schema_version": 1,
+  "source_kind": "stage05p_performance_adapter",
+  "symbols": [
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": true,
+      "kind": "function",
+      "name": "main",
+      "origin": "native",
+      "parameter_types": [
+        "UInt64"
+      ],
+      "path": "compile-phases/startup.meldra",
+      "return_type": "UInt64",
+      "revision_id": "rev_6e6424a149f9411e5d13daab592607ee27041f5397845f969cbac263b78a10b9",
+      "source": {
+        "column": 0,
+        "end_column": 6,
+        "end_line": 2,
+        "line": 1,
+        "path": "compile-phases/startup.meldra"
+      },
+      "symbol_id": "nhirs_2677625cb4009b1c0a797377db4771a2f62796ea18c0b28b81b5a97416059739",
+      "syntax_node_id": "syn_d6712cb875ff4b293f88b88078d8011b3ab8587b4c170627715e04755518e8a1",
+      "type": null
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "exported": false,
+      "kind": "parameter",
+      "name": "main.n",
+      "origin": "native",
+      "parameter_types": [],
+      "path": "compile-phases/startup.meldra",
+      "return_type": null,
+      "revision_id": "rev_162d0d8cd5e4b3558fddff4bc7e788a63ea273ce0c5e1bfd651349d0a7fd3b7c",
+      "source": {
+        "column": 0,
+        "end_column": 6,
+        "end_line": 2,
+        "line": 1,
+        "path": "compile-phases/startup.meldra"
+      },
+      "symbol_id": "nhirs_6b6cea6929187913a7e70813a1987375f10a37f7d0ad657f00ec19f4953e2be9",
+      "syntax_node_id": "syn_ab785c3243cbab299046b7171f5e90cd7263b42051b08e59a9a5081c0ee08c48",
+      "type": "UInt64"
+    }
+  ]
+}

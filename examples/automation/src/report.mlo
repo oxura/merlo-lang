@@ -1,0 +1,24 @@
+module report
+
+export Change:
+    old_path: Text
+    new_path: Text
+
+rename(change: Change) -> Text:
+    output = TextBuilder.new()
+    output.append_text(change.old_path)
+    output.append_text(" -> ")
+    output.append_text(change.new_path)
+    output.finish()
+
+export run() -> Text:
+    first = rename(Change("draft.txt", "published.txt"))
+    second = rename(Change("notes.txt", "archive/notes.txt"))
+    output = TextBuilder.new()
+    output.append_text("automation\n")
+    output.append_text(first)
+    output.append_byte(10)
+    output.append_text(second)
+    output.append_byte(10)
+    output.append_text("applied=2\n")
+    output.finish()

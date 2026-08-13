@@ -1,0 +1,59 @@
+{
+  "schema": "merlo.alpha-performance.workloads.v2",
+  "arms": ["merlo_concise", "merlo_canonical", "c", "python", "rust"],
+  "required_arms": ["merlo_concise", "merlo_canonical", "c", "python"],
+  "optional_arms": ["rust"],
+  "workloads": [
+    {
+      "id": "numeric_array_sum",
+      "class": "numeric_array",
+      "source_application": "csv",
+      "fixture": "benchmarks/productive_performance/csv/workload.csv",
+      "expected_bytes": 182104,
+      "input_sha256": "d2f8f12ac2f5c59ab613b716b958d63e31ae87ae9f7458756c7e8d711c2a7599",
+      "expected_checksum": "d070c570a17d06e284948b409662c5270a407540db55f55108343fcc18083e8b",
+      "algorithm": "parse numeric columns and sum each row into one deterministic digest",
+      "source_sha256": {
+        "merlo_concise": "c180e2e8f56862a4e2e7516fb91f15fc70416779eff310111a9b8f3a2db00b00",
+        "merlo_canonical": "1b2b7bb242b263158f05a5c82b8f43320dec3767d7aa19bcfbc4456d551eeff7",
+        "c": "2c3fd15da202b4d9856388947bafbdce7eaf1198df3c6e448cab5d27d469c683",
+        "python": "3c8e982d2c0ef05f5af4217727048bebb3b554db1ebf1ca9687fb995af9f5290",
+        "rust": "d2f8f12ac2f5c59ab613b716b958d63e31ae87ae9f7458756c7e8d711c2a7599"
+      }
+    },
+    {
+      "id": "text_bytes_collections",
+      "class": "text_bytes_collections",
+      "source_application": "grep",
+      "fixture": "benchmarks/productive_performance/grep/workload.txt",
+      "expected_bytes": 286389,
+      "input_sha256": "7293083cbfcfe616ea3750158c02e717d85008eee9ce30a2010925fdad631a31",
+      "expected_checksum": "96cd04e7dbc91d288171226cf0b33876a07e55ed291d6b6961db17b80cb43ee5",
+      "algorithm": "scan UTF-8 Text and Bytes while aggregating collection counts",
+      "source_sha256": {
+        "merlo_concise": "f65ae25a24372f307b133eec0d03908696b022c994471068aabe520e79ec5b56",
+        "merlo_canonical": "377aaccc72c25f343c3ee3d600b4acc69f605f915806b3239967bbd9c793a4ea",
+        "c": "7cb11f5803c6834c8dff223316aee86c419b98a405cbcb82eb2d5cd7e8d89ea2",
+        "python": "3c8e982d2c0ef05f5af4217727048bebb3b554db1ebf1ca9687fb995af9f5290",
+        "rust": "7293083cbfcfe616ea3750158c02e717d85008eee9ce30a2010925fdad631a31"
+      }
+    },
+    {
+      "id": "cli_ndjson_report",
+      "class": "cli_data",
+      "source_application": "ndjson",
+      "fixture": "benchmarks/productive_performance/ndjson/workload.ndjson",
+      "expected_bytes": 548337,
+      "input_sha256": "ca9aca6d54d49e5f9203b985c763ae0fc91600027cd56fa043b7474e81c23bb1",
+      "expected_checksum": "eca3053bda42dfc900af171698e6b6d9b9f4da0815b91d3b41401d0cf7bc4d12",
+      "algorithm": "real CLI NDJSON report with one process and identical arguments",
+      "source_sha256": {
+        "merlo_concise": "8a274344bc7e41d2f1f661c86d45af5f0dd6a147b5ef7cd542ba10e69effcff6",
+        "merlo_canonical": "d5566bd26707b6fd5890ed0e0ae0ecc8ee3b498107c80474ac12768f198b3162",
+        "c": "c5d86160aac3f27c85e5d3a8c8ff228ea96f5a76d9145aa3168fe38e9ad0d220",
+        "python": "3c8e982d2c0ef05f5af4217727048bebb3b554db1ebf1ca9687fb995af9f5290",
+        "rust": "ca9aca6d54d49e5f9203b985c763ae0fc91600027cd56fa043b7474e81c23bb1"
+      }
+    }
+  ]
+}

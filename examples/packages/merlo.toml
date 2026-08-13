@@ -1,0 +1,9 @@
+manifest = 1
+
+[project]
+name = "packages"
+version = "0.1.0"
+edition = "alpha.1"
+
+[dependencies]
+greeting = { path = "vendor/greeting", version = "0.1.0" }

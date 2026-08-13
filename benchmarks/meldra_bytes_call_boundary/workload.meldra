@@ -1,0 +1,23 @@
+fn scan(data: BytesView, state: UInt64) -> UInt64:
+    var checksum: UInt64 = state
+    for i in 0..data.len():
+        checksum = (checksum ^ (data[i] + i + 1)) * 1099511628211
+    return checksum
+
+fn transform(data: Bytes, salt: UInt64) -> Bytes:
+    for i in 0..data.len():
+        data[i] = (data[i] ^ (salt + i)) & 255
+    return data
+
+fn main(n: UInt64, seed: UInt64, rounds: UInt64, start: UInt64, length: UInt64) -> UInt64:
+    let owner: Bytes = Bytes.new(n)
+    for i in 0..n:
+        owner[i] = (seed + i * 17 + (i >> 3)) & 255
+    var checksum: UInt64 = seed
+    for round in 0..rounds:
+        let offset: UInt64 = (start + round * 97) % (n - length + 1)
+        checksum = scan(owner.slice(offset, length), checksum)
+        owner[offset] = (owner[offset] + checksum + round) & 255
+    let transformed: Bytes = transform(move(owner), seed)
+    checksum = scan(transformed.slice(start, length), checksum)
+    return checksum + transformed.len()

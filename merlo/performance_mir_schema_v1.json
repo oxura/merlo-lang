@@ -1,0 +1,483 @@
+{
+  "$id": "https://meldra.dev/schema/performance-mir/v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "entry_function": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "functions": {
+      "items": {
+        "$ref": "#/$defs/function"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "instruction_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/record"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "subset_forms": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "subset_types": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "entry_function",
+    "source_sha256",
+    "subset_types",
+    "subset_forms",
+    "records",
+    "functions",
+    "instruction_count"
+  ],
+  "title": "Meldra Performance MIR v1",
+  "type": "object",
+  "$defs": {
+    "block": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "instructions": {
+          "items": {
+            "$ref": "#/$defs/instruction"
+          },
+          "type": "array"
+        },
+        "terminator": {
+          "$ref": "#/$defs/terminator"
+        }
+      },
+      "required": [
+        "id",
+        "instructions",
+        "terminator"
+      ],
+      "type": "object"
+    },
+    "function": {
+      "additionalProperties": false,
+      "properties": {
+        "blocks": {
+          "items": {
+            "$ref": "#/$defs/block"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "entry_block": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "generic_parameters": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "instruction_count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "parameters": {
+          "items": {
+            "$ref": "#/$defs/parameter"
+          },
+          "type": "array"
+        },
+        "pure": {
+          "type": "boolean"
+        },
+        "return_type": {
+          "$ref": "#/$defs/type"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        }
+      },
+      "required": [
+        "name",
+        "parameters",
+        "return_type",
+        "blocks",
+        "entry_block",
+        "pure",
+        "source",
+        "generic_parameters",
+        "instruction_count"
+      ],
+      "type": "object"
+    },
+    "instruction": {
+      "additionalProperties": false,
+      "properties": {
+        "attributes": {
+          "type": "object"
+        },
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "op": {
+          "anyOf": [
+            {
+              "enum": [
+                "const",
+                "binary",
+                "unary",
+                "compare",
+                "alloc_stack",
+                "alloc_local",
+                "alloc_region",
+                "alloc_heap",
+                "array_init",
+                "array_len",
+                "load_local",
+                "store_local",
+                "index_load",
+                "store_index",
+                "field_load",
+                "record_init",
+                "move",
+                "copy",
+                "drop",
+                "call",
+                "bounds_check",
+                "collection_map",
+                "collection_filter",
+                "collection_fold",
+                "fused_collection_loop"
+              ]
+            },
+            {
+              "pattern": "^collection_(map|filter|fold)_[A-Za-z0-9_]+$"
+            }
+          ],
+          "type": "string"
+        },
+        "operands": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "result": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/source"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/type"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "op",
+        "result",
+        "type",
+        "operands",
+        "attributes",
+        "source"
+      ],
+      "type": "object"
+    },
+    "layout": {
+      "additionalProperties": false,
+      "properties": {
+        "alignment": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "field_offsets": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "object"
+        },
+        "representation": {
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "size",
+        "alignment",
+        "field_offsets",
+        "representation"
+      ],
+      "type": "object"
+    },
+    "parameter": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "ownership": {
+          "enum": [
+            "borrowed",
+            "moved",
+            "shared"
+          ]
+        },
+        "type": {
+          "$ref": "#/$defs/type"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "value",
+        "type",
+        "ownership"
+      ],
+      "type": "object"
+    },
+    "record": {
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "$ref": "#/$defs/type"
+              }
+            },
+            "required": [
+              "name",
+              "type"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "layout": {
+          "$ref": "#/$defs/layout"
+        },
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        }
+      },
+      "required": [
+        "name",
+        "fields",
+        "layout",
+        "source"
+      ],
+      "type": "object"
+    },
+    "source": {
+      "additionalProperties": false,
+      "properties": {
+        "column": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "end_column": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "end_line": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "line": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "path": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "line",
+        "column",
+        "end_line",
+        "end_column"
+      ],
+      "type": "object"
+    },
+    "terminator": {
+      "additionalProperties": false,
+      "properties": {
+        "condition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "jump",
+            "branch",
+            "return",
+            "unreachable"
+          ]
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/source"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "targets": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "value": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "targets",
+        "condition",
+        "value",
+        "source"
+      ],
+      "type": "object"
+    },
+    "type": {
+      "additionalProperties": false,
+      "properties": {
+        "bits": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "element": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/type"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "enum": [
+            "int",
+            "uint",
+            "float",
+            "bool",
+            "record",
+            "array",
+            "slice",
+            "unit"
+          ]
+        },
+        "length": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "record": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "shared": {
+          "type": "boolean"
+        },
+        "unique": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "bits",
+        "element",
+        "length",
+        "record",
+        "shared",
+        "unique"
+      ],
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+module main
+
+use std.net
+
+export synchronous_echo(host: Text, port: UInt64, payload: Bytes) -> Result[Bytes, NetError]:
+    address = net.tcp_address(host, port)
+    stream = net.tcp_connect(address)?
+    net.tcp_send_all(stream, payload.view())?
+    response = net.tcp_receive(stream, 65536)?
+    net.tcp_close(stream)?
+    Ok(response)
+
+export main(path: Path) -> Int:
+    console.write("network=tcp-synchronous\n")
+    0

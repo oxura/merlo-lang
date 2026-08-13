@@ -1,0 +1,279 @@
+{
+  "arguments": [
+    40
+  ],
+  "mismatches": [
+    {
+      "baseline": "surface",
+      "differences": {
+        "error_kind": {
+          "baseline": null,
+          "observed": "UseAfterDrop"
+        },
+        "printed_checksum": {
+          "baseline": 42,
+          "observed": null
+        },
+        "return_value": {
+          "baseline": 42,
+          "observed": null
+        },
+        "status": {
+          "baseline": "OK",
+          "observed": "ERROR"
+        }
+      },
+      "level": "after_memory_model_lowering"
+    },
+    {
+      "baseline": "surface",
+      "differences": {
+        "error_kind": {
+          "baseline": null,
+          "observed": "UseAfterDrop"
+        },
+        "printed_checksum": {
+          "baseline": 42,
+          "observed": null
+        },
+        "return_value": {
+          "baseline": 42,
+          "observed": null
+        },
+        "status": {
+          "baseline": "OK",
+          "observed": "ERROR"
+        }
+      },
+      "level": "after_dead_code_elimination"
+    },
+    {
+      "baseline": "surface",
+      "differences": {
+        "error_kind": {
+          "baseline": null,
+          "observed": "UseAfterDrop"
+        },
+        "printed_checksum": {
+          "baseline": 42,
+          "observed": null
+        },
+        "return_value": {
+          "baseline": 42,
+          "observed": null
+        },
+        "status": {
+          "baseline": "OK",
+          "observed": "ERROR"
+        }
+      },
+      "level": "mir_optimized"
+    }
+  ],
+  "observations": {
+    "after_bounds_check_elimination": {
+      "allocations": 1,
+      "drops": 1,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Dropped": 1
+      },
+      "printed_checksum": 42,
+      "releases": 1,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 15
+    },
+    "after_collection_fusion": {
+      "allocations": 1,
+      "drops": 1,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Dropped": 1
+      },
+      "printed_checksum": 42,
+      "releases": 1,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 15
+    },
+    "after_constant_folding": {
+      "allocations": 1,
+      "drops": 1,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Dropped": 1
+      },
+      "printed_checksum": 42,
+      "releases": 1,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 15
+    },
+    "after_dead_code_elimination": {
+      "allocations": 1,
+      "drops": 1,
+      "effect_trace": [],
+      "error_kind": "UseAfterDrop",
+      "final_ownership_state": {
+        "Dropped": 1
+      },
+      "printed_checksum": null,
+      "releases": 1,
+      "retains": 0,
+      "return_value": null,
+      "status": "ERROR",
+      "steps": 15
+    },
+    "after_inlining": {
+      "allocations": 1,
+      "drops": 1,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Dropped": 1
+      },
+      "printed_checksum": 42,
+      "releases": 1,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 15
+    },
+    "after_memory_model_lowering": {
+      "allocations": 1,
+      "drops": 1,
+      "effect_trace": [],
+      "error_kind": "UseAfterDrop",
+      "final_ownership_state": {
+        "Dropped": 1
+      },
+      "printed_checksum": null,
+      "releases": 1,
+      "retains": 0,
+      "return_value": null,
+      "status": "ERROR",
+      "steps": 16
+    },
+    "after_monomorphization": {
+      "allocations": 1,
+      "drops": 1,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Dropped": 1
+      },
+      "printed_checksum": 42,
+      "releases": 1,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 15
+    },
+    "hir": {
+      "allocations": 1,
+      "drops": 1,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Dropped": 1
+      },
+      "printed_checksum": 42,
+      "releases": 1,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 17
+    },
+    "mir_optimized": {
+      "allocations": 1,
+      "drops": 1,
+      "effect_trace": [],
+      "error_kind": "UseAfterDrop",
+      "final_ownership_state": {
+        "Dropped": 1
+      },
+      "printed_checksum": null,
+      "releases": 1,
+      "retains": 0,
+      "return_value": null,
+      "status": "ERROR",
+      "steps": 15
+    },
+    "mir_unoptimized": {
+      "allocations": 1,
+      "drops": 1,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Dropped": 1
+      },
+      "printed_checksum": 42,
+      "releases": 1,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 15
+    },
+    "surface": {
+      "allocations": 1,
+      "drops": 1,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Dropped": 1
+      },
+      "printed_checksum": 42,
+      "releases": 1,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 17
+    }
+  },
+  "ok": false,
+  "pass_digests": [
+    {
+      "after": "8f69ae984f62fbb56f72bdc036102b5c4eb04cec012a177c3b3ad688ec9be2f9",
+      "before": "8f69ae984f62fbb56f72bdc036102b5c4eb04cec012a177c3b3ad688ec9be2f9",
+      "pass": "monomorphization"
+    },
+    {
+      "after": "8f69ae984f62fbb56f72bdc036102b5c4eb04cec012a177c3b3ad688ec9be2f9",
+      "before": "8f69ae984f62fbb56f72bdc036102b5c4eb04cec012a177c3b3ad688ec9be2f9",
+      "pass": "collection_fusion"
+    },
+    {
+      "after": "8f69ae984f62fbb56f72bdc036102b5c4eb04cec012a177c3b3ad688ec9be2f9",
+      "before": "8f69ae984f62fbb56f72bdc036102b5c4eb04cec012a177c3b3ad688ec9be2f9",
+      "pass": "inlining"
+    },
+    {
+      "after": "8f69ae984f62fbb56f72bdc036102b5c4eb04cec012a177c3b3ad688ec9be2f9",
+      "before": "8f69ae984f62fbb56f72bdc036102b5c4eb04cec012a177c3b3ad688ec9be2f9",
+      "pass": "constant_folding"
+    },
+    {
+      "after": "8f69ae984f62fbb56f72bdc036102b5c4eb04cec012a177c3b3ad688ec9be2f9",
+      "before": "8f69ae984f62fbb56f72bdc036102b5c4eb04cec012a177c3b3ad688ec9be2f9",
+      "pass": "bounds_check_elimination"
+    },
+    {
+      "after": "6884066225efb59c37c342fe7de3bad81f2e07857508614978e9c29c71c74989",
+      "before": "8f69ae984f62fbb56f72bdc036102b5c4eb04cec012a177c3b3ad688ec9be2f9",
+      "pass": "memory_model_lowering"
+    },
+    {
+      "after": "aa2d8954aaae76598308797dd19bf78a46b99544510079323dfe07ab69afd1ac",
+      "before": "6884066225efb59c37c342fe7de3bad81f2e07857508614978e9c29c71c74989",
+      "pass": "dead_code_elimination"
+    }
+  ],
+  "source_sha256": "779723aa29cc5b9ab5c44a44bbf3d646ceb91490e8929cfa3160121025f7495a"
+}

@@ -1,0 +1,225 @@
+{
+  "arguments": [
+    41
+  ],
+  "mismatches": [],
+  "observations": {
+    "after_bounds_check_elimination": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Unique": 1
+      },
+      "printed_checksum": 42,
+      "releases": 0,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 25
+    },
+    "after_collection_fusion": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Unique": 1
+      },
+      "printed_checksum": 42,
+      "releases": 0,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 25
+    },
+    "after_constant_folding": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Unique": 1
+      },
+      "printed_checksum": 42,
+      "releases": 0,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 25
+    },
+    "after_dead_code_elimination": {
+      "allocations": 0,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Unique": 1
+      },
+      "printed_checksum": 42,
+      "releases": 0,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 25
+    },
+    "after_inlining": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Unique": 1
+      },
+      "printed_checksum": 42,
+      "releases": 0,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 25
+    },
+    "after_memory_model_lowering": {
+      "allocations": 0,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Unique": 1
+      },
+      "printed_checksum": 42,
+      "releases": 0,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 25
+    },
+    "after_monomorphization": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Unique": 1
+      },
+      "printed_checksum": 42,
+      "releases": 0,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 25
+    },
+    "hir": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Unique": 1
+      },
+      "printed_checksum": 42,
+      "releases": 0,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 20
+    },
+    "mir_optimized": {
+      "allocations": 0,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Unique": 1
+      },
+      "printed_checksum": 42,
+      "releases": 0,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 25
+    },
+    "mir_unoptimized": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Unique": 1
+      },
+      "printed_checksum": 42,
+      "releases": 0,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 25
+    },
+    "native": {
+      "allocations": 0,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {},
+      "printed_checksum": 42,
+      "releases": 0,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 0
+    },
+    "surface": {
+      "allocations": 1,
+      "drops": 0,
+      "effect_trace": [],
+      "error_kind": null,
+      "final_ownership_state": {
+        "Unique": 1
+      },
+      "printed_checksum": 42,
+      "releases": 0,
+      "retains": 0,
+      "return_value": 42,
+      "status": "OK",
+      "steps": 20
+    }
+  },
+  "ok": true,
+  "pass_digests": [
+    {
+      "after": "5c3550f2a72d6724986058c74b770ee40de36f94811b74b610c682b249b934fc",
+      "before": "5c3550f2a72d6724986058c74b770ee40de36f94811b74b610c682b249b934fc",
+      "pass": "monomorphization"
+    },
+    {
+      "after": "5c3550f2a72d6724986058c74b770ee40de36f94811b74b610c682b249b934fc",
+      "before": "5c3550f2a72d6724986058c74b770ee40de36f94811b74b610c682b249b934fc",
+      "pass": "collection_fusion"
+    },
+    {
+      "after": "5c3550f2a72d6724986058c74b770ee40de36f94811b74b610c682b249b934fc",
+      "before": "5c3550f2a72d6724986058c74b770ee40de36f94811b74b610c682b249b934fc",
+      "pass": "inlining"
+    },
+    {
+      "after": "5c3550f2a72d6724986058c74b770ee40de36f94811b74b610c682b249b934fc",
+      "before": "5c3550f2a72d6724986058c74b770ee40de36f94811b74b610c682b249b934fc",
+      "pass": "constant_folding"
+    },
+    {
+      "after": "5c3550f2a72d6724986058c74b770ee40de36f94811b74b610c682b249b934fc",
+      "before": "5c3550f2a72d6724986058c74b770ee40de36f94811b74b610c682b249b934fc",
+      "pass": "bounds_check_elimination"
+    },
+    {
+      "after": "7151c87d0850f2112d2f9985b3f4af3696f994160c65f4549f446f0c82ce0314",
+      "before": "5c3550f2a72d6724986058c74b770ee40de36f94811b74b610c682b249b934fc",
+      "pass": "memory_model_lowering"
+    },
+    {
+      "after": "7151c87d0850f2112d2f9985b3f4af3696f994160c65f4549f446f0c82ce0314",
+      "before": "7151c87d0850f2112d2f9985b3f4af3696f994160c65f4549f446f0c82ce0314",
+      "pass": "dead_code_elimination"
+    }
+  ],
+  "source_sha256": "031b93aa15336db6ad5bd503f090da8d0a313cc48467548908c3d8417c9011fc"
+}

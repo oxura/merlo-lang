@@ -1,0 +1,32 @@
+module std.time
+
+export Instant:
+    seconds: Int64
+    nanos: UInt64
+
+export enum TimeError:
+    InvalidRange
+
+export time_now() -> Instant:
+    Instant(clock.seconds(), clock.nanoseconds())
+
+export time_seconds(value: Instant) -> Int64:
+    value.seconds
+
+export time_nanos(value: Instant) -> UInt64:
+    value.nanos
+
+export time_elapsed(start: Instant, finish: Instant) -> Result[UInt64,TimeError]:
+    if finish.seconds < start.seconds:
+        return Err(TimeError.InvalidRange)
+    if finish.seconds == start.seconds and finish.nanos < start.nanos:
+        return Err(TimeError.InvalidRange)
+    seconds = finish.seconds - start.seconds
+    if finish.nanos >= start.nanos:
+        nanos = finish.nanos - start.nanos
+    else:
+        nanos = 1000000000 + finish.nanos - start.nanos
+    Ok(seconds * 1000000000 + nanos)
+
+export time_from_millis(value: UInt64) -> Instant:
+    Instant(value / 1000, (value % 1000) * 1000000)

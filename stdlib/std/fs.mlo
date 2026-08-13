@@ -1,0 +1,80 @@
+module std.fs
+
+export enum FsError:
+    NotFound
+    PermissionDenied
+    InvalidPath
+    Closed
+    System
+
+export path_new(value: Text) -> Path:
+    Path(path_normalize(value))
+
+export path_text(value: Path) -> Text:
+    value.to_text()
+
+export path_join(left: Path, right: TextView) -> Path:
+    left_text = left.to_text()
+    if left_text == "":
+        return path_new(right.to_text())
+    if right.len() == 0:
+        return left
+    suffix = right.to_text()
+    builder = TextBuilder.new()
+    builder.append_text(left_text)
+    if not left_text.ends_with("/"):
+        builder.append_byte(47)
+    builder.append_text(suffix)
+    path_new(builder.finish())
+export path_parent(value: Path) -> Path:
+    text = value.to_text()
+    view = text.as_view()
+    index: UInt64 = view.len()
+    while index > 0:
+        index = index - 1
+        if view.byte(index) == 47:
+            return path_new(view.slice_bytes(0, index).to_text())
+    path_new("")
+
+export path_basename(value: Path) -> Text:
+    text = value.to_text()
+    parent_path = path_parent(value)
+    parent = parent_path.to_text()
+    view = text.as_view()
+    view.slice_bytes(parent.len() + 1, text.len() - parent.len() - 1).to_text()
+
+export path_normalize(value: Text) -> Text:
+    builder = TextBuilder.new()
+    index: UInt64 = 0
+    slash: Bool = false
+    while index < value.len():
+        byte = value.byte(index)
+        if byte == 47:
+            if not slash:
+                builder.append_byte(byte)
+            slash = true
+        else:
+            builder.append_byte(byte)
+            slash = false
+        index = index + 1
+    builder.finish()
+export fs_write_text(path: Path, value: Text) -> Result[Unit,FsError]:
+    fs.write_text(path, value)
+
+export fs_open_read(path: Path) -> Result[FileReader,FsError]:
+    fs.open_read(path)
+
+export fs_open_write(path: Path) -> Result[FileReader,FsError]:
+    fs.open_write(path)
+
+export fs_read_chunk(stream: FileReader, size: UInt64) -> Result[Bytes,FsError]:
+    fs.read_chunk(stream, size)
+
+export fs_write_chunk(stream: FileReader, value: BytesView) -> Result[Unit,FsError]:
+    fs.write_chunk(stream, value)
+
+export fs_close_read(stream: FileReader) -> Result[Unit,FsError]:
+    fs.close(stream)
+
+export fs_close_write(stream: FileReader) -> Result[Unit,FsError]:
+    fs.close(stream)

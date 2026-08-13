@@ -1,0 +1,5951 @@
+{
+  "adversarial_negatives": {
+    "denominator": 300,
+    "passed": 300,
+    "results": [
+      {
+        "case_id": "negative00:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative00:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative00:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative00:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative00:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative00:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative00:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative00:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative00:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative01:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative01:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative01:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative01:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative01:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative01:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative01:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative01:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative01:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative02:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative02:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative02:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative02:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative02:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative02:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative02:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative02:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative02:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative03:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative03:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative03:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative03:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative03:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative03:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative03:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative03:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative03:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative04:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative04:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative04:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative04:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative04:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative04:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative04:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative04:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative04:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative05:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative05:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative05:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative05:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative05:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative05:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative05:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative05:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative05:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative06:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative06:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative06:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative06:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative06:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative06:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative06:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative06:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative06:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative07:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative07:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative07:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative07:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative07:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative07:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative07:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative07:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative07:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative08:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative08:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative08:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative08:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative08:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative08:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative08:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative08:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative08:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative09:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative09:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative09:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative09:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative09:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative09:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative09:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative09:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative09:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative10:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative10:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative10:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative10:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative10:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative10:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative10:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative10:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative10:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative11:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative11:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative11:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative11:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative11:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative11:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative11:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative11:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative11:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative12:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative12:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative12:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative12:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative12:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative12:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative12:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative12:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative12:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative13:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative13:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative13:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative13:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative13:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative13:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative13:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative13:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative13:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative14:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative14:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative14:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative14:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative14:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative14:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative14:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative14:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative14:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative15:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative15:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative15:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative15:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative15:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative15:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative15:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative15:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative15:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative16:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative16:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative16:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative16:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative16:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative16:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative16:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative16:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative16:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative17:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative17:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative17:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative17:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative17:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative17:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative17:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative17:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative17:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative18:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative18:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative18:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative18:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative18:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative18:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative18:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative18:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative18:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative19:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative19:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative19:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative19:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative19:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative19:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative19:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative19:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative19:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative20:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative20:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative20:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative20:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative20:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative20:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative20:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative20:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative20:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative21:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative21:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative21:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative21:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative21:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative21:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative21:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative21:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative21:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative22:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative22:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative22:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative22:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative22:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative22:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative22:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative22:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative22:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative23:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative23:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative23:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative23:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative23:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative23:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative23:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative23:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative23:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative24:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative24:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative24:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative24:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative24:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative24:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative24:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative24:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative24:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative25:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative25:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative25:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative25:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative25:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative25:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative25:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative25:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative25:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative26:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative26:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative26:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative26:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative26:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative26:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative26:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative26:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative26:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative27:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative27:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative27:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative27:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative27:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative27:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative27:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative27:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative27:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative28:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative28:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative28:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative28:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative28:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative28:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative28:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative28:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative28:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "negative29:00:UnknownBinding",
+        "detected": true,
+        "expected_code": "UnknownBinding",
+        "observed_codes": [
+          "CallNonCallable",
+          "UnknownBinding"
+        ]
+      },
+      {
+        "case_id": "negative29:01:UnknownType",
+        "detected": true,
+        "expected_code": "UnknownType",
+        "observed_codes": [
+          "UnknownType"
+        ]
+      },
+      {
+        "case_id": "negative29:02:ArgumentTypeMismatch",
+        "detected": true,
+        "expected_code": "ArgumentTypeMismatch",
+        "observed_codes": [
+          "ArgumentTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative29:03:ReturnTypeMismatch",
+        "detected": true,
+        "expected_code": "ReturnTypeMismatch",
+        "observed_codes": [
+          "ReturnTypeMismatch"
+        ]
+      },
+      {
+        "case_id": "negative29:04:NonExhaustiveMatch",
+        "detected": true,
+        "expected_code": "NonExhaustiveMatch",
+        "observed_codes": [
+          "NonExhaustiveMatch"
+        ]
+      },
+      {
+        "case_id": "negative29:05:EffectInPureFunction",
+        "detected": true,
+        "expected_code": "EffectInPureFunction",
+        "observed_codes": [
+          "EffectInPureFunction"
+        ]
+      },
+      {
+        "case_id": "negative29:06:CapabilityEscalation",
+        "detected": true,
+        "expected_code": "CapabilityEscalation",
+        "observed_codes": [
+          "CapabilityEscalation"
+        ]
+      },
+      {
+        "case_id": "negative29:07:EffectNotDeclared",
+        "detected": true,
+        "expected_code": "EffectNotDeclared",
+        "observed_codes": [
+          "EffectNotDeclared"
+        ]
+      },
+      {
+        "case_id": "negative29:08:PackageCycle",
+        "detected": true,
+        "expected_code": "PackageCycle",
+        "observed_codes": [
+          "PackageCycle"
+        ]
+      },
+      {
+        "case_id": "duplicate00:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate01:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate02:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate03:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate04:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate05:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate06:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate07:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate08:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate09:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate10:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate11:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate12:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate13:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate14:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate15:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate16:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate17:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate18:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate19:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate20:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate21:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate22:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate23:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate24:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate25:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate26:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate27:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate28:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      },
+      {
+        "case_id": "duplicate29:09:DuplicateDeclaration",
+        "detected": true,
+        "expected_code": "DuplicateDeclaration",
+        "observed_codes": [
+          "DuplicateDeclaration"
+        ]
+      }
+    ]
+  },
+  "baseline": {
+    "current-python-sidecar": {
+      "assertion_passes": 120,
+      "assertions": 120,
+      "program_passes": 40,
+      "programs": 40,
+      "role": "external executable reference; sidecar not a runtime sandbox"
+    },
+    "maximal-python-profile": {
+      "admitted_programs": 0,
+      "diagnostic_counts": {
+        "MissingParameterType": 40,
+        "MissingReturnType": 40
+      },
+      "programs": 40,
+      "role": "unmodified external Python references tested for strict-profile admission"
+    },
+    "meldra-closed": {
+      "assertion_passes": 120,
+      "assertions": 120,
+      "program_passes": 40,
+      "programs": 40,
+      "role": "repository-authored translation checked against external tests"
+    }
+  },
+  "behavior_changes": {
+    "denominator": 200,
+    "passed": 200,
+    "results": [
+      {
+        "change_id": "mbpp-014:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-014",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-014:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-014",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-014:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-014",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-014:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-014",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-014:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-014",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-017:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-017",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-017:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-017",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-017:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-017",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-017:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-017",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-017:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-017",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-059:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-059",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-059:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-059",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-059:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-059",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-059:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-059",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-059:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-059",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-072:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-072",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-072:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-072",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-072:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-072",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-072:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-072",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-072:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-072",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-077:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-077",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-077:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-077",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-077:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-077",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-077:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-077",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-077:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-077",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-080:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-080",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-080:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-080",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-080:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-080",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-080:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-080",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-080:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-080",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-084:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-084",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-084:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-084",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-084:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-084",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-084:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-084",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-084:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-084",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-086:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-086",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-086:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-086",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-086:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-086",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-086:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-086",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-086:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-086",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-089:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-089",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-089:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-089",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-089:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-089",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-089:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-089",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-089:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-089",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-093:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-093",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-093:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-093",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-093:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-093",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-093:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-093",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-093:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-093",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-103:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-103",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-103:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-103",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-103:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-103",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-103:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-103",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-103:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-103",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-127:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-127",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-127:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-127",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-127:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-127",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-127:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-127",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-127:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-127",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-135:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-135",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-135:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-135",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-135:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-135",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-135:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-135",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-135:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-135",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-138:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-138",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-138:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-138",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-138:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-138",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-138:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-138",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-138:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-138",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-162:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-162",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-162:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-162",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-162:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-162",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-162:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-162",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-162:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-162",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-171:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-171",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-171:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-171",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-171:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-171",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-171:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-171",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-171:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-171",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-227:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-227",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-227:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-227",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-227:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-227",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-227:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-227",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-227:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-227",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-228:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-228",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-228:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-228",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-228:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-228",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-228:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-228",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-228:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-228",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-234:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-234",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-234:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-234",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-234:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-234",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-234:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-234",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-234:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-234",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-260:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-260",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-260:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-260",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-260:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-260",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-260:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-260",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-260:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-260",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-266:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-266",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-266:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-266",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-266:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-266",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-266:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-266",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-266:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-266",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-268:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-268",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-268:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-268",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-268:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-268",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-268:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-268",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-268:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-268",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-274:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-274",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-274:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-274",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-274:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-274",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-274:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-274",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-274:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-274",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-279:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-279",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-279:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-279",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-279:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-279",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-279:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-279",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-279:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-279",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-292:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-292",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-292:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-292",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-292:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-292",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-292:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-292",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-292:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-292",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-309:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-309",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-309:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-309",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-309:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-309",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-309:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-309",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-309:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-309",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-389:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-389",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-389:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-389",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-389:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-389",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-389:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-389",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-389:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-389",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-397:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-397",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-397:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-397",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-397:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-397",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-397:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-397",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-397:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-397",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-404:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-404",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-404:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-404",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-404:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-404",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-404:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-404",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-404:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-404",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-406:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-406",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-406:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-406",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-406:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-406",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-406:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-406",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-406:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-406",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-435:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-435",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-435:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-435",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-435:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-435",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-435:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-435",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-435:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-435",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-441:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-441",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-441:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-441",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-441:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-441",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-441:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-441",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-441:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-441",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-452:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-452",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-452:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-452",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-452:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-452",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-452:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-452",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-452:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-452",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-455:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-455",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-455:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-455",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-455:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-455",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-455:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-455",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-455:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-455",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-458:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-458",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-458:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-458",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-458:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-458",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-458:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-458",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-458:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-458",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-555:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-555",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-555:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-555",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-555:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-555",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-555:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-555",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-555:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-555",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-577:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-577",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-577:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-577",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-577:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-577",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-577:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-577",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-577:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-577",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-600:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-600",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-600:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-600",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-600:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-600",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-600:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-600",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-600:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-600",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-637:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-637",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-637:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-637",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-637:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-637",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-637:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-637",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-637:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-637",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-762:mutation-0",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_0",
+        "program_id": "mbpp-762",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-762:mutation-1",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_1",
+        "program_id": "mbpp-762",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-762:mutation-2",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_2",
+        "program_id": "mbpp-762",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-762:mutation-3",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_3",
+        "program_id": "mbpp-762",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      },
+      {
+        "change_id": "mbpp-762:mutation-4",
+        "meldra_acceptance_rejected": true,
+        "meldra_implementation_changed": true,
+        "meldra_interface_preserved": true,
+        "mutation": "output_mutation_4",
+        "program_id": "mbpp-762",
+        "python_acceptance_rejected": true,
+        "status": "DETECTED_BY_BOTH"
+      }
+    ]
+  },
+  "decision": "NO_GO_LANGUAGE_ALPHA",
+  "domains": [
+    "authorization",
+    "cli",
+    "configuration-validation",
+    "data-transformation",
+    "event-processing",
+    "inventory",
+    "notification-service",
+    "plugin-like-dispatch",
+    "pricing",
+    "small-workflow"
+  ],
+  "evidence_level": "EXTERNAL_SPECS_TESTS_INTERNAL_MELDRA_TRANSLATIONS",
+  "freeze": {
+    "acceptance_sha256": "a0d0f1d433823c0bd4a2707c19be597298e149801a55e17e5aa41685599534aa",
+    "corpus_sha256": "180acace2936bf63eb39aa331940e21f517b042e958c88111d91f2071288ad7f",
+    "lock_sha256": "8e7bd1ac8fff105fea9fbe7a31918369b5a03c50c8785021d2c37d1e0a2927fe",
+    "locked_before_frontend_hardening": true,
+    "protocol_sha256": "29b4401c31871f219554985a253c80757ee3bdfb718d052fea4eabd41d0df1c7"
+  },
+  "limitations": [
+    "MBPP prompts, Python references, and acceptance tests are external and hand-verified by the source dataset; Meldra translations are not independently authored.",
+    "The ten application-domain labels are deterministic adapters, not labels supplied by MBPP authors.",
+    "The 200 behavior changes and 300 negatives are generated mutation/template checks, not independent author samples.",
+    "Acceptance tests are digest-locked against compiler changes but are repository-visible, not secret held-out tests."
+  ],
+  "primary_external_gate_status": "PARTIAL",
+  "programs": [
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10,
+            8,
+            6
+          ],
+          "expected": 240
+        },
+        {
+          "arguments": [
+            3,
+            2,
+            2
+          ],
+          "expected": 6
+        },
+        {
+          "arguments": [
+            1,
+            2,
+            1
+          ],
+          "expected": 1
+        }
+      ],
+      "domain_adapter": "cli",
+      "entry_point": "find_Volume",
+      "meldra_source_sha256": "5970869aec5db2aee07f050836a2c1bc2c953f55abc9cc9dd0563676b5ac9ddb",
+      "parameters": [
+        "l",
+        "b",
+        "h"
+      ],
+      "program_id": "mbpp-014",
+      "prompt": "Write a python function to find the volume of a triangular prism.",
+      "python_reference_sha256": "08e66ddffb81843877dfb41e7975592d304dda8b3db952fc55434b0b01a70708",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 14
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 40
+        },
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 20
+        },
+        {
+          "arguments": [
+            4
+          ],
+          "expected": 16
+        }
+      ],
+      "domain_adapter": "pricing",
+      "entry_point": "square_perimeter",
+      "meldra_source_sha256": "3c29c268b48de80a57f73d6b8115e7a52ebd06ba1a9911e3a1b9122bebc38add",
+      "parameters": [
+        "a"
+      ],
+      "program_id": "mbpp-017",
+      "prompt": "Write a function that returns the perimeter of a square given its side length as input.",
+      "python_reference_sha256": "9f5a1ee0c1b8e0fb061f5f93938aafae628f703927d9990e7256c5f620d844a9",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 17
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 65
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 280
+        },
+        {
+          "arguments": [
+            15
+          ],
+          "expected": 645
+        }
+      ],
+      "domain_adapter": "authorization",
+      "entry_point": "is_octagonal",
+      "meldra_source_sha256": "5694b538f04faa2a3ac964aabbe930c59025884b74a3e6dc14f0ca78087c7803",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-059",
+      "prompt": "Write a function to find the nth octagonal number.",
+      "python_reference_sha256": "4d5a84f8cea35b2749fb20f9d825b31ec7e9e6b0586684edc0766e170aed2409",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 59
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            15
+          ],
+          "expected": true
+        }
+      ],
+      "domain_adapter": "inventory",
+      "entry_point": "dif_Square",
+      "meldra_source_sha256": "507d0c689da7ed1bd73ff72dae30142f6aeaad4c86deb04b025f6f637baa07e8",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-072",
+      "prompt": "Write a python function to check whether the given number can be represented as the difference of two squares or not.",
+      "python_reference_sha256": "758a0b820b8bd7bd5c1a8ee5c83ae6af20f578d52f9137418e5e81ae4f2ff836",
+      "return_type": "Bool",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 72
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            12345
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            1212112
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            1212
+          ],
+          "expected": false
+        }
+      ],
+      "domain_adapter": "small-workflow",
+      "entry_point": "is_Diff",
+      "meldra_source_sha256": "132f46862e7505c3bde8cb54d945cf5f88f0774d30e845ab2da07e1fd2d9ed42",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-077",
+      "prompt": "Write a python function to find whether a number is divisible by 11.",
+      "python_reference_sha256": "5949726780e1b749bb7647a3d79f592633f5251b7ef51d972635a6250068b1f5",
+      "return_type": "Bool",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 77
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 35
+        },
+        {
+          "arguments": [
+            6
+          ],
+          "expected": 56
+        },
+        {
+          "arguments": [
+            7
+          ],
+          "expected": 84
+        }
+      ],
+      "domain_adapter": "data-transformation",
+      "entry_point": "tetrahedral_number",
+      "meldra_source_sha256": "983beb59188e4f410e896f5934159092355a790febe36e55eeb7ac0dcdf455af",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-080",
+      "prompt": "Write a function to find the nth tetrahedral number.",
+      "python_reference_sha256": "3e5c152cc6d4abaa15f6a0f249e2b706706617249bbb984aaff1a5d45b3c1a29",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 80
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 6
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": 1
+        },
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 2
+        }
+      ],
+      "domain_adapter": "event-processing",
+      "entry_point": "sequence",
+      "meldra_source_sha256": "c3856990d869e2b71b6e53976fb1a22e1c7197055a257bc007f2ea7e4127ae73",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-084",
+      "prompt": "Write a function to find the nth number in the newman conway sequence.",
+      "python_reference_sha256": "181a3064b04531db52f7a0761ac75da24b9e6c51f5ac08e5b63bdc49059e3366",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 84
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 271
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": 7
+        },
+        {
+          "arguments": [
+            9
+          ],
+          "expected": 217
+        }
+      ],
+      "domain_adapter": "plugin-like-dispatch",
+      "entry_point": "centered_hexagonal_number",
+      "meldra_source_sha256": "3d326097d553261a4c9e6ac803afaa16c9164c0d3f74800f5da1d38f714c03e2",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-086",
+      "prompt": "Write a function to find nth centered hexagonal number.",
+      "python_reference_sha256": "766e67818b9102295a7912385c0fc44280ac7609acba8867b14071739fa7b9f2",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 86
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            11
+          ],
+          "expected": 10
+        },
+        {
+          "arguments": [
+            7
+          ],
+          "expected": 6
+        },
+        {
+          "arguments": [
+            12
+          ],
+          "expected": 11
+        }
+      ],
+      "domain_adapter": "configuration-validation",
+      "entry_point": "closest_num",
+      "meldra_source_sha256": "add029ddb0772080aae7f706b280d75d3d1f45849934ded73b0248355a218b3a",
+      "parameters": [
+        "N"
+      ],
+      "program_id": "mbpp-089",
+      "prompt": "Write a function to find the closest smaller number than n.",
+      "python_reference_sha256": "e5103f7aa5981888ed0df74fc6ca906494657aa76d1d363bcd1ec4b427811f5b",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 89
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            3,
+            4
+          ],
+          "expected": 81
+        },
+        {
+          "arguments": [
+            2,
+            3
+          ],
+          "expected": 8
+        },
+        {
+          "arguments": [
+            5,
+            5
+          ],
+          "expected": 3125
+        }
+      ],
+      "domain_adapter": "notification-service",
+      "entry_point": "power",
+      "meldra_source_sha256": "be9eae2fb1e5737d6e8b5871c326863f3670ae969afab495d8306ba4c95f74bc",
+      "parameters": [
+        "a",
+        "b"
+      ],
+      "program_id": "mbpp-093",
+      "prompt": "Write a function to calculate the value of 'a' to the power 'b'.",
+      "python_reference_sha256": "b2a9231648e576a0c8a57c6de4316e2a78fb494d537aa2c7aafb21bb0659c9e9",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 93
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            3,
+            1
+          ],
+          "expected": 4
+        },
+        {
+          "arguments": [
+            4,
+            1
+          ],
+          "expected": 11
+        },
+        {
+          "arguments": [
+            5,
+            3
+          ],
+          "expected": 26
+        }
+      ],
+      "domain_adapter": "cli",
+      "entry_point": "eulerian_num",
+      "meldra_source_sha256": "00e628d667e40a42d4e04098053f970a93b4b0f166d3c2569a9856e65f55aa13",
+      "parameters": [
+        "n",
+        "m"
+      ],
+      "program_id": "mbpp-103",
+      "prompt": "Write a function to find the Eulerian number a(n, m).",
+      "python_reference_sha256": "8909e2c8dde94058f072f828fbc228abb43c43640138d9773b73bffe4f624e49",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 103
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10,
+            20
+          ],
+          "expected": 200
+        },
+        {
+          "arguments": [
+            5,
+            10
+          ],
+          "expected": 50
+        },
+        {
+          "arguments": [
+            4,
+            8
+          ],
+          "expected": 32
+        }
+      ],
+      "domain_adapter": "pricing",
+      "entry_point": "multiply_int",
+      "meldra_source_sha256": "4b6f117595bc3427b5197948e78ad02482e9073a2c79e08d7624d6b61958bf05",
+      "parameters": [
+        "x",
+        "y"
+      ],
+      "program_id": "mbpp-127",
+      "prompt": "Write a function to multiply two integers.",
+      "python_reference_sha256": "c03f696ab5bd0d980e1f188d3852acc76aed3526d759c5e0c7630639eaaf8dde",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 127
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 190
+        },
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 45
+        },
+        {
+          "arguments": [
+            7
+          ],
+          "expected": 91
+        }
+      ],
+      "domain_adapter": "authorization",
+      "entry_point": "hexagonal_num",
+      "meldra_source_sha256": "26f4a5ee6e53a9b16aff450b565383df1ccf45edfcce007e8ffcca40221b69f8",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-135",
+      "prompt": "Write a function to find the nth hexagonal number.",
+      "python_reference_sha256": "060dcf0499e19f61130272b3cc7d67025b2bb6428cf2bacf8040be1246b5faf7",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 135
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            7
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            14
+          ],
+          "expected": true
+        }
+      ],
+      "domain_adapter": "inventory",
+      "entry_point": "is_Sum_Of_Powers_Of_Two",
+      "meldra_source_sha256": "188e63f918f841763ec2f6520310481b3048873f291e060ec488a6c6f8b40016",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-138",
+      "prompt": "Write a python function to check whether the given number can be represented as sum of non-zero powers of 2 or not.",
+      "python_reference_sha256": "3a870dc6fa2b20995c8d2328180f0e6414da95e1e20fa22b7a680283e250dd4f",
+      "return_type": "Bool",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 138
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            6
+          ],
+          "expected": 12
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 30
+        },
+        {
+          "arguments": [
+            9
+          ],
+          "expected": 25
+        }
+      ],
+      "domain_adapter": "small-workflow",
+      "entry_point": "sum_series",
+      "meldra_source_sha256": "52c04be60cf037c2f34461a57d9a09de3d679cb6a8f1dff9467488ca8b361182",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-162",
+      "prompt": "Write a function to calculate the sum (n - 2*i) from i=0 to n // 2, for instance n + (n-2) + (n-4)... (until n-x =< 0).",
+      "python_reference_sha256": "a03d91fcc850b31db5614b45666fbc0017b84d4ac25b636b8ade51deec9a4de9",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 162
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 25
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 50
+        },
+        {
+          "arguments": [
+            15
+          ],
+          "expected": 75
+        }
+      ],
+      "domain_adapter": "data-transformation",
+      "entry_point": "perimeter_pentagon",
+      "meldra_source_sha256": "0d20027020d28c5520b557e7b3deae27c5f7defbd2f81299f617bf63b77b3279",
+      "parameters": [
+        "a"
+      ],
+      "program_id": "mbpp-171",
+      "prompt": "Write a function to find the perimeter of a regular pentagon from the length of its sides.",
+      "python_reference_sha256": "7db0cb54f9969331cbdf559525a2203f76ed5878a16489b45a96af53101fba55",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 171
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10,
+            20,
+            0
+          ],
+          "expected": 0
+        },
+        {
+          "arguments": [
+            19,
+            15,
+            18
+          ],
+          "expected": 15
+        },
+        {
+          "arguments": [
+            -10,
+            -20,
+            -30
+          ],
+          "expected": -30
+        }
+      ],
+      "domain_adapter": "event-processing",
+      "entry_point": "min_of_three",
+      "meldra_source_sha256": "01028a0ba9bb074ae863e71d77fa29bf0e114cfd6408b9c72c127d2043905b83",
+      "parameters": [
+        "a",
+        "b",
+        "c"
+      ],
+      "program_id": "mbpp-227",
+      "prompt": "Write a function to find minimum of three numbers.",
+      "python_reference_sha256": "f9e6f3bfb8a0969d1fe01111013eec1989bd6e55a78a3e8ad49a4905f18212e6",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 227
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            4,
+            1,
+            2
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            17,
+            2,
+            4
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            39,
+            4,
+            6
+          ],
+          "expected": false
+        }
+      ],
+      "domain_adapter": "plugin-like-dispatch",
+      "entry_point": "all_Bits_Set_In_The_Given_Range",
+      "meldra_source_sha256": "9a9dddfb0232e689b87b4df731705dedb6a7e037ddcbe479788cb8159ca127af",
+      "parameters": [
+        "n",
+        "l",
+        "r"
+      ],
+      "program_id": "mbpp-228",
+      "prompt": "Write a python function to check whether all the bits are unset in the given range or not.",
+      "python_reference_sha256": "7e5e5ad985b382b9d118d9f6db99838833fbb1abef1083c10026340f6f3c880f",
+      "return_type": "Bool",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 228
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 27
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": 8
+        },
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 125
+        }
+      ],
+      "domain_adapter": "configuration-validation",
+      "entry_point": "volume_cube",
+      "meldra_source_sha256": "0151e1a7bf11d22bc2a78296fa3d78cbbc49ca56091615a553ebe23eda2402fb",
+      "parameters": [
+        "l"
+      ],
+      "program_id": "mbpp-234",
+      "prompt": "Write a function to find the volume of a cube given its side length.",
+      "python_reference_sha256": "ed05b1504a0b88af5377ee4e393bc3ae640bde6764a9ddd17084dc66092cc623",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 234
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 7
+        },
+        {
+          "arguments": [
+            4
+          ],
+          "expected": 17
+        },
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 41
+        }
+      ],
+      "domain_adapter": "notification-service",
+      "entry_point": "newman_prime",
+      "meldra_source_sha256": "52befc86254d9cac4eb6e76bb9d7e0473f3ab577b16a0a5cfbced99b6cb9b37c",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-260",
+      "prompt": "Write a function to find the nth newman–shanks–williams prime number.",
+      "python_reference_sha256": "947b5de75109a08c1b67ecd8523e1a91214f923a3b575dea4b2683644b9c5c94",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 260
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 100
+        },
+        {
+          "arguments": [
+            9
+          ],
+          "expected": 324
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 400
+        }
+      ],
+      "domain_adapter": "cli",
+      "entry_point": "lateralsurface_cube",
+      "meldra_source_sha256": "d0e8ee8fb4f5f2f41ee2d4312c8a5181dd317b8714b20afcdaccafcd0562fc1f",
+      "parameters": [
+        "l"
+      ],
+      "program_id": "mbpp-266",
+      "prompt": "Write a function to find the lateral surface area of a cube given its side length.",
+      "python_reference_sha256": "1b512e72ed20b810ca3299a9aba3fd4a237f6d11e02d8e89f8f48ec0a5821678",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 266
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 37
+        },
+        {
+          "arguments": [
+            4
+          ],
+          "expected": 73
+        },
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 121
+        }
+      ],
+      "domain_adapter": "pricing",
+      "entry_point": "find_star_num",
+      "meldra_source_sha256": "fd3bd1abcb48cccab83f560afc9773b2189135f62f9d5e30f78c0d5dfb145f0d",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-268",
+      "prompt": "Write a function to find the n'th star number.",
+      "python_reference_sha256": "df498a84ea032e4b368f3c8bd400a9170418254fbc085ae0661d5d7ef267d410",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 268
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            4
+          ],
+          "expected": 8
+        },
+        {
+          "arguments": [
+            6
+          ],
+          "expected": 32
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": 2
+        }
+      ],
+      "domain_adapter": "authorization",
+      "entry_point": "even_binomial_Coeff_Sum",
+      "meldra_source_sha256": "b2fb8ea75c0de403fab89da2fe36da6df636be12fb2cec24e4d72183e9ca1bf5",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-274",
+      "prompt": "Write a python function that takes in a positive integer n and finds the sum of even index binomial coefficients.",
+      "python_reference_sha256": "e49e3a8f04495bd5c3115ec75be2049dcfd2b0d7b3f6af3f73ca508b69d9263c",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 274
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 27
+        },
+        {
+          "arguments": [
+            7
+          ],
+          "expected": 175
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 370
+        }
+      ],
+      "domain_adapter": "inventory",
+      "entry_point": "is_num_decagonal",
+      "meldra_source_sha256": "2f7733a9621eca1ac42edbfee686d390a155438f3af4be9fc154b1b2e14d4c15",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-279",
+      "prompt": "Write a function to find the nth decagonal number.",
+      "python_reference_sha256": "9419d3a2118c3d5f26855b1a6c5cd94d3ad60ff016e42a4c9b3a7fd397f2209f",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 279
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10,
+            3
+          ],
+          "expected": 3
+        },
+        {
+          "arguments": [
+            4,
+            2
+          ],
+          "expected": 2
+        },
+        {
+          "arguments": [
+            20,
+            5
+          ],
+          "expected": 4
+        }
+      ],
+      "domain_adapter": "small-workflow",
+      "entry_point": "find",
+      "meldra_source_sha256": "57a9800ae4f19c6ab64f5fe905c6901021d636b64f65bfebc5e8f91393900046",
+      "parameters": [
+        "n",
+        "m"
+      ],
+      "program_id": "mbpp-292",
+      "prompt": "Write a python function to find quotient of two numbers (rounded down to the nearest integer).",
+      "python_reference_sha256": "5215e59d88db31629e7d025e65e62e40a4afc8e4003e19a80690a24be51aa1d8",
+      "return_type": "Int",
+      "source_file": "Ellen's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 292
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5,
+            10
+          ],
+          "expected": 10
+        },
+        {
+          "arguments": [
+            -1,
+            -2
+          ],
+          "expected": -1
+        },
+        {
+          "arguments": [
+            9,
+            7
+          ],
+          "expected": 9
+        }
+      ],
+      "domain_adapter": "data-transformation",
+      "entry_point": "maximum",
+      "meldra_source_sha256": "3d594759cff8af274ecdc78422c8811923496380c6ffbe10affe537fd9dc2caa",
+      "parameters": [
+        "a",
+        "b"
+      ],
+      "program_id": "mbpp-309",
+      "prompt": "Write a python function to find the maximum of two numbers.",
+      "python_reference_sha256": "3eb2fc696a239595b4ac68549905f2510102010aa870dc355aacb82960a8a663",
+      "return_type": "Int",
+      "source_file": "Ellen's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 309
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            9
+          ],
+          "expected": 76
+        },
+        {
+          "arguments": [
+            4
+          ],
+          "expected": 7
+        },
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 4
+        }
+      ],
+      "domain_adapter": "event-processing",
+      "entry_point": "find_lucas",
+      "meldra_source_sha256": "6ccbd761c88e05088eb0a93bbfdef552b188027213107d01862c8c1b9e9a3014",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-389",
+      "prompt": "Write a function to find the n'th lucas number.",
+      "python_reference_sha256": "cede65a6ac8d35c88153faa0d502eafe71f1b06816060d0f8cd282ff2dba7a9f",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 389
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            25,
+            55,
+            65
+          ],
+          "expected": 55
+        },
+        {
+          "arguments": [
+            20,
+            10,
+            30
+          ],
+          "expected": 20
+        },
+        {
+          "arguments": [
+            15,
+            45,
+            75
+          ],
+          "expected": 45
+        }
+      ],
+      "domain_adapter": "plugin-like-dispatch",
+      "entry_point": "median_numbers",
+      "meldra_source_sha256": "5eefd8e2bf3058d644b0062c626afb1f615d97d5fef9214b0c6245555d6f7d8a",
+      "parameters": [
+        "a",
+        "b",
+        "c"
+      ],
+      "program_id": "mbpp-397",
+      "prompt": "Write a function to find the median of three numbers.",
+      "python_reference_sha256": "fd3725d25a549987ec8196c838f61e4603448446c99dd5d518b4e8b05c4b9d15",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 397
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            1,
+            2
+          ],
+          "expected": 1
+        },
+        {
+          "arguments": [
+            -5,
+            -4
+          ],
+          "expected": -5
+        },
+        {
+          "arguments": [
+            0,
+            0
+          ],
+          "expected": 0
+        }
+      ],
+      "domain_adapter": "configuration-validation",
+      "entry_point": "minimum",
+      "meldra_source_sha256": "d55dc21baddc7bfc97100f70cae7d2cc5406096c1386bf740255397c6fdda826",
+      "parameters": [
+        "a",
+        "b"
+      ],
+      "program_id": "mbpp-404",
+      "prompt": "Write a python function to find the minimum of two numbers.",
+      "python_reference_sha256": "66543a1385797f395d6f1e95d9244d481a1a3c58d46f37349b073fc615ee2107",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 404
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            12
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            7
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": false
+        }
+      ],
+      "domain_adapter": "notification-service",
+      "entry_point": "find_Parity",
+      "meldra_source_sha256": "f6bdedade497b00b24701bdc332900cba992815ca437d96d04fd9ee29b7b3dd2",
+      "parameters": [
+        "x"
+      ],
+      "program_id": "mbpp-406",
+      "prompt": "Write a python function to find whether the parity of a given number is odd.",
+      "python_reference_sha256": "0162f9d4577ea473a1983e5eb53a03de81ee902bfeefa9da4d0742c0113ddb76",
+      "return_type": "Bool",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 406
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            123
+          ],
+          "expected": 3
+        },
+        {
+          "arguments": [
+            25
+          ],
+          "expected": 5
+        },
+        {
+          "arguments": [
+            30
+          ],
+          "expected": 0
+        }
+      ],
+      "domain_adapter": "cli",
+      "entry_point": "last_Digit",
+      "meldra_source_sha256": "6cfcb88cb1e01f793235ee9d86351e507d3cf2c1672c31cd7f204fefead382bb",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-435",
+      "prompt": "Write a python function to find the last digit of a given number.",
+      "python_reference_sha256": "2eb091e5ad1a1d2be6d8d6ba5cc27e7b2573e9f462236a36a6d7191422e48b69",
+      "return_type": "Int",
+      "source_file": "charlessutton@: Benchmark Questions Verification V2.ipynb",
+      "task_id": 435
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 150
+        },
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 54
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 600
+        }
+      ],
+      "domain_adapter": "pricing",
+      "entry_point": "surfacearea_cube",
+      "meldra_source_sha256": "8defab918f0f15ff8cba6d291642d2405be734976c47ef4fc54568e7338682c8",
+      "parameters": [
+        "l"
+      ],
+      "program_id": "mbpp-441",
+      "prompt": "Write a function to find the surface area of a cube of a given size.",
+      "python_reference_sha256": "f4b4e90adb6ea4c05a122c88b35c76cac4e40c189b11460ac3517b4da265bba2",
+      "return_type": "Int",
+      "source_file": "charlessutton@: Benchmark Questions Verification V2.ipynb",
+      "task_id": 441
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            1500,
+            1200
+          ],
+          "expected": 0
+        },
+        {
+          "arguments": [
+            100,
+            200
+          ],
+          "expected": 100
+        },
+        {
+          "arguments": [
+            2000,
+            5000
+          ],
+          "expected": 3000
+        }
+      ],
+      "domain_adapter": "authorization",
+      "entry_point": "loss_amount",
+      "meldra_source_sha256": "0cd1bce0487a3e3129a5ab8fcd10f5cc2b86317fca78ee6ed2c02398e8aa2cdf",
+      "parameters": [
+        "actual_cost",
+        "sale_amount"
+      ],
+      "program_id": "mbpp-452",
+      "prompt": "Write a function that gives loss amount on a sale if the given amount has loss else return 0.",
+      "python_reference_sha256": "1683da9673fa2130e3c5d44f5c85ff03e5cab39a389492d872f708d4fa4dd369",
+      "return_type": "Int",
+      "source_file": "charlessutton@: Benchmark Questions Verification V2.ipynb",
+      "task_id": 452
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            6
+          ],
+          "expected": false
+        }
+      ],
+      "domain_adapter": "inventory",
+      "entry_point": "check_monthnumb_number",
+      "meldra_source_sha256": "380a83481c1f178d9542f93b4b475a0b050033d3009c9dd3430a8d78e3de9987",
+      "parameters": [
+        "monthnum2"
+      ],
+      "program_id": "mbpp-455",
+      "prompt": "Write a function to check whether the given month number contains 31 days or not.",
+      "python_reference_sha256": "335fc88487d1dc2baa35c70b448482fa627d2d61c4b7def947c772b1593713f6",
+      "return_type": "Bool",
+      "source_file": "charlessutton@: Benchmark Questions Verification V2.ipynb",
+      "task_id": 455
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10,
+            20
+          ],
+          "expected": 200
+        },
+        {
+          "arguments": [
+            10,
+            5
+          ],
+          "expected": 50
+        },
+        {
+          "arguments": [
+            4,
+            2
+          ],
+          "expected": 8
+        }
+      ],
+      "domain_adapter": "small-workflow",
+      "entry_point": "rectangle_area",
+      "meldra_source_sha256": "d1287720e51d9b275c8aab0e3672683285f008b26272ec727febaaf3988bba31",
+      "parameters": [
+        "l",
+        "b"
+      ],
+      "program_id": "mbpp-458",
+      "prompt": "Write a function to find the area of a rectangle.",
+      "python_reference_sha256": "f27aaf3283c278307181185a1695c0f8a84623301f68f8d8ce5d2b4889642e51",
+      "return_type": "Int",
+      "source_file": "charlessutton@: Benchmark Questions Verification V2.ipynb",
+      "task_id": 458
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 30
+        },
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 210
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": 6
+        }
+      ],
+      "domain_adapter": "data-transformation",
+      "entry_point": "difference",
+      "meldra_source_sha256": "be0c5aa548b92453f623227137adfaed8770f7bb56db7dfce7612571c0b0f826",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-555",
+      "prompt": "Write a python function to find the difference between the sum of cubes of the first n natural numbers and the sum of the first n natural numbers.",
+      "python_reference_sha256": "8c55b7db82cd2d90a72bc17099924f9d54bf8884add3bc92b17ac34eda03152d",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 555
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            4
+          ],
+          "expected": 4
+        },
+        {
+          "arguments": [
+            21
+          ],
+          "expected": 0
+        },
+        {
+          "arguments": [
+            30
+          ],
+          "expected": 0
+        }
+      ],
+      "domain_adapter": "event-processing",
+      "entry_point": "last_Digit_Factorial",
+      "meldra_source_sha256": "bf14ada283757159bf7d6e9bca8a864d2e7faaec18c03171d551a30d52505a2c",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-577",
+      "prompt": "Write a python function to find the last digit in factorial of a given number.",
+      "python_reference_sha256": "e95eaba81a677cc00318f5027043d08e14b037db4ee955049e79779ee78af0da",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 577
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            1
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            3
+          ],
+          "expected": false
+        }
+      ],
+      "domain_adapter": "plugin-like-dispatch",
+      "entry_point": "is_Even",
+      "meldra_source_sha256": "6dc3f2554d3c2c9a8b9ec709709191d3e14ed9aa78e2c45ad4b13ee710a22246",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-600",
+      "prompt": "Write a python function to check whether the given number is even or not.",
+      "python_reference_sha256": "a87a442fa0cdb37b379861157a2c94e6d4991c7757654180dd0c7b5b5ae62765",
+      "return_type": "Bool",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 600
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            1500,
+            1200
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            100,
+            100
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            2000,
+            5000
+          ],
+          "expected": false
+        }
+      ],
+      "domain_adapter": "configuration-validation",
+      "entry_point": "noprofit_noloss",
+      "meldra_source_sha256": "7eb57398269cf077f0a4ce94af5c4bb7b8c2bd426811ee93e12c3644f7405ac4",
+      "parameters": [
+        "actual_cost",
+        "sale_amount"
+      ],
+      "program_id": "mbpp-637",
+      "prompt": "Write a function to check whether the given amount has no profit and no loss",
+      "python_reference_sha256": "afa095b735e7ab3f4f3bfed76be6290699c31d4aa9dffcddb4f6beca3816ed2a",
+      "return_type": "Bool",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 637
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            6
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            12
+          ],
+          "expected": false
+        }
+      ],
+      "domain_adapter": "notification-service",
+      "entry_point": "check_monthnumber_number",
+      "meldra_source_sha256": "6f79f42eb44713036deb361785a550f7e9082033ff120719e622dd630eb13ef2",
+      "parameters": [
+        "monthnum3"
+      ],
+      "program_id": "mbpp-762",
+      "prompt": "Write a function to check whether the given month number contains 30 days or not. Months are given as number from 1 to 12.",
+      "python_reference_sha256": "8321515fb7a7152805c187258631c3901b83bbbed8737d5420717324aa60ec13",
+      "return_type": "Bool",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 762
+    }
+  ],
+  "schema_version": 1,
+  "source": {
+    "dataset": "Mostly Basic Python Problems sanitized subset",
+    "external_specs_and_tests": true,
+    "human_adjudicated_meldra_translations": false,
+    "meldra_implementations_external": false,
+    "python_references_from_external_dataset": true,
+    "source_group_count": 4,
+    "source_groups": [
+      "Benchmark Questions Verification V2.ipynb",
+      "Ellen's Copy of Benchmark Questions Verification V2.ipynb",
+      "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "charlessutton@: Benchmark Questions Verification V2.ipynb"
+    ]
+  },
+  "statistical_units": {
+    "acceptance_assertions": 120,
+    "adversarial_negatives": 300,
+    "behavior_changes": 200,
+    "domains": 10,
+    "external_spec_source_groups": 4,
+    "independent_meldra_implementation_authors": 0,
+    "paired_programs": 40
+  }
+}

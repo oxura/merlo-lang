@@ -1,0 +1,63 @@
+{
+  "interfaces": [
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "enum",
+      "module": "app.main",
+      "name": "AppError",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "5d92a5a2fca3eec1beaadbd8230c9495f0671f99ff0721fb2e712074ba80ee2f"
+    },
+    {
+      "capabilities": [
+        "console.write",
+        "fs.read"
+      ],
+      "effects": [
+        "console.write",
+        "fs.read"
+      ],
+      "kind": "task",
+      "module": "app.main",
+      "name": "main",
+      "parameters": [
+        [
+          "path",
+          "Path"
+        ]
+      ],
+      "return_type": "Result[Text,AppError]",
+      "revision_id": "14fcc3082b5beb9277276f9a431ce22974d76dd90e705e325358034579284bb5"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.search",
+      "name": "find",
+      "parameters": [
+        [
+          "lines",
+          "FileLines"
+        ],
+        [
+          "needle",
+          "Text"
+        ],
+        [
+          "ignore_case",
+          "Bool"
+        ],
+        [
+          "count_only",
+          "Bool"
+        ]
+      ],
+      "return_type": "Text",
+      "revision_id": "45a99fcfb3b14d3ec157f5117c8f9920b2ed1512f682e142bbfb4a399e2237af"
+    }
+  ],
+  "schema_version": 1
+}

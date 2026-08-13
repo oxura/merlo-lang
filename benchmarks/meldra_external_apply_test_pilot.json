@@ -1,0 +1,760 @@
+{
+  "apply_test_results": [
+    {
+      "apply": {
+        "attempted": true,
+        "changed_files": [
+          "src/pluggy/_manager.py"
+        ],
+        "error_kind": null,
+        "error_message": null,
+        "materialized": true,
+        "succeeded": true,
+        "world_revision_after": "b331dfcb7a8d426aaef79a4f27ab929b81b43052a412173becf285293a0bfd0f"
+      },
+      "infrastructure_errors": [],
+      "plan": {
+        "blocked_reasons": [],
+        "id": "chg_7133ed96475d2714",
+        "materialization_eligible": true,
+        "ready": true
+      },
+      "restoration": {
+        "attempted": true,
+        "error": null,
+        "source_digest_after": "d17436479a48361f15b43f2eef4e84b0548bf3700cdd97daa0a1fc007d052ee6",
+        "source_digest_before": "d17436479a48361f15b43f2eef4e84b0548bf3700cdd97daa0a1fc007d052ee6",
+        "source_unchanged": true,
+        "succeeded": true,
+        "temporary_workspace_removed": true
+      },
+      "revision_guard": {
+        "expected": "12ceba009bd85d0d60821c58a43d7c842fedf2cf1fd207ff16460d756417058f",
+        "matched": true,
+        "observed": "12ceba009bd85d0d60821c58a43d7c842fedf2cf1fd207ff16460d756417058f"
+      },
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:00",
+      "tests": {
+        "attempted": 1,
+        "commands": [
+          {
+            "argv": [
+              "/usr/bin/python",
+              "-c",
+              "import sys; sys.path.insert(0, 'src'); import pytest; raise SystemExit(pytest.main(['-q', '-p', 'no:cacheprovider']))"
+            ],
+            "infrastructure_error": null,
+            "returncode": 0,
+            "stderr": "",
+            "stdout": "........................................................................ [ 51%]\n.....................................................................    [100%]\n141 passed in 0.21s\n",
+            "successful": true,
+            "timed_out": false
+          }
+        ],
+        "infrastructure_errors": {
+          "denominator": 1,
+          "numerator": 0,
+          "rate": 0.0
+        },
+        "successful": true,
+        "timeouts": {
+          "denominator": 1,
+          "numerator": 0,
+          "rate": 0.0
+        }
+      }
+    },
+    {
+      "apply": {
+        "attempted": true,
+        "changed_files": [
+          "src/pluggy/__init__.py",
+          "src/pluggy/_hooks.py"
+        ],
+        "error_kind": null,
+        "error_message": null,
+        "materialized": true,
+        "succeeded": true,
+        "world_revision_after": "23d01dd674724c84a7f1f948e7df833254bc493def9bc19ad7b1cced3379bcfa"
+      },
+      "infrastructure_errors": [],
+      "plan": {
+        "blocked_reasons": [],
+        "id": "chg_0fc8e5149681dc1f",
+        "materialization_eligible": true,
+        "ready": true
+      },
+      "restoration": {
+        "attempted": true,
+        "error": null,
+        "source_digest_after": "d17436479a48361f15b43f2eef4e84b0548bf3700cdd97daa0a1fc007d052ee6",
+        "source_digest_before": "d17436479a48361f15b43f2eef4e84b0548bf3700cdd97daa0a1fc007d052ee6",
+        "source_unchanged": true,
+        "succeeded": true,
+        "temporary_workspace_removed": true
+      },
+      "revision_guard": {
+        "expected": "12ceba009bd85d0d60821c58a43d7c842fedf2cf1fd207ff16460d756417058f",
+        "matched": true,
+        "observed": "12ceba009bd85d0d60821c58a43d7c842fedf2cf1fd207ff16460d756417058f"
+      },
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:00",
+      "tests": {
+        "attempted": 1,
+        "commands": [
+          {
+            "argv": [
+              "/usr/bin/python",
+              "-c",
+              "import sys; sys.path.insert(0, 'src'); import pytest; raise SystemExit(pytest.main(['-q', '-p', 'no:cacheprovider']))"
+            ],
+            "infrastructure_error": null,
+            "returncode": 0,
+            "stderr": "",
+            "stdout": "........................................................................ [ 51%]\n.....................................................................    [100%]\n141 passed in 0.21s\n",
+            "successful": true,
+            "timed_out": false
+          }
+        ],
+        "infrastructure_errors": {
+          "denominator": 1,
+          "numerator": 0,
+          "rate": 0.0
+        },
+        "successful": true,
+        "timeouts": {
+          "denominator": 1,
+          "numerator": 0,
+          "rate": 0.0
+        }
+      }
+    },
+    {
+      "apply": {
+        "attempted": true,
+        "changed_files": [
+          "src/pluggy/__init__.py"
+        ],
+        "error_kind": null,
+        "error_message": null,
+        "materialized": true,
+        "succeeded": true,
+        "world_revision_after": "bf277c8ac646f80f8fbdc5ac8a5fe0456713aa7395b002113ab3a1fed15ff1ad"
+      },
+      "infrastructure_errors": [],
+      "plan": {
+        "blocked_reasons": [],
+        "id": "chg_e7f27a52f036bcd3",
+        "materialization_eligible": true,
+        "ready": true
+      },
+      "restoration": {
+        "attempted": true,
+        "error": null,
+        "source_digest_after": "d17436479a48361f15b43f2eef4e84b0548bf3700cdd97daa0a1fc007d052ee6",
+        "source_digest_before": "d17436479a48361f15b43f2eef4e84b0548bf3700cdd97daa0a1fc007d052ee6",
+        "source_unchanged": true,
+        "succeeded": true,
+        "temporary_workspace_removed": true
+      },
+      "revision_guard": {
+        "expected": "12ceba009bd85d0d60821c58a43d7c842fedf2cf1fd207ff16460d756417058f",
+        "matched": true,
+        "observed": "12ceba009bd85d0d60821c58a43d7c842fedf2cf1fd207ff16460d756417058f"
+      },
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:00",
+      "tests": {
+        "attempted": 1,
+        "commands": [
+          {
+            "argv": [
+              "/usr/bin/python",
+              "-c",
+              "import sys; sys.path.insert(0, 'src'); import pytest; raise SystemExit(pytest.main(['-q', '-p', 'no:cacheprovider']))"
+            ],
+            "infrastructure_error": null,
+            "returncode": 0,
+            "stderr": "",
+            "stdout": "........................................................................ [ 51%]\n.....................................................................    [100%]\n141 passed in 0.21s\n",
+            "successful": true,
+            "timed_out": false
+          }
+        ],
+        "infrastructure_errors": {
+          "denominator": 1,
+          "numerator": 0,
+          "rate": 0.0
+        },
+        "successful": true,
+        "timeouts": {
+          "denominator": 1,
+          "numerator": 0,
+          "rate": 0.0
+        }
+      }
+    }
+  ],
+  "baseline": {
+    "argv": [
+      "/usr/bin/python",
+      "-c",
+      "import sys; sys.path.insert(0, 'src'); import pytest; raise SystemExit(pytest.main(['-q', '-p', 'no:cacheprovider']))"
+    ],
+    "passed_count": 141,
+    "returncode": 0,
+    "source_digest_after": "d17436479a48361f15b43f2eef4e84b0548bf3700cdd97daa0a1fc007d052ee6",
+    "source_digest_before": "d17436479a48361f15b43f2eef4e84b0548bf3700cdd97daa0a1fc007d052ee6",
+    "source_unchanged": true,
+    "stderr": "",
+    "stdout": "........................................................................ [ 51%]\n.....................................................................    [100%]\n141 passed in 0.23s\n",
+    "temporary_workspace_removed": true,
+    "timed_out": false
+  },
+  "case_execution": [
+    {
+      "baseline_passed_count": 141,
+      "passed_count": 141,
+      "passed_count_preserved": true,
+      "returncode": 0,
+      "returncode_zero": true,
+      "target": {
+        "destination_module": null,
+        "operation": "change_signature",
+        "payload": "(self, plugin: _Plugin, name: str, meldra_optional_0=None)",
+        "target_file": "src/pluggy/_manager.py",
+        "target_fqname": "src.pluggy._manager.PluginManager.parse_hookimpl_opts",
+        "target_id": "ent_002a0fe3676f9c5d",
+        "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:00"
+      },
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:00",
+      "test_successful": true
+    },
+    {
+      "baseline_passed_count": 141,
+      "passed_count": 141,
+      "passed_count_preserved": true,
+      "returncode": 0,
+      "returncode_zero": true,
+      "target": {
+        "destination_module": "src.pluggy._hooks",
+        "operation": "move",
+        "payload": "src.pluggy._hooks",
+        "target_file": "src/pluggy/__init__.py",
+        "target_fqname": "src.pluggy.__getattr__",
+        "target_id": "ent_02539cbd8a24bcaf",
+        "task_id": "pluggy:safe:move:planner_preflight_candidate:00"
+      },
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:00",
+      "test_successful": true
+    },
+    {
+      "baseline_passed_count": 141,
+      "passed_count": 141,
+      "passed_count_preserved": true,
+      "returncode": 0,
+      "returncode_zero": true,
+      "target": {
+        "destination_module": null,
+        "operation": "rename",
+        "payload": "meldra_safe_rename_11",
+        "target_file": "src/pluggy/__init__.py",
+        "target_fqname": "src.pluggy.__getattr__",
+        "target_id": "ent_02539cbd8a24bcaf",
+        "task_id": "pluggy:safe:rename:planner_preflight_candidate:00"
+      },
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:00",
+      "test_successful": true
+    }
+  ],
+  "claim": "Three isolated production-source Pluggy changes (one Rename, Move, ChangeSignature) materialized, returned zero, and preserved the 141-test baseline; original source digests and cleanup guards held 3/3.",
+  "configuration": {
+    "argv": [
+      "/usr/bin/python",
+      "-c",
+      "import sys; sys.path.insert(0, 'src'); import pytest; raise SystemExit(pytest.main(['-q', '-p', 'no:cacheprovider']))"
+    ],
+    "balanced_safe": true,
+    "baseline_in_temporary_copy": true,
+    "documentation_and_examples_excluded": true,
+    "project_root": "/tmp/meldra-external-corpus/pluggy",
+    "safe_per_project": 3,
+    "seed": 20260810,
+    "temporary_copy_per_apply_call": true,
+    "test_source_excluded": true,
+    "timeout_seconds": 180,
+    "unsafe_per_project": 0
+  },
+  "counts": {
+    "cases": {
+      "denominator": 3,
+      "numerator": 3
+    },
+    "materialized": {
+      "denominator": 3,
+      "numerator": 3
+    },
+    "operations": {
+      "change_signature": 1,
+      "move": 1,
+      "rename": 1
+    },
+    "passed_count_preserved": {
+      "baseline_passed_count": 141,
+      "denominator": 3,
+      "numerator": 3
+    },
+    "restoration_succeeded": {
+      "denominator": 3,
+      "numerator": 3
+    },
+    "result_infrastructure_errors": {
+      "denominator": 3,
+      "numerator": 0
+    },
+    "revision_guard_matched": {
+      "denominator": 3,
+      "numerator": 3
+    },
+    "source_unchanged_per_call": {
+      "denominator": 3,
+      "numerator": 3
+    },
+    "temporary_workspace_removed": {
+      "denominator": 3,
+      "numerator": 3
+    },
+    "test_infrastructure_errors": {
+      "denominator": 3,
+      "numerator": 0
+    },
+    "test_returncode_zero": {
+      "denominator": 3,
+      "numerator": 3
+    },
+    "test_timeouts": {
+      "denominator": 3,
+      "numerator": 0
+    },
+    "tests_successful": {
+      "denominator": 3,
+      "numerator": 3,
+      "unattempted": 0
+    }
+  },
+  "generation_error": null,
+  "invalidation_history": {
+    "prior_candidate": "testing.test_pluginmanager.test_get_hookcallers_no_duplicates",
+    "prior_result": "Rename returned zero but reduced discovery from 141 to 140. The candidate was rejected and production/test-count filters were added before this rerun."
+  },
+  "kind": "MeldraApplyAndTestValidation",
+  "limitations": [
+    "One repository and three generated candidates are insufficient for a general safe-automation claim.",
+    "Labels are planner-preflight fixtures, not independently human-adjudicated safe changes.",
+    "Passing the existing suite proves only the behavior covered by that suite."
+  ],
+  "planning": {
+    "capture": "embedded_manifest_report_and_target_details",
+    "manifest": {
+      "projects": [
+        {
+          "category": "plugin-architecture",
+          "entity_kinds": [
+            "async_function",
+            "class",
+            "function"
+          ],
+          "held_out_count": 0,
+          "id": "pluggy",
+          "metadata": {
+            "revision": "f632a4d1b69e32e210063a91a71ae32fb3ac150c",
+            "url": "https://github.com/pytest-dev/pluggy.git"
+          },
+          "root": "/tmp/meldra-external-corpus/pluggy"
+        }
+      ],
+      "schema": 1,
+      "seed": 20260810,
+      "task_sample_size": null,
+      "tasks": [
+        {
+          "allow_new_dependencies": true,
+          "allow_public_api_break": true,
+          "argument_values": {},
+          "expectation": "safe",
+          "expected_safe": true,
+          "id": "pluggy:safe:change_signature:planner_preflight_candidate:00",
+          "label_source": "validated_fixture",
+          "metadata": {
+            "target_revision": "6ddc9a7428198557119ca33ebe665a98fd93297d47b5c2053891cb91f1a75e37"
+          },
+          "operation": "change_signature",
+          "oracle": "planner_preflight_candidate",
+          "payload": "(self, plugin: _Plugin, name: str, meldra_optional_0=None)",
+          "project": "pluggy",
+          "target": "ent_002a0fe3676f9c5d"
+        },
+        {
+          "allow_new_dependencies": true,
+          "allow_public_api_break": true,
+          "argument_values": {},
+          "expectation": "safe",
+          "expected_safe": true,
+          "id": "pluggy:safe:move:planner_preflight_candidate:00",
+          "label_source": "validated_fixture",
+          "metadata": {
+            "target_revision": "6a675c8e172ab792f7b9f4d8e0e88963b92ce888689c6ad41446fed9f91de419"
+          },
+          "operation": "move",
+          "oracle": "planner_preflight_candidate",
+          "payload": "src.pluggy._hooks",
+          "project": "pluggy",
+          "target": "ent_02539cbd8a24bcaf"
+        },
+        {
+          "allow_new_dependencies": true,
+          "allow_public_api_break": true,
+          "argument_values": {},
+          "expectation": "safe",
+          "expected_safe": true,
+          "id": "pluggy:safe:rename:planner_preflight_candidate:00",
+          "label_source": "validated_fixture",
+          "metadata": {
+            "target_revision": "6a675c8e172ab792f7b9f4d8e0e88963b92ce888689c6ad41446fed9f91de419"
+          },
+          "operation": "rename",
+          "oracle": "planner_preflight_candidate",
+          "payload": "meldra_safe_rename_11",
+          "project": "pluggy",
+          "target": "ent_02539cbd8a24bcaf"
+        }
+      ]
+    },
+    "report": {
+      "blocked_reason_frequency": [],
+      "category_breakdown": {
+        "plugin-architecture": {
+          "confusion_matrix": {
+            "false_negative": 0,
+            "false_positive": 0,
+            "true_negative": 0,
+            "true_positive": 3
+          },
+          "evaluated_tasks": 3,
+          "expected_safe_tasks": 3,
+          "expected_unsafe_tasks": 0,
+          "false_block": {
+            "denominator": 3,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_block_rate": 0.0,
+          "false_safe": {
+            "denominator": 0,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_safe_rate": 0.0,
+          "infrastructure_errors": 0,
+          "safe_automation": {
+            "coverage": 1.0,
+            "denominator": 3,
+            "numerator": 3
+          },
+          "safe_automation_coverage": 1.0,
+          "total_tasks": 3
+        }
+      },
+      "held_out_entities": [],
+      "label_source_breakdown": {
+        "validated_fixture": {
+          "confusion_matrix": {
+            "false_negative": 0,
+            "false_positive": 0,
+            "true_negative": 0,
+            "true_positive": 3
+          },
+          "evaluated_tasks": 3,
+          "expected_safe_tasks": 3,
+          "expected_unsafe_tasks": 0,
+          "false_block": {
+            "denominator": 3,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_block_rate": 0.0,
+          "false_safe": {
+            "denominator": 0,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_safe_rate": 0.0,
+          "infrastructure_errors": 0,
+          "safe_automation": {
+            "coverage": 1.0,
+            "denominator": 3,
+            "numerator": 3
+          },
+          "safe_automation_coverage": 1.0,
+          "total_tasks": 3
+        }
+      },
+      "metrics": {
+        "confusion_matrix": {
+          "false_negative": 0,
+          "false_positive": 0,
+          "true_negative": 0,
+          "true_positive": 3
+        },
+        "evaluated_tasks": 3,
+        "expected_safe_tasks": 3,
+        "expected_unsafe_tasks": 0,
+        "false_block": {
+          "denominator": 3,
+          "numerator": 0,
+          "rate": 0.0
+        },
+        "false_block_rate": 0.0,
+        "false_safe": {
+          "denominator": 0,
+          "numerator": 0,
+          "rate": 0.0
+        },
+        "false_safe_rate": 0.0,
+        "infrastructure_errors": 0,
+        "safe_automation": {
+          "coverage": 1.0,
+          "denominator": 3,
+          "numerator": 3
+        },
+        "safe_automation_coverage": 1.0,
+        "total_tasks": 3
+      },
+      "operation_breakdown": {
+        "change_signature": {
+          "confusion_matrix": {
+            "false_negative": 0,
+            "false_positive": 0,
+            "true_negative": 0,
+            "true_positive": 1
+          },
+          "evaluated_tasks": 1,
+          "expected_safe_tasks": 1,
+          "expected_unsafe_tasks": 0,
+          "false_block": {
+            "denominator": 1,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_block_rate": 0.0,
+          "false_safe": {
+            "denominator": 0,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_safe_rate": 0.0,
+          "infrastructure_errors": 0,
+          "safe_automation": {
+            "coverage": 1.0,
+            "denominator": 1,
+            "numerator": 1
+          },
+          "safe_automation_coverage": 1.0,
+          "total_tasks": 1
+        },
+        "move": {
+          "confusion_matrix": {
+            "false_negative": 0,
+            "false_positive": 0,
+            "true_negative": 0,
+            "true_positive": 1
+          },
+          "evaluated_tasks": 1,
+          "expected_safe_tasks": 1,
+          "expected_unsafe_tasks": 0,
+          "false_block": {
+            "denominator": 1,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_block_rate": 0.0,
+          "false_safe": {
+            "denominator": 0,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_safe_rate": 0.0,
+          "infrastructure_errors": 0,
+          "safe_automation": {
+            "coverage": 1.0,
+            "denominator": 1,
+            "numerator": 1
+          },
+          "safe_automation_coverage": 1.0,
+          "total_tasks": 1
+        },
+        "rename": {
+          "confusion_matrix": {
+            "false_negative": 0,
+            "false_positive": 0,
+            "true_negative": 0,
+            "true_positive": 1
+          },
+          "evaluated_tasks": 1,
+          "expected_safe_tasks": 1,
+          "expected_unsafe_tasks": 0,
+          "false_block": {
+            "denominator": 1,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_block_rate": 0.0,
+          "false_safe": {
+            "denominator": 0,
+            "numerator": 0,
+            "rate": 0.0
+          },
+          "false_safe_rate": 0.0,
+          "infrastructure_errors": 0,
+          "safe_automation": {
+            "coverage": 1.0,
+            "denominator": 1,
+            "numerator": 1
+          },
+          "safe_automation_coverage": 1.0,
+          "total_tasks": 1
+        }
+      },
+      "projects": [
+        {
+          "category": "plugin-architecture",
+          "entity_kinds": [
+            "async_function",
+            "class",
+            "function"
+          ],
+          "held_out_count": 0,
+          "id": "pluggy",
+          "metadata": {
+            "revision": "f632a4d1b69e32e210063a91a71ae32fb3ac150c",
+            "url": "https://github.com/pytest-dev/pluggy.git"
+          },
+          "root": "/tmp/meldra-external-corpus/pluggy"
+        }
+      ],
+      "results": [
+        {
+          "affected_files": [
+            "src/pluggy/_manager.py"
+          ],
+          "blocked_reasons": [],
+          "category": "plugin-architecture",
+          "edit_count": 1,
+          "error_kind": null,
+          "error_message": null,
+          "expected_safe": true,
+          "label_source": "validated_fixture",
+          "operation": "change_signature",
+          "oracle": "planner_preflight_candidate",
+          "outcome": "true_positive",
+          "plan_id": "chg_7133ed96475d2714",
+          "planner_allowed": true,
+          "project": "pluggy",
+          "target": "ent_002a0fe3676f9c5d",
+          "target_id": "ent_002a0fe3676f9c5d",
+          "target_revision": "6ddc9a7428198557119ca33ebe665a98fd93297d47b5c2053891cb91f1a75e37",
+          "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:00"
+        },
+        {
+          "affected_files": [
+            "src/pluggy/__init__.py",
+            "src/pluggy/_hooks.py"
+          ],
+          "blocked_reasons": [],
+          "category": "plugin-architecture",
+          "edit_count": 2,
+          "error_kind": null,
+          "error_message": null,
+          "expected_safe": true,
+          "label_source": "validated_fixture",
+          "operation": "move",
+          "oracle": "planner_preflight_candidate",
+          "outcome": "true_positive",
+          "plan_id": "chg_0fc8e5149681dc1f",
+          "planner_allowed": true,
+          "project": "pluggy",
+          "target": "ent_02539cbd8a24bcaf",
+          "target_id": "ent_02539cbd8a24bcaf",
+          "target_revision": "6a675c8e172ab792f7b9f4d8e0e88963b92ce888689c6ad41446fed9f91de419",
+          "task_id": "pluggy:safe:move:planner_preflight_candidate:00"
+        },
+        {
+          "affected_files": [
+            "src/pluggy/__init__.py"
+          ],
+          "blocked_reasons": [],
+          "category": "plugin-architecture",
+          "edit_count": 1,
+          "error_kind": null,
+          "error_message": null,
+          "expected_safe": true,
+          "label_source": "validated_fixture",
+          "operation": "rename",
+          "oracle": "planner_preflight_candidate",
+          "outcome": "true_positive",
+          "plan_id": "chg_e7f27a52f036bcd3",
+          "planner_allowed": true,
+          "project": "pluggy",
+          "target": "ent_02539cbd8a24bcaf",
+          "target_id": "ent_02539cbd8a24bcaf",
+          "target_revision": "6a675c8e172ab792f7b9f4d8e0e88963b92ce888689c6ad41446fed9f91de419",
+          "task_id": "pluggy:safe:rename:planner_preflight_candidate:00"
+        }
+      ],
+      "seed": 20260810
+    },
+    "source_world_revision": "12ceba009bd85d0d60821c58a43d7c842fedf2cf1fd207ff16460d756417058f",
+    "target_details": [
+      {
+        "destination_module": null,
+        "operation": "change_signature",
+        "payload": "(self, plugin: _Plugin, name: str, meldra_optional_0=None)",
+        "target_file": "src/pluggy/_manager.py",
+        "target_fqname": "src.pluggy._manager.PluginManager.parse_hookimpl_opts",
+        "target_id": "ent_002a0fe3676f9c5d",
+        "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:00"
+      },
+      {
+        "destination_module": "src.pluggy._hooks",
+        "operation": "move",
+        "payload": "src.pluggy._hooks",
+        "target_file": "src/pluggy/__init__.py",
+        "target_fqname": "src.pluggy.__getattr__",
+        "target_id": "ent_02539cbd8a24bcaf",
+        "task_id": "pluggy:safe:move:planner_preflight_candidate:00"
+      },
+      {
+        "destination_module": null,
+        "operation": "rename",
+        "payload": "meldra_safe_rename_11",
+        "target_file": "src/pluggy/__init__.py",
+        "target_fqname": "src.pluggy.__getattr__",
+        "target_id": "ent_02539cbd8a24bcaf",
+        "task_id": "pluggy:safe:rename:planner_preflight_candidate:00"
+      }
+    ]
+  },
+  "schema": 1,
+  "source_digest": {
+    "after_apply_calls": "d17436479a48361f15b43f2eef4e84b0548bf3700cdd97daa0a1fc007d052ee6",
+    "after_baseline": "d17436479a48361f15b43f2eef4e84b0548bf3700cdd97daa0a1fc007d052ee6",
+    "before_apply_calls": "d17436479a48361f15b43f2eef4e84b0548bf3700cdd97daa0a1fc007d052ee6",
+    "before_baseline": "d17436479a48361f15b43f2eef4e84b0548bf3700cdd97daa0a1fc007d052ee6",
+    "unchanged_across_experiment": true
+  },
+  "source_world_revisions": {
+    "pluggy:safe:change_signature:planner_preflight_candidate:00": "12ceba009bd85d0d60821c58a43d7c842fedf2cf1fd207ff16460d756417058f",
+    "pluggy:safe:move:planner_preflight_candidate:00": "12ceba009bd85d0d60821c58a43d7c842fedf2cf1fd207ff16460d756417058f",
+    "pluggy:safe:rename:planner_preflight_candidate:00": "12ceba009bd85d0d60821c58a43d7c842fedf2cf1fd207ff16460d756417058f"
+  },
+  "status": "OBSERVED_SUCCESS"
+}

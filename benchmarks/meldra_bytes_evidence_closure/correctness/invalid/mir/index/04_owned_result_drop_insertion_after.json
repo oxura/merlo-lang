@@ -1,0 +1,227 @@
+{
+  "entry_function": "main",
+  "functions": [
+    {
+      "blocks": [
+        {
+          "id": "bb1_entry",
+          "instructions": [
+            {
+              "attributes": {
+                "overflow_diagnostic": "BytesAllocationOverflow",
+                "representation": "owned_pointer_length_capacity_v1"
+              },
+              "id": "i1",
+              "op": "bytes_new",
+              "operands": [
+                "%n_1"
+              ],
+              "result": "%v_3",
+              "source": {
+                "column": 19,
+                "end_column": 31,
+                "end_line": 2,
+                "line": 2,
+                "path": "bytes-closure/index.meldra"
+              },
+              "type": {
+                "bits": null,
+                "element": null,
+                "kind": "record",
+                "length": null,
+                "name": "Bytes",
+                "record": "Bytes",
+                "shared": false,
+                "unique": true
+              }
+            },
+            {
+              "attributes": {},
+              "id": "i2",
+              "op": "bytes_len",
+              "operands": [
+                "%v_3"
+              ],
+              "result": "%v_4",
+              "source": {
+                "column": 4,
+                "end_column": 16,
+                "end_line": 3,
+                "line": 3,
+                "path": "bytes-closure/index.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "diagnostic": "BytesIndexOutOfBounds"
+              },
+              "id": "i3",
+              "op": "bytes_bounds_check",
+              "operands": [
+                "%index_2",
+                "%v_4"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 16,
+                "end_line": 3,
+                "line": 3,
+                "path": "bytes-closure/index.meldra"
+              },
+              "type": null
+            },
+            {
+              "attributes": {},
+              "id": "i4",
+              "op": "bytes_load",
+              "operands": [
+                "%v_3",
+                "%index_2"
+              ],
+              "result": "%v_5",
+              "source": {
+                "column": 4,
+                "end_column": 16,
+                "end_line": 3,
+                "line": 3,
+                "path": "bytes-closure/index.meldra"
+              },
+              "type": {
+                "bits": 64,
+                "element": null,
+                "kind": "uint",
+                "length": null,
+                "name": "UInt64",
+                "record": null,
+                "shared": false,
+                "unique": false
+              }
+            },
+            {
+              "attributes": {
+                "automatic": true,
+                "owner_type": "Bytes"
+              },
+              "id": "i5",
+              "op": "drop",
+              "operands": [
+                "%v_3"
+              ],
+              "result": null,
+              "source": {
+                "column": 4,
+                "end_column": 16,
+                "end_line": 3,
+                "line": 3,
+                "path": "bytes-closure/index.meldra"
+              },
+              "type": null
+            }
+          ],
+          "terminator": {
+            "condition": null,
+            "kind": "return",
+            "source": {
+              "column": 4,
+              "end_column": 16,
+              "end_line": 3,
+              "line": 3,
+              "path": "bytes-closure/index.meldra"
+            },
+            "targets": [],
+            "value": "%v_5"
+          }
+        }
+      ],
+      "entry_block": "bb1_entry",
+      "generic_parameters": [],
+      "instruction_count": 5,
+      "name": "main",
+      "parameters": [
+        {
+          "name": "n",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%n_1"
+        },
+        {
+          "name": "index",
+          "ownership": "borrowed",
+          "type": {
+            "bits": 64,
+            "element": null,
+            "kind": "uint",
+            "length": null,
+            "name": "UInt64",
+            "record": null,
+            "shared": false,
+            "unique": false
+          },
+          "value": "%index_2"
+        }
+      ],
+      "pure": true,
+      "return_type": {
+        "bits": 64,
+        "element": null,
+        "kind": "uint",
+        "length": null,
+        "name": "UInt64",
+        "record": null,
+        "shared": false,
+        "unique": false
+      },
+      "source": {
+        "column": 0,
+        "end_column": 16,
+        "end_line": 3,
+        "line": 1,
+        "path": "bytes-closure/index.meldra"
+      }
+    }
+  ],
+  "instruction_count": 5,
+  "records": [],
+  "schema_version": 1,
+  "source_sha256": "329966ee7276022d3b1efcccc912fa55368ced0c5ecf1c1c81a3365baf7a6af4",
+  "subset_forms": [
+    "fn",
+    "let",
+    "var",
+    "if",
+    "match",
+    "for",
+    "while",
+    "direct_function_calls"
+  ],
+  "subset_types": [
+    "Int64",
+    "UInt64",
+    "Float32",
+    "Float64",
+    "Bool",
+    "records",
+    "arrays",
+    "slices"
+  ]
+}

@@ -1,0 +1,6 @@
+fn main(n: UInt64) -> UInt64:
+    let values: Array[UInt64, 8] = [3, 1, 4, 1, 5, 9, 2, 6]
+    var checksum: UInt64 = 0
+    for i in 0..n:
+        checksum = checksum + values[i & 7] * (i + 1)
+    checksum

@@ -1,0 +1,4 @@
+needle in first
+nothing here
+Needle in third
+needle again

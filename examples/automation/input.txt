@@ -1,0 +1,2 @@
+draft.txt -> published.txt
+notes.txt -> archive/notes.txt

@@ -1,0 +1,4 @@
+date,product,region,quantity,unit_price_cents
+2026-01-01,book,west,2,125
+2026-01-02,pen,east,3,40
+bad,row
