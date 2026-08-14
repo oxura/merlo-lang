@@ -8,7 +8,7 @@ import tempfile
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Mapping
 
 from .analyzer import scan_python
 from .core_semantics import CoreChange, CoreError, apply_core_change
