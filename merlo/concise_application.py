@@ -460,21 +460,34 @@ def _sum_nominal_name(type_name: str) -> str:
 
 
 def lower_concise_sum_types(source: str) -> str:
-    raw_sum_types = set(
-        re.findall(
-            r"\b(?:Option\[[^\]\n]+\]|"
-            r"Result\[[^\]\n]+,[^\]\n]+\])",
-            source,
+    raw_sum_types: set[str] = set()
+    for line, _ in _protected_line_views(source):
+        raw_sum_types.update(
+            re.findall(
+                r"\b(?:Option\[[^\]\n]+\]|"
+                r"Result\[[^\]\n]+,[^\]\n]+\])",
+                line,
+            )
         )
-    )
     if not raw_sum_types:
         return source
+    source = _rewrite_code_identifiers(
+        source,
+        {
+            "Result.Ok": "Ok",
+            "Result.Err": "Err",
+            "Option.Some": "Some",
+            "Option.None": "None",
+        },
+        call_only=frozenset(
+            {"Result.Ok", "Result.Err", "Option.Some"}
+        ),
+    )
     normalized = {
         type_name: re.sub(r"\s+", "", type_name)
         for type_name in raw_sum_types
     }
-    for type_name in sorted(raw_sum_types, key=len, reverse=True):
-        source = source.replace(type_name, normalized[type_name])
+    source = _rewrite_code_text(source, normalized)
     sum_types = sorted(set(normalized.values()))
     if not sum_types:
         return source
@@ -512,7 +525,7 @@ def lower_concise_sum_types(source: str) -> str:
     current_return: str | None = None
     variables: dict[str, str] = {}
     match_sum: tuple[int, str] | None = None
-    for original in source.splitlines():
+    for original, protected in _protected_line_views(source):
         line = original
         indent = len(line) - len(line.lstrip())
         if match_sum and line.strip() and indent <= match_sum[0]:
@@ -560,35 +573,42 @@ def lower_concise_sum_types(source: str) -> str:
         )
         if match_sum and line.lstrip().startswith("case "):
             active_type = match_sum[1]
-        line = re.sub(r"\bResult\.(Ok|Err)\s*\(", r"\1(", line)
-        line = re.sub(r"\bOption\.Some\s*\(", "Some(", line)
-        line = re.sub(r"\bOption\.None\b", "None", line)
+        line = _rewrite_code_identifiers(
+            line,
+            {
+                "Result.Ok": "Ok",
+                "Result.Err": "Err",
+                "Option.Some": "Some",
+                "Option.None": "None",
+            },
+            call_only=frozenset(
+                {"Result.Ok", "Result.Err", "Option.Some"}
+            ),
+        )
         if active_type:
             nominal = mapping[active_type]
             if active_type.startswith("Option["):
-                line = re.sub(
-                    r"\bSome\(",
-                    f"{nominal}.Some(",
+                line = _rewrite_code_identifiers(
                     line,
-                )
-                line = re.sub(
-                    r"\bNone\b",
-                    f"{nominal}.NoneValue",
-                    line,
+                    {
+                        "Some": f"{nominal}.Some",
+                        "None": f"{nominal}.NoneValue",
+                    },
+                    call_only=frozenset({"Some"}),
                 )
             else:
-                line = re.sub(
-                    r"\bOk\(",
-                    f"{nominal}.Ok(",
+                line = _rewrite_code_identifiers(
                     line,
-                )
-                line = re.sub(
-                    r"\bErr\(",
-                    f"{nominal}.Err(",
-                    line,
+                    {
+                        "Ok": f"{nominal}.Ok",
+                        "Err": f"{nominal}.Err",
+                    },
+                    call_only=frozenset({"Ok", "Err"}),
                 )
         for type_name, nominal in mapping.items():
             line = line.replace(type_name, nominal)
+        for token, replacement in protected.items():
+            line = line.replace(token, replacement)
         output.append(line)
     return "\n".join((*declarations, *output)).strip() + "\n"
 
@@ -865,10 +885,167 @@ def _extract_task(
         tuple(task_origins),
     )
 
+def _protected_mask(source: str) -> list[bool]:
+    protected = [False] * len(source)
+    cursor = 0
+    length = len(source)
+    while cursor < length:
+        character = source[cursor]
+        if character == "#":
+            end = source.find("\n", cursor)
+            if end < 0:
+                end = length
+            protected[cursor:end] = [True] * (end - cursor)
+            cursor = end
+            continue
+        if character in {'"', "'"}:
+            delimiter_length = 3 if source.startswith(character * 3, cursor) else 1
+            end = cursor + delimiter_length
+            while end < length:
+                if source[end] == "\\":
+                    end += 2
+                    continue
+                if source.startswith(character * delimiter_length, end):
+                    end += delimiter_length
+                    break
+                end += 1
+            end = min(end, length)
+            protected[cursor:end] = [True] * (end - cursor)
+            cursor = end
+            continue
+        cursor += 1
+    return protected
+
+
+def _protected_line_views(
+    source: str,
+) -> list[tuple[str, dict[str, str]]]:
+    mask = _protected_mask(source)
+    views: list[tuple[str, dict[str, str]]] = []
+    offset = 0
+    token_number = 0
+    for physical in source.splitlines(keepends=True):
+        line = physical.rstrip("\r\n")
+        replacements: dict[str, str] = {}
+        pieces: list[str] = []
+        cursor = 0
+        while cursor < len(line):
+            if not mask[offset + cursor]:
+                start = cursor
+                cursor += 1
+                while cursor < len(line) and not mask[offset + cursor]:
+                    cursor += 1
+                pieces.append(line[start:cursor])
+                continue
+            start = cursor
+            cursor += 1
+            while cursor < len(line) and mask[offset + cursor]:
+                cursor += 1
+            token = f"\x00{token_number}\x00"
+            token_number += 1
+            replacements[token] = line[start:cursor]
+            pieces.append(token)
+        views.append(("".join(pieces), replacements))
+        offset += len(physical)
+    return views
+
+def _rewrite_code_text(
+    source: str,
+    replacements: dict[str, str],
+) -> str:
+    lines: list[str] = []
+    for original, protected in _protected_line_views(source):
+        line = original
+        for before, after in sorted(
+            replacements.items(),
+            key=lambda item: len(item[0]),
+            reverse=True,
+        ):
+            line = line.replace(before, after)
+        for token, replacement in protected.items():
+            line = line.replace(token, replacement)
+        lines.append(line)
+    return "\n".join(lines) + ("\n" if source.endswith("\n") else "")
+
+
+def _rewrite_code_identifiers(
+    source: str,
+    replacements: dict[str, str],
+    *,
+    call_only: frozenset[str] = frozenset(),
+) -> str:
+    """Rewrite exact identifiers in code, preserving strings and comments."""
+    protected = _protected_mask(source)
+    output: list[str] = []
+    cursor = 0
+    length = len(source)
+    while cursor < length:
+        if protected[cursor]:
+            output.append(source[cursor])
+            cursor += 1
+            continue
+        character = source[cursor]
+        if character.isalpha() or character == "_":
+            start = cursor
+            cursor += 1
+            while cursor < length and (
+                source[cursor].isalnum() or source[cursor] == "_"
+            ):
+                cursor += 1
+            identifier = source[start:cursor]
+            candidate = identifier
+            candidate_end = cursor
+            if cursor < length and source[cursor] == ".":
+                member_start = cursor + 1
+                member_end = member_start
+                if member_start < length and (
+                    source[member_start].isalpha()
+                    or source[member_start] == "_"
+                ):
+                    member_end += 1
+                    while member_end < length and (
+                        source[member_end].isalnum()
+                        or source[member_end] == "_"
+                    ):
+                        member_end += 1
+                    candidate = source[start:member_end]
+                    candidate_end = member_end
+            replacement = replacements.get(candidate)
+            if replacement is None:
+                candidate = identifier
+                candidate_end = cursor
+                replacement = replacements.get(identifier)
+            line_tail = source[candidate_end:].split("\n", 1)[0]
+            is_call = line_tail.lstrip().startswith("(")
+            if replacement is not None and (
+                candidate not in call_only or is_call
+            ):
+                output.append(replacement)
+                cursor = candidate_end
+                continue
+            output.append(source[start:candidate_end])
+            cursor = candidate_end
+            continue
+        output.append(character)
+        cursor += 1
+    return "".join(output)
+
+
+def _rewrite_language_literals(source: str) -> str:
+    return _rewrite_code_identifiers(
+        source,
+        {
+            "true": "True",
+            "false": "False",
+            "Option.None": "Option.NoneValue",
+        },
+    )
+
 
 def _preprocess_core(source: str) -> str:
+    source = _rewrite_language_literals(source)
     output = []
-    for original in source.splitlines():
+    for original, protected in _protected_line_views(source):
         indent = original[: len(original) - len(original.lstrip())]
         line = re.sub(r"^(\s*)export\s+", r"\1", original)
         stripped = line.strip()
@@ -908,7 +1085,6 @@ def _preprocess_core(source: str) -> str:
             r"Option[\1]",
             line,
         )
-        line = re.sub(r"\bOption\.None\b", "Option.NoneValue", line)
         if re.fullmatch(r"\s*uses\s+.+", line):
             line = ""
         print_match = re.fullmatch(r"(\s*)print\s+(.+)", line)
@@ -918,10 +1094,10 @@ def _preprocess_core(source: str) -> str:
                 f"console.write({print_match.group(2)})"
             )
         line = _rewrite_postfix_try(line)
-        line = re.sub(r"\btrue\b", "True", line)
-        line = re.sub(r"\bfalse\b", "False", line)
         if re.search(r"\b(?:and|or)\s*$", line):
             line += " " + chr(92)
+        for token, replacement in protected.items():
+            line = line.replace(token, replacement)
         output.append(line)
     return "\n".join(output) + "\n"
 
