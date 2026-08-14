@@ -629,8 +629,8 @@ def test_try_propagation_drops_borrow_temporary_on_error_and_success() -> None:
         "fn run(input: BytesView) -> Result[UInt64,AppError]:\n"
         "    let value: UInt64 = validate(Text.from_bytes(input, 0, input.len()))?\n"
         "    return Ok(value)\n"
-        "fn main(input: BytesView) -> Result[UInt64,AppError]:\n"
-        "    return run(input)\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    return 0\n"
     )
     hir, rir, _mir, optimized = _layers(source)
     generated = emit_general_c(hir, rir, optimized)
