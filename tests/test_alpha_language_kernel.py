@@ -553,3 +553,38 @@ def test_borrowed_map_cannot_be_shallow_cloned_for_owned_call() -> None:
     hir, rir, _mir, optimized = _layers(source)
     with pytest.raises(RepresentationCBackendError, match="cannot clone borrowed owner"):
         emit_general_c(hir, rir, optimized)
+
+
+def test_branch_move_keeps_zeroed_source_cleanup_on_false_path() -> None:
+    source = (
+        "record Change:\n"
+        "    old_path: Text\n"
+        "    new_path: Text\n"
+        "fn take(value: Change) -> Change:\n"
+        "    return value\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let source: Change = Change(\"a\", \"bc\")\n"
+        "    if input.len() > 0:\n"
+        "        let moved: Change = take(source)\n"
+        "        return moved.old_path.len()\n"
+        "    return source.old_path.len()\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    assert generated.source.count("merlo_drop_Change(&source);") == 2
+
+
+def test_loop_body_borrow_temporary_is_dropped_at_each_iteration() -> None:
+    source = (
+        "fn consume(value: Text) -> Unit:\n"
+        "    return\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    while input.len() > 0:\n"
+        "        consume(Text.from_bytes(input, 0, input.len()))\n"
+        "        break\n"
+        "    return 0\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    assert generated.source.count("__merlo_owned_temp_1 = merlo_text_from") == 1
+    assert generated.source.count("merlo_drop_Text(&__merlo_owned_temp_1);") == 1
