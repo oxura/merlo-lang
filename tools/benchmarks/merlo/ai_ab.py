@@ -751,6 +751,43 @@ def provider_identity_complete(provider: Mapping[str, Any] | None) -> bool:
     return _credential_alias_hmac_valid(provider["credential_alias_hmac"])
 
 
+def _provider_lock_complete(provider: object) -> bool:
+    if not isinstance(provider, Mapping):
+        return False
+    required = ("provider", "model", "revision", "credential_alias_hmac")
+    return (
+        all(
+            isinstance(provider.get(key), str)
+            and bool(provider.get(key))
+            and not str(provider.get(key)).startswith("UNSET")
+            for key in required
+        )
+        and _credential_alias_hmac_valid(provider.get("credential_alias_hmac"))
+    )
+
+
+def _container_lock_complete(container: object) -> bool:
+    if not isinstance(container, Mapping):
+        return False
+    image = container.get("image")
+    if not isinstance(image, str):
+        return False
+    repository, separator, digest = image.rpartition("@sha256:")
+    return (
+        bool(repository)
+        and bool(separator)
+        and len(digest) == 64
+        and all(character in "0123456789abcdef" for character in digest)
+        and container.get("network") == "denied"
+        and container.get("fresh_workspace") is True
+        and type(container.get("memory_mb")) is int
+        and container["memory_mb"] > 0
+        and isinstance(container.get("cpu"), str)
+        and container["cpu"].isdigit()
+        and int(container["cpu"]) > 0
+    )
+
+
 def unmeasured_report(reason: str = PROVIDER_IDENTITY_INCOMPLETE) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION, "status": "UNMEASURED",
@@ -872,6 +909,19 @@ def report_from_attempts(
             "terminal_reason": "EXTERNAL_PREREGISTRATION_ANCHOR_INCOMPLETE",
             "passed": False, "metrics": None, "claim_eligible": False,
         }
+    provider_lock = protocol.get("provider_identity")
+    if not _provider_lock_complete(provider_lock):
+        return {
+            "schema_version": SCHEMA_VERSION, "status": "INVALID",
+            "terminal_reason": "PROVIDER_IDENTITY_INCOMPLETE",
+            "passed": False, "metrics": None, "claim_eligible": False,
+        }
+    if not _container_lock_complete(protocol.get("container")):
+        return {
+            "schema_version": SCHEMA_VERSION, "status": "INVALID",
+            "terminal_reason": "CONTAINER_IDENTITY_INCOMPLETE",
+            "passed": False, "metrics": None, "claim_eligible": False,
+        }
     if not _calibration_result_complete(protocol):
         return {
             "schema_version": SCHEMA_VERSION, "status": "INVALID",
@@ -898,6 +948,13 @@ def report_from_attempts(
             seen.add(key)
             pair_records.setdefault(record["pair_id"], {})[record["arm"]] = record
             attestation = record["provider_attestation"]
+            if any(
+                attestation.get(key) != value
+                for key, value in provider_lock.items()
+            ):
+                raise ProtocolError(
+                    "attempt provider does not match locked protocol identity"
+                )
             provider_attestations[
                 sha256_bytes(canonical_json(attestation))
             ] = attestation

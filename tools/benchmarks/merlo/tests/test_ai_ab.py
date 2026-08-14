@@ -7,9 +7,12 @@ import subprocess
 import sys
 
 import pytest
+from tools.benchmarks.merlo import ai_ab
 
 from tools.benchmarks.merlo.ai_ab import (
     _attempt_evidence_sha256,
+    _container_lock_complete,
+    _provider_lock_complete,
     PROVIDER_IDENTITY_INCOMPLETE,
     PREREGISTRATION_ROOT_SHA256,
     ProtocolError,
@@ -181,6 +184,40 @@ def test_provider_identity_is_never_inferred() -> None:
     assert report["terminal_reason"] == PROVIDER_IDENTITY_INCOMPLETE
     assert report["metrics"] is None
     assert report["preregistration_root_sha256"] == PREREGISTRATION_ROOT_SHA256
+
+
+def test_protocol_placeholders_block_provider_and_container_measurement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    protocol = json.loads(
+        (ROOT / "benchmarks/ai-ab-v1/protocol.json").read_text()
+    )
+    tasks = json.loads(
+        (ROOT / "benchmarks/ai-ab-v1/tasks.json").read_text()
+    )
+    assert not _provider_lock_complete(protocol["provider_identity"])
+    assert not _container_lock_complete(protocol["container"])
+
+    root_commit = "f" * 40
+    protocol["external_preregistration"].update({
+        "root_commit_sha": root_commit,
+        "root_commit_status": "BOUND_PUBLISHED",
+    })
+    monkeypatch.setattr(ai_ab, "TRUSTED_EXTERNAL_ROOT_SHA256", root_commit)
+    report = report_from_attempts([], protocol, tasks)
+    assert report["terminal_reason"] == "PROVIDER_IDENTITY_INCOMPLETE"
+
+    protocol["provider_identity"] = {
+        "provider": "provider",
+        "model": "model",
+        "revision": "immutable-revision",
+        "credential_alias_hmac": "a" * 64,
+    }
+    monkeypatch.setattr(
+        ai_ab, "_documents_match_preregistration_root", lambda *_: True
+    )
+    report = report_from_attempts([], protocol, tasks)
+    assert report["terminal_reason"] == "CONTAINER_IDENTITY_INCOMPLETE"
 
 
 def test_paired_bootstrap_is_seeded_and_keeps_task_pairs() -> None:
