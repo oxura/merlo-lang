@@ -34,7 +34,7 @@ export text_find(value: TextView, needle: UInt64) -> Option[UInt64]:
         if value.byte(index) == needle:
             return Some(index)
         index = index + 1
-    NoneValue
+    Option.None
 
 export text_builder_new() -> TextBuilder:
     TextBuilder("")
