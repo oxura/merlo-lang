@@ -1111,7 +1111,7 @@ def _frozen_integrity(root: Path) -> dict[str, Any]:
 
 
 def collect_bytes_closure_evidence(
-    root: str | Path = ".",
+    root: str | Path = Path(__file__).resolve().parents[1],
     *,
     output_dir: str | Path = "tools/benchmarks/merlo/benchmarks/meldra_bytes_evidence_closure",
 ) -> dict[str, Any]:

@@ -209,7 +209,7 @@ def _run_python_reference(program: Any) -> tuple[Any, ...]:
     return tuple(function(*case.arguments) for case in program.acceptance_cases)
 
 
-def run_differential_semantics(root: str | Path = ".") -> DifferentialMeasurement:
+def run_differential_semantics(root: str | Path = Path(__file__).resolve().parents[1]) -> DifferentialMeasurement:
     programs = load_independent_programs(root)
     pure_matches = 0
     pure_denominator = 0
@@ -597,7 +597,7 @@ def _subprocess_digest(
 ) -> str:
     script = (
         "import hashlib,json,os,sys;"
-        f"sys.path.insert(0,{str(root)!r});"
+        f"sys.path.insert(0,{str(root.parents[2])!r});"
         "from research.archive.historical_protocol.merlo.frontend_semantics import compile_frontend;"
         f"p=json.load(open({str(source_path)!r},encoding='utf-8'));"
         "items=list(p.items());"
@@ -623,7 +623,7 @@ def _subprocess_digest(
     return completed.stdout.strip()
 
 
-def run_determinism_checks(root: str | Path = ".") -> DeterminismMeasurement:
+def run_determinism_checks(root: str | Path = Path(__file__).resolve().parents[1]) -> DeterminismMeasurement:
     root_path = Path(root).resolve()
     sources = _determinism_sources()
     baseline = _core_digest(sources)
@@ -661,7 +661,7 @@ def run_determinism_checks(root: str | Path = ".") -> DeterminismMeasurement:
     )
 
 
-def run_frontend_hardening(root: str | Path = ".") -> FrontendHardeningReport:
+def run_frontend_hardening(root: str | Path = Path(__file__).resolve().parents[1]) -> FrontendHardeningReport:
     root_path = Path(root)
     lock = verify_independent_corpus_lock(root_path)
     protocol = assert_stage04e_protocol(root_path)

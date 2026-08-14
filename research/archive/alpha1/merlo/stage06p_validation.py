@@ -31,7 +31,7 @@ def _sha256(path: Path) -> str:
 
 
 def validate_stage06p_artifacts(
-    root: str | Path = ".",
+    root: str | Path = Path(__file__).resolve().parents[1],
     *,
     pytest_summary: str,
     pytest_passed: int,
@@ -352,7 +352,7 @@ def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def write_stage06p_validation(root: str | Path = ".", **kwargs: Any) -> dict[str, Any]:
+def write_stage06p_validation(root: str | Path = Path(__file__).resolve().parents[1], **kwargs: Any) -> dict[str, Any]:
     root_path = Path(root)
     result = validate_stage06p_artifacts(root_path, **kwargs)
     (root_path / "tools" / "benchmarks" / "merlo" / "benchmarks" / STAGE06P_VALIDATION_FILENAME).write_text(

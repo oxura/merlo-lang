@@ -49,7 +49,7 @@ class Stage05PFreezeVerification:
         }
 
 
-def build_stage05p_freeze(root: str | Path = ".") -> dict[str, Any]:
+def build_stage05p_freeze(root: str | Path = Path(__file__).resolve().parents[1]) -> dict[str, Any]:
     root_path = Path(root)
     files = {
         relative: frozen_sha256(root_path, relative)
@@ -75,7 +75,7 @@ def build_stage05p_freeze(root: str | Path = ".") -> dict[str, Any]:
     }
 
 
-def verify_stage05p_freeze(root: str | Path = ".") -> Stage05PFreezeVerification:
+def verify_stage05p_freeze(root: str | Path = Path(__file__).resolve().parents[1]) -> Stage05PFreezeVerification:
     root_path = Path(root)
     path = root_path / "benchmarks" / STAGE05P_FREEZE_FILENAME
     raw = path.read_bytes()
@@ -93,7 +93,7 @@ def verify_stage05p_freeze(root: str | Path = ".") -> Stage05PFreezeVerification
     )
 
 
-def assert_stage05p_frozen(root: str | Path = ".") -> Stage05PFreezeVerification:
+def assert_stage05p_frozen(root: str | Path = Path(__file__).resolve().parents[1]) -> Stage05PFreezeVerification:
     result = verify_stage05p_freeze(root)
     if not result.ok:
         details = ", ".join(path for path, _expected, _observed in result.mismatches)

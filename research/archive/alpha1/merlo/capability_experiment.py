@@ -765,7 +765,7 @@ def _observe_meldra(
 
 
 def run_capability_experiment() -> CapabilityExperimentReport:
-    protocol = assert_stage04e_protocol(Path(__file__).resolve().parents[2])
+    protocol = assert_stage04e_protocol(Path(__file__).resolve().parents[1])
     cases = generate_capability_cases()
     current_attacks = []
     current_controls = []

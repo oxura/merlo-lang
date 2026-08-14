@@ -28,7 +28,7 @@ def _geometric_mean(values: list[float]) -> float | None:
     return math.exp(sum(math.log(value) for value in values) / len(values))
 
 
-def build_stage05p_decision(root: str | Path = ".") -> dict[str, Any]:
+def build_stage05p_decision(root: str | Path = Path(__file__).resolve().parents[1]) -> dict[str, Any]:
     root_path = Path(root)
     freeze = assert_stage05p_frozen(root_path)
     benchmark_path = root_path / "benchmarks" / "stage05p_runs" / "report.json"
@@ -228,7 +228,7 @@ def build_stage05p_decision(root: str | Path = ".") -> dict[str, Any]:
     }
 
 
-def write_stage05p_decision(root: str | Path = ".") -> dict[str, Any]:
+def write_stage05p_decision(root: str | Path = Path(__file__).resolve().parents[1]) -> dict[str, Any]:
     root_path = Path(root)
     payload = build_stage05p_decision(root_path)
     (root_path / "benchmarks" / STAGE05P_DECISION_FILENAME).write_text(

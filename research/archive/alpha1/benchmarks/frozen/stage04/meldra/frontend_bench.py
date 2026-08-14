@@ -10,15 +10,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from research.archive.historical_protocol.merlo.analyzer import scan_python
-from research.archive.historical_protocol.merlo.core_semantics import CoreChange, CoreError, apply_core_change
-from research.archive.historical_protocol.merlo.frontend_evaluator import (
+from .analyzer import scan_python
+from .core_semantics import CoreChange, CoreError, apply_core_change
+from .frontend_evaluator import (
     EnumValue,
     RecordValue,
     ReferenceEvaluator,
 )
-from research.archive.historical_protocol.merlo.frontend_semantics import FrontendCompilation, check_frontend, compile_frontend
-from research.archive.historical_protocol.merlo.python_binder import PythonBindingReport, bind_python_sources
+from .frontend_semantics import FrontendCompilation, check_frontend, compile_frontend
+from .python_binder import PythonBindingReport, bind_python_sources
 
 
 FRONTEND_BENCHMARK_SCHEMA_VERSION = 1
@@ -1279,10 +1279,7 @@ def run_frontend_benchmark(
     deterministic_denominator = 1
 
     support_profile = (
-        Path(__file__).resolve().parents[1]
-        / "tools"
-        / "benchmarks"
-        / "merlo"
+        Path(__file__).parents[1]
         / "benchmarks"
         / "meldra_stage04_support_profile.json"
     )

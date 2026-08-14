@@ -1,0 +1,2782 @@
+{
+  "ablation_arms": [
+    "meldra_without_task_capsule",
+    "meldra_without_effects",
+    "meldra_without_changeir",
+    "meldra_without_capability_restrictions"
+  ],
+  "arms": [
+    "baseline",
+    "meldra"
+  ],
+  "budget": {
+    "input_tokens": 100000,
+    "iterations": 25,
+    "output_tokens": 25000,
+    "tool_calls": 100,
+    "wall_time_seconds": 300.0
+  },
+  "external_trial_manifest_sha256": "85ff100a07ffdde07773cd96b1f8ea96d18c4b3d749774f9be7a19e4c14a2116",
+  "kind": "MeldraSameModelAgentManifest",
+  "protocol_sha256": "29b4401c31871f219554985a253c80757ee3bdfb718d052fea4eabd41d0df1c7",
+  "provider": {
+    "endpoint": "https://api.fireworks.ai/inference/v1/chat/completions",
+    "model": "accounts/fireworks/models/glm-5p2",
+    "same_model_required": true
+  },
+  "schema_version": 1,
+  "selection": "All frozen 30x3 external source-product transformations.",
+  "task_count": 90,
+  "tasks": [
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_manager.py"
+      ],
+      "prompt": "Change the signature of pluggy._manager.PluginManager.__init__ to (self, project_name: str, meldra_optional_0=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:00",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_compat.py"
+      ],
+      "prompt": "Change the signature of pluggy._compat.DistFacade.__init__ to (self, dist: importlib.metadata.Distribution, meldra_optional_2=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:01",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_manager.py"
+      ],
+      "prompt": "Change the signature of pluggy._manager.PluginManager.is_blocked to (self, name: str, meldra_optional_3=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:02",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_hooks.py"
+      ],
+      "prompt": "Change the signature of pluggy._hooks.HookCaller.has_spec to (self, meldra_optional_4=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:03",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_result.py"
+      ],
+      "prompt": "Change the signature of pluggy._result.Result.exception to (self, meldra_optional_5=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:04",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_manager.py"
+      ],
+      "prompt": "Change the signature of pluggy._manager.PluginManager.enable_tracing to (self, meldra_optional_6=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:05",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_manager.py"
+      ],
+      "prompt": "Change the signature of pluggy._manager.PluginManager.is_registered to (self, plugin: _Plugin, meldra_optional_7=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:06",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_manager.py"
+      ],
+      "prompt": "Change the signature of pluggy._manager.PluginManager.set_blocked to (self, name: str, meldra_optional_8=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:07",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_hooks.py"
+      ],
+      "prompt": "Change the signature of pluggy._hooks.HookCaller.is_historic to (self, meldra_optional_9=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:08",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_compat.py"
+      ],
+      "prompt": "Change the signature of pluggy._compat.DistFacade.__getattr__ to (self, attr: str, meldra_optional_10=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:09",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_hooks.py"
+      ],
+      "prompt": "Change the signature of pluggy._hooks._SubsetHookCaller._call_history to (self, meldra_optional_12=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:10",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_manager.py"
+      ],
+      "prompt": "Change the signature of pluggy._manager.PluginManager.get_plugin to (self, name: str, meldra_optional_13=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:11",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_hooks.py"
+      ],
+      "prompt": "Change the signature of pluggy._hooks.HookCaller.__repr__ to (self, meldra_optional_14=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:12",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "scripts/release.py"
+      ],
+      "prompt": "Change the signature of scripts.release.main to (meldra_optional_16=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:change_signature:planner_preflight_candidate:13",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_hooks.py",
+        "src/pluggy/_manager.py",
+        "testing/test_helpers.py"
+      ],
+      "prompt": "Move pluggy._manager._formatdef to pluggy._hooks._formatdef and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:00",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_callers.py",
+        "src/pluggy/_manager.py",
+        "testing/test_helpers.py"
+      ],
+      "prompt": "Move pluggy._manager._formatdef to pluggy._callers._formatdef and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:01",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_compat.py",
+        "src/pluggy/_manager.py",
+        "testing/test_helpers.py"
+      ],
+      "prompt": "Move pluggy._manager._formatdef to pluggy._compat._formatdef and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:02",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_manager.py",
+        "src/pluggy/_tracing.py",
+        "testing/test_helpers.py"
+      ],
+      "prompt": "Move pluggy._manager._formatdef to pluggy._tracing._formatdef and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:03",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "scripts/release.py",
+        "src/pluggy/_manager.py",
+        "testing/test_helpers.py"
+      ],
+      "prompt": "Move pluggy._manager._formatdef to scripts.release._formatdef and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:04",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_manager.py",
+        "src/pluggy/_warnings.py",
+        "testing/test_helpers.py"
+      ],
+      "prompt": "Move pluggy._manager._formatdef to pluggy._warnings._formatdef and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:05",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_manager.py",
+        "src/pluggy/_result.py",
+        "testing/test_helpers.py"
+      ],
+      "prompt": "Move pluggy._manager._formatdef to pluggy._result._formatdef and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:06",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "downstream/run_downstream.py",
+        "src/pluggy/_manager.py",
+        "testing/test_helpers.py"
+      ],
+      "prompt": "Move pluggy._manager._formatdef to downstream.run_downstream._formatdef and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:07",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "downstream/run_downstream.py",
+        "scripts/release.py"
+      ],
+      "prompt": "Move downstream.run_downstream.TestStep to scripts.release.TestStep and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:08",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "downstream/run_downstream.py",
+        "scripts/release.py"
+      ],
+      "prompt": "Move downstream.run_downstream.venv_bin_dir to scripts.release.venv_bin_dir and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:09",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "downstream/run_downstream.py",
+        "scripts/release.py"
+      ],
+      "prompt": "Move downstream.run_downstream.GitConfig to scripts.release.GitConfig and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:10",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "downstream/run_downstream.py",
+        "scripts/release.py"
+      ],
+      "prompt": "Move downstream.run_downstream.format_validation_error to scripts.release.format_validation_error and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:11",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "downstream/run_downstream.py",
+        "scripts/release.py"
+      ],
+      "prompt": "Move downstream.run_downstream.list_recipes to scripts.release.list_recipes and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:12",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "downstream/run_downstream.py",
+        "src/pluggy/__init__.py"
+      ],
+      "prompt": "Move downstream.run_downstream.list_recipes to pluggy.list_recipes and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:move:planner_preflight_candidate:13",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "scripts/release.py"
+      ],
+      "prompt": "Rename scripts.release.main to scripts.release.meldra_safe_rename_18 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:00",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "downstream/run_downstream.py"
+      ],
+      "prompt": "Rename downstream.run_downstream.RecipeFile to downstream.run_downstream.meldra_safe_rename_19 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:01",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "downstream/run_downstream.py"
+      ],
+      "prompt": "Rename downstream.run_downstream.EnvironmentUv to downstream.run_downstream.meldra_safe_rename_25 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:02",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "downstream/run_downstream.py"
+      ],
+      "prompt": "Rename downstream.run_downstream.EnvironmentScript to downstream.run_downstream.meldra_safe_rename_26 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:03",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_callers.py"
+      ],
+      "prompt": "Rename pluggy._callers._warn_teardown_exception to pluggy._callers.meldra_safe_rename_27 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:04",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "downstream/run_downstream.py"
+      ],
+      "prompt": "Rename downstream.run_downstream.build_parser to downstream.run_downstream.meldra_safe_rename_30 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:05",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "scripts/release.py"
+      ],
+      "prompt": "Rename scripts.release.get_upstream to scripts.release.meldra_safe_rename_34 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:06",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "scripts/release.py"
+      ],
+      "prompt": "Rename scripts.release.create_branch to scripts.release.meldra_safe_rename_36 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:07",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_callers.py"
+      ],
+      "prompt": "Rename pluggy._callers._raise_wrapfail to pluggy._callers.meldra_safe_rename_41 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:08",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "scripts/release.py"
+      ],
+      "prompt": "Rename scripts.release.changelog to scripts.release.meldra_safe_rename_45 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:09",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_hooks.py",
+        "src/pluggy/_manager.py"
+      ],
+      "prompt": "Rename pluggy._hooks._SubsetHookCaller to pluggy._hooks.meldra_safe_rename_46 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:10",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "downstream/run_downstream.py"
+      ],
+      "prompt": "Rename downstream.run_downstream.main to downstream.run_downstream.meldra_safe_rename_51 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:11",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_callers.py",
+        "src/pluggy/_manager.py",
+        "testing/benchmark.py",
+        "testing/test_multicall.py"
+      ],
+      "prompt": "Rename pluggy._callers._multicall to pluggy._callers.meldra_safe_rename_62 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:12",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/pluggy/_manager.py",
+        "testing/test_helpers.py"
+      ],
+      "prompt": "Rename pluggy._manager._formatdef to pluggy._manager.meldra_safe_rename_63 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pytest-dev/pluggy.git",
+      "root": "/tmp/meldra-external-corpus/pluggy",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "pluggy:safe:rename:planner_preflight_candidate:13",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/click/_winconsole.py"
+      ],
+      "prompt": "Change the signature of click._winconsole.ConsoleStream.__repr__ to (self, meldra_optional_0=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pallets/click.git",
+      "root": "/tmp/meldra-external-corpus/click",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "click:safe:change_signature:planner_preflight_candidate:00",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/click/types.py"
+      ],
+      "prompt": "Change the signature of click.types.StringParamType.__repr__ to (self, meldra_optional_2=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pallets/click.git",
+      "root": "/tmp/meldra-external-corpus/click",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "click:safe:change_signature:planner_preflight_candidate:01",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/click/__init__.py",
+        "src/click/termui.py"
+      ],
+      "prompt": "Move click.termui.raw_terminal to click.raw_terminal and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pallets/click.git",
+      "root": "/tmp/meldra-external-corpus/click",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "click:safe:move:planner_preflight_candidate:00",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/click/_utils.py",
+        "src/click/termui.py"
+      ],
+      "prompt": "Move click.termui.raw_terminal to click._utils.raw_terminal and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pallets/click.git",
+      "root": "/tmp/meldra-external-corpus/click",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "click:safe:move:planner_preflight_candidate:01",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/click/__init__.py",
+        "src/click/decorators.py"
+      ],
+      "prompt": "Rename click.decorators.version_option to click.decorators.meldra_safe_rename_18 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pallets/click.git",
+      "root": "/tmp/meldra-external-corpus/click",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "click:safe:rename:planner_preflight_candidate:00",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "src/click/types.py"
+      ],
+      "prompt": "Rename click.types._guess_type to click.types.meldra_safe_rename_19 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/pallets/click.git",
+      "root": "/tmp/meldra-external-corpus/click",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "click:safe:rename:planner_preflight_candidate:01",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/typeutils.py"
+      ],
+      "prompt": "Change the signature of boltons.typeutils.classproperty.__get__ to (self, instance, cls, meldra_optional_0=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:change_signature:planner_preflight_candidate:00",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/funcutils.py"
+      ],
+      "prompt": "Change the signature of boltons.funcutils.mro_items to (type_obj, meldra_optional_1=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:change_signature:planner_preflight_candidate:01",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/fileutils.py"
+      ],
+      "prompt": "Change the signature of boltons.fileutils.AtomicSaver.__exit__ to (self, exc_type, exc_val, exc_tb, meldra_optional_2=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:change_signature:planner_preflight_candidate:02",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/jsonutils.py"
+      ],
+      "prompt": "Change the signature of boltons.jsonutils.JSONLIterator.next to (self, meldra_optional_3=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:change_signature:planner_preflight_candidate:03",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/ioutils.py"
+      ],
+      "prompt": "Change the signature of boltons.ioutils.SpooledIOBase.__exit__ to (self, *args, meldra_optional_4=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:change_signature:planner_preflight_candidate:04",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/strutils.py"
+      ],
+      "prompt": "Change the signature of boltons.strutils.MultiReplace._get_value to (self, match, meldra_optional_5=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:change_signature:planner_preflight_candidate:05",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "misc/table_html_app.py"
+      ],
+      "prompt": "Change the signature of misc.table_html_app.BasicRender.__init__ to (self, dev_mode=True, qp_name='format', meldra_optional_6=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:change_signature:planner_preflight_candidate:06",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/timeutils.py"
+      ],
+      "prompt": "Change the signature of boltons.timeutils.LocalTZInfo.tzname to (self, dt, meldra_optional_7=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:change_signature:planner_preflight_candidate:07",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/listutils.py"
+      ],
+      "prompt": "Change the signature of boltons.listutils.BarrelList.from_iterable to (cls, it, meldra_optional_8=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:change_signature:planner_preflight_candidate:08",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/setutils.py"
+      ],
+      "prompt": "Change the signature of boltons.setutils.IndexedSet.add to (self, item, meldra_optional_9=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:change_signature:planner_preflight_candidate:09",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/tbutils.py"
+      ],
+      "prompt": "Change the signature of boltons.tbutils.TracebackInfo.__len__ to (self, meldra_optional_10=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:change_signature:planner_preflight_candidate:10",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/ioutils.py"
+      ],
+      "prompt": "Change the signature of boltons.ioutils.SpooledStringIO.readline to (self, length=None, meldra_optional_11=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:change_signature:planner_preflight_candidate:11",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/socketutils.py"
+      ],
+      "prompt": "Change the signature of boltons.socketutils.BufferedSocket.proto to (self, meldra_optional_12=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:change_signature:planner_preflight_candidate:12",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/funcutils.py"
+      ],
+      "prompt": "Change the signature of boltons.funcutils.dir_dict to (obj, raise_exc=False, meldra_optional_13=None) and migrate every statically known caller. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:change_signature:planner_preflight_candidate:13",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/funcutils.py",
+        "boltons/iterutils.py"
+      ],
+      "prompt": "Move boltons.funcutils.dir_dict to boltons.iterutils.dir_dict and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:move:planner_preflight_candidate:00",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/ecoutils.py",
+        "boltons/funcutils.py"
+      ],
+      "prompt": "Move boltons.funcutils.dir_dict to boltons.ecoutils.dir_dict and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:move:planner_preflight_candidate:01",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/funcutils.py",
+        "boltons/socketutils.py"
+      ],
+      "prompt": "Move boltons.funcutils.dir_dict to boltons.socketutils.dir_dict and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:move:planner_preflight_candidate:02",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/fileutils.py",
+        "boltons/funcutils.py"
+      ],
+      "prompt": "Move boltons.funcutils.dir_dict to boltons.fileutils.dir_dict and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:move:planner_preflight_candidate:03",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/funcutils.py",
+        "misc/linkify_changelog.py"
+      ],
+      "prompt": "Move boltons.funcutils.dir_dict to misc.linkify_changelog.dir_dict and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:move:planner_preflight_candidate:04",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/funcutils.py",
+        "misc/table_html_app.py"
+      ],
+      "prompt": "Move boltons.funcutils.dir_dict to misc.table_html_app.dir_dict and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:move:planner_preflight_candidate:05",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/funcutils.py",
+        "boltons/tbutils.py"
+      ],
+      "prompt": "Move boltons.funcutils.dir_dict to boltons.tbutils.dir_dict and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:move:planner_preflight_candidate:06",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/funcutils.py",
+        "boltons/ioutils.py"
+      ],
+      "prompt": "Move boltons.funcutils.dir_dict to boltons.ioutils.dir_dict and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:move:planner_preflight_candidate:07",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/funcutils.py",
+        "boltons/mathutils.py"
+      ],
+      "prompt": "Move boltons.funcutils.dir_dict to boltons.mathutils.dir_dict and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:move:planner_preflight_candidate:08",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/debugutils.py",
+        "boltons/funcutils.py"
+      ],
+      "prompt": "Move boltons.funcutils.dir_dict to boltons.debugutils.dir_dict and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:move:planner_preflight_candidate:09",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/__init__.py",
+        "boltons/funcutils.py"
+      ],
+      "prompt": "Move boltons.funcutils.dir_dict to boltons.dir_dict and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:move:planner_preflight_candidate:10",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/cacheutils.py",
+        "boltons/funcutils.py"
+      ],
+      "prompt": "Move boltons.funcutils.dir_dict to boltons.cacheutils.dir_dict and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:move:planner_preflight_candidate:11",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/funcutils.py",
+        "boltons/gcutils.py"
+      ],
+      "prompt": "Move boltons.funcutils.dir_dict to boltons.gcutils.dir_dict and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:move:planner_preflight_candidate:12",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/funcutils.py",
+        "boltons/timeutils.py"
+      ],
+      "prompt": "Move boltons.funcutils.dir_dict to boltons.timeutils.dir_dict and migrate imports and callers. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:move:planner_preflight_candidate:13",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/funcutils.py"
+      ],
+      "prompt": "Rename boltons.funcutils.mro_items to boltons.funcutils.meldra_safe_rename_1 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:rename:planner_preflight_candidate:00",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "misc/table_html_app.py"
+      ],
+      "prompt": "Rename misc.table_html_app.BasicRender to misc.table_html_app.meldra_safe_rename_13 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:rename:planner_preflight_candidate:01",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/funcutils.py"
+      ],
+      "prompt": "Rename boltons.funcutils.dir_dict to boltons.funcutils.meldra_safe_rename_14 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:rename:planner_preflight_candidate:02",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/iterutils.py",
+        "tests/test_iterutils.py"
+      ],
+      "prompt": "Rename boltons.iterutils.pairwise_iter to boltons.iterutils.meldra_safe_rename_21 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:rename:planner_preflight_candidate:03",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/tableutils.py"
+      ],
+      "prompt": "Rename boltons.tableutils.NamedTupleInputType to boltons.tableutils.meldra_safe_rename_26 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:rename:planner_preflight_candidate:04",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/socketutils.py"
+      ],
+      "prompt": "Rename boltons.socketutils.NetstringProtocolError to boltons.socketutils.meldra_safe_rename_27 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:rename:planner_preflight_candidate:05",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/excutils.py"
+      ],
+      "prompt": "Rename boltons.excutils.math_lol to boltons.excutils.meldra_safe_rename_36 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:rename:planner_preflight_candidate:06",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/iterutils.py",
+        "tests/test_iterutils.py"
+      ],
+      "prompt": "Rename boltons.iterutils.lstrip to boltons.iterutils.meldra_safe_rename_46 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:rename:planner_preflight_candidate:07",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/urlutils.py",
+        "tests/test_urlutils.py"
+      ],
+      "prompt": "Rename boltons.urlutils.QueryParamDict to boltons.urlutils.meldra_safe_rename_52 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:rename:planner_preflight_candidate:08",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/tableutils.py"
+      ],
+      "prompt": "Rename boltons.tableutils.DictInputType to boltons.tableutils.meldra_safe_rename_74 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:rename:planner_preflight_candidate:09",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/funcutils.py",
+        "tests/test_funcutils.py"
+      ],
+      "prompt": "Rename boltons.funcutils.InstancePartial to boltons.funcutils.meldra_safe_rename_81 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:rename:planner_preflight_candidate:10",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/mathutils.py",
+        "tests/test_mathutils.py"
+      ],
+      "prompt": "Rename boltons.mathutils.clamp to boltons.mathutils.meldra_safe_rename_88 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:rename:planner_preflight_candidate:11",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/iterutils.py"
+      ],
+      "prompt": "Rename boltons.iterutils.same to boltons.iterutils.meldra_safe_rename_91 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:rename:planner_preflight_candidate:12",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    },
+    {
+      "budget": {
+        "input_tokens": 100000,
+        "iterations": 25,
+        "output_tokens": 25000,
+        "tool_calls": 100,
+        "wall_time_seconds": 300.0
+      },
+      "expected_contracts": [
+        "public-api-preserved",
+        "tests-pass"
+      ],
+      "expected_files": [
+        "boltons/cacheutils.py",
+        "tests/test_cacheutils.py"
+      ],
+      "prompt": "Rename boltons.cacheutils.LRU to boltons.cacheutils.meldra_safe_rename_96 and migrate references. Preserve behavior and every unrelated public API. Run the declared test suite. Final contracts must include tests-pass and public-api-preserved.",
+      "repo": "https://github.com/mahmoud/boltons.git",
+      "root": "/tmp/meldra-external-corpus/boltons",
+      "sequence_id": null,
+      "sequence_index": 0,
+      "task_id": "boltons:safe:rename:planner_preflight_candidate:13",
+      "test_argv": [
+        "env",
+        "PYTHONPATH=src",
+        "/usr/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+      ]
+    }
+  ]
+}

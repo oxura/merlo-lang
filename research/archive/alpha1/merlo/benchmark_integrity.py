@@ -614,7 +614,7 @@ def measure_expressiveness_and_burden(
     }
 
 
-def run_benchmark_integrity_report(root: str | Path = ".") -> BenchmarkIntegrityReport:
+def run_benchmark_integrity_report(root: str | Path = Path(__file__).resolve().parents[1]) -> BenchmarkIntegrityReport:
     root_path = Path(root)
     protocol = assert_stage04e_protocol(root_path)
     runtime = _load(root_path, "tools/benchmarks/merlo/benchmarks/meldra_runtime_soundness.json")

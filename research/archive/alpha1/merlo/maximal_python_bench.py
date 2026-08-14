@@ -315,7 +315,7 @@ def _runtime_audit() -> str:
 def run_maximal_python_benchmark(
     program_count: int = 40,
 ) -> MaximalPythonBenchmarkReport:
-    protocol = assert_stage04e_protocol(Path(__file__).resolve().parents[2])
+    protocol = assert_stage04e_protocol(Path(__file__).resolve().parents[1])
     current, maximal, meldra, manifest = _maximal_binding(program_count)
     runtime, runtime_digest, dynamic_rejections = _runtime_summary()
     private, public = _interface_checks()

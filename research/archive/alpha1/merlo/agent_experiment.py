@@ -22,6 +22,9 @@ from research.archive.alpha1.merlo.agent_trial import (
 from research.archive.historical_protocol.merlo.stage04e_protocol import assert_stage04e_protocol
 
 
+_ALPHA1_ROOT = Path(__file__).resolve().parents[1]
+
+
 AGENT_EXPERIMENT_SCHEMA_VERSION = 1
 AGENT_EXPERIMENT_MANIFEST_FILENAME = "meldra_agent_experiment_manifest.json"
 AGENT_EXPERIMENT_REPORT_FILENAME = "meldra_agent_experiment.json"
@@ -118,9 +121,9 @@ def _task_prompt(target: Mapping[str, Any]) -> str:
 
 
 def build_agent_experiment_manifest(
-    root: str | Path = ".",
+    root: str | Path = Path(__file__).resolve().parents[1],
 ) -> dict[str, Any]:
-    root_path = Path(root)
+    root_path = _ALPHA1_ROOT if str(root) == "." else Path(root)
     protocol = assert_stage04e_protocol(root_path)
     external_manifest_path = (
         root_path / "tools" / "benchmarks" / "merlo" / "benchmarks" / "meldra_external_trials_manifest.json"
@@ -178,9 +181,10 @@ def build_agent_experiment_manifest(
 
 
 def load_agent_experiment_manifest(
-    root: str | Path = ".",
+    root: str | Path = Path(__file__).resolve().parents[1],
 ) -> tuple[tuple[TaskManifest, ...], str]:
-    path = Path(root) / "benchmarks" / AGENT_EXPERIMENT_MANIFEST_FILENAME
+    root_path = _ALPHA1_ROOT if str(root) == "." else Path(root)
+    path = root_path / "tools" / "benchmarks" / "merlo" / "benchmarks" / AGENT_EXPERIMENT_MANIFEST_FILENAME
     raw = path.read_bytes()
     payload = json.loads(raw)
     tasks = tuple(TaskManifest.from_dict(item) for item in payload["tasks"])
@@ -197,11 +201,11 @@ def _environment() -> dict[str, Any]:
 
 
 def run_agent_experiment(
-    root: str | Path = ".",
+    root: str | Path = Path(__file__).resolve().parents[1],
     *,
     api_key: str | None = None,
 ) -> AgentExperimentReport:
-    root_path = Path(root)
+    root_path = _ALPHA1_ROOT if str(root) == "." else Path(root)
     protocol = assert_stage04e_protocol(root_path)
     tasks, manifest_sha256 = load_agent_experiment_manifest(root_path)
     provider = OpenAICompatibleProvider(

@@ -203,7 +203,7 @@ def _determinism_hypothesis() -> dict[str, Any]:
     }
 
 
-def evaluate_native_hypotheses(root: str | Path = ".") -> dict[str, Any]:
+def evaluate_native_hypotheses(root: str | Path = Path(__file__).resolve().parents[1]) -> dict[str, Any]:
     root_path = Path(root)
     freeze = assert_stage05p_frozen(root_path)
     hypotheses = (

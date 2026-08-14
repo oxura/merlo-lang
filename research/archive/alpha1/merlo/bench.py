@@ -295,7 +295,7 @@ def _evolution_cases() -> tuple[EvolutionCase, ...]:
         EvolutionCase(
             "rename/reexport",
             {
-                "pkg/__init__.py": "from api import target\n",
+                "pkg/__init__.py": "from .api import target\n",
                 "pkg/api.py": "def target():\n    return 1\n",
                 "use.py": "from pkg import target\nvalue = target()\n",
             },

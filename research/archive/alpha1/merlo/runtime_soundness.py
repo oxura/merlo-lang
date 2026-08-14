@@ -1383,7 +1383,7 @@ def _meldra_arm(
 
 
 def run_runtime_soundness_benchmark(
-    root: str | Path = ".",
+    root: str | Path = Path(__file__).resolve().parents[1],
 ) -> RuntimeSoundnessReport:
     protocol = assert_stage04e_protocol(root)
     fixtures = generate_runtime_soundness_fixtures()

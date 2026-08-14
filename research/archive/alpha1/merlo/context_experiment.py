@@ -758,7 +758,7 @@ def _interface_map(report: MaximalPythonReport) -> dict[str, str]:
 
 
 def run_effect_context_benchmark() -> EffectContextReport:
-    protocol = assert_stage04e_protocol(Path(__file__).resolve().parents[2])
+    protocol = assert_stage04e_protocol(Path(__file__).resolve().parents[1])
     cases = generate_effect_context_cases()
     current_observations = []
     maximal_observations = []

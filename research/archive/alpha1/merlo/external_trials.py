@@ -218,7 +218,7 @@ def _new_locator(task: ExternalTaskSpec, entity: Any) -> str:
 
 
 def build_external_trial_manifest(
-    root: str | Path = ".",
+    root: str | Path = Path(__file__).resolve().parents[1],
 ) -> dict[str, Any]:
     root_path = Path(root)
     assert_stage04e_protocol(root_path)
@@ -426,7 +426,7 @@ def _observe_trial_job(
 
 
 def run_external_trials(
-    root: str | Path = ".",
+    root: str | Path = Path(__file__).resolve().parents[1],
     *,
     timeout: float = 90.0,
     workers: int | None = None,

@@ -264,7 +264,7 @@ def main(value: Ok | Error) -> int:
     )
 
 
-def paired_corpus(root: str | Path = ".") -> tuple[PairedCase, ...]:
+def paired_corpus(root: str | Path = Path(__file__).resolve().parents[1]) -> tuple[PairedCase, ...]:
     root_path = Path(root)
     cases = [_numeric_pair(*item) for item in _NUMERIC_CASES]
     cases.extend(_structured_pairs())
@@ -1028,7 +1028,7 @@ def _equivalence(root: Path, compilation: Any) -> dict[str, Any]:
 
 
 def run_concise_application_milestone(
-    root: str | Path = ".",
+    root: str | Path = Path(__file__).resolve().parents[1],
     *,
     artifact_dir: str | Path = "tools/benchmarks/merlo/benchmarks/concise_application_alpha",
     report_path: str | Path = "research/archive/alpha1/benchmarks/merlo_concise_application_alpha.json",

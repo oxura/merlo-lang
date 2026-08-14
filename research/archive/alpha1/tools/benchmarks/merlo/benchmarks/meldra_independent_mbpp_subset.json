@@ -1,0 +1,1504 @@
+{
+  "domains": [
+    "cli",
+    "pricing",
+    "authorization",
+    "inventory",
+    "small-workflow",
+    "data-transformation",
+    "event-processing",
+    "plugin-like-dispatch",
+    "configuration-validation",
+    "notification-service"
+  ],
+  "evidence_level": "EXTERNAL_SPECS_AND_TESTS_ADAPTED_IMPLEMENTATIONS",
+  "kind": "MeldraIndependentExternalSpecSubset",
+  "primary_external_gate_status": "PARTIAL_NOT_INDEPENDENT_IMPLEMENTATIONS",
+  "records": [
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10,
+            8,
+            6
+          ],
+          "expected": 240
+        },
+        {
+          "arguments": [
+            3,
+            2,
+            2
+          ],
+          "expected": 6
+        },
+        {
+          "arguments": [
+            1,
+            2,
+            1
+          ],
+          "expected": 1
+        }
+      ],
+      "domain_adapter": "cli",
+      "entry_point": "find_Volume",
+      "meldra_declarations": "fn find_Volume(l: Int, b: Int, h: Int) -> Int:\n    (l * b * h) / 2\n",
+      "parameters": [
+        "l",
+        "b",
+        "h"
+      ],
+      "program_id": "mbpp-014",
+      "prompt": "Write a python function to find the volume of a triangular prism.",
+      "python_reference_source": "def find_Volume(l,b,h) : \n    return ((l * b * h) / 2)\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 14
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 40
+        },
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 20
+        },
+        {
+          "arguments": [
+            4
+          ],
+          "expected": 16
+        }
+      ],
+      "domain_adapter": "pricing",
+      "entry_point": "square_perimeter",
+      "meldra_declarations": "fn square_perimeter(a: Int) -> Int:\n    4 * a\n",
+      "parameters": [
+        "a"
+      ],
+      "program_id": "mbpp-017",
+      "prompt": "Write a function that returns the perimeter of a square given its side length as input.",
+      "python_reference_source": "def square_perimeter(a):\n  perimeter=4*a\n  return perimeter\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 17
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 65
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 280
+        },
+        {
+          "arguments": [
+            15
+          ],
+          "expected": 645
+        }
+      ],
+      "domain_adapter": "authorization",
+      "entry_point": "is_octagonal",
+      "meldra_declarations": "fn is_octagonal(n: Int) -> Int:\n    3 * n * n - 2 * n\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-059",
+      "prompt": "Write a function to find the nth octagonal number.",
+      "python_reference_source": "def is_octagonal(n): \n\treturn 3 * n * n - 2 * n\n",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 59
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            15
+          ],
+          "expected": true
+        }
+      ],
+      "domain_adapter": "inventory",
+      "entry_point": "dif_Square",
+      "meldra_declarations": "fn dif_Square(n: Int) -> Bool:\n    n - (n / 4) * 4 != 2\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-072",
+      "prompt": "Write a python function to check whether the given number can be represented as the difference of two squares or not.",
+      "python_reference_source": "def dif_Square(n): \n    if (n % 4 != 2): \n        return True\n    return False\n",
+      "return_type": "Bool",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 72
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            12345
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            1212112
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            1212
+          ],
+          "expected": false
+        }
+      ],
+      "domain_adapter": "small-workflow",
+      "entry_point": "is_Diff",
+      "meldra_declarations": "fn is_Diff(n: Int) -> Bool:\n    n - (n / 11) * 11 == 0\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-077",
+      "prompt": "Write a python function to find whether a number is divisible by 11.",
+      "python_reference_source": "def is_Diff(n): \n    return (n % 11 == 0)\n",
+      "return_type": "Bool",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 77
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 35
+        },
+        {
+          "arguments": [
+            6
+          ],
+          "expected": 56
+        },
+        {
+          "arguments": [
+            7
+          ],
+          "expected": 84
+        }
+      ],
+      "domain_adapter": "data-transformation",
+      "entry_point": "tetrahedral_number",
+      "meldra_declarations": "fn tetrahedral_number(n: Int) -> Int:\n    (n * (n + 1) * (n + 2)) / 6\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-080",
+      "prompt": "Write a function to find the nth tetrahedral number.",
+      "python_reference_source": "def tetrahedral_number(n): \n\treturn (n * (n + 1) * (n + 2)) / 6\n",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 80
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 6
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": 1
+        },
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 2
+        }
+      ],
+      "domain_adapter": "event-processing",
+      "entry_point": "sequence",
+      "meldra_declarations": "fn sequence(n: Int) -> Int:\n    if n == 1:\n        1\n    else:\n        if n == 2:\n            1\n        else:\n            sequence(sequence(n - 1)) + sequence(n - sequence(n - 1))\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-084",
+      "prompt": "Write a function to find the nth number in the newman conway sequence.",
+      "python_reference_source": "def sequence(n): \n\tif n == 1 or n == 2: \n\t\treturn 1\n\telse: \n\t\treturn sequence(sequence(n-1)) + sequence(n-sequence(n-1))\n",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 84
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 271
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": 7
+        },
+        {
+          "arguments": [
+            9
+          ],
+          "expected": 217
+        }
+      ],
+      "domain_adapter": "plugin-like-dispatch",
+      "entry_point": "centered_hexagonal_number",
+      "meldra_declarations": "fn centered_hexagonal_number(n: Int) -> Int:\n    3 * n * (n - 1) + 1\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-086",
+      "prompt": "Write a function to find nth centered hexagonal number.",
+      "python_reference_source": "def centered_hexagonal_number(n):\n  return 3 * n * (n - 1) + 1\n",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 86
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            11
+          ],
+          "expected": 10
+        },
+        {
+          "arguments": [
+            7
+          ],
+          "expected": 6
+        },
+        {
+          "arguments": [
+            12
+          ],
+          "expected": 11
+        }
+      ],
+      "domain_adapter": "configuration-validation",
+      "entry_point": "closest_num",
+      "meldra_declarations": "fn closest_num(N: Int) -> Int:\n    N - 1\n",
+      "parameters": [
+        "N"
+      ],
+      "program_id": "mbpp-089",
+      "prompt": "Write a function to find the closest smaller number than n.",
+      "python_reference_source": "def closest_num(N):\n  return (N - 1)\n",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 89
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            3,
+            4
+          ],
+          "expected": 81
+        },
+        {
+          "arguments": [
+            2,
+            3
+          ],
+          "expected": 8
+        },
+        {
+          "arguments": [
+            5,
+            5
+          ],
+          "expected": 3125
+        }
+      ],
+      "domain_adapter": "notification-service",
+      "entry_point": "power",
+      "meldra_declarations": "fn power(a: Int, b: Int) -> Int:\n    if b == 0:\n        1\n    else:\n        if a == 0:\n            0\n        else:\n            if b == 1:\n                a\n            else:\n                a * power(a, b - 1)\n",
+      "parameters": [
+        "a",
+        "b"
+      ],
+      "program_id": "mbpp-093",
+      "prompt": "Write a function to calculate the value of 'a' to the power 'b'.",
+      "python_reference_source": "def power(a,b):\n\tif b==0:\n\t\treturn 1\n\telif a==0:\n\t\treturn 0\n\telif b==1:\n\t\treturn a\n\telse:\n\t\treturn a*power(a,b-1)\n",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 93
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            3,
+            1
+          ],
+          "expected": 4
+        },
+        {
+          "arguments": [
+            4,
+            1
+          ],
+          "expected": 11
+        },
+        {
+          "arguments": [
+            5,
+            3
+          ],
+          "expected": 26
+        }
+      ],
+      "domain_adapter": "cli",
+      "entry_point": "eulerian_num",
+      "meldra_declarations": "fn eulerian_num(n: Int, m: Int) -> Int:\n    if m >= n:\n        0\n    else:\n        if n == 0:\n            0\n        else:\n            if m == 0:\n                1\n            else:\n                (n - m) * eulerian_num(n - 1, m - 1) + (m + 1) * eulerian_num(n - 1, m)\n",
+      "parameters": [
+        "n",
+        "m"
+      ],
+      "program_id": "mbpp-103",
+      "prompt": "Write a function to find the Eulerian number a(n, m).",
+      "python_reference_source": "def eulerian_num(n, m): \n\tif (m >= n or n == 0): \n\t\treturn 0 \n\tif (m == 0): \n\t\treturn 1 \n\treturn ((n - m) * eulerian_num(n - 1, m - 1) +(m + 1) * eulerian_num(n - 1, m))\n",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 103
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10,
+            20
+          ],
+          "expected": 200
+        },
+        {
+          "arguments": [
+            5,
+            10
+          ],
+          "expected": 50
+        },
+        {
+          "arguments": [
+            4,
+            8
+          ],
+          "expected": 32
+        }
+      ],
+      "domain_adapter": "pricing",
+      "entry_point": "multiply_int",
+      "meldra_declarations": "fn multiply_int(x: Int, y: Int) -> Int:\n    if y < 0:\n        -multiply_int(x, -y)\n    else:\n        if y == 0:\n            0\n        else:\n            if y == 1:\n                x\n            else:\n                x + multiply_int(x, y - 1)\n",
+      "parameters": [
+        "x",
+        "y"
+      ],
+      "program_id": "mbpp-127",
+      "prompt": "Write a function to multiply two integers.",
+      "python_reference_source": "def multiply_int(x, y):\n    if y < 0:\n        return -multiply_int(x, -y)\n    elif y == 0:\n        return 0\n    elif y == 1:\n        return x\n    else:\n        return x + multiply_int(x, y - 1)\n",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 127
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 190
+        },
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 45
+        },
+        {
+          "arguments": [
+            7
+          ],
+          "expected": 91
+        }
+      ],
+      "domain_adapter": "authorization",
+      "entry_point": "hexagonal_num",
+      "meldra_declarations": "fn hexagonal_num(n: Int) -> Int:\n    n * (2 * n - 1)\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-135",
+      "prompt": "Write a function to find the nth hexagonal number.",
+      "python_reference_source": "def hexagonal_num(n): \n\treturn n*(2*n - 1)\n",
+      "return_type": "Int",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 135
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            7
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            14
+          ],
+          "expected": true
+        }
+      ],
+      "domain_adapter": "inventory",
+      "entry_point": "is_Sum_Of_Powers_Of_Two",
+      "meldra_declarations": "fn is_Sum_Of_Powers_Of_Two(n: Int) -> Bool:\n    n - (n / 2) * 2 == 0\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-138",
+      "prompt": "Write a python function to check whether the given number can be represented as sum of non-zero powers of 2 or not.",
+      "python_reference_source": "def is_Sum_Of_Powers_Of_Two(n): \n    if (n % 2 == 1): \n        return False\n    else: \n        return True\n",
+      "return_type": "Bool",
+      "source_file": "Mike's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 138
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            6
+          ],
+          "expected": 12
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 30
+        },
+        {
+          "arguments": [
+            9
+          ],
+          "expected": 25
+        }
+      ],
+      "domain_adapter": "small-workflow",
+      "entry_point": "sum_series",
+      "meldra_declarations": "fn sum_series(n: Int) -> Int:\n    if n < 1:\n        0\n    else:\n        n + sum_series(n - 2)\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-162",
+      "prompt": "Write a function to calculate the sum (n - 2*i) from i=0 to n // 2, for instance n + (n-2) + (n-4)... (until n-x =< 0).",
+      "python_reference_source": "def sum_series(n):\n  if n < 1:\n    return 0\n  else:\n    return n + sum_series(n - 2)\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 162
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 25
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 50
+        },
+        {
+          "arguments": [
+            15
+          ],
+          "expected": 75
+        }
+      ],
+      "domain_adapter": "data-transformation",
+      "entry_point": "perimeter_pentagon",
+      "meldra_declarations": "fn perimeter_pentagon(a: Int) -> Int:\n    5 * a\n",
+      "parameters": [
+        "a"
+      ],
+      "program_id": "mbpp-171",
+      "prompt": "Write a function to find the perimeter of a regular pentagon from the length of its sides.",
+      "python_reference_source": "import math\ndef perimeter_pentagon(a):\n  perimeter=(5*a)\n  return perimeter\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 171
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10,
+            20,
+            0
+          ],
+          "expected": 0
+        },
+        {
+          "arguments": [
+            19,
+            15,
+            18
+          ],
+          "expected": 15
+        },
+        {
+          "arguments": [
+            -10,
+            -20,
+            -30
+          ],
+          "expected": -30
+        }
+      ],
+      "domain_adapter": "event-processing",
+      "entry_point": "min_of_three",
+      "meldra_declarations": "fn min_of_three(a: Int, b: Int, c: Int) -> Int:\n    if a <= b:\n        if a <= c:\n            a\n        else:\n            c\n    else:\n        if b <= c:\n            b\n        else:\n            c\n",
+      "parameters": [
+        "a",
+        "b",
+        "c"
+      ],
+      "program_id": "mbpp-227",
+      "prompt": "Write a function to find minimum of three numbers.",
+      "python_reference_source": "def min_of_three(a,b,c): \n      if (a <= b) and (a <= c): \n        smallest = a \n      elif (b <= a) and (b <= c): \n        smallest = b \n      else: \n        smallest = c \n      return smallest\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 227
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            4,
+            1,
+            2
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            17,
+            2,
+            4
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            39,
+            4,
+            6
+          ],
+          "expected": false
+        }
+      ],
+      "domain_adapter": "plugin-like-dispatch",
+      "entry_point": "all_Bits_Set_In_The_Given_Range",
+      "meldra_declarations": "fn _pow2(n: Int) -> Int:\n    if n == 0:\n        1\n    else:\n        2 * _pow2(n - 1)\nfn _range_unset(n: Int, l: Int, r: Int) -> Bool:\n    if l > r:\n        n == n\n    else:\n        let base = _pow2(l - 1)\n        let bit = (n / base) - (n / (base * 2)) * 2\n        if bit != 0:\n            n != n\n        else:\n            _range_unset(n, l + 1, r)\nfn all_Bits_Set_In_The_Given_Range(n: Int, l: Int, r: Int) -> Bool:\n    _range_unset(n, l, r)\n",
+      "parameters": [
+        "n",
+        "l",
+        "r"
+      ],
+      "program_id": "mbpp-228",
+      "prompt": "Write a python function to check whether all the bits are unset in the given range or not.",
+      "python_reference_source": "def all_Bits_Set_In_The_Given_Range(n,l,r):  \n    num = (((1 << r) - 1) ^ ((1 << (l - 1)) - 1)) \n    new_num = n & num\n    if (new_num == 0): \n        return True\n    return False\n",
+      "return_type": "Bool",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 228
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 27
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": 8
+        },
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 125
+        }
+      ],
+      "domain_adapter": "configuration-validation",
+      "entry_point": "volume_cube",
+      "meldra_declarations": "fn volume_cube(l: Int) -> Int:\n    l * l * l\n",
+      "parameters": [
+        "l"
+      ],
+      "program_id": "mbpp-234",
+      "prompt": "Write a function to find the volume of a cube given its side length.",
+      "python_reference_source": "def volume_cube(l):\n  volume = l * l * l\n  return volume\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 234
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 7
+        },
+        {
+          "arguments": [
+            4
+          ],
+          "expected": 17
+        },
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 41
+        }
+      ],
+      "domain_adapter": "notification-service",
+      "entry_point": "newman_prime",
+      "meldra_declarations": "fn newman_prime(n: Int) -> Int:\n    if n == 0:\n        1\n    else:\n        if n == 1:\n            1\n        else:\n            2 * newman_prime(n - 1) + newman_prime(n - 2)\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-260",
+      "prompt": "Write a function to find the nth newman–shanks–williams prime number.",
+      "python_reference_source": "def newman_prime(n): \n\tif n == 0 or n == 1: \n\t\treturn 1\n\treturn 2 * newman_prime(n - 1) + newman_prime(n - 2)\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 260
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 100
+        },
+        {
+          "arguments": [
+            9
+          ],
+          "expected": 324
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 400
+        }
+      ],
+      "domain_adapter": "cli",
+      "entry_point": "lateralsurface_cube",
+      "meldra_declarations": "fn lateralsurface_cube(l: Int) -> Int:\n    4 * l * l\n",
+      "parameters": [
+        "l"
+      ],
+      "program_id": "mbpp-266",
+      "prompt": "Write a function to find the lateral surface area of a cube given its side length.",
+      "python_reference_source": "def lateralsurface_cube(l):\n  LSA = 4 * (l * l)\n  return LSA\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 266
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 37
+        },
+        {
+          "arguments": [
+            4
+          ],
+          "expected": 73
+        },
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 121
+        }
+      ],
+      "domain_adapter": "pricing",
+      "entry_point": "find_star_num",
+      "meldra_declarations": "fn find_star_num(n: Int) -> Int:\n    6 * n * (n - 1) + 1\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-268",
+      "prompt": "Write a function to find the n'th star number.",
+      "python_reference_source": "def find_star_num(n): \n\treturn (6 * n * (n - 1) + 1)\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 268
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            4
+          ],
+          "expected": 8
+        },
+        {
+          "arguments": [
+            6
+          ],
+          "expected": 32
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": 2
+        }
+      ],
+      "domain_adapter": "authorization",
+      "entry_point": "even_binomial_Coeff_Sum",
+      "meldra_declarations": "fn _pow2(n: Int) -> Int:\n    if n == 0:\n        1\n    else:\n        2 * _pow2(n - 1)\nfn even_binomial_Coeff_Sum(n: Int) -> Int:\n    _pow2(n - 1)\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-274",
+      "prompt": "Write a python function that takes in a positive integer n and finds the sum of even index binomial coefficients.",
+      "python_reference_source": "import math  \ndef even_binomial_Coeff_Sum( n): \n    return (1 << (n - 1))\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 274
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 27
+        },
+        {
+          "arguments": [
+            7
+          ],
+          "expected": 175
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 370
+        }
+      ],
+      "domain_adapter": "inventory",
+      "entry_point": "is_num_decagonal",
+      "meldra_declarations": "fn is_num_decagonal(n: Int) -> Int:\n    4 * n * n - 3 * n\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-279",
+      "prompt": "Write a function to find the nth decagonal number.",
+      "python_reference_source": "def is_num_decagonal(n): \n\treturn 4 * n * n - 3 * n\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 279
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10,
+            3
+          ],
+          "expected": 3
+        },
+        {
+          "arguments": [
+            4,
+            2
+          ],
+          "expected": 2
+        },
+        {
+          "arguments": [
+            20,
+            5
+          ],
+          "expected": 4
+        }
+      ],
+      "domain_adapter": "small-workflow",
+      "entry_point": "find",
+      "meldra_declarations": "fn find(n: Int, m: Int) -> Int:\n    n / m\n",
+      "parameters": [
+        "n",
+        "m"
+      ],
+      "program_id": "mbpp-292",
+      "prompt": "Write a python function to find quotient of two numbers (rounded down to the nearest integer).",
+      "python_reference_source": "def find(n,m):  \n    q = n//m \n    return (q)\n",
+      "return_type": "Int",
+      "source_file": "Ellen's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 292
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5,
+            10
+          ],
+          "expected": 10
+        },
+        {
+          "arguments": [
+            -1,
+            -2
+          ],
+          "expected": -1
+        },
+        {
+          "arguments": [
+            9,
+            7
+          ],
+          "expected": 9
+        }
+      ],
+      "domain_adapter": "data-transformation",
+      "entry_point": "maximum",
+      "meldra_declarations": "fn maximum(a: Int, b: Int) -> Int:\n    if a >= b:\n        a\n    else:\n        b\n",
+      "parameters": [
+        "a",
+        "b"
+      ],
+      "program_id": "mbpp-309",
+      "prompt": "Write a python function to find the maximum of two numbers.",
+      "python_reference_source": "def maximum(a,b):   \n    if a >= b: \n        return a \n    else: \n        return b\n",
+      "return_type": "Int",
+      "source_file": "Ellen's Copy of Benchmark Questions Verification V2.ipynb",
+      "task_id": 309
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            9
+          ],
+          "expected": 76
+        },
+        {
+          "arguments": [
+            4
+          ],
+          "expected": 7
+        },
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 4
+        }
+      ],
+      "domain_adapter": "event-processing",
+      "entry_point": "find_lucas",
+      "meldra_declarations": "fn find_lucas(n: Int) -> Int:\n    if n == 0:\n        2\n    else:\n        if n == 1:\n            1\n        else:\n            find_lucas(n - 1) + find_lucas(n - 2)\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-389",
+      "prompt": "Write a function to find the n'th lucas number.",
+      "python_reference_source": "def find_lucas(n): \n\tif (n == 0): \n\t\treturn 2\n\tif (n == 1): \n\t\treturn 1\n\treturn find_lucas(n - 1) + find_lucas(n - 2)\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 389
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            25,
+            55,
+            65
+          ],
+          "expected": 55
+        },
+        {
+          "arguments": [
+            20,
+            10,
+            30
+          ],
+          "expected": 20
+        },
+        {
+          "arguments": [
+            15,
+            45,
+            75
+          ],
+          "expected": 45
+        }
+      ],
+      "domain_adapter": "plugin-like-dispatch",
+      "entry_point": "median_numbers",
+      "meldra_declarations": "fn median_numbers(a: Int, b: Int, c: Int) -> Int:\n    if a > b:\n        if a < c:\n            a\n        else:\n            if b > c:\n                b\n            else:\n                c\n    else:\n        if a > c:\n            a\n        else:\n            if b < c:\n                b\n            else:\n                c\n",
+      "parameters": [
+        "a",
+        "b",
+        "c"
+      ],
+      "program_id": "mbpp-397",
+      "prompt": "Write a function to find the median of three numbers.",
+      "python_reference_source": "def median_numbers(a,b,c):\n if a > b:\n    if a < c:\n        median = a\n    elif b > c:\n        median = b\n    else:\n        median = c\n else:\n    if a > c:\n        median = a\n    elif b < c:\n        median = b\n    else:\n        median = c\n return median\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 397
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            1,
+            2
+          ],
+          "expected": 1
+        },
+        {
+          "arguments": [
+            -5,
+            -4
+          ],
+          "expected": -5
+        },
+        {
+          "arguments": [
+            0,
+            0
+          ],
+          "expected": 0
+        }
+      ],
+      "domain_adapter": "configuration-validation",
+      "entry_point": "minimum",
+      "meldra_declarations": "fn minimum(a: Int, b: Int) -> Int:\n    if a <= b:\n        a\n    else:\n        b\n",
+      "parameters": [
+        "a",
+        "b"
+      ],
+      "program_id": "mbpp-404",
+      "prompt": "Write a python function to find the minimum of two numbers.",
+      "python_reference_source": "def minimum(a,b):   \n    if a <= b: \n        return a \n    else: \n        return b\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 404
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            12
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            7
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": false
+        }
+      ],
+      "domain_adapter": "notification-service",
+      "entry_point": "find_Parity",
+      "meldra_declarations": "fn _bit_count(n: Int) -> Int:\n    if n == 0:\n        0\n    else:\n        let half = n / 2\n        n - half * 2 + _bit_count(half)\nfn find_Parity(x: Int) -> Bool:\n    let count = _bit_count(x)\n    count - (count / 2) * 2 == 1\n",
+      "parameters": [
+        "x"
+      ],
+      "program_id": "mbpp-406",
+      "prompt": "Write a python function to find whether the parity of a given number is odd.",
+      "python_reference_source": "def find_Parity(x): \n    y = x ^ (x >> 1); \n    y = y ^ (y >> 2); \n    y = y ^ (y >> 4); \n    y = y ^ (y >> 8); \n    y = y ^ (y >> 16); \n    if (y & 1): \n        return True\n    return False\n",
+      "return_type": "Bool",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 406
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            123
+          ],
+          "expected": 3
+        },
+        {
+          "arguments": [
+            25
+          ],
+          "expected": 5
+        },
+        {
+          "arguments": [
+            30
+          ],
+          "expected": 0
+        }
+      ],
+      "domain_adapter": "cli",
+      "entry_point": "last_Digit",
+      "meldra_declarations": "fn last_Digit(n: Int) -> Int:\n    n - (n / 10) * 10\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-435",
+      "prompt": "Write a python function to find the last digit of a given number.",
+      "python_reference_source": "def last_Digit(n) :\n    return (n % 10)\n",
+      "return_type": "Int",
+      "source_file": "charlessutton@: Benchmark Questions Verification V2.ipynb",
+      "task_id": 435
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 150
+        },
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 54
+        },
+        {
+          "arguments": [
+            10
+          ],
+          "expected": 600
+        }
+      ],
+      "domain_adapter": "pricing",
+      "entry_point": "surfacearea_cube",
+      "meldra_declarations": "fn surfacearea_cube(l: Int) -> Int:\n    6 * l * l\n",
+      "parameters": [
+        "l"
+      ],
+      "program_id": "mbpp-441",
+      "prompt": "Write a function to find the surface area of a cube of a given size.",
+      "python_reference_source": "def surfacearea_cube(l):\n  surfacearea= 6*l*l\n  return surfacearea\n",
+      "return_type": "Int",
+      "source_file": "charlessutton@: Benchmark Questions Verification V2.ipynb",
+      "task_id": 441
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            1500,
+            1200
+          ],
+          "expected": 0
+        },
+        {
+          "arguments": [
+            100,
+            200
+          ],
+          "expected": 100
+        },
+        {
+          "arguments": [
+            2000,
+            5000
+          ],
+          "expected": 3000
+        }
+      ],
+      "domain_adapter": "authorization",
+      "entry_point": "loss_amount",
+      "meldra_declarations": "fn loss_amount(actual_cost: Int, sale_amount: Int) -> Int:\n    if sale_amount > actual_cost:\n        sale_amount - actual_cost\n    else:\n        0\n",
+      "parameters": [
+        "actual_cost",
+        "sale_amount"
+      ],
+      "program_id": "mbpp-452",
+      "prompt": "Write a function that gives loss amount on a sale if the given amount has loss else return 0.",
+      "python_reference_source": "def loss_amount(actual_cost,sale_amount): \n  if(sale_amount > actual_cost):\n    amount = sale_amount - actual_cost\n    return amount\n  else:\n    return 0\n",
+      "return_type": "Int",
+      "source_file": "charlessutton@: Benchmark Questions Verification V2.ipynb",
+      "task_id": 452
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            5
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            6
+          ],
+          "expected": false
+        }
+      ],
+      "domain_adapter": "inventory",
+      "entry_point": "check_monthnumb_number",
+      "meldra_declarations": "fn check_monthnumb_number(monthnum2: Int) -> Bool:\n    if monthnum2 == 1:\n        monthnum2 == monthnum2\n    else:\n        if monthnum2 == 3:\n            monthnum2 == monthnum2\n        else:\n            if monthnum2 == 5:\n                monthnum2 == monthnum2\n            else:\n                if monthnum2 == 7:\n                    monthnum2 == monthnum2\n                else:\n                    if monthnum2 == 8:\n                        monthnum2 == monthnum2\n                    else:\n                        if monthnum2 == 10:\n                            monthnum2 == monthnum2\n                        else:\n                            monthnum2 == 12\n",
+      "parameters": [
+        "monthnum2"
+      ],
+      "program_id": "mbpp-455",
+      "prompt": "Write a function to check whether the given month number contains 31 days or not.",
+      "python_reference_source": "def check_monthnumb_number(monthnum2):\n  if(monthnum2==1 or monthnum2==3 or monthnum2==5 or monthnum2==7 or monthnum2==8 or monthnum2==10 or monthnum2==12):\n    return True\n  else:\n    return False\n",
+      "return_type": "Bool",
+      "source_file": "charlessutton@: Benchmark Questions Verification V2.ipynb",
+      "task_id": 455
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            10,
+            20
+          ],
+          "expected": 200
+        },
+        {
+          "arguments": [
+            10,
+            5
+          ],
+          "expected": 50
+        },
+        {
+          "arguments": [
+            4,
+            2
+          ],
+          "expected": 8
+        }
+      ],
+      "domain_adapter": "small-workflow",
+      "entry_point": "rectangle_area",
+      "meldra_declarations": "fn rectangle_area(l: Int, b: Int) -> Int:\n    l * b\n",
+      "parameters": [
+        "l",
+        "b"
+      ],
+      "program_id": "mbpp-458",
+      "prompt": "Write a function to find the area of a rectangle.",
+      "python_reference_source": "def rectangle_area(l,b):\n  area=l*b\n  return area\n",
+      "return_type": "Int",
+      "source_file": "charlessutton@: Benchmark Questions Verification V2.ipynb",
+      "task_id": 458
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            3
+          ],
+          "expected": 30
+        },
+        {
+          "arguments": [
+            5
+          ],
+          "expected": 210
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": 6
+        }
+      ],
+      "domain_adapter": "data-transformation",
+      "entry_point": "difference",
+      "meldra_declarations": "fn difference(n: Int) -> Int:\n    let s = (n * (n + 1)) / 2\n    s * (s - 1)\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-555",
+      "prompt": "Write a python function to find the difference between the sum of cubes of the first n natural numbers and the sum of the first n natural numbers.",
+      "python_reference_source": "def difference(n) :  \n    S = (n*(n + 1))//2;  \n    res = S*(S-1);  \n    return res;\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 555
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            4
+          ],
+          "expected": 4
+        },
+        {
+          "arguments": [
+            21
+          ],
+          "expected": 0
+        },
+        {
+          "arguments": [
+            30
+          ],
+          "expected": 0
+        }
+      ],
+      "domain_adapter": "event-processing",
+      "entry_point": "last_Digit_Factorial",
+      "meldra_declarations": "fn last_Digit_Factorial(n: Int) -> Int:\n    if n == 0:\n        1\n    else:\n        if n <= 2:\n            n\n        else:\n            if n == 3:\n                6\n            else:\n                if n == 4:\n                    4\n                else:\n                    0\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-577",
+      "prompt": "Write a python function to find the last digit in factorial of a given number.",
+      "python_reference_source": "def last_Digit_Factorial(n): \n    if (n == 0): return 1\n    elif (n <= 2): return n  \n    elif (n == 3): return 6\n    elif (n == 4): return 4 \n    else: \n      return 0\n",
+      "return_type": "Int",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 577
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            1
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            3
+          ],
+          "expected": false
+        }
+      ],
+      "domain_adapter": "plugin-like-dispatch",
+      "entry_point": "is_Even",
+      "meldra_declarations": "fn is_Even(n: Int) -> Bool:\n    n - (n / 2) * 2 == 0\n",
+      "parameters": [
+        "n"
+      ],
+      "program_id": "mbpp-600",
+      "prompt": "Write a python function to check whether the given number is even or not.",
+      "python_reference_source": "def is_Even(n) : \n    if (n^1 == n+1) :\n        return True; \n    else :\n        return False;\n",
+      "return_type": "Bool",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 600
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            1500,
+            1200
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            100,
+            100
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            2000,
+            5000
+          ],
+          "expected": false
+        }
+      ],
+      "domain_adapter": "configuration-validation",
+      "entry_point": "noprofit_noloss",
+      "meldra_declarations": "fn noprofit_noloss(actual_cost: Int, sale_amount: Int) -> Bool:\n    sale_amount == actual_cost\n",
+      "parameters": [
+        "actual_cost",
+        "sale_amount"
+      ],
+      "program_id": "mbpp-637",
+      "prompt": "Write a function to check whether the given amount has no profit and no loss",
+      "python_reference_source": "def noprofit_noloss(actual_cost,sale_amount): \n  if(sale_amount == actual_cost):\n    return True\n  else:\n    return False\n",
+      "return_type": "Bool",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 637
+    },
+    {
+      "acceptance_cases": [
+        {
+          "arguments": [
+            6
+          ],
+          "expected": true
+        },
+        {
+          "arguments": [
+            2
+          ],
+          "expected": false
+        },
+        {
+          "arguments": [
+            12
+          ],
+          "expected": false
+        }
+      ],
+      "domain_adapter": "notification-service",
+      "entry_point": "check_monthnumber_number",
+      "meldra_declarations": "fn check_monthnumber_number(monthnum3: Int) -> Bool:\n    if monthnum3 == 4:\n        monthnum3 == monthnum3\n    else:\n        if monthnum3 == 6:\n            monthnum3 == monthnum3\n        else:\n            if monthnum3 == 9:\n                monthnum3 == monthnum3\n            else:\n                monthnum3 == 11\n",
+      "parameters": [
+        "monthnum3"
+      ],
+      "program_id": "mbpp-762",
+      "prompt": "Write a function to check whether the given month number contains 30 days or not. Months are given as number from 1 to 12.",
+      "python_reference_source": "def check_monthnumber_number(monthnum3):\n  return monthnum3==4 or monthnum3==6 or monthnum3==9 or monthnum3==11\n",
+      "return_type": "Bool",
+      "source_file": "Benchmark Questions Verification V2.ipynb",
+      "task_id": 762
+    }
+  ],
+  "schema_version": 1,
+  "selection": {
+    "compiler_feedback_used_to_change_semantics": false,
+    "method": "Deterministic support-profile selection: one pure Int/Bool entry point, literal equality acceptance cases, no collection-valued input/output; domain adapters assigned round-robin and are not source labels.",
+    "selected_after_frontend_freeze": true,
+    "selected_programs": 40,
+    "selected_task_ids": [
+      14,
+      17,
+      59,
+      72,
+      77,
+      80,
+      84,
+      86,
+      89,
+      93,
+      103,
+      127,
+      135,
+      138,
+      162,
+      171,
+      227,
+      228,
+      234,
+      260,
+      266,
+      268,
+      274,
+      279,
+      292,
+      309,
+      389,
+      397,
+      404,
+      406,
+      435,
+      441,
+      452,
+      455,
+      458,
+      555,
+      577,
+      600,
+      637,
+      762
+    ]
+  },
+  "source_dataset": {
+    "citation": "Austin et al., Program Synthesis with Large Language Models, 2021",
+    "full_dataset_records": 427,
+    "full_dataset_sha256": "ca95deaa9a01ef0a6f439f88bcf0dd3db3563d22f22aad6cae04ebb9a8d8c8e9",
+    "hand_verified_by_source": true,
+    "name": "Mostly Basic Python Problems sanitized subset",
+    "url": "https://raw.githubusercontent.com/google-research/google-research/master/mbpp/sanitized-mbpp.json"
+  }
+}

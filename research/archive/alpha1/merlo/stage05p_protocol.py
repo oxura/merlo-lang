@@ -27,7 +27,7 @@ STAGE05P_DECISIONS = (
 )
 
 
-def build_stage05p_protocol(root: str | Path = ".") -> dict[str, Any]:
+def build_stage05p_protocol(root: str | Path = Path(__file__).resolve().parents[1]) -> dict[str, Any]:
     root_path = Path(root)
     freeze_raw = (root_path / "benchmarks" / STAGE05P_FREEZE_FILENAME).read_bytes()
     mir_schema_path = root_path / "merlo" / "performance_mir_schema_v1.json"
@@ -151,7 +151,7 @@ def build_stage05p_protocol(root: str | Path = ".") -> dict[str, Any]:
     }
 
 
-def write_stage05p_protocol(root: str | Path = ".") -> dict[str, Any]:
+def write_stage05p_protocol(root: str | Path = Path(__file__).resolve().parents[1]) -> dict[str, Any]:
     root_path = Path(root)
     payload = build_stage05p_protocol(root_path)
     (root_path / "benchmarks" / STAGE05P_PROTOCOL_FILENAME).write_text(

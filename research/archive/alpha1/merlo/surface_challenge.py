@@ -36,7 +36,7 @@ CATEGORIES = (
     "algorithms",
     "small_utilities",
 )
-DEFAULT_ROOT = Path(__file__).resolve().parents[4] / "tools" / "benchmarks" / "merlo" / "benchmarks" / "surface_0_2"
+DEFAULT_ROOT = Path(__file__).resolve().parents[1] / "tools" / "benchmarks" / "merlo" / "benchmarks" / "surface_0_2"
 _MERLO_TOKEN = re.compile(
     r"(?:[A-Za-z_][A-Za-z0-9_]*|\d+(?:\.\d+)?|\"(?:\\.|[^\"\\])*\"|"
     r"'(?:\\.|[^'\\])*'|==|!=|<=|>=|->|=>|\?\?|<<|>>|\+=|-=|\*=|/=|"
@@ -641,7 +641,7 @@ def _persist_surface_report(path: Path, report: Mapping[str, Any]) -> None:
 
 
 def run_surface_challenge(
-    root: str | Path = ".",
+    root: str | Path = Path(__file__).resolve().parents[1],
     *,
     report_path: str | Path | None = None,
 ) -> dict[str, Any]:
