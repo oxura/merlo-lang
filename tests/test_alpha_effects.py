@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from merlo.concise_application import ConciseApplicationError, elaborate_concise_application
+from merlo.frontend_model import ConciseApplicationError
+from merlo.concise_services import elaborate_concise_application
 from merlo.runtime_contract import (
     CLOSED_EFFECTS,
     CapabilityHostDeniedError,
@@ -54,6 +55,21 @@ export task main(path: Path) -> Text:
     assert main.effects == ("console.write",)
     assert app.interfaces[-1].effects == ("console.write",)
 
+
+
+def test_effect_names_in_comments_and_strings_are_not_calls(tmp_path: Path) -> None:
+    app = _app(tmp_path, """\
+export fn describe() -> Text:
+    # fs.read(path) is documentation, not a call.
+    return "fs.read("
+
+export task main(path: Path) -> Text:
+    uses console.write
+    console.write(describe())
+    return describe()
+""")
+
+    assert app.effects == ("console.write",)
 
 def test_pure_function_cannot_call_task(tmp_path: Path) -> None:
     with pytest.raises(ConciseApplicationError, match="EffectInPureFunction"):

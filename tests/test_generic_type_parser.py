@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from merlo.concise_application import lower_concise_sum_types
+from merlo.concise_services import lower_concise_sum_types
 from merlo.structured_hir_v2 import compile_structured_hir
 from merlo.type_parser import GenericTypeSyntaxError, generic_arguments, parse_type
 

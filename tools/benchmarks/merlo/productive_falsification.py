@@ -8,7 +8,8 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from merlo.concise_application import ConciseApplicationError, elaborate_concise_application, elaborate_concise_core
+from merlo.frontend_model import ConciseApplicationError
+from merlo.concise_services import elaborate_concise_application, elaborate_concise_core
 from tools.benchmarks.merlo.deterministic_map import DeterministicTextUInt64Map, UINT64_MAX, deterministic_text_hash
 from tools.benchmarks.merlo.productive_applications import (
     CsvOptions,

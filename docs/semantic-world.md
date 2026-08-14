@@ -21,5 +21,6 @@ merlo map PROJECT --projection text
 
 `--json` emits deterministic JSON for commands that accept it. A stale or
 incompatible world/lockfile is a diagnostic; callers should rebuild rather than
-silently mixing revisions. The world is an index of the one semantic core, not a
-second language meaning or a permission to bypass compiler checks.
+silently mixing revisions. The world is an index over compiler state; Merlo is
+converging on a shared semantic core for compilation and tooling, not claiming
+that every current transitional path is already unified.

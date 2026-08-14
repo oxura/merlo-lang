@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from merlo.concise_application import (
-    ConciseApplicationError,
+from merlo.frontend_model import ConciseApplicationError
+from merlo.concise_services import (
     elaborate_concise_application,
     elaborate_concise_core,
     lower_concise_sum_types,
@@ -92,6 +92,35 @@ def test_multifile_application_expands_to_one_machine_core():
     assert "fn main(path: Path)" in elaborated.machine_source
     assert "let data: Bytes = fs.read(path)?" in elaborated.canonical_source
     assert "Any" not in elaborated.canonical_source
+
+
+def test_bare_imported_function_can_be_passed_as_callback(tmp_path: Path) -> None:
+    root = tmp_path / "callbacks"
+    (root / "app").mkdir(parents=True)
+    (root / "lib.mlo").write_text(
+        "module lib\n\n"
+        "export fn increment(value: Int) -> Int:\n"
+        "    return value + 1\n",
+        encoding="utf-8",
+    )
+    entry = root / "app" / "main.mlo"
+    entry.write_text(
+        "module app.main\n\n"
+        "use lib\n\n"
+        "fn apply(callback: Fn[Int,Int], value: Int) -> Int:\n"
+        "    return callback(value)\n\n"
+        "export task main(path: Path) -> Int:\n"
+        "    uses console.write\n"
+        "    console.write(\"\")\n"
+        "    return apply(increment, 1)\n",
+        encoding="utf-8",
+    )
+
+    elaborated = elaborate_concise_application(
+        entry, require_interface_lock=False
+    )
+
+    assert "__increment" in elaborated.canonical_source
 
 
 def test_concise_surface_version_zero_two_is_frozen_and_verified():

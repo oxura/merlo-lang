@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from merlo.concise_application import CONCISE_SURFACE_VERSION
+from merlo.frontend_model import CONCISE_SURFACE_VERSION
 from tools.benchmarks.merlo.concise_precedence import PRECEDENCE_TABLE
 from merlo.runtime_contract import ALPHA_EFFECTS
 

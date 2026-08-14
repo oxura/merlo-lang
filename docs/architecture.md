@@ -1,9 +1,9 @@
 # Compiler architecture
 
-Merlo 0.1 uses a Python bootstrap compiler and emits C11. Production code
-lives under `src/merlo`; benchmark, release, and frozen research code lives in
-explicit tool or archive namespaces. The production wheel contains only the
-compiler/runtime/tooling closure.
+Merlo `0.1.0-alpha.2` uses a Python bootstrap compiler and emits C11.
+Production code lives under `src/merlo`; benchmark, release, and frozen
+research code lives in explicit tool or archive namespaces. The production
+wheel contains the compiler/runtime/tooling closure.
 
 The stage-by-stage contract index is [Compiler contracts](compiler/index.md).
 Those pages cite the current Python symbols and label RFC 0001 replacement APIs
