@@ -725,7 +725,21 @@ class CEmitter:
             lines.append(f"    {ctype} {result} = {_literal(attributes['value'], instruction.type)};")
         elif instruction.op == "binary":
             operator = str(attributes["operator"])
-            if instruction.type and instruction.type.kind == "int" and operator in {
+            if (
+                operator == "concat"
+                and instruction.type is not None
+                and instruction.type.kind == "record"
+                and instruction.type.record in {"Text", "Bytes"}
+            ):
+                helper = (
+                    "meldra_text_concat"
+                    if instruction.type.record == "Text"
+                    else "meldra_bytes_concat"
+                )
+                lines.append(
+                    f"    {ctype} {result} = {helper}({operands[0]}, {operands[1]});"
+                )
+            elif instruction.type and instruction.type.kind == "int" and operator in {
                 "add",
                 "sub",
                 "mul",
@@ -1127,6 +1141,28 @@ class CEmitter:
             "    else if (length == UINT64_C(2)) { data[0] = (uint8_t)(UINT64_C(0xC0) | (scalar >> 6)); data[1] = (uint8_t)(UINT64_C(0x80) | (scalar & UINT64_C(0x3F))); }",
             "    else if (length == UINT64_C(3)) { data[0] = (uint8_t)(UINT64_C(0xE0) | (scalar >> 12)); data[1] = (uint8_t)(UINT64_C(0x80) | ((scalar >> 6) & UINT64_C(0x3F))); data[2] = (uint8_t)(UINT64_C(0x80) | (scalar & UINT64_C(0x3F))); }",
             "    else { data[0] = (uint8_t)(UINT64_C(0xF0) | (scalar >> 18)); data[1] = (uint8_t)(UINT64_C(0x80) | ((scalar >> 12) & UINT64_C(0x3F))); data[2] = (uint8_t)(UINT64_C(0x80) | ((scalar >> 6) & UINT64_C(0x3F))); data[3] = (uint8_t)(UINT64_C(0x80) | (scalar & UINT64_C(0x3F))); }",
+            "    return (meldra_text){ data, length, length, true };",
+            "}",
+            "static uint64_t meldra_concat_length(uint64_t left, uint64_t right) {",
+            "    if (right > UINT64_MAX - left) meldra_panic_alloc();",
+            "    return left + right;",
+            "}",
+            "static meldra_bytes meldra_bytes_concat(meldra_bytes left, meldra_bytes right) {",
+            "    left.live = false; right.live = false;",
+            "    uint64_t length = meldra_concat_length(left.length, right.length);",
+            "    uint8_t *data = length ? (uint8_t *)malloc((size_t)length) : NULL;",
+            "    if (length && data == NULL) meldra_panic_alloc();",
+            "    if (length) { memcpy(data, left.data, (size_t)left.length); memcpy(data + left.length, right.data, (size_t)right.length); }",
+            "    ++meldra_heap_allocations; meldra_allocated_bytes += length;",
+            "    return (meldra_bytes){ data, length, length, true };",
+            "}",
+            "static meldra_text meldra_text_concat(meldra_text left, meldra_text right) {",
+            "    left.live = false; right.live = false;",
+            "    uint64_t length = meldra_concat_length(left.length, right.length);",
+            "    uint8_t *data = length ? (uint8_t *)malloc((size_t)length) : NULL;",
+            "    if (length && data == NULL) meldra_panic_alloc();",
+            "    if (length) { memcpy(data, left.data, (size_t)left.length); memcpy(data + left.length, right.data, (size_t)right.length); }",
+            "    ++meldra_heap_allocations; meldra_allocated_bytes += length;",
             "    return (meldra_text){ data, length, length, true };",
             "}",
             "static void meldra_panic_bounds(uint64_t index, uint64_t length) {",

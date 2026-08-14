@@ -400,3 +400,37 @@ def test_text_builder_decision_artifact_is_integral():
         report, sort_keys=True, separators=(",", ":")
     )
     assert hashlib.sha256(payload.encode()).hexdigest() == expected_hash
+
+def test_text_and_bytes_concat_is_strict_and_reaches_all_native_layers(tmp_path):
+    text_source = """fn main() -> UInt64:
+ let left: Text = Text.from_ascii(65)
+ let right: Text = Text.from_ascii(66)
+ let joined: Text = left + right
+ return joined.len_bytes()
+"""
+    text_results = _evaluate_all(text_source, ())
+    assert all(result.status == "OK" for result in text_results[3:])
+    assert [result.return_value for result in text_results[3:]] == [2, 2, 2]
+    text_build = compile_c_source(
+        CEmitter(text_results[2], runtime_arguments=True).emit(),
+        output_dir=tmp_path,
+        stem="text-concat",
+    )
+    assert text_build.status == "MEASURED"
+
+    bytes_source = """fn main(length: UInt64) -> UInt64:
+ let left: Bytes = Bytes.new(length)
+ let right: Bytes = Bytes.new(length)
+ let joined: Bytes = left + right
+ return joined.len()
+"""
+    bytes_results = _evaluate_all(bytes_source, (3,))
+    assert all(result.status == "OK" for result in bytes_results[3:])
+    assert [result.return_value for result in bytes_results[3:]] == [6, 6, 6]
+
+    invalid = """fn main(value: UInt64) -> UInt64:
+ let text: Text = Text.from_ascii(value)
+ return text + value
+"""
+    with pytest.raises(PerformanceCompileError, match="binary operator|type mismatch"):
+        compile_performance_source(invalid)

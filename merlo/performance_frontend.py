@@ -1054,16 +1054,13 @@ class _FunctionLowerer:
                 op = _BINARY_OPS[type(node.op)]
             except KeyError as exc:
                 raise PerformanceCompileError(f"unsupported binary operator at line {node.lineno}") from exc
-            if left_type.kind == "float" and op not in {
-                "add",
-                "sub",
-                "mul",
-                "div",
-            }:
+            if op == "add" and left_type in {TEXT, BYTES}:
+                op = "concat"
+            elif left_type.kind == "float" and op not in {"add", "sub", "mul", "div"}:
                 raise PerformanceCompileError(
                     f"operator {op} is invalid for {left_type.name}"
                 )
-            if left_type.kind in {"int", "uint"}:
+            elif left_type.kind in {"int", "uint"}:
                 pass
             elif left_type.kind != "float":
                 raise PerformanceCompileError(

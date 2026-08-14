@@ -514,7 +514,26 @@ class MIRInterpreter:
         if op == "const":
             result = attributes["value"]
         elif op == "binary":
-            result = self._binary(attributes["operator"], operands[0], operands[1])
+            if attributes["operator"] == "concat":
+                left, right = operands
+                if isinstance(left, _Text) and isinstance(right, _Text):
+                    result = _Text(
+                        bytearray(left.data + right.data),
+                        len(left.data) + len(right.data),
+                    )
+                    self.metrics.texts.append(result)
+                    self.metrics.allocations += int(bool(result.data))
+                elif isinstance(left, _Bytes) and isinstance(right, _Bytes):
+                    result = _Bytes(
+                        bytearray(left.data + right.data),
+                        len(left.data) + len(right.data),
+                    )
+                    self.metrics.bytes_owners.append(result)
+                    self.metrics.allocations += int(bool(result.data))
+                else:
+                    raise NativeExecutionError("ConcatTypeMismatch", "concat operands differ")
+            else:
+                result = self._binary(attributes["operator"], operands[0], operands[1])
         elif op == "unary":
             result = {
                 "neg": lambda: -operands[0],
@@ -1907,6 +1926,17 @@ class HIREvaluator:
         if isinstance(node, ast.BinOp):
             left = self._expression(node.left, scope)
             right = self._expression(node.right, scope)
+            if isinstance(node.op, ast.Add) and isinstance(left, (_Text, _Bytes)):
+                if type(left) is not type(right):
+                    raise NativeExecutionError("ConcatTypeMismatch", "concat operands differ")
+                if isinstance(left, _Text):
+                    result = _Text(bytearray(left.data + right.data), len(left.data) + len(right.data))
+                    self.metrics.texts.append(result)
+                else:
+                    result = _Bytes(bytearray(left.data + right.data), len(left.data) + len(right.data))
+                    self.metrics.bytes_owners.append(result)
+                self.metrics.allocations += int(bool(result.data))
+                return result
             operator = {
                 ast.Add: lambda: left + right,
                 ast.Sub: lambda: left - right,

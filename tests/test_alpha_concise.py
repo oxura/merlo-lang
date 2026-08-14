@@ -504,3 +504,162 @@ def test_formal_precedence_corpus_is_frozen_and_semantic() -> None:
     assert report["count"] == 1024
     assert report["all_semantic_ast_equal"] is True
     assert len(report["table"]) == 12
+
+
+def _write_qualified_symbol_project(root: Path) -> Path:
+    (root / "app").mkdir(parents=True)
+    (root / "vendor").mkdir()
+    (root / "app" / "left.mlo").write_text(
+        "module app.left\n\n"
+        "export record Item:\n"
+        "    value: UInt64\n\n"
+        "export fn parse(value: UInt64) -> Item:\n"
+        "    return Item(value)\n",
+        encoding="utf-8",
+    )
+    (root / "vendor" / "left.mlo").write_text(
+        "module vendor.left\n\n"
+        "export record Item:\n"
+        "    value: UInt64\n\n"
+        "export fn parse(value: UInt64) -> Item:\n"
+        "    return Item(value + 1)\n",
+        encoding="utf-8",
+    )
+    entry = root / "app" / "main.mlo"
+    entry.write_text(
+        "module app.main\n"
+        "use app.left\n"
+        "use vendor.left\n\n"
+        "export fn app_item(value: UInt64) -> app.left.Item:\n"
+        "    # app.left.parse must not rewrite this comment\n"
+        "    return app.left.parse(value)\n\n"
+        "export fn vendor_item(value: UInt64) -> vendor.left.Item:\n"
+        "    return vendor.left.parse(value)\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "export task main(path: Path) -> Result[Text, AppError]:\n"
+        "    uses console.write\n"
+        '    console.write(\"ok\")\n'
+        '    return Ok(\"ok\")\n',
+        encoding="utf-8",
+    )
+    return entry
+
+
+def test_qualified_modules_keep_distinct_full_type_identities(tmp_path: Path) -> None:
+    entry = _write_qualified_symbol_project(tmp_path)
+    elaborated = elaborate_concise_application(entry, require_interface_lock=False)
+
+    signatures = {
+        item.name: item.return_type
+        for item in elaborated.interfaces
+        if item.kind == "fn"
+    }
+    qualified_functions = [
+        line
+        for line in elaborated.canonical_source.splitlines()
+        if line.startswith("fn __merlo_") and "__parse" in line
+    ]
+    assert len(qualified_functions) == 2
+    assert signatures["app_item"] == "app.left.Item"
+    assert signatures["vendor_item"] == "vendor.left.Item"
+    assert signatures["app_item"] != signatures["vendor_item"]
+    assert "app.left.parse" not in elaborated.canonical_source
+    assert "vendor.left.parse" not in elaborated.canonical_source
+    assert "must not rewrite this comment" in elaborated.canonical_source
+    assert len({item.revision_id for item in elaborated.interfaces if item.kind == "fn"}) == 2
+
+
+def test_imported_main_is_not_the_cli_entry_and_metadata_is_source_facing(
+    tmp_path: Path,
+) -> None:
+    app = tmp_path / "app"
+    app.mkdir(parents=True)
+    (app / "dep.mlo").write_text(
+        "module app.dep\n\n"
+        "export enum DepError:\n"
+        "    Failed\n\n"
+        "export task main(seed: UInt64) -> Result[UInt64, DepError]:\n"
+        "    uses console.write\n"
+        '    console.write(\"dep\")\n'
+        "    return Ok(seed)\n",
+        encoding="utf-8",
+    )
+    entry = app / "main.mlo"
+    entry.write_text(
+        "module app.main\nuse app.dep\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "export task main(path: Path) -> Result[UInt64, AppError]:\n"
+        "    uses console.write\n"
+        '    console.write(\"main\")\n'
+        "    return Ok(0)\n",
+        encoding="utf-8",
+    )
+    elaborated = elaborate_concise_application(entry, require_interface_lock=False)
+
+    assert {task.name for task in elaborated.tasks} == {"main"}
+    assert any(Path(task.path).name == "dep.mlo" for task in elaborated.tasks)
+    assert any(Path(task.path).name == "main.mlo" for task in elaborated.tasks)
+    assert all("." in decision.owner for decision in elaborated.decisions)
+
+
+def test_nested_result_metadata_is_publicized_recursively(tmp_path: Path) -> None:
+    entry = _write_qualified_symbol_project(tmp_path)
+    entry.write_text(
+        entry.read_text(encoding="utf-8").replace(
+            "export fn app_item(value: UInt64) -> app.left.Item:",
+            "export fn app_item(value: UInt64) -> Result[app.left.Item, vendor.left.Item]:",
+        ).replace(
+            "    return app.left.parse(value)\n",
+            "    return Ok(app.left.parse(value))\n",
+        ),
+        encoding="utf-8",
+    )
+    elaborated = elaborate_concise_application(entry, require_interface_lock=False)
+
+    decision_types = [item.type_name for item in elaborated.decisions]
+    assert all("__merlo_" not in item and "Merlo_" not in item for item in decision_types)
+    assert any("app.left.Item" in item and "vendor.left.Item" in item for item in decision_types)
+
+
+def test_private_and_unknown_calls_fail_at_module_binding(tmp_path: Path) -> None:
+    app = tmp_path / "app"
+    app.mkdir(parents=True)
+    (app / "dep.mlo").write_text(
+        "module app.dep\n\n"
+        "fn helper() -> UInt64:\n"
+        "    return 1\n",
+        encoding="utf-8",
+    )
+    entry = app / "main.mlo"
+    entry.write_text(
+        "module app.main\nuse app.dep\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "fn local_helper() -> UInt64:\n"
+        "    return 2\n\n"
+        "export task main(path: Path) -> Result[UInt64, AppError]:\n"
+        "    uses console.write\n"
+        "    console.write(\"ok\")\n"
+        "    return Ok(local_helper())\n",
+        encoding="utf-8",
+    )
+    elaborated = elaborate_concise_application(entry, require_interface_lock=False)
+    assert "__merlo_" in elaborated.canonical_source
+
+    entry.write_text(
+        entry.read_text(encoding="utf-8").replace(
+            "return Ok(local_helper())", "return Ok(helper())"
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ConciseApplicationError, match="PrivateSymbol"):
+        elaborate_concise_application(entry, require_interface_lock=False)
+
+    entry.write_text(
+        entry.read_text(encoding="utf-8").replace("helper()", "mystery()"),
+        encoding="utf-8",
+    )
+    with pytest.raises(ConciseApplicationError, match="UnresolvedName"):
+        elaborate_concise_application(entry, require_interface_lock=False)
