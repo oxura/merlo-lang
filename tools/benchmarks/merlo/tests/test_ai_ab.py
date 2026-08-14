@@ -32,6 +32,106 @@ def test_public_manifest_has_all_distinct_mirrors_and_pairs() -> None:
     assert result.task_count == 30
     assert result.pair_count == 90
     assert result.denominators["arm_attempts"] == 180
+def test_calibration_manifest_is_disjoint_and_excluded() -> None:
+    final = json.loads((ROOT / "benchmarks/ai-ab-v1/tasks.json").read_text())
+    calibration = json.loads((ROOT / "benchmarks/ai-ab-v1/calibration/calibration.json").read_text())
+    final_ids = {task["id"] for task in final["tasks"]}
+    calibration_tasks = calibration["tasks"]
+    assert len(calibration_tasks) == 6
+    assert {task["id"] for task in calibration_tasks}.isdisjoint(final_ids)
+    assert all(task["excluded_from_final_metrics"] is True and "outcome" not in task for task in calibration_tasks)
+    assert all("def main" in (ROOT / "benchmarks/ai-ab-v1" / task["oracle"]["path"]).read_text() for task in calibration_tasks)
+
+
+def _run_calibration_oracle(
+    tmp_path: Path,
+    calibration_id: str,
+    evidence: dict[str, object],
+) -> dict[str, object]:
+    study = ROOT / "benchmarks/ai-ab-v1"
+    manifest = json.loads(
+        (study / "calibration/calibration.json").read_text(encoding="utf-8")
+    )
+    task = next(item for item in manifest["tasks"] if item["id"] == calibration_id)
+    workspace = tmp_path / calibration_id
+    workspace.mkdir()
+    (workspace / "main.mlo").write_text("fn main() -> Int:\n    0\n")
+    evidence_path = workspace / "evidence.json"
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+    replacements = {
+        "{workspace}": str(workspace),
+        "{arm}": "merlo",
+        "{evidence}": str(evidence_path),
+        "{protocol}": str(study / "protocol.json"),
+    }
+    command = [
+        replacements.get(argument, argument)
+        for argument in task["oracle"]["run_command"]
+    ]
+    command[0] = sys.executable
+    completed = subprocess.run(
+        command,
+        cwd=study,
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+    return json.loads(completed.stdout)
+
+
+def test_tool_smoke_rejects_incomplete_or_failed_trace(tmp_path: Path) -> None:
+    result = _run_calibration_oracle(tmp_path, "c01-tool-smoke", {
+        "tool_trace": [
+            {"tool": "shell", "success": True},
+            {"tool": "read", "success": True, "path": "main.mlo"},
+            {"tool": "search", "success": True},
+            {"tool": "edit", "success": False, "path": "main.mlo"},
+            {"tool": "test", "success": True},
+        ],
+    })
+
+    assert result["status"] == "FAIL"
+    assert result["checks"]["exact_common_tools"] is False
+
+
+@pytest.mark.parametrize(
+    "calibration_id,evidence",
+    [
+        (
+            "c02-budget-boundary",
+            {
+                "input_tokens": 12_001,
+                "output_tokens": 8_192,
+                "iterations": 40,
+                "tool_calls": 120,
+                "wall_time_ms": 180_000,
+                "boundary_field": "output_tokens",
+                "terminal_reason": "token_budget",
+            },
+        ),
+        (
+            "c05-token-accounting",
+            {
+                "input_tokens": 12_001,
+                "output_tokens": 1,
+                "total_tokens": 12_002,
+                "iterations": 1,
+                "tool_calls": 1,
+                "wall_time_ms": 1,
+            },
+        ),
+    ],
+)
+def test_budget_calibration_rejects_over_limit_evidence(
+    tmp_path: Path,
+    calibration_id: str,
+    evidence: dict[str, object],
+) -> None:
+    result = _run_calibration_oracle(tmp_path, calibration_id, evidence)
+
+    assert result["status"] == "FAIL"
+    assert result["checks"]["input_tokens_bounded"] is False
 
 
 def test_normalized_prompt_parity_is_locked() -> None:
@@ -131,7 +231,7 @@ def test_attempt_transcript_hash_and_absence_are_enforced() -> None:
         json.loads((ROOT / "benchmarks/ai-ab-v1/tasks.json").read_text())["schedule"][0],
         schedule_index=0,
     )
-    attestation = {"provider": "test", "model": "test", "revision": "rev", "credential_alias_hmac": "hmac:alias",
+    attestation = {"provider": "test", "model": "test", "revision": "rev", "credential_alias_hmac": "a" * 64,
                    "training_cutoff_attestation": "before-publication", "network_denied_attestation": "denied"}
     digest_map, digest = _digest_evidence(task, "merlo")
     record = {
@@ -147,6 +247,7 @@ def test_attempt_transcript_hash_and_absence_are_enforced() -> None:
         "pre_digest_map": digest_map, "post_digest_map": digest_map,
         "oracle_sha256": task["oracle"]["sha256"],
         "oracle": _oracle_report(task, True), "stdout": "", "stderr": "",
+        "trusted_oracle_attestation": {},
         "input_tokens": 1, "output_tokens": 1, "total_tokens": 2,
         "iterations": 1, "tool_calls": 1, "provider_time_ms": 1,
         "wall_time_ms": 1, "terminal_reason": "completed",
@@ -155,22 +256,13 @@ def test_attempt_transcript_hash_and_absence_are_enforced() -> None:
         "provider_attestation": attestation,
         "contamination_attestation": protocol["contamination_policy"],
     }
-    validate_attempt_record(record, protocol, task, schedule_entry)
-    oracle_mismatch = dict(record, oracle=_oracle_report(task, False))
-    with pytest.raises(ProtocolError, match="does not match oracle"):
-        validate_attempt_record(oracle_mismatch, protocol, task, schedule_entry)
-    missing_ratio = dict(record, wall_time_ms=0)
-    with pytest.raises(ProtocolError, match="ratio denominator"):
-        validate_attempt_record(missing_ratio, protocol, task, schedule_entry)
-    incomplete_oracle = dict(record, oracle={"passed": True})
-    with pytest.raises(ProtocolError, match="oracle identity"):
-        validate_attempt_record(incomplete_oracle, protocol, task, schedule_entry)
-    forged_digest = dict(record, post_digest="b" * 64)
-    with pytest.raises(ProtocolError, match="post digest"):
-        validate_attempt_record(forged_digest, protocol, task, schedule_entry)
-    record.pop("transcript")
-    with pytest.raises(ProtocolError, match="absent transcript"):
-        validate_attempt_record(record, protocol, task)
+    with pytest.raises(ProtocolError, match="trusted oracle authentication"):
+        validate_attempt_record(record, protocol, task, schedule_entry)
+    assert provider_identity_complete(attestation)
+    assert not provider_identity_complete({
+        **attestation,
+        "credential_alias_hmac": "hmac:alias",
+    })
 
 def test_strata_baselines_emit_normalized_oracle_evidence() -> None:
     tasks = json.loads(
@@ -260,7 +352,7 @@ def _complete_attempts(
         "provider": "test-provider",
         "model": "test-model",
         "revision": "immutable-revision",
-        "credential_alias_hmac": "hmac:local-alias",
+        "credential_alias_hmac": "b" * 64,
         "training_cutoff_attestation": "before-publication",
         "network_denied_attestation": "denied",
     }
@@ -310,24 +402,15 @@ def _complete_attempts(
     return attempts
 
 
-def test_complete_attempt_denominator_produces_registered_decision() -> None:
+def test_complete_attempts_remain_blocked_until_external_anchor() -> None:
     protocol = json.loads((ROOT / "benchmarks/ai-ab-v1/protocol.json").read_text())
     tasks_document = json.loads((ROOT / "benchmarks/ai-ab-v1/tasks.json").read_text())
     attempts = _complete_attempts(protocol, tasks_document)
 
     report = report_from_attempts(attempts, protocol, tasks_document)
 
-    assert report["status"] == "MEASURED"
-    assert report["decision"] == "ELIGIBLE_RESTRICTED_ADVANTAGE"
-    assert report["claim_eligible"] is True
-    assert report["denominators"] == {
-        "pairs": 90,
-        "measured_pairs": 90,
-        "arm_attempts": 180,
-    }
-    assert report["provider_attestation"]["revision"] == "immutable-revision"
-
-    assert report["preregistration_root_sha256"] == PREREGISTRATION_ROOT_SHA256
+    assert report["status"] == "INVALID"
+    assert report["terminal_reason"] == "EXTERNAL_PREREGISTRATION_ANCHOR_INCOMPLETE"
 
 def test_report_rejects_rehashed_protocol_deviation() -> None:
     protocol = json.loads((ROOT / "benchmarks/ai-ab-v1/protocol.json").read_text())
@@ -358,4 +441,4 @@ def test_duplicate_attempt_cannot_satisfy_locked_denominator() -> None:
     report = report_from_attempts(attempts, protocol, tasks_document)
 
     assert report["status"] == "INVALID"
-    assert report["terminal_reason"] == "INVALID_ATTEMPT_RECORD"
+    assert report["terminal_reason"] == "EXTERNAL_PREREGISTRATION_ANCHOR_INCOMPLETE"

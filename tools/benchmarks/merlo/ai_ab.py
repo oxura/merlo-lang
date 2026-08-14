@@ -7,6 +7,7 @@ unmeasured report when provider identity is not locked.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
 from dataclasses import dataclass
@@ -22,10 +23,11 @@ BOOTSTRAP_REPLICATES = 10_000
 PROVIDER_IDENTITY_INCOMPLETE = "UNMEASURED_PROVIDER_IDENTITY_INCOMPLETE"
 
 class ProtocolError(ValueError):
-    """Raised when a locked protocol or task artifact is invalid."""
-LOCKED_PROTOCOL_SHA256 = "9883e2de96777607dda0defe963808807af66317a4c7c2d44be15959932c420f"
+    pass
+
+LOCKED_PROTOCOL_SHA256 = "8f10c32db788816cc66998ec241d690c33a007000ab499782ae526be056ca285"
 LOCKED_TASKS_SHA256 = "a387364b22e1b8f77527e376df2979a92c317bec9e57bbcdcf06765a7dc7ba31"
-PREREGISTRATION_ROOT_SHA256 = "41e026f0bf0b802d475da12af7d9c5d53b0b0e2216a82b6d8bda2d40aa843d04"
+PREREGISTRATION_ROOT_SHA256 = "0ab5827bf599ad50871c3e47ee85f5c606a23ea276b6ab7e9db7c64a3f87ccc5"
 
 @dataclass(frozen=True)
 class Validation:
@@ -87,7 +89,11 @@ def _task_contract(task: Mapping[str, Any]) -> str:
     return sha256_bytes(canonical_json(_without_digest(task, "task_sha256")))
 
 def _protocol_contract(protocol: Mapping[str, Any]) -> str:
-    return sha256_bytes(canonical_json(_without_digest(protocol, "protocol_sha256")))
+    value = dict(protocol)
+    value.pop("protocol_sha256", None)
+    value.pop("protocol_core_sha256", None)
+    value.pop("external_preregistration", None)
+    return sha256_bytes(canonical_json(value))
 
 def render_prompt(
     task: Mapping[str, Any],
@@ -103,6 +109,33 @@ def render_prompt(
         .replace("{{TEST_COMMAND}}", test_command)
     )
 
+TRUSTED_EXTERNAL_ROOT_SHA256: str | None = None
+def _external_anchor_complete(protocol: Mapping[str, Any]) -> bool:
+    anchor = protocol.get("external_preregistration")
+    root = anchor.get("root_commit_sha") if isinstance(anchor, Mapping) else None
+    return (
+        isinstance(anchor, Mapping)
+        and anchor.get("immutable") is True
+        and anchor.get("repository") == "https://github.com/oxura/merlo-lang"
+        and anchor.get("protocol_core_sha256") == protocol.get("protocol_core_sha256")
+        and anchor.get("root_commit_status") == "BOUND_PUBLISHED"
+        and TRUSTED_EXTERNAL_ROOT_SHA256 is not None
+        and isinstance(root, str)
+        and root == TRUSTED_EXTERNAL_ROOT_SHA256
+        and len(root) == 40
+    )
+def _calibration_result_complete(protocol: Mapping[str, Any]) -> bool:
+    result = protocol.get("calibration_result")
+    return (
+        isinstance(result, Mapping)
+        and result.get("status") == "PASS"
+        and result.get("excluded_from_final_metrics") is True
+        and result.get("manifest_sha256") == protocol.get("calibration_policy", {}).get("manifest_sha256")
+        and result.get("protocol_core_sha256") == protocol.get("protocol_core_sha256")
+        and result.get("provider_identity") == protocol.get("provider_identity")
+        and result.get("container") == protocol.get("container")
+    )
+
 
 def _documents_match_preregistration_root(
     protocol: Mapping[str, Any],
@@ -116,8 +149,9 @@ def _documents_match_preregistration_root(
     return (
         component_root == PREREGISTRATION_ROOT_SHA256
         and protocol.get("protocol_sha256") == LOCKED_PROTOCOL_SHA256
+        and protocol.get("protocol_core_sha256") == LOCKED_PROTOCOL_SHA256
         and tasks.get("tasks_sha256") == LOCKED_TASKS_SHA256
-        and protocol.get("protocol_sha256") == _protocol_contract(protocol)
+        and protocol.get("protocol_core_sha256") == _protocol_contract(protocol)
         and tasks.get("tasks_sha256")
         == sha256_bytes(canonical_json(_without_digest(tasks, "tasks_sha256")))
         and protocol.get("task_manifest_sha256") == sha256_bytes(canonical_json(tasks))
@@ -154,6 +188,8 @@ def validate_protocol(root: str | Path | None = None) -> Validation:
         _error(errors, "protocol status is not DRAFT_UNRUN")
     if protocol.get("protocol_sha256") != _protocol_contract(protocol):
         _error(errors, "protocol hash mismatch")
+    if protocol.get("protocol_core_sha256") != _protocol_contract(protocol):
+        _error(errors, "protocol core hash mismatch")
     if tasks.get("schema_version") != SCHEMA_VERSION:
         _error(errors, "task schema version mismatch")
     task_items = tasks.get("tasks")
@@ -329,7 +365,8 @@ def validate_protocol(root: str | Path | None = None) -> Validation:
         "included_in_metrics": False,
         "excluded_from_final_metrics": True,
         "manifest_path": "calibration/calibration.json",
-        "manifest_sha256": "bf1eb39311f6c334432e538c179dc478662532eba7903fe7108fa3ece3edc422",
+        "manifest_sha256": "a9992e25f9fb7611005a14ffbb1f360bea2d3454b10e5d72ebe6e4af5e97d17c",
+        "runner": "trusted_runner_outside_agent_mount",
         "required_checks": [
             "provider", "tool_calls", "timeouts", "token_accounting",
             "oracle_isolation", "digest_maps", "report_generation",
@@ -508,6 +545,64 @@ def _validate_oracle_result(
     return task_success
 
 
+TRUSTED_ORACLE_KEY_ENV = "MERLO_AI_AB_TRUSTED_ORACLE_KEY"
+
+def _attempt_evidence_sha256(record: Mapping[str, Any]) -> str:
+    return sha256_bytes(canonical_json({
+        "pre_digest": record.get("pre_digest"),
+        "post_digest": record.get("post_digest"),
+        "pre_digest_map": record.get("pre_digest_map"),
+        "post_digest_map": record.get("post_digest_map"),
+        "changed_paths": record.get("changed_paths"),
+        "provider_attestation": record.get("provider_attestation"),
+        "metrics": {
+            key: record.get(key)
+            for key in (
+                "input_tokens", "output_tokens", "total_tokens", "iterations",
+                "tool_calls", "provider_time_ms", "wall_time_ms",
+                "irrelevant_edit_count", "regression_count", "task_success",
+            )
+        },
+    }))
+
+def _validate_trusted_oracle_attestation(
+    record: Mapping[str, Any],
+    protocol: Mapping[str, Any],
+    task: Mapping[str, Any],
+) -> None:
+    attestation = record.get("trusted_oracle_attestation")
+    secret = os.environ.get(TRUSTED_ORACLE_KEY_ENV)
+    if not isinstance(attestation, Mapping) or not secret:
+        raise ProtocolError("trusted oracle authentication is unavailable")
+    if (
+        attestation.get("algorithm") != "HMAC-SHA256"
+        or not isinstance(attestation.get("key_id"), str)
+        or not attestation.get("key_id")
+        or attestation.get("protocol_core_sha256") != protocol.get("protocol_core_sha256")
+        or attestation.get("oracle_evidence_sha256")
+        != sha256_bytes(canonical_json(record.get("oracle")))
+        or attestation.get("attempt_evidence_sha256") != _attempt_evidence_sha256(record)
+        or not _credential_alias_hmac_valid(attestation.get("mac"))
+    ):
+        raise ProtocolError("trusted oracle attestation is invalid")
+    signed = dict(attestation)
+    mac = signed.pop("mac")
+    payload = {
+        "protocol_core_sha256": protocol.get("protocol_core_sha256"),
+        "task_sha256": task.get("task_sha256"),
+        "task_id": task.get("id"),
+        "arm": record.get("arm"),
+        "oracle_sha256": record.get("oracle_sha256"),
+        "oracle_evidence_sha256": signed["oracle_evidence_sha256"],
+        "attempt_evidence_sha256": signed["attempt_evidence_sha256"],
+        "key_id": signed["key_id"],
+        "algorithm": signed["algorithm"],
+    }
+    expected = hmac.new(
+        secret.encode("utf-8"), canonical_json(payload), hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(mac, expected):
+        raise ProtocolError("trusted oracle attestation MAC mismatch")
 def validate_attempt_record(
     record: Mapping[str, Any],
     protocol: Mapping[str, Any],
@@ -517,8 +612,9 @@ def validate_attempt_record(
     required = (
         "task_id", "replicate", "arm", "pair_id", "schedule_index", "arm_order",
         "transcript_sha256", "fixture_tree_sha256", "pre_digest", "post_digest",
-        "pre_digest_map", "post_digest_map", "oracle_sha256", "oracle", "stdout",
-        "stderr", "input_tokens", "output_tokens", "total_tokens", "iterations",
+        "pre_digest_map", "post_digest_map", "oracle_sha256", "oracle",
+        "trusted_oracle_attestation", "stdout", "stderr",
+        "input_tokens", "output_tokens", "total_tokens", "iterations",
         "tool_calls", "provider_time_ms", "wall_time_ms", "terminal_reason",
         "changed_paths", "irrelevant_edit_count", "regression_count",
         "task_success", "provider_attestation", "contamination_attestation",
@@ -552,6 +648,7 @@ def validate_attempt_record(
         or any(path not in allowlist for path in changed_paths)
     ):
         raise ProtocolError("out-of-scope edit")
+    _validate_trusted_oracle_attestation(record, protocol, task)
     if record["terminal_reason"] not in {
         "completed", "token_budget", "time_budget", "tool_budget",
         "iteration_budget", "provider_unavailable", "infrastructure_failure",
@@ -617,6 +714,12 @@ def validate_attempt_record(
         for key in ("stdout", "stderr")
     ):
         raise ProtocolError("invalid raw attempt artifact")
+def _credential_alias_hmac_valid(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
 
 def provider_identity_complete(provider: Mapping[str, Any] | None) -> bool:
     if not isinstance(provider, Mapping):
@@ -625,12 +728,14 @@ def provider_identity_complete(provider: Mapping[str, Any] | None) -> bool:
         "provider", "model", "revision", "credential_alias_hmac",
         "training_cutoff_attestation", "network_denied_attestation",
     )
-    return all(
+    if not all(
         isinstance(provider.get(key), str)
         and bool(provider.get(key))
         and not str(provider.get(key)).startswith("UNSET")
         for key in required
-    )
+    ):
+        return False
+    return _credential_alias_hmac_valid(provider["credential_alias_hmac"])
 
 
 def unmeasured_report(reason: str = PROVIDER_IDENTITY_INCOMPLETE) -> dict[str, Any]:
@@ -747,6 +852,18 @@ def report_from_attempts(
             "schema_version": SCHEMA_VERSION, "status": "INVALID",
             "terminal_reason": "INVALID_PROTOCOL_DEVIATION", "passed": False,
             "metrics": None, "claim_eligible": False,
+        }
+    if not _external_anchor_complete(protocol):
+        return {
+            "schema_version": SCHEMA_VERSION, "status": "INVALID",
+            "terminal_reason": "EXTERNAL_PREREGISTRATION_ANCHOR_INCOMPLETE",
+            "passed": False, "metrics": None, "claim_eligible": False,
+        }
+    if not _calibration_result_complete(protocol):
+        return {
+            "schema_version": SCHEMA_VERSION, "status": "INVALID",
+            "terminal_reason": "CALIBRATION_NOT_AUTHENTICATED",
+            "passed": False, "metrics": None, "claim_eligible": False,
         }
     records = list(attempts)
     task_by_id = {task["id"]: task for task in tasks.get("tasks", [])}
