@@ -152,6 +152,8 @@ class ProductiveMilestoneTests(unittest.TestCase):
             (root / "tools" / "benchmarks" / "merlo" / "benchmarks").mkdir(parents=True)
             alpha = root / "research/archive/alpha1/benchmarks/merlo_concise_application_alpha.json"
             general = root / "tools/benchmarks/merlo/benchmarks/merlo_general_representation_core.json"
+            alpha.parent.mkdir(parents=True, exist_ok=True)
+            general.parent.mkdir(parents=True, exist_ok=True)
             alpha.write_text("alpha", encoding="utf-8")
             general.write_text("general", encoding="utf-8")
             report = self._build(root)
