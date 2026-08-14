@@ -14,7 +14,7 @@ FRONTEND_SYNTAX_SCHEMA_VERSION = 1
 _IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _INTEGER = re.compile(r"[0-9]+")
 _TWO_CHARACTER_TOKENS = frozenset(("::", "->", "=>", "==", "!=", "<=", ">="))
-_ONE_CHARACTER_TOKENS = frozenset("{}()[]:,.=+-*/<>")
+_ONE_CHARACTER_TOKENS = frozenset("{}()[]:,.=+-*/<>?")
 _TRIVIA_KINDS = frozenset(("WHITESPACE", "COMMENT"))
 _BINARY_PRECEDENCE = {
     "==": 10,
@@ -597,10 +597,21 @@ class _Parser:
 
     def parse(self) -> ModuleSyntax:
         self._skip_newlines()
-        start = self._expect_keyword("package")
+        start = self._current()
+        header_kind = start.text
+        if header_kind not in {"package", "module"}:
+            self._error(start, "expected package or module declaration")
+        self._advance()
         package_path = self._parse_qualified_name()
         self._line_end()
         explicit_module: str | None = None
+        if header_kind == "module":
+            parts = package_path.split(".")
+            if len(parts) > 1:
+                package_path = ".".join(parts[:-1])
+                explicit_module = parts[-1]
+            else:
+                explicit_module = package_path
         uses: list[UseDeclaration] = []
         exports: list[str] = []
         declarations: list[Declaration] = []
@@ -616,8 +627,28 @@ class _Parser:
                 uses.append(self._parse_use())
             elif self._peek_keyword("export"):
                 self._advance()
-                exports.extend(self._parse_name_list())
-                self._line_end()
+                if self._peek_keyword("pure"):
+                    self._advance()
+                inline_declaration = (
+                    self._current().text
+                    in {
+                        "record",
+                        "enum",
+                        "newtype",
+                        "capability",
+                        "value",
+                        "fn",
+                        "task",
+                    }
+                    and self._peek_offset(1).kind == "IDENT"
+                )
+                if inline_declaration:
+                    declaration = self._parse_declaration()
+                    exports.append(declaration.name)
+                    declarations.append(declaration)
+                else:
+                    exports.extend(self._parse_name_list())
+                    self._line_end()
             else:
                 declarations.append(self._parse_declaration())
             self._skip_newlines()
@@ -647,7 +678,11 @@ class _Parser:
     def _parse_use(self) -> UseDeclaration:
         start = self._expect_keyword("use")
         source = self._parse_qualified_name()
-        self._expect_text("::")
+        if not self._accept_text("::"):
+            end = self._previous()
+            self._line_end()
+            span = _combine(start.span, end.span)
+            return UseDeclaration(self._id("use", span), span, source, ())
         items: list[UseItem] = []
         if self._accept_text("{"):
             self._skip_newlines()
@@ -773,6 +808,9 @@ class _Parser:
                 if self._accept_text("("):
                     payload_type = self._parse_type_name()
                     end = self._expect_text(")")
+                elif self._accept_text(":"):
+                    payload_type = self._parse_type_name()
+                    end = self._previous()
                 self._line_end()
                 span = _combine(start.span, end.span)
                 members.append(
@@ -856,8 +894,24 @@ class _Parser:
             self._line_end()
             span = _combine(start.span, end.span)
             return Statement(self._id("uses", span), span, "uses", effect=effect)
-        if self._peek_keyword("let"):
+        if self._peek_keyword("return"):
             start = self._advance()
+            expression = self._parse_expression()
+            self._line_end()
+            span = _combine(start.span, expression.span)
+            return Statement(self._id("return", span), span, "return", expression=expression)
+        is_let = self._peek_keyword("let") or (
+            self._peek_kind("IDENT")
+            and (
+                self._peek_offset(1).text == "="
+                or (
+                    self._peek_offset(1).text == ":"
+                    and self._peek_offset(3).text == "="
+                )
+            )
+        )
+        if is_let:
+            start = self._advance() if self._peek_keyword("let") else self._current()
             name = self._expect_kind("IDENT")
             type_name = None
             if self._accept_text(":"):
@@ -1044,6 +1098,11 @@ class _Parser:
                     arguments=tuple(arguments),
                 )
                 continue
+            if self._accept_text("?"):
+                marker = self._previous()
+                span = _combine(left.span, marker.span)
+                left = Expression(self._id("try", span), "try", span, children=(left,))
+                continue
             current = self._current()
             if (
                 current.kind in {"NEWLINE", "DEDENT", "EOF"}
@@ -1054,9 +1113,7 @@ class _Parser:
             if precedence is None or precedence < minimum_precedence:
                 break
             operator = self._advance()
-            right = self._parse_expression(
-                precedence + 1, stop_texts=stops
-            )
+            right = self._parse_expression(precedence + 1, stop_texts=stops)
             span = _combine(left.span, right.span)
             left = Expression(
                 self._id("binary", span),
@@ -1068,7 +1125,22 @@ class _Parser:
         return left
 
     def _parse_type_name(self) -> str:
-        return self._parse_qualified_name()
+        name = self._parse_qualified_name()
+        if self._accept_text("["):
+            parts = [name, "["]
+            depth = 1
+            while depth:
+                token = self._current()
+                if token.kind == "EOF":
+                    self._error(token, "unterminated generic type")
+                self._advance()
+                parts.append(token.text)
+                if token.text == "[":
+                    depth += 1
+                elif token.text == "]":
+                    depth -= 1
+            return "".join(parts)
+        return name
 
     def _parse_qualified_name(self) -> str:
         parts = [self._expect_kind("IDENT").text]

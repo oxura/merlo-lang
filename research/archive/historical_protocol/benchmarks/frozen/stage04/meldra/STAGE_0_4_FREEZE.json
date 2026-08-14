@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "kind": "MeldraStage04FreezeManifest",
+  "status": "IMMUTABLE_BEFORE_HELD_OUT_STAGE04E",
+  "date": "2026-08-10",
+  "freeze_id": "stage04_cdabcc45ff1c8d377517c8861967f577aba61a08c5491d5f228cde745c0066e1",
+  "source_revision": {
+    "git_head": "e8fdfc078a3017759bf7feb1677be42fb536eacc",
+    "working_tree": "UNCOMMITTED_SOURCE_SNAPSHOT",
+    "identity": "content digests below are authoritative because Stage 0.4 is not committed at git_head"
+  },
+  "versions": {
+    "grammar": 1,
+    "core_ir_schema": 1,
+    "binder_rules": 1,
+    "type_checker_rules": 1,
+    "effect_rules": 1,
+    "capability_rules": 1,
+    "hashing_model": 1,
+    "identity_model": 1,
+    "interface_model": 1,
+    "benchmark_generator": 1
+  },
+  "digests": {
+    "grammar_implementation_sha256": "f4313100bdab3539f20a1be2eba1780bd3bd9830c0f3f8f0c664bdfb34cdef8d",
+    "frontend_semantics_sha256": "86855c24cce41eccaa217675beee96d105b29568644b75d1c889ee6587a87bfd",
+    "frontend_evaluator_sha256": "634f3d2ba07473aa5b035d8bcecfa51210a31b5c888d199abc2eaed3a4b8c496",
+    "core_semantics_sha256": "7340f895cf521d4a06ccdd042f377e4ac4e20bf85dc913b1c95dabc5c8fd7bdc",
+    "python_binder_sha256": "a87b672a794dc64db3e64cc1b3d4c12d51bc02c8c2834e7b0e11b2c3b7e4e9a2",
+    "frontend_benchmark_sha256": "7cf0529abd493fc8524c32ca0dfb76c7f442b2cb9f89de86546dc1c7ef82dc3a",
+    "core_ir_schema_sha256": "5bf9700ce20c3f6d906e3be2982412cec00a7dc21f692055489cc87787040ac4",
+    "support_profile_sha256": "35523759bc917d1904ba5e6e18cc0766067c042e233ac20fee07a179263a3f6c",
+    "stage04_result_sha256": "7b2e33c175abcdea595cde7633d49903605a42d4ad0c66dda1101a78a86d099f"
+  },
+  "semantic_rule_digests": {
+    "binding": "2369faf9d3e2f75c7750a2945597d9b61791ca0a25a06232af39f362f79cb9ed",
+    "types": "c93dbcce642286eb3dbb00fd10cd07f840e7c8ffec21a11847587a373a52f078",
+    "effects": "9894c505eb26201a51fb2f57a339ed22e1b19c349b32372b879629cc64ecacbb",
+    "capabilities": "a3718f28cbdd001bc3a790277aa2f715d065385a6320b15cca6025e68e26dbbb",
+    "interfaces": "afd09d60aeafa0d69f95aa4f3b3a735288e2417192808318c463775983bc0351",
+    "identity": "e2df1de6c02adb3723615b7a73102f2a99f71e084d7f8178481f61e8bf6c81a9"
+  },
+  "benchmark_generation": {
+    "seed": 20260810,
+    "program_count": 40,
+    "generated_program_repetitions": 40,
+    "program_templates": 1,
+    "logical_references": 1920,
+    "logical_reference_slot_templates": 48,
+    "logical_reference_repetitions_each": 40,
+    "construct_families": 9,
+    "negative_templates": 9,
+    "negative_repetitions_each": 40,
+    "change_templates": 5,
+    "change_repetitions_each": 40,
+    "execution_templates": 2,
+    "execution_repetitions_each": 40,
+    "effective_unit_of_analysis": "program template or construct family; individual generated references are descriptive repetitions, not independent observations"
+  },
+  "construct_family_counts": {
+    "cross_package_call": 40,
+    "cross_package_type": 40,
+    "enum_type": 80,
+    "enum_variant": 80,
+    "import_alias_call": 320,
+    "parameter_type": 720,
+    "record_field": 560,
+    "same_module_call": 40,
+    "typed_member": 40
+  },
+  "supported_constructs": [
+    "package",
+    "module",
+    "use",
+    "export",
+    "record",
+    "enum",
+    "newtype",
+    "capability",
+    "value",
+    "fn",
+    "task",
+    "let",
+    "match"
+  ],
+  "known_limitations": [
+    "generated Stage 0.4 corpus has one program template and is not independent external evidence",
+    "static binding completeness does not prove runtime target soundness",
+    "strong structural Python binder tied Meldra at 1920 of 1920 generated references",
+    "reference evaluator executes frozen frontend declarations rather than an independently implemented CoreIR evaluator",
+    "benchmark generator constructs both fixture source and expected target coordinates",
+    "negative cases are nine templates repeated forty times",
+    "semantic changes are five templates repeated forty times on the same graph shape",
+    "no independent human author or reviewer participated",
+    "no same-model paired agent experiment was run",
+    "no source-preserving Meldra ChangeIR materialization exists",
+    "no production runtime incremental compiler package manager or target backend exists"
+  ],
+  "benchmark_production_logic_audit": {
+    "shared_components": [
+      "benchmark calls the production parser binder checker lowering evaluator and Core change engine",
+      "strong Python benchmark calls the production structural Python binder",
+      "current sidecar arm calls the production Python analyzer"
+    ],
+    "self_consistency_risks": [
+      "one generator emits both source text and expected reference manifest coordinates",
+      "expected values and effect traces are authored beside generated programs",
+      "impact expectations use a graph shape selected by the same generator",
+      "frontend execution and CoreIR lowering are not differentially evaluated by independent interpreters"
+    ],
+    "consequence": "Stage 0.4 results are regression evidence only; they are not independent estimates or a Language Alpha gate",
+    "required_mitigation": "Stage 0.4E uses preregistered external tasks, separate statistical units, runtime target observation, maximal Python baseline, and differential semantics"
+  },
+  "verification": {
+    "last_reported_stage04_tests": {
+      "passed": 338,
+      "status": "PASS"
+    },
+    "pre_stage04e_audit_tests": {
+      "passed": 343,
+      "status": "PASS",
+      "note": "includes five freeze and protocol integrity tests added without changing frozen frontend semantics"
+    },
+    "py_compile": "PASS",
+    "core_ir_schema_digest": "PASS",
+    "frontend_benchmark_semantically_equal_to_frozen_result": true,
+    "deterministic_lowering_gate": "1/1 SUPPORTED",
+    "frontend_cli": {
+      "frontend-check": "PASS",
+      "frontend-ir": "PASS",
+      "frontend-run": "PASS value 41",
+      "frontend-bench": "PASS 13/13 generated gates"
+    },
+    "reproduced_binding": {
+      "current_python_analyzer": "1240/1920",
+      "strong_structural_python_binder": "1920/1920",
+      "meldra_closed_binder": "1920/1920"
+    },
+    "decision": "NO_GO_LANGUAGE_ALPHA"
+  },
+  "regression_policy": {
+    "held_out_feedback_semantic_changes": "FORBIDDEN",
+    "objective_defect_fix": "requires a failing regression test before the fix",
+    "rule_change": "requires version bump and a new protocol version",
+    "result_retention": "pre-fix and post-fix benchmark results remain separate",
+    "historical_recalculation": "old results may not be silently replaced by a new implementation",
+    "allowed_stage04e_changes": "new harnesses tests adapters and reports that do not modify frozen frontend semantics"
+  }
+}
