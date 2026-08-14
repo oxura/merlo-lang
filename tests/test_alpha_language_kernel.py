@@ -635,3 +635,19 @@ def test_try_propagation_drops_borrow_temporary_on_error_and_success() -> None:
     hir, rir, _mir, optimized = _layers(source)
     generated = emit_general_c(hir, rir, optimized)
     assert generated.source.count("merlo_drop_Text(&__merlo_owned_temp_1);") == 2
+
+
+def test_nested_borrowed_slice_rejects_materialized_vec_owner() -> None:
+    source = (
+        "record HolderSlice:\n"
+        "    view: Slice[UInt64]\n"
+        "fn borrow_slice(values: Vec[UInt64]) -> Slice[UInt64]:\n"
+        "    return values.view()\n"
+        "fn wrapper(input: BytesView) -> HolderSlice:\n"
+        "    return HolderSlice(borrow_slice(Vec.new()))\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    return 0\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
+        emit_general_c(hir, rir, optimized)
