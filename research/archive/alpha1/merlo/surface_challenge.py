@@ -647,8 +647,8 @@ def run_surface_challenge(
 ) -> dict[str, Any]:
     """Execute every locked Surface 0.2 case and return its evidence report."""
     candidate = Path(root)
-    if (candidate / "benchmarks" / "surface_0_2").is_dir():
-        challenge_root = candidate / "benchmarks" / "surface_0_2"
+    if (candidate / "tools" / "benchmarks" / "merlo" / "benchmarks" / "surface_0_2").is_dir():
+        challenge_root = candidate / "tools" / "benchmarks" / "merlo" / "benchmarks" / "surface_0_2"
     elif candidate.name == "surface_0_2" and candidate.is_dir():
         challenge_root = candidate
     else:

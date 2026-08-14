@@ -31,6 +31,10 @@ _INDEPENDENT_CORPUS_FROZEN = (
 
 def resolve_frozen_path(root: str | Path, recorded_path: str) -> Path:
     root_path = Path(root)
+    if recorded_path == "meldra/independent_corpus.py":
+        alpha1_path = root_path / "research" / "archive" / "alpha1" / "merlo" / "independent_corpus.py"
+        if alpha1_path.is_file():
+            return alpha1_path
     archived_path = root_path / _FROZEN_ARCHIVE / recorded_path
     if archived_path.is_file():
         return archived_path

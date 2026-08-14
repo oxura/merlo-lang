@@ -81,8 +81,8 @@ def test_report_preserves_guard_denominators_and_parallel_provenance():
 
 
 def test_frozen_external_trial_artifacts_are_complete_and_linked():
-    manifest_path = ROOT / "benchmarks" / EXTERNAL_TRIAL_MANIFEST_FILENAME
-    report_path = ROOT / "benchmarks" / "meldra_external_trials.json"
+    manifest_path = ROOT / "tools" / "benchmarks" / "merlo" / "benchmarks" / EXTERNAL_TRIAL_MANIFEST_FILENAME
+    report_path = ROOT / "tools" / "benchmarks" / "merlo" / "benchmarks" / "meldra_external_trials.json"
     manifest_raw = manifest_path.read_bytes()
     manifest = json.loads(manifest_raw)
     report = json.loads(report_path.read_text(encoding="utf-8"))

@@ -38,7 +38,7 @@ def test_surface_challenge_reports_every_locked_blocker(tmp_path: Path) -> None:
 
 def _challenge_copy(tmp_path: Path) -> Path:
     destination = tmp_path / "surface_0_2"
-    shutil.copytree(Path("benchmarks") / "surface_0_2", destination)
+    shutil.copytree(Path("tools/benchmarks/merlo/benchmarks") / "surface_0_2", destination)
     return destination
 
 
@@ -104,7 +104,7 @@ def test_surface_challenge_rejects_valid_unrelated_semantic_sabotage(
 
 def test_compression_metrics_fail_closed_on_missing_or_forbidden_translation() -> None:
     payload = json.loads(
-        (Path("benchmarks") / "surface_0_2" / "translations.json").read_text(
+        (Path("tools/benchmarks/merlo/benchmarks") / "surface_0_2" / "translations.json").read_text(
             encoding="utf-8"
         )
     )

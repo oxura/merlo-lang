@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Sequence
 
-from research.archive.alpha1.merlo.frontend_bench import run_frontend_benchmark
+from research.archive.alpha1.merlo.core_bench import run_core_benchmark
 from research.archive.historical_protocol.merlo.frontend_evaluator import ReferenceEvaluator
 from research.archive.historical_protocol.merlo.frontend_semantics import check_frontend, compile_frontend
 
@@ -17,7 +17,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="merlo")
     commands = parser.add_subparsers(dest="command", required=True)
     historical = commands.add_parser("historical")
-    historical.add_argument("historical_command", choices=("frontend-check", "frontend-ir", "frontend-run", "frontend-bench"))
+    historical.add_argument("historical_command", choices=("frontend-check", "frontend-ir", "frontend-run", "frontend-bench", "core-bench"))
     historical.add_argument("arguments", nargs=argparse.REMAINDER)
     return parser
 
@@ -35,8 +35,8 @@ def _historical_args(command: str, values: list[str]) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> int:
     parsed = build_parser().parse_args(list(argv or ()))
     values = _historical_args(parsed.historical_command, parsed.arguments)
-    if parsed.historical_command == "frontend-bench":
-        print(json.dumps(run_frontend_benchmark().to_dict(), sort_keys=True))
+    if parsed.historical_command == "core-bench":
+        print(json.dumps(run_core_benchmark().to_dict(), sort_keys=True))
         return EXIT_OK
     root = Path(values.root).resolve()
     sources = {p.relative_to(root).as_posix(): p.read_text(encoding="utf-8") for p in sorted(root.rglob("*.mlo"))}

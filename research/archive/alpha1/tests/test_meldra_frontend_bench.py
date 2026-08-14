@@ -72,7 +72,7 @@ def test_equal_denominator_comparison_separates_analyzer_from_language():
 
 
 def test_support_profile_is_frozen_and_not_mutated_by_corpus_generation():
-    path = ROOT / "benchmarks" / "meldra_stage04_support_profile.json"
+    path = ROOT / "tools" / "benchmarks" / "merlo" / "benchmarks" / "meldra_stage04_support_profile.json"
     before = hashlib.sha256(path.read_bytes()).hexdigest()
 
     generate_paired_corpus(30)

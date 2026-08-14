@@ -10,7 +10,7 @@ from research.archive.alpha1.merlo.core_bench import (
     core_benchmark_fixtures,
     run_core_benchmark,
 )
-from merlo.cli import main
+from research.archive.historical_protocol.merlo.cli import main
 
 
 def _fixture(report: CoreBenchmarkReport, fixture_id: str):

@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[4]
 
 
 def test_frozen_agent_manifest_uses_one_model_and_equal_budgets():
-    path = ROOT / "benchmarks" / AGENT_EXPERIMENT_MANIFEST_FILENAME
+    path = ROOT / "tools" / "benchmarks" / "merlo" / "benchmarks" / AGENT_EXPERIMENT_MANIFEST_FILENAME
     payload = json.loads(path.read_text(encoding="utf-8"))
 
     assert payload["task_count"] == 90
@@ -44,9 +44,9 @@ def test_missing_provider_is_explicitly_unmeasured_without_fake_scores():
 
 
 def test_frozen_unmeasured_report_links_exact_manifest():
-    manifest_path = ROOT / "benchmarks" / AGENT_EXPERIMENT_MANIFEST_FILENAME
+    manifest_path = ROOT / "tools" / "benchmarks" / "merlo" / "benchmarks" / AGENT_EXPERIMENT_MANIFEST_FILENAME
     report = json.loads(
-        (ROOT / "benchmarks" / "meldra_agent_experiment.json").read_text(
+        (ROOT / "tools" / "benchmarks" / "merlo" / "benchmarks" / "meldra_agent_experiment.json").read_text(
             encoding="utf-8"
         )
     )
