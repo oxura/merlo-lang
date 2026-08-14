@@ -54,9 +54,9 @@ def _fixture(tmp_path: Path, *, complete: bool = True) -> ReleaseInputs:
     evidence_path = root / "evidence.json"
     evidence_path.write_text("{}", encoding="utf-8")
     for filename, content in (
-        ("merlo-0.1.0-alpha.1.tar.gz", b"sdist"),
-        ("merlo-0.1.0-alpha.1-py3-none-any.whl", b"wheel"),
-        ("merlo-alpha.1-evidence.json", b"evidence bundle"),
+        ("merlo-0.1.0a1.tar.gz", b"sdist"),
+        ("merlo-0.1.0a1-py3-none-any.whl", b"wheel"),
+        ("merlo-0.1.0-alpha.1-evidence.zip", b"evidence bundle"),
     ):
         (root / filename).write_bytes(content)
     source_hashes = {"merlo/compiler.py": _sha(source)}
@@ -90,9 +90,9 @@ def _fixture(tmp_path: Path, *, complete: bool = True) -> ReleaseInputs:
         build_frontend={"name": "build", "version": "1.2.2"},
         source_date_epoch=1_755_158_400,
         assets={
-            "merlo-0.1.0-alpha.1.tar.gz": _sha(root / "merlo-0.1.0-alpha.1.tar.gz"),
-            "merlo-0.1.0-alpha.1-py3-none-any.whl": _sha(root / "merlo-0.1.0-alpha.1-py3-none-any.whl"),
-            "merlo-alpha.1-evidence.json": _sha(root / "merlo-alpha.1-evidence.json"),
+            "merlo-0.1.0a1.tar.gz": _sha(root / "merlo-0.1.0a1.tar.gz"),
+            "merlo-0.1.0a1-py3-none-any.whl": _sha(root / "merlo-0.1.0a1-py3-none-any.whl"),
+            "merlo-0.1.0-alpha.1-evidence.zip": _sha(root / "merlo-0.1.0-alpha.1-evidence.zip"),
         },
     )
     return ReleaseInputs(
@@ -144,7 +144,7 @@ def test_manifest_covers_payload_files_and_second_different_emission_is_refused(
     assert set(inputs.provenance.assets) == set(manifest["assets"])
     assert all(len(digest) == 64 for digest in manifest["assets"].values())
     assert any(line.endswith("manifest.json") for line in checksums)
-    (inputs.root / "merlo-0.1.0-alpha.1.tar.gz").write_bytes(b"changed sdist")
+    (inputs.root / "merlo-0.1.0a1.tar.gz").write_bytes(b"changed sdist")
     with pytest.raises(ReleaseValidationError):
         assemble_release(inputs, result.path)
 
@@ -165,7 +165,7 @@ def test_existing_payload_and_checksum_tampering_are_rejected(tmp_path: Path) ->
 def test_asset_digest_mismatch_is_rejected(tmp_path: Path) -> None:
     inputs = _fixture(tmp_path)
     bad = dict(inputs.provenance.assets)
-    bad["merlo-0.1.0-alpha.1.tar.gz"] = "0" * 64
+    bad["merlo-0.1.0a1.tar.gz"] = "0" * 64
     with pytest.raises(ReleaseValidationError, match="asset digest mismatch"):
         validate_release(replace(inputs, provenance=replace(inputs.provenance, assets=bad)))
 
@@ -209,18 +209,63 @@ def test_reassembly_rejects_reordered_sha256sums(tmp_path: Path) -> None:
     with pytest.raises(ReleaseValidationError, match="different content"):
         assemble_release(inputs, destination)
 
+def test_rehashed_manifest_cannot forge_cross_field_integrity(tmp_path: Path) -> None:
+    result = assemble_release(_fixture(tmp_path), tmp_path / "dist" / "merlo-0.1.0-alpha.1")
+    manifest = json.loads((result.path / "manifest.json").read_text(encoding="utf-8"))
+    invalid = dict(manifest)
+    invalid["files"] = dict(manifest["files"])
+    invalid["files"]["assets/merlo-0.1.0a1.tar.gz"] = "0" * 64
+    invalid["payload_sha256"] = manifest_payload_sha256(invalid)
+    invalid["manifest_sha256"] = manifest_sha256(invalid)
+    with pytest.raises(ReleaseValidationError, match="asset digest mismatch"):
+        verify_manifest(invalid)
+    invalid = dict(manifest)
+    invalid["failed_gates"] = ["examples"]
+    invalid["payload_sha256"] = manifest_payload_sha256(invalid)
+    invalid["manifest_sha256"] = manifest_sha256(invalid)
+    with pytest.raises(ReleaseValidationError, match="failure set"):
+        verify_manifest(invalid)
+
 
 def test_asset_roles_are_distinct_and_asset_keys_canonical(tmp_path: Path) -> None:
     inputs = _fixture(tmp_path)
-    overlap = inputs.root / "merlo-0.1.0-alpha.1-evidence.whl"
+    overlap = inputs.root / "merlo-0.1.0a1-evidence.whl"
     overlap.write_bytes(b"overlap")
     assets = dict(inputs.provenance.assets)
-    assets.pop("merlo-0.1.0-alpha.1-py3-none-any.whl")
+    assets.pop("merlo-0.1.0a1-py3-none-any.whl")
     assets[overlap.name] = _sha(overlap)
     with pytest.raises(ReleaseValidationError, match="distinct role"):
         validate_release(replace(inputs, provenance=replace(inputs.provenance, assets=assets)))
     assets = dict(inputs.provenance.assets)
-    digest = assets.pop("merlo-0.1.0-alpha.1.tar.gz")
-    assets["staging/../merlo-0.1.0-alpha.1.tar.gz"] = digest
+    digest = assets.pop("merlo-0.1.0a1.tar.gz")
+    assets["staging/../merlo-0.1.0a1.tar.gz"] = digest
     with pytest.raises(ReleaseValidationError, match="noncanonical"):
         validate_release(replace(inputs, provenance=replace(inputs.provenance, assets=assets)))
+
+
+def test_asset_sources_accept_canonical_dist_paths(tmp_path: Path) -> None:
+    inputs = _fixture(tmp_path)
+    dist = inputs.root / "dist"
+    dist.mkdir()
+    assets = {}
+    for filename, digest in inputs.provenance.assets.items():
+        source = inputs.root / filename
+        (dist / filename).write_bytes(source.read_bytes())
+        source.unlink()
+        assets[f"dist/{filename}"] = digest
+    inputs = replace(inputs, provenance=replace(inputs.provenance, assets=assets))
+    result = assemble_release(inputs, tmp_path / "dist-output" / "merlo-0.1.0-alpha.1")
+    assert set(result.manifest["assets"]) == set(filename.split("/")[-1] for filename in assets)
+
+
+def test_asset_names_reject_version_substrings_and_invalid_alpha_versions(tmp_path: Path) -> None:
+    inputs = _fixture(tmp_path)
+    bad = dict(inputs.provenance.assets)
+    digest = bad.pop("merlo-0.1.0a1.tar.gz")
+    bad["merlo-1.0.0a1.tar.gz"] = digest
+    with pytest.raises(ReleaseValidationError, match="filenames disagree"):
+        validate_release(replace(inputs, provenance=replace(inputs.provenance, assets=bad)))
+    versions = dict(inputs.provenance.versions)
+    versions["package"] = "1"
+    with pytest.raises(ReleaseValidationError, match="package version"):
+        validate_release(replace(inputs, provenance=replace(inputs.provenance, versions=versions)))

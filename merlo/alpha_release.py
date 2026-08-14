@@ -233,25 +233,45 @@ def _file_hash(path: Path) -> str:
     except OSError as exc:
         raise ReleaseValidationError(f"cannot hash artifact {path}: {exc}") from exc
 
+_ALPHA_VERSION = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-alpha\.([1-9][0-9]*)$")
+
+
+def _distribution_filenames(package_version: str) -> tuple[str, str, str]:
+    match = _ALPHA_VERSION.fullmatch(package_version)
+    if match is None:
+        raise ReleaseValidationError("invalid provenance package version")
+    major, minor, patch, alpha = match.groups()
+    normalized = f"{major}.{minor}.{patch}a{alpha}"
+    return (
+        f"merlo-{normalized}.tar.gz",
+        f"merlo-{normalized}-py3-none-any.whl",
+        f"merlo-{package_version}-evidence.zip",
+    )
+
 
 def _asset_roles(assets: Mapping[str, str]) -> dict[str, str]:
     roles: dict[str, str] = {}
+    basenames: set[str] = set()
     for filename in assets:
         if not isinstance(filename, str) or not filename or "\\" in filename:
             raise ReleaseValidationError("invalid provenance asset filename")
         path = Path(filename)
-        if path.is_absolute() or path.name != filename:
+        if path.is_absolute() or path.as_posix() != filename or any(part in {".", ".."} for part in path.parts):
             raise ReleaseValidationError(f"noncanonical provenance asset filename: {filename}")
+        basename = path.name
+        if basename in basenames:
+            raise ReleaseValidationError("provenance asset basenames must be unique")
+        basenames.add(basename)
         matches = []
-        if filename.endswith((".tar.gz", ".tar")):
+        if basename.endswith((".tar.gz", ".tar")):
             matches.append("sdist")
-        if filename.endswith(".whl"):
+        if basename.endswith(".whl"):
             matches.append("wheel")
-        if "evidence" in filename.lower():
+        if "evidence" in basename.lower():
             matches.append("evidence")
         if len(matches) != 1 or matches[0] in roles:
             raise ReleaseValidationError("provenance assets must have exactly one distinct role")
-        roles[matches[0]] = filename
+        roles[matches[0]] = basename
     if set(roles) != {"sdist", "wheel", "evidence"}:
         raise ReleaseValidationError("provenance assets must contain sdist, wheel, and evidence")
     return roles
@@ -269,7 +289,8 @@ def _validate_provenance(provenance: ReleaseProvenance, root: Path) -> None:
     ):
         raise ReleaseValidationError("invalid provenance versions")
     package_version = provenance.versions["package"]
-    if package_version not in provenance.tag:
+    sdist_name, wheel_name, evidence_name = _distribution_filenames(package_version)
+    if provenance.tag != f"v{package_version}":
         raise ReleaseValidationError("provenance tag disagrees with package version")
     if not isinstance(provenance.platform, str) or not provenance.platform:
         raise ReleaseValidationError("invalid provenance platform or architecture")
@@ -294,9 +315,10 @@ def _validate_provenance(provenance: ReleaseProvenance, root: Path) -> None:
     ):
         raise ReleaseValidationError("invalid provenance assets")
     roles = _asset_roles(provenance.assets)
-    for role in ("sdist", "wheel"):
-        if package_version not in roles[role]:
-            raise ReleaseValidationError("provenance asset disagrees with package version")
+    if {Path(name).name for name in provenance.assets} != {sdist_name, wheel_name, evidence_name}:
+        raise ReleaseValidationError("provenance asset filenames disagree with package version")
+    if roles != {"sdist": sdist_name, "wheel": wheel_name, "evidence": evidence_name}:
+        raise ReleaseValidationError("provenance asset roles disagree with package version")
     for filename, expected in sorted(provenance.assets.items()):
         path = _as_path(root, filename)
         if not path.is_file():
@@ -491,7 +513,7 @@ def _manifest_payload(inputs: ReleaseInputs, validation: ValidationResult, files
             "build_frontend": dict(sorted(provenance.build_frontend.items())),
             "source_date_epoch": provenance.source_date_epoch,
         },
-        "assets": dict(sorted(provenance.assets.items())),
+        "assets": dict(sorted((Path(name).name, digest) for name, digest in provenance.assets.items())),
         "files": dict(sorted(files.items())),
         "required": {
             "licenses": list(REQUIRED_LICENSES), "metadata": list(REQUIRED_METADATA),
@@ -545,7 +567,7 @@ def _validate_manifest_shape(manifest: Mapping[str, Any]) -> None:
     gates = manifest["gates"]
     if not isinstance(gates, Mapping) or set(gates) != set(REQUIRED_GATES) or any(type(value) is not bool for value in gates.values()):
         raise ReleaseValidationError("manifest has invalid gates")
-    _manifest_strings(manifest["failed_gates"], "failed_gates")
+    failed_gates = _manifest_strings(manifest["failed_gates"], "failed_gates")
     _manifest_strings(manifest["failed_evidence_ids"], "failed_evidence_ids")
     evidence = manifest["evidence"]
     if not isinstance(evidence, list) or not evidence:
@@ -556,7 +578,7 @@ def _validate_manifest_shape(manifest: Mapping[str, Any]) -> None:
             raise ReleaseValidationError("manifest validation evidence malformed")
         if not isinstance(item["id"], str) or not item["id"] or not isinstance(item["kind"], str) or not item["kind"]:
             raise ReleaseValidationError("manifest validation evidence malformed")
-        if item["gate"] not in REQUIRED_GATES or not isinstance(item["gate"], str):
+        if not isinstance(item["gate"], str) or item["gate"] not in REQUIRED_GATES:
             raise ReleaseValidationError("manifest validation evidence malformed")
         if not isinstance(item["content_sha256"], str) or not _HEX64.fullmatch(item["content_sha256"]):
             raise ReleaseValidationError("manifest validation evidence malformed")
@@ -564,6 +586,18 @@ def _validate_manifest_shape(manifest: Mapping[str, Any]) -> None:
         evidence_ids.append(item["id"])
     if len(set(evidence_ids)) != len(evidence_ids):
         raise ReleaseValidationError("manifest validation evidence has duplicates")
+    expected_failed = {name for name, passed in gates.items() if not passed}
+    if set(failed_gates) != expected_failed:
+        raise ReleaseValidationError("manifest gate failure set mismatch")
+    status = manifest["status"]
+    if status == ALPHA_RELEASE_SUPPORTED and expected_failed:
+        raise ReleaseValidationError("supported manifest has failed gates")
+    if status == ALPHA_RELEASE_INCOMPLETE and not expected_failed:
+        raise ReleaseValidationError("incomplete manifest has no failed gates")
+    if status == ALPHA_RELEASE_REPRODUCIBILITY_DEFECT and gates["reproducibility"]:
+        raise ReleaseValidationError("reproducibility defect gate mismatch")
+    if status == ALPHA_RELEASE_SAFETY_DEFECT and gates["sanitizers"]:
+        raise ReleaseValidationError("safety defect gate mismatch")
     provenance = manifest["provenance"]
     provenance_keys = {
         "source_commit", "tag", "versions", "platform", "architecture", "python",
@@ -580,7 +614,7 @@ def _validate_manifest_shape(manifest: Mapping[str, Any]) -> None:
         not isinstance(value, str) or not value for value in versions.values()
     ):
         raise ReleaseValidationError("manifest provenance versions invalid")
-    if versions["package"] not in provenance["tag"] or manifest["release"] != versions["package"]:
+    if provenance["tag"] != f"v{versions['package']}" or manifest["release"] != versions["package"]:
         raise ReleaseValidationError("manifest release identity mismatch")
     for name in ("platform", "architecture"):
         if not isinstance(provenance[name], str) or not provenance[name]:
@@ -594,10 +628,12 @@ def _validate_manifest_shape(manifest: Mapping[str, Any]) -> None:
     assets = manifest["assets"]
     if not isinstance(assets, Mapping) or len(assets) != 3 or any(not isinstance(value, str) or not _HEX64.fullmatch(value) for value in assets.values()):
         raise ReleaseValidationError("manifest assets invalid")
+    expected_assets = set(_distribution_filenames(versions["package"]))
+    if set(assets) != expected_assets:
+        raise ReleaseValidationError("manifest asset filenames disagree with package version")
     roles = _asset_roles(assets)
-    for role in ("sdist", "wheel"):
-        if versions["package"] not in roles[role]:
-            raise ReleaseValidationError("manifest asset release identity mismatch")
+    if roles != {"sdist": next(name for name in expected_assets if name.endswith(".tar.gz")), "wheel": next(name for name in expected_assets if name.endswith(".whl")), "evidence": next(name for name in expected_assets if name.endswith(".zip"))}:
+        raise ReleaseValidationError("manifest asset roles disagree with package version")
     files = manifest["files"]
     if not isinstance(files, Mapping) or not files:
         raise ReleaseValidationError("manifest files missing")
@@ -617,18 +653,19 @@ def _validate_manifest_shape(manifest: Mapping[str, Any]) -> None:
             raise ReleaseValidationError(f"manifest required inventory mismatch: {name}")
     sources = _manifest_strings(required["sources"], "required.sources")
     binaries = _manifest_strings(required["binaries"], "required.binaries")
-    if not sources or not binaries:
-        raise ReleaseValidationError("manifest required sources or binaries missing")
-    for relative in (*sources, *binaries):
-        _manifest_path(relative, "required inventory")
-    for filename in assets:
-        if f"assets/{filename}" not in files:
-            raise ReleaseValidationError(f"manifest asset missing from files: {filename}")
+    for filename, digest in assets.items():
+        asset_path = f"assets/{filename}"
+        if files.get(asset_path) != digest:
+            raise ReleaseValidationError(f"manifest asset digest mismatch: {filename}")
+    inventory_files = (*REQUIRED_LICENSES, *REQUIRED_METADATA, *REQUIRED_DOCS, *REQUIRED_SPECS, *REQUIRED_STDLIB, *REQUIRED_EXAMPLES)
+    for relative in inventory_files:
+        if relative not in files or not isinstance(files[relative], str) or not _HEX64.fullmatch(files[relative]):
+            raise ReleaseValidationError(f"manifest inventory file missing: {relative}")
     for relative in sources:
-        if f"source/{relative}" not in files:
+        if files.get(f"source/{relative}") is None:
             raise ReleaseValidationError(f"manifest source missing from files: {relative}")
     for relative in binaries:
-        if f"bin/{Path(relative).name}" not in files:
+        if files.get(f"bin/{Path(relative).name}") is None:
             raise ReleaseValidationError(f"manifest binary missing from files: {relative}")
     for field_name in ("payload_sha256", "manifest_sha256"):
         if not isinstance(manifest[field_name], str) or not _HEX64.fullmatch(manifest[field_name]):
@@ -734,7 +771,7 @@ def assemble_release(inputs: ReleaseInputs, destination: Path | str) -> Assembly
         for relative in sorted(inputs.source_hashes):
             copied.add(_copy_file(inputs.root, relative, work, f"source/{relative}"))
         for filename in sorted(inputs.provenance.assets):
-            copied.add(_copy_file(inputs.root, filename, work, f"assets/{filename}"))
+            copied.add(_copy_file(inputs.root, filename, work, f"assets/{Path(filename).name}"))
         evidence_entries: list[dict[str, Any]] = []
         for record in sorted(inputs.evidence, key=lambda item: item.id):
             raw_refs: list[str] = []
