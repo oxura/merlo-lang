@@ -88,6 +88,7 @@ _INSTANCE_METHODS = {
     ("TextBuilder", "finish"): ((), "Text"),
     ("TextBuilder", "append_uint64"): (("UInt64",), "Unit"),
     ("FileReader", "lines"): ((), "FileLines"),
+    ("FileLines", "count_text"): ((), "Text"),
     ("FileReader", "close"): ((), "Result[Unit,AppError]"),
 }
 _INSTANCE_METHOD_NAMES = frozenset(
@@ -285,6 +286,11 @@ class _Elaborator:
                 {},
                 {},
             )
+            if isinstance(declaration.body, tuple):
+                for statement in declaration.body:
+                    if isinstance(statement, SurfaceUses):
+                        function.effects.update(statement.effects)
+                        function.capabilities.update(statement.effects)
             self.functions[declaration.name] = function
             for parameter in declaration.parameters:
                 if parameter.type_name:
@@ -1058,15 +1064,19 @@ class _Elaborator:
                         f"TruthinessForbidden: {left_type or 'unresolved'}"
                     )
             else:
+                numeric = {"Byte", "UInt64", "Int64", "Float32", "Float64"}
+                contextual = expected if expected in numeric else None
                 left = self._expression(expression.left, function)
                 left_type = self.types.concrete.get(self.types.find(left))
-                numeric = {"Byte", "UInt64", "Int64", "Float32", "Float64"}
                 if left_type is not None and left_type not in numeric:
                     raise SurfaceElaborationError(
                         "numeric operator requires numeric operands, "
                         f"got {left_type}"
                     )
-                operand_type = expected or left_type
+                if contextual is not None:
+                    left = self.types.typed(contextual)
+                    left_type = contextual
+                operand_type = contextual or left_type
                 right = self._expression(
                     expression.right, function, operand_type
                 )
@@ -1398,7 +1408,14 @@ class _Elaborator:
                             function,
                             "UInt64",
                         )
-                    term = self.types.typed("UInt64")
+                    result_type = expected if expected in {
+                        "Byte",
+                        "UInt64",
+                        "Int64",
+                        "Float32",
+                        "Float64",
+                    } else "UInt64"
+                    term = self.types.typed(result_type)
                 elif method == "push":
                     if len(expression.arguments) != 1:
                         raise SurfaceElaborationError("ArityMismatch: push")
@@ -2450,6 +2467,11 @@ class _Elaborator:
         )
 
 
+def _emit_nested(expression: SurfaceExpression) -> str:
+    rendered = str(_emit_expression(expression))
+    return f"({rendered})" if isinstance(expression, SurfaceBinary) else rendered
+
+
 def _emit_expression(expression: SurfaceExpression | None) -> str | None:
     if expression is None:
         return None
@@ -2462,21 +2484,27 @@ def _emit_expression(expression: SurfaceExpression | None) -> str | None:
     if isinstance(expression, SurfaceImplicitReceiver):
         return f".{expression.field}"
     if isinstance(expression, SurfaceMember):
-        return f"{_emit_expression(expression.receiver)}.{expression.field}"
+        return f"{_emit_nested(expression.receiver)}.{expression.field}"
     if isinstance(expression, SurfaceBinary):
-        return f"{_emit_expression(expression.left)} {expression.operator} {_emit_expression(expression.right)}"
+        return (
+            f"{_emit_nested(expression.left)} {expression.operator} "
+            f"{_emit_nested(expression.right)}"
+        )
     if isinstance(expression, SurfaceUnary):
-        return f"{expression.operator} {_emit_expression(expression.operand)}"
+        return f"{expression.operator} {_emit_nested(expression.operand)}"
     if isinstance(expression, SurfaceCall):
         arguments = ", ".join(
             f"{item.name}: {_emit_expression(item.value)}" if item.name else str(_emit_expression(item.value))
             for item in expression.arguments
         )
-        return f"{_emit_expression(expression.callee)}({arguments})"
+        return f"{_emit_nested(expression.callee)}({arguments})"
     if isinstance(expression, SurfaceIndex):
-        return f"{_emit_expression(expression.receiver)}[{_emit_expression(expression.index)}]"
+        return (
+            f"{_emit_nested(expression.receiver)}"
+            f"[{_emit_expression(expression.index)}]"
+        )
     if isinstance(expression, SurfaceTry):
-        return f"{_emit_expression(expression.expression)}?"
+        return f"{_emit_nested(expression.expression)}?"
     if isinstance(expression, SurfaceList):
         return f"[{', '.join(str(_emit_expression(item)) for item in expression.items)}]"
     raise SurfaceElaborationError(f"CannotEmitExpression: {type(expression).__name__}")
@@ -2490,16 +2518,18 @@ def _emit_implicit_expression(expression: SurfaceExpression) -> str:
         value = _emit_expression(expression)
         return str(value)
     if isinstance(expression, SurfaceBinary):
-        return (
-            f"{_emit_implicit_expression(expression.left)} "
-            f"{expression.operator} "
-            f"{_emit_implicit_expression(expression.right)}"
-        )
+        left = _emit_implicit_expression(expression.left)
+        right = _emit_implicit_expression(expression.right)
+        if isinstance(expression.left, SurfaceBinary):
+            left = f"({left})"
+        if isinstance(expression.right, SurfaceBinary):
+            right = f"({right})"
+        return f"{left} {expression.operator} {right}"
     if isinstance(expression, SurfaceUnary):
-        return (
-            f"{expression.operator} "
-            f"{_emit_implicit_expression(expression.operand)}"
-        )
+        operand = _emit_implicit_expression(expression.operand)
+        if isinstance(expression.operand, SurfaceBinary):
+            operand = f"({operand})"
+        return f"{expression.operator} {operand}"
     raise SurfaceElaborationError(
         f"CannotEmitImplicitExpression: {type(expression).__name__}"
     )

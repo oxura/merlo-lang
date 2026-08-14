@@ -352,11 +352,13 @@ def _canonical_roundtrip_project(
     )
     header_start = source.index("\nexport task main(") + 1
     header_end = source.index("\n", header_start)
-    source = (
-        source[: header_end + 1]
-        + f"    uses {', '.join(effects)}\n"
-        + source[header_end + 1 :]
-    )
+    body_start = header_end + 1
+    if not source.startswith("    uses ", body_start):
+        source = (
+            source[:body_start]
+            + f"    uses {', '.join(effects)}\n"
+            + source[body_start:]
+        )
     entry = build_root / application / "canonical_roundtrip" / "app" / "main.mlo"
     entry.parent.mkdir(parents=True, exist_ok=True)
     entry.write_text(source, encoding="utf-8")

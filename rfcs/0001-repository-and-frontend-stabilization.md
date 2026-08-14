@@ -29,7 +29,7 @@ One clean `v0.1.0-alpha.2` will be published only after the package cutover, fro
 
 The alpha.1 wheel contains 161 Python modules. At least 64 modules, 39.8 percent, are visibly experiments, benchmarks, evidence generators, corpora, stage tooling, or research runners.
 
-`src/merlo/concise_application.py` is 2,775 lines. It owns or coordinates module loading, source mapping, declaration discovery, inference, task analysis, effects, capabilities, interfaces, canonical generation, sum-type rewriting, and diagnostic projection. The compiler, CLI, formatter, LSP, SemanticWorld, project test runner, and research runners depend on it.
+`src/merlo/concise_application.py` is 2,775 lines. It owns module loading, source mapping, declaration discovery, inference, and task analysis. It also coordinates effect, capability, and interface analysis; canonical generation; sum-type rewriting; and diagnostic projection. The compiler, CLI, formatter, LSP, SemanticWorld, project test runner, and research runners depend on it.
 
 The project path recognizes module headers, imports, tasks, calls, effects, and parts of `Option` and `Result` lowering through regex and string replacement. `surface_parser.py` and `surface_elaborator.py` already provide a useful structural path for individual sources, but expressions still pass through CPython AST and project compilation still enters through the text-oriented elaborator.
 
@@ -42,7 +42,7 @@ The public `main` branch reports alpha.1 after the alpha.1 tag and after a CI re
 3. Delete the text-oriented project frontend after migrating every caller.
 4. Bind calls and infer effects and capabilities from resolved symbols.
 5. Make compilation and tooling consume the same bound and typed objects.
-6. Install alpha.2 from a wheel without editable mode or test dependencies.
+6. Support alpha.2 installation from a wheel without editable mode or test dependencies.
 7. Turn Linux, Python, Clang, GCC, sanitizer, determinism, packaging, and manifest claims into CI gates.
 8. Correct README statements that exceed demonstrated behavior.
 9. Record at least fifteen professional, substantive public commits without rewriting prior history.
@@ -250,7 +250,7 @@ Every pull request and `main` push runs:
 5. Compact ownership/resource corpus under supported ASan, UBSan, and LSan modes.
 6. Deterministic wheel and source archive builds.
 7. Clean wheel install, `merlo --help`, project creation, check, build, and run.
-8. Two clean builds comparing module, bound, canonical, HIR, RIR, MIR, optimized MIR, C11, and binary hashes.
+8. Two clean builds with hash comparisons at the module, bound, canonical, HIR, RIR, MIR, optimized MIR, C11, and binary stages.
 9. Release-manifest verification of every required stdlib, spec, example, license, metadata, and package file.
 
 Branch protection requires stable job names before merge. Each job invokes a repository command reproducible locally.
@@ -263,9 +263,9 @@ Branch protection requires stable job names before merge. Each job invokes a rep
 4. Build source and wheel from a clean checkout with fixed `SOURCE_DATE_EPOCH`.
 5. Build each twice and require byte-identical hashes.
 6. Generate a manifest with commit, versions, platform, toolchains, required paths, file and artifact digests, test evidence, and status.
-7. Install the wheel cleanly and execute the README quickstart.
+7. Clean wheel installation followed by execution of the README quickstart.
 8. Tag the verified commit `v0.1.0-alpha.2` and upload only final source, wheel, manifest, checksums, and evidence.
-9. Download public assets and repeat digest and smoke verification.
+9. Public asset download followed by repeated digest and smoke verification.
 
 A failed candidate is rebuilt before publication. Published tags and primary assets are never patched or force-updated.
 
@@ -311,7 +311,7 @@ The planned commit boundaries are:
 13. `ci: expand Python native and sanitizer coverage`
 14. `release: add manifest determinism and wheel gates`
 15. `docs: publish compiler subsystem contracts`
-16. `examples: add a substantial native showcase`
+16. `examples: add a substantial native application`
 17. `research: publish reproducible benchmark command`
 18. `research: publish controlled coding-agent comparison`
 19. `research: document Merlo name risk screen`
@@ -331,7 +331,7 @@ Three gates require people who did not implement the change:
 
 The project publishes exact review checklists and requests. Gates remain open until real external evidence arrives; the author or automation cannot self-certify independence.
 
-One showcase must exercise modules, typed errors, effects, capabilities, collections, native compilation, and real I/O without hidden Python execution.
+One representative application must cover modules, typed errors, effects, capabilities, and collections. It must also compile to native code and perform real I/O without hidden Python execution.
 
 One benchmark must have one reproduction command, locked inputs, environment metadata, raw samples, and a corpus-limited claim.
 
@@ -363,7 +363,7 @@ Alpha.2 requires:
 - tag, package version, manifest, changelog, and assets agree;
 - at least fifteen substantive commits are visible in public history.
 
-External review, showcase, AI A/B, reproducible benchmark, and trademark screen complete before broad promotion. An inconclusive result blocks its claim, not the compiler release.
+External review, the representative application, AI A/B, the reproducible benchmark, and the trademark screen must be complete before broad promotion. An inconclusive result blocks its claim, not the compiler release.
 
 ## Migration and rollback
 
@@ -371,11 +371,13 @@ Each PR keeps affected tests green. File moves use symbol-aware refactoring when
 
 ## Rejected alternatives
 
-- **Release hygiene now, architecture in alpha.3:** rejected because alpha.2 would preserve the source of the trust problem.
-- **Flat repository plus wheel allowlist:** rejected because it hides rather than fixes architecture.
-- **Split the god object but keep regex semantics:** rejected because navigation improves while correctness does not.
-- **Compatibility imports and historical CLI aliases:** rejected because alpha has no stability guarantee and clean cutover is cheaper.
-- **Rewrite private history:** rejected because fabricated evolution is worse than an honest import followed by professional public work.
+| Alternative | Reason for rejection |
+|---|---|
+| Release hygiene in alpha.2 and architecture in alpha.3 | Alpha.2 would retain the source of the trust problem. |
+| Flat repository with a wheel allowlist | The allowlist would conceal the architectural defect rather than remove it. |
+| Decompose the god object while retaining regex semantics | Navigation would improve, but semantic correctness would not. |
+| Compatibility imports and historical CLI aliases | The alpha has no stability guarantee, and a clean cutover is less costly. |
+| Rewrite private history | Fabricated evolution is less credible than an honest import followed by professional public work. |
 
 ## Unresolved questions
 
