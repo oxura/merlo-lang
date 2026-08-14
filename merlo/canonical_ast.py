@@ -4,6 +4,7 @@ import ast
 import hashlib
 import json
 from dataclasses import dataclass, field
+from typing import Any
 
 from .surface_ast import SourceSpan
 
@@ -194,8 +195,17 @@ class CanonicalProgram:
         default=(),
         repr=False,
         compare=False,
-    )
     projection_source: str | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+    )
+    source_path: str | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+    )
+    source_sha256: str | None = field(
         default=None,
         repr=False,
         compare=False,
