@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from .ffi import FFICompileError, FFIProgram, parse_ffi_declarations, validate_ffi
 from .canonical_ast import CanonicalProgram
+from .type_parser import generic_parts
 
 
 STRUCTURED_HIR_SCHEMA_VERSION = 2
@@ -311,31 +312,23 @@ _DEFAULT_MAP = "Map[Text,UInt64]"
 
 
 def _map_types(type_name: str | None) -> tuple[str, str] | None:
-    if not type_name or not type_name.startswith("Map[") or not type_name.endswith("]"):
-        return None
-    arguments = tuple(item.strip() for item in type_name[4:-1].split(","))
-    if len(arguments) != 2 or not all(arguments):
-        return None
-    return arguments[0], arguments[1]
+    parts = generic_parts(type_name, "Map", arity=2)
+    return parts if parts is not None else None  # type: ignore[return-value]
 
 
 def _sum_variants(type_name: str | None) -> dict[str, str | None] | None:
-    if not type_name or not type_name.endswith("]"):
-        return None
-    if type_name.startswith("Option["):
-        return {"NoneValue": None, "Some": type_name[7:-1]}
-    if type_name.startswith("Result["):
-        parts = tuple(item.strip() for item in type_name[7:-1].split(",", 1))
-        if len(parts) == 2 and all(parts):
-            return {"Ok": parts[0], "Err": parts[1]}
+    option = generic_parts(type_name, "Option", arity=1)
+    if option is not None:
+        return {"NoneValue": None, "Some": option[0]}
+    result = generic_parts(type_name, "Result", arity=2)
+    if result is not None:
+        return {"Ok": result[0], "Err": result[1]}
     return None
 
 
 def _callback_parts(type_name: str) -> tuple[tuple[str, ...], str] | None:
-    if not type_name.startswith("Fn[") or not type_name.endswith("]"):
-        return None
-    parts = tuple(item.strip() for item in type_name[3:-1].split(","))
-    if len(parts) < 2 or any(not item for item in parts):
+    parts = generic_parts(type_name, "Fn")
+    if parts is None or len(parts) < 2:
         return None
     return parts[:-1], parts[-1]
 
@@ -642,8 +635,10 @@ class _OwnershipChecker:
                     return "BytesView"
                 if method == "view" and receiver and receiver.startswith("Vec["):
                     return f"Borrow[{receiver}]"
-                if method in {"get", "get_mut"} and receiver and receiver.startswith("Vec["):
-                    return receiver[4:-1]
+                if method in {"get", "get_mut"} and receiver:
+                    vec_parts = generic_parts(receiver, "Vec", arity=1)
+                    if vec_parts is not None:
+                        return vec_parts[0]
                 if method == "get" and (map_types := _map_types(receiver)) is not None:
                     return map_types[1]
                 if method == "entries" and receiver and receiver.startswith("Map["):
@@ -652,10 +647,10 @@ class _OwnershipChecker:
                     return "Text"
                 if method == "finish" and receiver == "TextBuilder":
                     return "Text"
-        if isinstance(node, ast.Subscript):
-            owner = self._expr_type(node.value)
-            if owner and owner.startswith("Vec["):
-                return owner[4:-1]
+            if owner:
+                vec_parts = generic_parts(owner, "Vec", arity=1)
+                if vec_parts is not None:
+                    return vec_parts[0]
         return expected
 
     @staticmethod
@@ -763,9 +758,11 @@ class _OwnershipChecker:
                         for item in ast.walk(callee)
                     )
                     if self._owner(parameter_type) and returned and isinstance(argument, ast.Name):
-                        self._consume(argument.id, state)
+                        if isinstance(argument, ast.Name):
+                            self._consume(argument.id, state)
             elif receiver_root and method == "push" and node.args:
-                element = receiver_type[4:-1] if receiver_type and receiver_type.startswith("Vec[") else None
+                vec_parts = generic_parts(receiver_type, "Vec", arity=1)
+                element = vec_parts[0] if vec_parts is not None else None
                 if self._owner(element) and isinstance(node.args[0], ast.Name):
                     self._consume(node.args[0].id, state)
             elif receiver_text := (
@@ -1202,10 +1199,9 @@ class _HIRBuilder:
         return None
 
     def _result_parts(self, type_name: str) -> tuple[str, str] | None:
-        if type_name.startswith("Result[") and type_name.endswith("]"):
-            parts = type_name[7:-1].split(",", 1)
-            if len(parts) == 2:
-                return parts[0].strip(), parts[1].strip()
+        parts = generic_parts(type_name, "Result", arity=2)
+        if parts is not None:
+            return parts
         declaration = self.types.get(type_name)
         if declaration is None or declaration.kind != "enum":
             return None
@@ -1456,7 +1452,8 @@ class _HIRBuilder:
                     type_name = f"Result[{ok_type},{expected_parts[1]}]"
                 effects.update(("fs.write", "may_fail") if is_write else ("fs.read", "may_fail"))
                 operation_children = arguments
-                error_type = type_name.split(",", 1)[1].rstrip("]") if type_name.startswith("Result[") else "AppError"
+                result_parts = self._result_parts(type_name)
+                error_type = result_parts[1] if result_parts is not None else "AppError"
                 call_attributes.update({"resource": "FileReader" if method in {"open_read", "open_write"} else "Bytes", "host_operation": method, "error_type": error_type})
             elif receiver_text == "network" and method in {
                 "tcp_connect", "tcp_send", "tcp_receive", "tcp_close",
@@ -1485,7 +1482,8 @@ class _HIRBuilder:
                         )
                     type_name = f"Result[{ok_type},{expected_parts[1]}]"
                 operation_children = arguments
-                error_type = type_name.split(",", 1)[1].rstrip("]") if type_name.startswith("Result[") else "AppError"
+                result_parts = self._result_parts(type_name)
+                error_type = result_parts[1] if result_parts is not None else "AppError"
                 call_attributes.update({"host_operation": method, "error_type": error_type})
             elif receiver_text == "console" and method in {"read", "write"}:
                 kind = "DirectCall"
@@ -1595,7 +1593,9 @@ class _HIRBuilder:
                 if method == "new":
                     type_name = "Box[Inferred]"
                 elif receiver_type and method in {"get", "get_mut"}:
-                    type_name = receiver_type[4:-1]
+                    box_parts = generic_parts(receiver_type, "Box", arity=1)
+                    if box_parts is not None:
+                        type_name = box_parts[0]
             elif (
                 receiver_text in {"Text", "TextBuilder"}
                 or receiver_type in {
@@ -1651,7 +1651,9 @@ class _HIRBuilder:
                     type_name = "Borrow[Inferred]"
                     ownership = "borrow"
                 elif receiver_type and method in {"get", "get_mut"}:
-                    type_name = receiver_type[4:-1]
+                    vec_parts = generic_parts(receiver_type, "Vec", arity=1)
+                    if vec_parts is not None:
+                        type_name = vec_parts[0]
                     ownership = "borrow_mut" if method == "get_mut" else "borrow"
             elif receiver_text in self.types and self.types[receiver_text].kind == "enum":
                 kind = "EnumConstruct"

@@ -22,6 +22,13 @@ from .canonical_ast import (
     CanonicalReturn,
 )
 from .surface_ast import SourceSpan as SurfaceSourceSpan
+from .type_parser import (
+    GenericTypeSyntaxError,
+    generic_arguments,
+    iter_type_expressions,
+    parse_type,
+    split_structural_commas,
+)
 
 CONCISE_APPLICATION_SCHEMA_VERSION = VERSIONS.frontend
 CONCISE_APPLICATION_CONTRACT = "merlo.concise-application.v2"
@@ -420,39 +427,31 @@ def _read_module(
         "\n".join(line for line, _ in body_pairs) + "\n",
         tuple(line_number for _, line_number in body_pairs),
     )
-def _split_top_level_commas(payload: str) -> tuple[str, ...]:
-    if not payload.strip():
-        return ()
-    arguments = []
-    depth = 0
-    start = 0
-    for index, character in enumerate(payload):
-        if character == "[":
-            depth += 1
-        elif character == "]":
-            depth -= 1
-        elif character == "," and depth == 0:
-            arguments.append(payload[start:index].strip())
-            start = index + 1
-    arguments.append(payload[start:].strip())
-    return tuple(arguments)
-
-
 def _generic_arguments(type_name: str) -> tuple[str, ...]:
-    if "[" not in type_name or not type_name.endswith("]"):
+    if "[" not in type_name:
         return ()
-    return _split_top_level_commas(
-        type_name.split("[", 1)[1][:-1]
-    )
+    try:
+        return generic_arguments(type_name)
+    except GenericTypeSyntaxError as error:
+        raise ConciseApplicationError(
+            f"malformed generic type {type_name!r}: {error}"
+        ) from error
 
 
 def _map_types(type_name: str | None) -> tuple[str, str] | None:
-    if not type_name or not type_name.startswith("Map[") or not type_name.endswith("]"):
+    if not type_name:
         return None
-    arguments = _generic_arguments(type_name)
-    if len(arguments) != 2:
+    try:
+        parsed = parse_type(type_name)
+    except GenericTypeSyntaxError as error:
+        if type_name.startswith("Map"):
+            raise ConciseApplicationError(
+                f"malformed generic type {type_name!r}: {error}"
+            ) from error
         return None
-    return arguments[0], arguments[1]
+    if parsed.name != "Map" or len(parsed.args) != 2:
+        return None
+    return parsed.args[0].canonical, parsed.args[1].canonical
 
 
 def _sum_nominal_name(type_name: str) -> str:
@@ -460,16 +459,20 @@ def _sum_nominal_name(type_name: str) -> str:
 
 
 def lower_concise_sum_types(source: str) -> str:
-    raw_sum_types: set[str] = set()
-    for line, _ in _protected_line_views(source):
-        raw_sum_types.update(
-            re.findall(
-                r"\b(?:Option\[[^\]\n]+\]|"
-                r"Result\[[^\]\n]+,[^\]\n]+\])",
-                line,
-            )
-        )
-    if not raw_sum_types:
+    try:
+        occurrences = iter_type_expressions(source)
+    except GenericTypeSyntaxError as error:
+        raise ConciseApplicationError(
+            f"malformed generic type: {error}"
+        ) from error
+    normalized = {
+        source[start:end]: expression.canonical
+        for start, end, expression in occurrences
+        if expression.name in {"Option", "Result"}
+    }
+    source = _rewrite_code_text(source, normalized)
+    sum_types = sorted(set(normalized.values()))
+    if not sum_types:
         return source
     source = _rewrite_code_identifiers(
         source,
@@ -483,14 +486,6 @@ def lower_concise_sum_types(source: str) -> str:
             {"Result.Ok", "Result.Err", "Option.Some"}
         ),
     )
-    normalized = {
-        type_name: re.sub(r"\s+", "", type_name)
-        for type_name in raw_sum_types
-    }
-    source = _rewrite_code_text(source, normalized)
-    sum_types = sorted(set(normalized.values()))
-    if not sum_types:
-        return source
     declarations = []
     mapping = {
         type_name: _sum_nominal_name(type_name)
@@ -539,7 +534,7 @@ def lower_concise_sum_types(source: str) -> str:
             current_return = (
                 function.group(2).strip().replace(" ", "")
             )
-            for parameter in _split_top_level_commas(
+            for parameter in split_structural_commas(
                 function.group(1)
             ):
                 if ":" in parameter:
@@ -802,7 +797,13 @@ def _extract_task(
         return_type = match.group(4).strip().replace(" ", "")
         parameters: list[tuple[str, str]] = []
         if raw_parameters:
-            for item in raw_parameters.split(","):
+            try:
+                parameter_items = split_structural_commas(raw_parameters)
+            except GenericTypeSyntaxError as error:
+                raise ConciseApplicationError(
+                    f"{module.path}:{source_line}: malformed parameter types: {error}"
+                ) from error
+            for item in parameter_items:
                 if ":" not in item:
                     raise ConciseApplicationError(
                         f"{module.path}:{source_line}: public task parameters require annotations"
@@ -1323,11 +1324,19 @@ class _Inference:
                 raise ConciseApplicationError(
                     f"{self.path}: DeferredFeatureForbidden {keyword}"
                 )
-        for type_name in re.findall(r"\bMap\[[^\]\n]+\]", self.source):
-            map_types = _map_types(type_name.replace(" ", ""))
+        try:
+            map_occurrences = iter_type_expressions(
+                self.source, frozenset({"Map"})
+            )
+        except GenericTypeSyntaxError as error:
+            raise ConciseApplicationError(
+                f"{self.path}: malformed generic type: {error}"
+            ) from error
+        for start, end, _ in map_occurrences:
+            type_name = self.source[start:end]
+            map_types = _map_types(type_name)
             if (
                 map_types is None
-                or map_types[0] != "Text"
                 or map_types[1] not in _SCALARS
             ):
                 raise ConciseApplicationError(
@@ -1336,7 +1345,14 @@ class _Inference:
                 )
         for state in self.functions.values():
             for type_name in (*state.parameters.values(), state.return_type):
-                base = type_name.split("[", 1)[0]
+                try:
+                    parsed_type = parse_type(type_name)
+                except GenericTypeSyntaxError as error:
+                    raise ConciseApplicationError(
+                        f"{self.path}:{state.node.lineno}: malformed generic type "
+                        f"{type_name!r}: {error}"
+                    ) from error
+                base = parsed_type.name
                 if type_name != "?" and base not in known and type_name not in known:
                     raise ConciseApplicationError(
                         f"{self.path}:{state.node.lineno}: unknown type {type_name!r}"
@@ -1752,7 +1768,9 @@ class _Inference:
                 if method == "entries":
                     return f"Borrow[{receiver_type}]"
             if method in {"get", "get_mut"} and receiver_type and "[" in receiver_type:
-                return receiver_type.split("[", 1)[1][:-1]
+                arguments = _generic_arguments(receiver_type)
+                if arguments:
+                    return arguments[0] if len(arguments) == 1 else ",".join(arguments)
             if method == "push" and node.args:
                 element = self._expression(node.args[0], state)
                 if isinstance(node.func.value, ast.Name) and element:
