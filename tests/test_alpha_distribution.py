@@ -82,13 +82,16 @@ def _human_surface_paths() -> tuple[Path, ...]:
     roots = (
         ROOT / "examples",
         ROOT / "stdlib",
-        ROOT / "src" / "merlo" / "stdlib",
     )
     paths = {
         path
         for root in roots
         for path in root.rglob("*.mlo")
     }
+    paths.update(
+        path
+        for path in (ROOT / "src" / "merlo" / "stdlib").glob("*.mlo")
+    )
     paths.update(
         path
         for path in (ROOT / "src" / "merlo" / "programs").rglob("*.mlo")
