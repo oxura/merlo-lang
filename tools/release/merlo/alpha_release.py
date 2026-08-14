@@ -1032,6 +1032,7 @@ def _release_toolchain_identity() -> tuple[dict[str, str], dict[str, str]]:
         compiler = find_c_compiler()
         if compiler is None:
             raise ReleaseValidationError("release C compiler is unavailable")
+        version = compiler_version(compiler)
     except (ImportError, OSError, RuntimeError, subprocess.SubprocessError) as exc:
         raise ReleaseValidationError("release C compiler identity is unavailable") from exc
     if not version:

@@ -474,3 +474,15 @@ def test_canonicalize_sdist_normalizes_headers_and_preserves_pkg_info(tmp_path: 
         assert member.mtime == 123
         assert member.uid == member.gid == 0
         assert archive.extractfile(member).read() == content
+
+
+def test_toolchain_identity_requires_real_compiler_and_frontend(monkeypatch: pytest.MonkeyPatch) -> None:
+    from merlo import native_c_backend
+
+    monkeypatch.setattr(native_c_backend, "find_c_compiler", lambda: "/opt/clang")
+    monkeypatch.setattr(native_c_backend, "compiler_version", lambda _: "clang version test")
+    monkeypatch.setattr(release.importlib.metadata, "version", lambda _: "1.2.3")
+    c_compiler, frontend = release._release_toolchain_identity()
+    assert c_compiler["name"] == "clang"
+    assert c_compiler["version"] == "clang version test"
+    assert frontend == {"name": "build", "version": "1.2.3"}
