@@ -186,7 +186,7 @@ def test_surface_control_and_named_calls_reach_hir_and_c_lowering() -> None:
     from merlo.structured_hir_v2 import compile_structured_hir
 
     result = elaborate(
-        "subtract(left: Int64, right: Int64) = left - right\n\n"
+        "subtract(left: UInt64, right: UInt64) = left - right\n\n"
         "main():\n"
         "    value = 0\n"
         "    while value < 4:\n"

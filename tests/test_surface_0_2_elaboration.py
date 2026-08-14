@@ -128,11 +128,11 @@ def test_recursive_effect_cycle_converges() -> None:
 
 def test_named_call_arguments_bind_by_parameter_name_independent_of_order() -> None:
     result = elaborate(
-        "subtract(left: Int64, right: Int64) = left - right\n\n"
+        "subtract(left: UInt64, right: UInt64) = left - right\n\n"
         "run() = subtract(right: 2, left: 5)\n"
     )
 
-    assert result.canonical.function("run").return_type == "Int64"
+    assert result.canonical.function("run").return_type == "UInt64"
     assert "subtract(right: 2, left: 5)" in result.canonical.to_source()
 
 
@@ -140,17 +140,17 @@ def test_named_call_arguments_bind_by_parameter_name_independent_of_order() -> N
     ("source", "diagnostic"),
     [
         (
-            "subtract(left: Int64, right: Int64) = left - right\n\n"
+            "subtract(left: UInt64, right: UInt64) = left - right\n\n"
             "run() = subtract(middle: 2, left: 5)\n",
             "UnknownArgument",
         ),
         (
-            "subtract(left: Int64, right: Int64) = left - right\n\n"
+            "subtract(left: UInt64, right: UInt64) = left - right\n\n"
             "run() = subtract(left: 5, left: 2)\n",
             "DuplicateArgument",
         ),
         (
-            "subtract(left: Int64, right: Int64) = left - right\n\n"
+            "subtract(left: UInt64, right: UInt64) = left - right\n\n"
             "run() = subtract(left: 5)\n",
             "MissingArgument",
         ),
