@@ -1756,12 +1756,20 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 if self._is_borrow_expression(child.value):
                     self.pointer_values.add(binding_name)
                     self.owned_locals.pop(binding_name, None)
+                    type_name = self.env_types.get(binding_name)
+                    if (
+                        type_name is not None
+                        and _is_owner(self.descriptors[type_name])
+                    ):
+                        self.borrowed_owner_bindings.add(binding_name)
             if isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name):
                 type_name = _type_from_annotation(child.annotation)
                 self.env_types[child.target.id] = type_name
                 if self._is_borrow_expression(child.value):
                     self.pointer_values.add(child.target.id)
                     self.owned_locals.pop(child.target.id, None)
+                    if _is_owner(self.descriptors[type_name]):
+                        self.borrowed_owner_bindings.add(child.target.id)
                 elif _is_owner(self.descriptors[type_name]):
                     self.owned_locals.setdefault(child.target.id, type_name)
         declarations = []
@@ -1813,6 +1821,13 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         ):
             return False
         return _map_types(receiver_type) is None
+
+    def _has_borrowed_owner_root(self, node: ast.AST) -> bool:
+        if isinstance(node, ast.Name):
+            return node.id in self.borrowed_owner_bindings
+        if isinstance(node, (ast.Attribute, ast.Subscript)):
+            return self._has_borrowed_owner_root(node.value)
+        return self._is_borrow_expression(node)
 
     def _pad(self) -> str:
         return "    " * self.indent
@@ -2040,7 +2055,12 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             )
             try:
                 value = (
-                    self._expression(
+                    self._move_expression(node.value, expected)
+                    if (
+                        node.value is not None
+                        and node.target.id in self.owned_locals
+                    )
+                    else self._expression(
                         node.value,
                         expected=expected,
                         want_pointer=node.target.id in self.pointer_values,
@@ -2073,11 +2093,19 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 self._contains_borrow(expected or "")
             )
             try:
-                value = self._expression(
-                    node.value,
-                    expected=expected,
-                    want_pointer=isinstance(node.targets[0], ast.Name)
-                    and node.targets[0].id in self.pointer_values,
+                value = (
+                    self._move_expression(node.value, expected)
+                    if (
+                        expected is not None
+                        and isinstance(node.targets[0], ast.Name)
+                        and node.targets[0].id in self.owned_locals
+                    )
+                    else self._expression(
+                        node.value,
+                        expected=expected,
+                        want_pointer=isinstance(node.targets[0], ast.Name)
+                        and node.targets[0].id in self.pointer_values,
+                    )
                 )
             finally:
                 self.assigning_borrowed = previous_borrowed
@@ -2452,10 +2480,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 binding = bindings[0]
                 self.env_types[binding] = payload_type
                 base = subject
-                borrowed_payload = (
-                    isinstance(node.subject, ast.Name)
-                    and node.subject.id in self.borrowed_owner_bindings
-                )
+                borrowed_payload = self._has_borrowed_owner_root(node.subject)
                 access = f"({base})->payload.{variant_name}" if self._expression_is_pointer(node.subject) else f"({base}).payload.{variant_name}"
                 if self.descriptors[payload_type].kind == "scalar":
                     lines.append(f"{self._pad()}{_c_name(payload_type)} {binding} = {access};")

@@ -797,3 +797,64 @@ def test_borrowed_match_payload_is_cloned_not_stolen(tmp_path: Path) -> None:
     completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
     assert completed.returncode == 0, completed.stderr.decode()
     assert b"OK result=6" in completed.stdout
+
+
+def test_borrowed_owner_assignment_clones_source(tmp_path: Path) -> None:
+    source = (
+        "fn copy(value: Text) -> Text:\n"
+        "    let result: Text = value\n"
+        "    return result\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        '    let source: Text = "abc"\n'
+        "    let result: Text = copy(source)\n"
+        "    return source.len() + result.len()\n"
+    )
+    binary = _native(source, tmp_path, "borrowed-assignment")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=6" in completed.stdout
+
+
+def test_match_payload_from_vec_borrow_is_cloned(tmp_path: Path) -> None:
+    source = (
+        "enum Holder:\n"
+        "    Value: Text\n"
+        "fn extract(values: Vec[Holder]) -> Text:\n"
+        "    match values.get(0):\n"
+        "        case Value(text):\n"
+        "            return text\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let values: Vec[Holder] = Vec.new()\n"
+        '    values.push(Holder.Value("abc"))\n'
+        "    let copied: Text = extract(values)\n"
+        "    match values.get(0):\n"
+        "        case Value(original):\n"
+        "            return copied.len() + original.len()\n"
+    )
+    binary = _native(source, tmp_path, "borrowed-vec-match")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=6" in completed.stdout
+
+
+def test_match_payload_from_borrowed_projection_is_cloned(tmp_path: Path) -> None:
+    source = (
+        "enum Holder:\n"
+        "    Value: Text\n"
+        "record Wrapper:\n"
+        "    choice: Holder\n"
+        "fn extract(wrapper: Wrapper) -> Text:\n"
+        "    match wrapper.choice:\n"
+        "        case Value(text):\n"
+        "            return text\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        '    let wrapper: Wrapper = Wrapper(Holder.Value("abc"))\n'
+        "    let copied: Text = extract(wrapper)\n"
+        "    match wrapper.choice:\n"
+        "        case Value(original):\n"
+        "            return copied.len() + original.len()\n"
+    )
+    binary = _native(source, tmp_path, "borrowed-projection-match")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=6" in completed.stdout
