@@ -23,8 +23,10 @@ Canonical semantic output is deterministic: `semantic_ast_equal` compares the
 concise and canonical semantic digests, while `canonical_reference_equal`
 records the reference comparison used by elaboration. Declared task parameter
 and return types are preserved in `TaskBoundary`; public interface revisions
-include signature, effects, and capabilities. Ownership decisions are explicit
-in `InferenceDecision.mutable` and are not inferred from output formatting.
+include signature, effects, and capabilities. `InferenceDecision.mutable` is a
+binding mutability fact only; it is not an ownership, move, borrow, or drop
+proof. Ownership is assigned later by `_OwnershipChecker` and `_HIRBuilder` in
+[`merlo/structured_hir_v2.py`](../../merlo/structured_hir_v2.py).
 
 The RFC 0001 contract (planned) changes the input boundary to bound nodes and
 records local types, return types, mutability, typed errors, and evidence spans;

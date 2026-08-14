@@ -22,14 +22,17 @@ accepted RFC 0001 contract and is explicitly planned.
 `ModuleGraph.load()` resolves each declaration once per module, requires a
 module header matching the expected name, rejects duplicate names, and checks
 imports for missing modules and cycles. `Module.symbol(name)` requires exactly
-one match. Public interface revisions are deterministic digests of module,
-name, kind, parameters, return type, effects, capabilities, and exported type
-shape; private implementation text is not an interface member.
+one match. Current module/interface revisions are deterministic digests of the
+module identity, declaration kind/name, and top-level signature data. The
+current `_interfaces()` representation for exported records and enums does not
+include their field/variant shape, so a public shape edit is not guaranteed to
+change the published interface revision.
 
 RFC 0001 (planned) makes these facts explicit in immutable `BoundProgram`,
-`BoundReference`, and `BoundCall` records. Missing and ambiguous names must
-fail before type or effect inference; aliases resolve to one target
-`SymbolId`, not a second host identity.
+`BoundReference`, and `BoundCall` records and includes exported member/type
+shape in the interface contract. Missing and ambiguous names must fail before
+type or effect inference; aliases resolve to one target `SymbolId`, not a
+second host identity.
 
 ## Failure modes
 
@@ -38,7 +41,8 @@ unknown import, import cycle, duplicate declaration, or ambiguous symbol.
 `ConciseApplicationError` reports a module-binding failure when
 `compile_project()` catches `ModuleError`. An invalid or stale
 `.merlo-interface.json` is rejected by the concise elaboration path when the
-interface lock is required.
+interface lock is required, but its current snapshot cannot detect every
+exported record/enum shape change.
 
 ## Identity and provenance
 
@@ -55,9 +59,9 @@ and reference to carry its owner, target/callee `SymbolId`, and exact
 - Declaration discovery in `modules.py` uses regular expressions and the
   concise route has additional text-oriented discovery; it is not the
   RFC 0001 lexer/parser/binder pipeline.
-- Public interface construction is real and lockable, but it is not a closed
-  typed `BoundProgram`: imports, calls, and effects are not all represented by
-  one compiler-owned binding object.
+- Public interface locking is real, but current exported record/enum shape is
+  not included in the concise `PublicInterface` payload or top-level module
+  interface digest.
 - The accepted RFC 0001 clean cutover explicitly removes
   `concise_application.py` after all callers migrate; no compatibility import
   is promised.

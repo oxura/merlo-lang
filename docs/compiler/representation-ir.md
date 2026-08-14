@@ -11,8 +11,8 @@ version `1`.
 
 `TypeDescriptor` records size, alignment, ABI class, copy/move/drop classes,
 inline and indirect dependencies, and `source_type_identity`. Operations retain
-type, source, `symbol_id`, `revision_id`, `ownership_provenance`, effects,
-attributes, and child operations.
+type, source, `symbol_id`, a derived `revision_id`, `ownership_provenance`,
+effects, attributes, and child operations.
 
 ## Invariants
 
@@ -27,19 +27,21 @@ identity and ownership-provenance preservation.
 ## Failure modes
 
 `RepresentationCompileError` covers representation, layout, and ownership
-failure. Invalid generic types, unknown fields/types, non-positive arrays,
-inline cycles, and unsupported operations fail before a `RepresentationProgram`
-is returned. A schema or predecessor mismatch is a hard error; RIR is never
-implicitly rebuilt from unrelated source text.
+failure. Unknown/invalid generic types, unknown fields, negative or malformed
+array lengths, inline cycles, and unsupported operations fail before a
+`RepresentationProgram` is returned. `Array[T,0]` is currently accepted and
+produces a zero-size descriptor. A schema or predecessor mismatch is a hard
+error; RIR is never implicitly rebuilt from unrelated source text.
 
 ## Identity and provenance
 
-Descriptor identities are stable hashes derived from builtin/type declaration
-identity and dependencies. `_lower_operation()` derives operation and revision
-IDs from HIR node identity, operation kind, and provenance. `source_hir_digest`
-and `source_sha256` bind the whole artifact to its predecessor and source.
-`symbol_id`, `revision_id`, source spans, and `ownership_provenance` are copied
-into each operation and function for later MIR/backend diagnostics.
+`source_hir_digest` binds the artifact to the exact serialized HIR predecessor.
+The similarly named `source_sha256` is copied from HIR; on the production
+native-module path HIR assigns `CanonicalProgram.semantic_hash`, so this field
+is not always a hash of original source bytes. `_lower_operation()` derives a
+new RIR operation revision from HIR revision, operation kind, and ownership
+provenance rather than copying the HIR revision. `symbol_id` and source spans
+remain attached where the HIR operation provides them.
 
 ## Current-alpha limitations
 
