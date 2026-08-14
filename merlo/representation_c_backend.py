@@ -1962,15 +1962,20 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         drops = self.pending_expression_drops[drop_start:]
         del self.pending_expression_lines[start:]
         del self.pending_expression_drops[drop_start:]
-        if isinstance(node, ast.Return):
-            for index in range(len(lines) - 1, -1, -1):
-                if lines[index].lstrip().startswith("return"):
-                    lines[index:index] = drops
-                    break
-            else:
+        if drops:
+            return_indices = [
+                index
+                for index, line in enumerate(lines)
+                if line.lstrip().startswith("return")
+            ]
+            for index in reversed(return_indices):
+                indent = lines[index][: len(lines[index]) - len(lines[index].lstrip())]
+                lines[index:index] = [
+                    f"{indent}{drop.lstrip()}" for drop in drops
+                ]
+            if not isinstance(node, ast.Return) or not return_indices:
                 lines.extend(drops)
-            return pending + lines
-        return pending + lines + drops
+        return pending + lines
     def _statement_impl(self, node: ast.stmt) -> list[str]:
         if (
             isinstance(node, ast.Expr)
@@ -2000,11 +2005,15 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
             expected = _type_from_annotation(node.annotation)
             if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and node.value.func.id == "__merlo_try__":
-                return self._try_binding(node.target.id, node.value, expected)
+                previous_borrowed = self.assigning_borrowed
+                self.assigning_borrowed = self._contains_borrow(expected)
+                try:
+                    return self._try_binding(node.target.id, node.value, expected)
+                finally:
+                    self.assigning_borrowed = previous_borrowed
             previous_borrowed = self.assigning_borrowed
             self.assigning_borrowed = (
-                self.descriptors.get(expected) is not None
-                and self.descriptors[expected].kind == "borrow"
+                self._contains_borrow(expected)
             )
             try:
                 value = (
@@ -2030,11 +2039,15 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             target = self._lvalue(node.targets[0])
             expected = self._expression_type(node.targets[0])
             if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and node.value.func.id == "__merlo_try__":
-                return self._try_binding(target, node.value, expected or "Unit")
+                previous_borrowed = self.assigning_borrowed
+                self.assigning_borrowed = self._contains_borrow(expected or "Unit")
+                try:
+                    return self._try_binding(target, node.value, expected or "Unit")
+                finally:
+                    self.assigning_borrowed = previous_borrowed
             previous_borrowed = self.assigning_borrowed
             self.assigning_borrowed = (
-                self.descriptors.get(expected or "") is not None
-                and self.descriptors[expected or ""].kind == "borrow"
+                self._contains_borrow(expected or "")
             )
             try:
                 value = self._expression(
@@ -2308,8 +2321,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         lines: list[str] = []
         return_descriptor = self.descriptors.get(self.current_function.return_type)
         self.returning_borrowed = (
-            return_descriptor is not None
-            and return_descriptor.kind == "borrow"
+            self._contains_borrow(self.current_function.return_type)
         )
         if (
             self.current_function.return_type == "Unit"
@@ -2544,6 +2556,41 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             return False
         return all(
             child is None or self._clone_is_deep(child, next_seen)
+            for child in children
+        )
+
+    def _contains_borrow(self, type_name: str, seen: frozenset[str] = frozenset()) -> bool:
+        if type_name in seen:
+            return False
+        descriptor = self.descriptors.get(type_name)
+        if descriptor is None:
+            if type_name.startswith("Result[") and type_name.endswith("]"):
+                parts = type_name[7:-1].split(",", 1)
+                return any(
+                    self._contains_borrow(part.strip(), seen)
+                    for part in parts
+                )
+            return False
+        if descriptor.kind == "borrow":
+            return True
+        next_seen = seen | {type_name}
+        if descriptor.kind == "record":
+            children = (field_type for _, field_type, _ in descriptor.fields)
+        elif descriptor.kind == "enum":
+            children = (
+                payload
+                for _, payload, _ in descriptor.variants
+                if payload is not None
+            )
+        elif descriptor.kind in {"vec", "box", "array"}:
+            children = (
+                getattr(descriptor, "element_type", None)
+                or getattr(descriptor, "payload_type", None),
+            )
+        else:
+            children = ()
+        return any(
+            child is not None and self._contains_borrow(child, next_seen)
             for child in children
         )
 

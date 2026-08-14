@@ -589,3 +589,49 @@ def test_loop_body_borrow_temporary_is_dropped_at_each_iteration() -> None:
     generated = emit_general_c(hir, rir, optimized)
     assert generated.source.count("__merlo_owned_temp_1 = merlo_text_from") == 1
     assert generated.source.count("merlo_drop_Text(&__merlo_owned_temp_1);") == 1
+
+
+@pytest.mark.parametrize("binding", ("return", "assign"))
+def test_nested_borrowed_holder_rejects_owner_escape(binding: str) -> None:
+    expression = "Holder(borrow_view(Text.from_bytes(input, 0, input.len())))"
+    if binding == "return":
+        body = f"    return {expression}\n"
+        return_type = "Holder"
+    else:
+        body = f"    let holder: Holder = {expression}\n    return 0\n"
+        return_type = "UInt64"
+    source = (
+        "record Holder:\n"
+        "    view: TextView\n"
+        "fn borrow_view(value: Text) -> TextView:\n"
+        "    return value.view()\n"
+        f"fn wrapper(input: BytesView) -> {return_type}:\n"
+        + body
+        + "fn main(input: BytesView) -> UInt64:\n"
+        + (
+            "    return wrapper(input).view.len()\n"
+            if binding == "return"
+            else "    return wrapper(input)\n"
+        )
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
+        emit_general_c(hir, rir, optimized)
+
+def test_try_propagation_drops_borrow_temporary_on_error_and_success() -> None:
+    source = (
+        "enum AppError:\n"
+        "    Failed\n"
+        "fn validate(value: Text) -> Result[UInt64,AppError]:\n"
+        "    if value.len() > 0:\n"
+        "        return Ok(1)\n"
+        "    return Err(AppError.Failed)\n"
+        "fn run(input: BytesView) -> Result[UInt64,AppError]:\n"
+        "    let value: UInt64 = validate(Text.from_bytes(input, 0, input.len()))?\n"
+        "    return Ok(value)\n"
+        "fn main(input: BytesView) -> Result[UInt64,AppError]:\n"
+        "    return run(input)\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    assert generated.source.count("merlo_drop_Text(&__merlo_owned_temp_1);") == 2
