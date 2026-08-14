@@ -78,7 +78,7 @@ guarantees are outside this release. See
 
 Merlo is designed around structured semantics for coding agents. The
 productivity advantage has not yet been independently validated. The public
-same-model A/B is `PREREGISTERED_UNRUN` in
+same-model A/B is `DRAFT_UNRUN` in
 [the AI evaluation protocol](docs/ai-evaluation.md); it has not contacted a
 provider. No general native-performance, simplicity, or AI-productivity
 superiority is claimed.
@@ -178,8 +178,8 @@ commands with a machine-readable mode return deterministic JSON through
   [project history](docs/project-history.md)
 - [FFI](docs/ffi.md), [SemanticWorld](docs/semantic-world.md), and
   [AlphaProtocol](docs/alpha-protocol.md)
-- [AI evaluation](docs/ai-evaluation.md) — `PREREGISTERED_UNRUN`, with no
-  provider result or advantage claim
+- [AI evaluation](docs/ai-evaluation.md) — `DRAFT_UNRUN`, with no provider
+  result or advantage claim
 - [CLI and LSP tooling](docs/tooling.md)
 - [Research index](research/README.md)
 

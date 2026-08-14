@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 SCHEMA_VERSION = "merlo.ai-ab.v1"
-PROTOCOL_STATUS = "PREREGISTERED_UNRUN"
+PROTOCOL_STATUS = "DRAFT_UNRUN"
 PAIR_COUNT = 90
 TASK_COUNT = 30
 REPLICATES = 3
@@ -23,9 +23,9 @@ PROVIDER_IDENTITY_INCOMPLETE = "UNMEASURED_PROVIDER_IDENTITY_INCOMPLETE"
 
 class ProtocolError(ValueError):
     """Raised when a locked protocol or task artifact is invalid."""
-LOCKED_PROTOCOL_SHA256 = "a4d8468f8e7b42f1b8849c9da10a868597d2c848481717604d5f977b2ffbea21"
-LOCKED_TASKS_SHA256 = "e996fd273644ef8f369b6e7c5f45f5656b281f01a9569704d512bcb90a211e79"
-PREREGISTRATION_ROOT_SHA256 = "f051064cd214e4447658ee86d904c3a7fb04079818302c69017b8194ff2272d1"
+LOCKED_PROTOCOL_SHA256 = "83e816d818341775d5ff6a1986af7723a21afd66388a1265944a24298cf5d3c0"
+LOCKED_TASKS_SHA256 = "b339bdefd269564c82b0fabe559314a6157e6bcc1b667daa0a3d2e237342d75c"
+PREREGISTRATION_ROOT_SHA256 = "a0a606d5bf1c0fadff04700e6c16d34313bc02af57c5621fb7826eeef5cac7cb"
 
 @dataclass(frozen=True)
 class Validation:
@@ -151,14 +151,14 @@ def validate_protocol(root: str | Path | None = None) -> Validation:
     if protocol.get("schema_version") != SCHEMA_VERSION:
         _error(errors, "schema version mismatch")
     if protocol.get("status") != PROTOCOL_STATUS:
-        _error(errors, "protocol status is not PREREGISTERED_UNRUN")
+        _error(errors, "protocol status is not DRAFT_UNRUN")
     if protocol.get("protocol_sha256") != _protocol_contract(protocol):
         _error(errors, "protocol hash mismatch")
     if tasks.get("schema_version") != SCHEMA_VERSION:
         _error(errors, "task schema version mismatch")
     task_items = tasks.get("tasks")
     if protocol.get("protocol_sha256") != LOCKED_PROTOCOL_SHA256:
-        _error(errors, "protocol differs from published preregistration root")
+        _error(errors, "protocol differs from locked draft root")
     schedule = tasks.get("schedule")
     if not isinstance(task_items, list) or not isinstance(schedule, list):
         return Validation(False, tuple(errors + ["tasks and schedule must be arrays"]), 0, 0, {})
@@ -168,7 +168,7 @@ def validate_protocol(root: str | Path | None = None) -> Validation:
     pair_ids: set[str] = set()
     expected_strata = {"deterministic_cli_data": 10, "multi_module_api_migration": 10, "regression_repair": 10}
     if tasks.get("tasks_sha256") != LOCKED_TASKS_SHA256:
-        _error(errors, "tasks differ from published preregistration root")
+        _error(errors, "tasks differ from locked draft root")
     strata: dict[str, int] = {}
     for task in task_items:
         if not isinstance(task, dict):
@@ -200,6 +200,17 @@ def validate_protocol(root: str | Path | None = None) -> Validation:
             source_files = fixture.get("source_files")
             if not isinstance(source_files, list) or not source_files or any(not (fixture_root / name).is_file() for name in source_files):
                 _error(errors, f"missing source files: {task_id}/{arm}")
+            workspace_files = sorted(
+                path.relative_to(fixture_root).as_posix()
+                for path in fixture_root.rglob("*")
+                if (path.is_file() or path.is_symlink())
+                and not any(part in {
+                    ".git", ".merlo", ".pytest_cache", "__pycache__", "build",
+                    "dist", "node_modules", "tmp",
+                } for part in path.relative_to(fixture_root).parts)
+            )
+            if fixture.get("workspace_files") != workspace_files:
+                _error(errors, f"workspace file manifest mismatch: {task_id}/{arm}")
         oracle = task.get("oracle", {})
         oracle_path = study / str(oracle.get("path", ""))
         if not oracle_path.is_file():
@@ -253,7 +264,10 @@ def validate_protocol(root: str | Path | None = None) -> Validation:
         _error(errors, "schedule hash mismatch")
     if protocol.get("task_manifest_sha256") != sha256_file(study / "tasks.json"):
         _error(errors, "protocol task manifest lock mismatch")
-    if protocol.get("provider_identity") != {"provider": None, "model": None, "revision": None, "key_fingerprint": None}:
+    if protocol.get("provider_identity") != {
+        "provider": None, "model": None, "revision": None,
+        "credential_alias_hmac": None,
+    }:
         _error(errors, "provider/model revision lock changed; publish an amended protocol")
     if protocol.get("settings") != {"temperature": 0.2, "top_p": 1.0, "max_output_tokens": 8192, "seed": 20260813}:
         _error(errors, "model settings changed")
@@ -263,6 +277,58 @@ def validate_protocol(root: str | Path | None = None) -> Validation:
         _error(errors, "container lock changed")
     if protocol.get("tool_menu") != ["shell", "read", "search", "edit", "test"]:
         _error(errors, "tool menu changed")
+    if protocol.get("comparison_target") != "language_under_identical_text_tools":
+        _error(errors, "comparison target changed")
+    if protocol.get("workspace_isolation") != {
+        "agent_mount": "arm_workspace_only",
+        "oracle_mount": "trusted_runner_only",
+        "task_manifest_mount": "trusted_runner_only",
+        "acceptance_cases_visible_to_agent": False,
+    }:
+        _error(errors, "agent workspace isolation changed")
+    if protocol.get("digest_map") != {
+        "algorithm": "canonical_json_sha256_v1",
+        "entry_fields": [
+            "relative_path", "kind", "content_sha256", "executable",
+            "symlink_target",
+        ],
+        "excluded_segments": [
+            ".git", ".merlo", ".pytest_cache", "__pycache__", "build", "dist",
+            "node_modules", "tmp",
+        ],
+        "changed_paths": "derived_from_entry_delta",
+    }:
+        _error(errors, "workspace digest schema changed")
+    if protocol.get("oracle_evidence") != {
+        "execution": "trusted_runner_outside_agent_mount",
+        "case_fields": ["case_id", "expected", "actual", "outcome"],
+        "aggregate_fields": [
+            "case_count", "passed_count", "failed_count", "task_success",
+        ],
+        "aggregate_source": "computed_from_case_outcomes",
+    }:
+        _error(errors, "oracle evidence schema changed")
+    if protocol.get("credential_identity") != {
+        "method": "hmac_sha256_local_alias_private_salt",
+        "publishes_secret_derived_hash": False,
+    }:
+        _error(errors, "credential identity policy changed")
+    if protocol.get("baseline") != {
+        "commit_sha": None,
+        "grammar_version": None,
+        "compiler_version": None,
+    }:
+        _error(errors, "draft compiler baseline changed")
+    if protocol.get("calibration_policy") != {
+        "task_count": 6,
+        "overlap_with_final_tasks": 0,
+        "included_in_metrics": False,
+        "required_checks": [
+            "provider", "tool_calls", "timeouts", "token_accounting",
+            "oracle_isolation", "digest_maps", "report_generation",
+        ],
+    }:
+        _error(errors, "calibration policy changed")
     if protocol.get("schedule_seed") != 20260813:
         _error(errors, "schedule seed changed")
     denominators = {"tasks": len(ids), "pairs": len(pair_ids), "arm_attempts": len(pair_ids) * 2}
@@ -276,71 +342,116 @@ def _is_sha256(value: object) -> bool:
     )
 
 
-def _validated_digest_map(value: object, label: str) -> dict[str, str]:
+def _validated_digest_map(
+    value: object,
+    label: str,
+) -> dict[str, dict[str, object]]:
     if not isinstance(value, Mapping) or not value:
         raise ProtocolError(f"{label} digest map is empty")
-    result: dict[str, str] = {}
-    for path, digest in value.items():
+    excluded = {
+        ".git", ".merlo", ".pytest_cache", "__pycache__", "build", "dist",
+        "node_modules", "tmp",
+    }
+    result: dict[str, dict[str, object]] = {}
+    for path, raw_entry in value.items():
+        parts = Path(path).parts if isinstance(path, str) else ()
         if (
             not isinstance(path, str)
             or not path
             or path.startswith("/")
-            or ".." in Path(path).parts
-            or not _is_sha256(digest)
+            or ".." in parts
+            or any(part in excluded for part in parts)
+            or not isinstance(raw_entry, Mapping)
+            or set(raw_entry) != {
+                "kind", "content_sha256", "executable", "symlink_target",
+            }
         ):
             raise ProtocolError(f"invalid {label} digest map")
-        result[path] = digest
+        kind = raw_entry["kind"]
+        content_sha256 = raw_entry["content_sha256"]
+        executable = raw_entry["executable"]
+        symlink_target = raw_entry["symlink_target"]
+        if not isinstance(executable, bool) or kind not in {"file", "symlink"}:
+            raise ProtocolError(f"invalid {label} digest map entry")
+        if kind == "file":
+            valid = _is_sha256(content_sha256) and symlink_target is None
+        else:
+            valid = (
+                isinstance(symlink_target, str)
+                and bool(symlink_target)
+                and content_sha256
+                == sha256_bytes(symlink_target.encode("utf-8"))
+                and executable is False
+            )
+        if not valid:
+            raise ProtocolError(f"invalid {label} digest map entry")
+        result[path] = {
+            "kind": kind,
+            "content_sha256": content_sha256,
+            "executable": executable,
+            "symlink_target": symlink_target,
+        }
     return result
 
 
-def _validate_oracle_result(result: object, task: Mapping[str, Any]) -> None:
-    if not isinstance(result, Mapping):
-        raise ProtocolError("oracle result must be an object")
-    case_count = len(task.get("language_neutral_spec", {}).get("cases", []))
-    if (
-        result.get("case_id") != task.get("id")
-        or not isinstance(result.get("passed"), bool)
-        or case_count < 1
-    ):
-        raise ProtocolError("oracle identity or aggregate is invalid")
-    stratum = task.get("stratum")
-    if stratum == "multi_module_api_migration":
-        migration = result.get("migration_passed")
-        unaffected = result.get("unaffected_passed")
-        expected_unaffected = len(
-            task.get("language_neutral_spec", {}).get("unaffected_cases", [])
-        )
+def _oracle_case_outcomes(
+    cases: object,
+    expected_count: int,
+    label: str,
+) -> list[bool]:
+    if not isinstance(cases, list) or len(cases) != expected_count:
+        raise ProtocolError(f"{label} oracle case evidence is incomplete")
+    outcomes: list[bool] = []
+    identifiers: list[int] = []
+    for case in cases:
         if (
-            not isinstance(migration, list)
-            or len(migration) != case_count
-            or not all(isinstance(value, bool) for value in migration)
-            or not isinstance(unaffected, list)
-            or len(unaffected) != expected_unaffected
-            or not all(isinstance(value, bool) for value in unaffected)
-            or result["passed"] is not all(migration + unaffected)
+            not isinstance(case, Mapping)
+            or set(case) != {"case_id", "expected", "actual", "outcome"}
+            or type(case["case_id"]) is not int
+            or not isinstance(case["outcome"], bool)
+            or case["outcome"] is not (case["actual"] == case["expected"])
         ):
-            raise ProtocolError("migration oracle evidence is incomplete")
-        return
-    cases = result.get("cases")
+            raise ProtocolError(f"{label} oracle case evidence is invalid")
+        identifiers.append(case["case_id"])
+        outcomes.append(case["outcome"])
+    if sorted(identifiers) != list(range(expected_count)):
+        raise ProtocolError(f"{label} oracle case identities are invalid")
+    return outcomes
+
+
+def _validate_oracle_result(
+    result: object,
+    task: Mapping[str, Any],
+) -> bool:
+    if not isinstance(result, Mapping) or result.get("task_id") != task.get("id"):
+        raise ProtocolError("oracle identity is invalid")
+    spec = task.get("language_neutral_spec", {})
+    outcomes = _oracle_case_outcomes(
+        result.get("cases"),
+        len(spec.get("cases", [])),
+        "primary",
+    )
+    if task.get("stratum") == "multi_module_api_migration":
+        outcomes.extend(_oracle_case_outcomes(
+            result.get("unaffected_cases"),
+            len(spec.get("unaffected_cases", [])),
+            "unaffected",
+        ))
+    case_count = len(outcomes)
+    passed_count = sum(outcomes)
+    task_success = bool(outcomes) and passed_count == case_count
     if (
-        not isinstance(cases, list)
-        or len(cases) != case_count
-        or any(
-            not isinstance(item, Mapping)
-            or not isinstance(item.get("passed"), bool)
-            for item in cases
-        )
+        type(result.get("case_count")) is not int
+        or type(result.get("passed_count")) is not int
+        or type(result.get("failed_count")) is not int
+        or not isinstance(result.get("task_success"), bool)
+        or result["case_count"] != case_count
+        or result["passed_count"] != passed_count
+        or result["failed_count"] != case_count - passed_count
+        or result["task_success"] is not task_success
     ):
-        raise ProtocolError("oracle case evidence is incomplete")
-    case_passes = [item["passed"] for item in cases]
-    if stratum == "regression_repair":
-        if (
-            result.get("defect_case_passed") is not case_passes[0]
-            or result.get("unaffected_cases_passed") is not all(case_passes[1:])
-        ):
-            raise ProtocolError("regression oracle evidence is inconsistent")
-    if result["passed"] is not all(case_passes):
         raise ProtocolError("oracle aggregate does not match case evidence")
+    return task_success
 
 
 def validate_attempt_record(
@@ -425,9 +536,9 @@ def validate_attempt_record(
         raise ProtocolError("task_success must be boolean")
     if record["oracle_sha256"] != task.get("oracle", {}).get("sha256"):
         raise ProtocolError("oracle source hash mismatch")
-    _validate_oracle_result(record["oracle"], task)
-    if record["oracle"]["passed"] is not record["task_success"]:
-        raise ProtocolError("task_success does not match oracle result")
+    oracle_success = _validate_oracle_result(record["oracle"], task)
+    if oracle_success is not record["task_success"]:
+        raise ProtocolError("task_success does not match oracle evidence")
     fixture = task.get("fixtures", {}).get(record["arm"], {})
     if record["fixture_tree_sha256"] != fixture.get("sha256"):
         raise ProtocolError("fixture tree hash mismatch")
@@ -437,9 +548,11 @@ def validate_attempt_record(
         raise ProtocolError("pre digest does not match map")
     if record["post_digest"] != sha256_bytes(canonical_json(post_map)):
         raise ProtocolError("post digest does not match map")
-    source_files = set(fixture.get("source_files", []))
-    if not source_files <= set(pre_map) or set(pre_map) != set(post_map):
-        raise ProtocolError("digest map does not cover locked source files")
+    workspace_files = set(
+        fixture.get("workspace_files", fixture.get("source_files", []))
+    )
+    if set(pre_map) != workspace_files or set(post_map) != workspace_files:
+        raise ProtocolError("digest map does not cover locked workspace files")
     observed_changes = sorted(
         path for path in pre_map if pre_map[path] != post_map[path]
     )
@@ -454,8 +567,16 @@ def validate_attempt_record(
 def provider_identity_complete(provider: Mapping[str, Any] | None) -> bool:
     if not isinstance(provider, Mapping):
         return False
-    required = ("provider", "model", "revision", "key_fingerprint", "training_cutoff_attestation", "network_denied_attestation")
-    return all(isinstance(provider.get(key), str) and bool(provider.get(key)) and not str(provider.get(key)).startswith("UNSET") for key in required)
+    required = (
+        "provider", "model", "revision", "credential_alias_hmac",
+        "training_cutoff_attestation", "network_denied_attestation",
+    )
+    return all(
+        isinstance(provider.get(key), str)
+        and bool(provider.get(key))
+        and not str(provider.get(key)).startswith("UNSET")
+        for key in required
+    )
 
 
 def unmeasured_report(reason: str = PROVIDER_IDENTITY_INCOMPLETE) -> dict[str, Any]:
@@ -726,14 +847,24 @@ def report_from_attempts(
         },
     }
 
-def run(*, root: str | Path | None = None, provider: Mapping[str, Any] | None = None) -> dict[str, Any]:
-    """Validate locks and return an unmeasured report without contacting providers."""
+def run(
+    *,
+    root: str | Path | None = None,
+    provider: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Validate the draft without contacting a provider."""
+    del provider
     validation = validate_protocol(root)
     if not validation.valid:
-        return {"schema_version": SCHEMA_VERSION, "status": "INVALID", "terminal_reason": "INVALID_PROTOCOL_DEVIATION", "passed": False, "errors": list(validation.errors), "claim_eligible": False}
-    if not provider_identity_complete(provider):
-        return unmeasured_report()
-    return unmeasured_report("PREREGISTERED_UNRUN")
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "status": "INVALID",
+            "terminal_reason": "INVALID_PROTOCOL_DEVIATION",
+            "passed": False,
+            "errors": list(validation.errors),
+            "claim_eligible": False,
+        }
+    return unmeasured_report("DRAFT_UNRUN")
 
 
 __all__ = ["ProtocolError", "Validation", "canonical_json", "normalize_prompt", "paired_bootstrap", "provider_identity_complete", "render_prompt", "report_from_attempts", "run", "sha256_bytes", "sha256_file", "tree_digest", "unmeasured_report", "validate_attempt_record", "validate_protocol"]

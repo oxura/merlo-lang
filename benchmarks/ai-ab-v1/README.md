@@ -1,9 +1,9 @@
 # Merlo/Python same-model A/B v1
 
-**Status: `PREREGISTERED_UNRUN`.** This directory is a public, immutable
-preregistration for a later controlled workflow experiment. It contains 30
-language-neutral task specifications, expanded Merlo and Python mirrors, and
-black-box oracles. No provider request has been made and no result is implied.
+**Status: `DRAFT_UNRUN`.** This directory is the reviewable draft for a later
+public preregistration. It contains 30 language-neutral task specifications,
+expanded Merlo and Python mirrors, and black-box oracles. No provider request
+has been made and no result is implied.
 
 ## Locked design
 
@@ -26,21 +26,34 @@ The fixture and oracle SHA-256 values are fully materialized in the manifest.
 The preregistration root is:
 
 ```text
-protocol_sha256 = a4d8468f8e7b42f1b8849c9da10a868597d2c848481717604d5f977b2ffbea21
-tasks_sha256    = e996fd273644ef8f369b6e7c5f45f5656b281f01a9569704d512bcb90a211e79
-combined_root   = f051064cd214e4447658ee86d904c3a7fb04079818302c69017b8194ff2272d1
+protocol_sha256 = 83e816d818341775d5ff6a1986af7723a21afd66388a1265944a24298cf5d3c0
+tasks_sha256    = b339bdefd269564c82b0fabe559314a6157e6bcc1b667daa0a3d2e237342d75c
+combined_root   = a0a606d5bf1c0fadff04700e6c16d34313bc02af57c5621fb7826eeef5cac7cb
 ```
 
 `combined_root` is the SHA-256 of canonical JSON containing the two named
-hashes. The validator pins both component hashes independently; the public Git
-merge commit is the external publication anchor. Changing either document and
-recomputing its self-hash therefore remains a protocol deviation.
+hashes. This is a draft-review fingerprint, not the external publication
+anchor. The final root will be published only after the alpha2 commit, grammar,
+compiler, container, provider revision, and calibration manifests are locked.
 
 The runner validates `protocol.json`, `tasks.json`, every fixture, every oracle,
 the schedule, and all denominators before any provider call. A missing locked
 provider revision or key fingerprint is always
 `UNMEASURED_PROVIDER_IDENTITY_INCOMPLETE`; it is never inferred and never
 converted into a score. This branch intentionally does not contact a provider.
+
+Both arms receive only the same text tools: shell, read, search, edit, and test.
+This first experiment compares the languages under equal tooling; it does not
+test SemanticWorld, HIR inspection, ChangeIR, or an AI-native tool advantage.
+The agent sees only its arm workspace. Task manifests, oracle programs, and
+acceptance cases are mounted only into the trusted runner after the agent stops.
+Workspace digests include each relative path, file or symlink kind, exact
+content hash, executable bit, and symlink target while excluding VCS, caches,
+build output, and temporary files. The runner derives `changed_paths` and all
+oracle aggregate counts from normalized evidence.
+
+Credential evidence uses HMAC-SHA256 of a local key alias with a private random
+salt. Neither a direct API-key hash nor the salt is published.
 
 ## Claims and stopping rules
 
@@ -69,5 +82,5 @@ published in a new immutable preregistration, the exact future command is:
 python3 -m merlo.ai_ab --root benchmarks/ai-ab-v1 --provider-config LOCKED_PROVIDER_CONFIG --output ai-ab-v1-report.json
 ```
 
-This v1 branch has no provider execution command enabled; running the validator
+This draft has no provider execution command enabled; running the validator
 alone is not an experiment and cannot establish an advantage claim.

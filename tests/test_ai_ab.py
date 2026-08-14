@@ -54,7 +54,7 @@ def test_fixture_tamper_is_rejected(tmp_path: Path) -> None:
 
 
 def test_provider_identity_is_never_inferred() -> None:
-    assert not provider_identity_complete({"provider": "x", "model": "y", "revision": None, "key_fingerprint": None})
+    assert not provider_identity_complete({"provider": "x", "model": "y", "revision": None, "credential_alias_hmac": None})
     report = unmeasured_report()
     assert report["status"] == "UNMEASURED"
     assert report["terminal_reason"] == PROVIDER_IDENTITY_INCOMPLETE
@@ -70,33 +70,55 @@ def test_paired_bootstrap_is_seeded_and_keeps_task_pairs() -> None:
     assert first["replicates"] == 100
 
 
+def _case_evidence(outcomes: list[bool]) -> list[dict[str, object]]:
+    return [
+        {
+            "case_id": index,
+            "expected": {"value": index},
+            "actual": {"value": index} if outcome else {"wrong": index},
+            "outcome": outcome,
+        }
+        for index, outcome in enumerate(outcomes)
+    ]
+
+
 def _oracle_report(task: dict[str, object], passed: bool) -> dict[str, object]:
     spec = task["language_neutral_spec"]
-    case_count = len(spec["cases"])
+    primary_outcomes = [passed] * len(spec["cases"])
+    if task["stratum"] == "regression_repair":
+        primary_outcomes = [passed] + [True] * (len(spec["cases"]) - 1)
     report: dict[str, object] = {
-        "case_id": task["id"],
-        "passed": passed,
+        "task_id": task["id"],
+        "cases": _case_evidence(primary_outcomes),
     }
+    all_outcomes = list(primary_outcomes)
     if task["stratum"] == "multi_module_api_migration":
-        report["migration_passed"] = [passed] * case_count
-        report["unaffected_passed"] = [True] * len(spec["unaffected_cases"])
-    else:
-        case_passes = [passed] * case_count
-        if task["stratum"] == "regression_repair":
-            case_passes = [passed] + [True] * (case_count - 1)
-            report["defect_case_passed"] = passed
-            report["unaffected_cases_passed"] = True
-        report["cases"] = [{"passed": value} for value in case_passes]
+        unaffected = [True] * len(spec["unaffected_cases"])
+        report["unaffected_cases"] = _case_evidence(unaffected)
+        all_outcomes.extend(unaffected)
+    passed_count = sum(all_outcomes)
+    report.update({
+        "case_count": len(all_outcomes),
+        "passed_count": passed_count,
+        "failed_count": len(all_outcomes) - passed_count,
+        "task_success": passed_count == len(all_outcomes),
+    })
     return report
 
 
 def _digest_evidence(
     task: dict[str, object],
     arm: str,
-) -> tuple[dict[str, str], str]:
+) -> tuple[dict[str, dict[str, object]], str]:
+    fixture = task["fixtures"][arm]
     digest_map = {
-        path: "a" * 64
-        for path in task["fixtures"][arm]["source_files"]
+        path: {
+            "kind": "file",
+            "content_sha256": "a" * 64,
+            "executable": False,
+            "symlink_target": None,
+        }
+        for path in fixture.get("workspace_files", fixture["source_files"])
     }
     return digest_map, sha256_bytes(canonical_json(digest_map))
 
@@ -109,7 +131,7 @@ def test_attempt_transcript_hash_and_absence_are_enforced() -> None:
         json.loads((ROOT / "benchmarks/ai-ab-v1/tasks.json").read_text())["schedule"][0],
         schedule_index=0,
     )
-    attestation = {"provider": "test", "model": "test", "revision": "rev", "key_fingerprint": "key",
+    attestation = {"provider": "test", "model": "test", "revision": "rev", "credential_alias_hmac": "hmac:alias",
                    "training_cutoff_attestation": "before-publication", "network_denied_attestation": "denied"}
     digest_map, digest = _digest_evidence(task, "merlo")
     record = {
@@ -141,7 +163,7 @@ def test_attempt_transcript_hash_and_absence_are_enforced() -> None:
     with pytest.raises(ProtocolError, match="ratio denominator"):
         validate_attempt_record(missing_ratio, protocol, task, schedule_entry)
     incomplete_oracle = dict(record, oracle={"passed": True})
-    with pytest.raises(ProtocolError, match="identity or aggregate"):
+    with pytest.raises(ProtocolError, match="oracle identity"):
         validate_attempt_record(incomplete_oracle, protocol, task, schedule_entry)
     forged_digest = dict(record, post_digest="b" * 64)
     with pytest.raises(ProtocolError, match="post digest"):
@@ -209,7 +231,7 @@ def _complete_attempts(
         "provider": "test-provider",
         "model": "test-model",
         "revision": "immutable-revision",
-        "key_fingerprint": "sha256:key",
+        "credential_alias_hmac": "hmac:local-alias",
         "training_cutoff_attestation": "before-publication",
         "network_denied_attestation": "denied",
     }
