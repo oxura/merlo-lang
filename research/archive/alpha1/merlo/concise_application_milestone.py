@@ -45,9 +45,9 @@ _FROZEN_PREDECESSORS = {
     "tools/benchmarks/merlo/programs/general_json.mlo":
         "0b696f9a6653ea5fa20124d239db37fe6853ff798abe0cbcdcb703dd9c66ff04",
     "tools/benchmarks/merlo/benchmarks/merlo_general_representation_core.json":
-        "63223657697b8251b63f25f952f79b0ba369a1a92abfff887dfe5c518959f7e6",
+        "aaea6082ad793a0d76d25e439530e98cf18c8b8fe1111d49ccfd545d432e25d2",
     "tools/benchmarks/merlo/benchmarks/merlo_general_representation_benchmark.json":
-        "cfd2474fd1520a49e7b4425ad1ec6f6bb415a9446b7a17bef227a25b988a6ee1",
+        "6fb87fce241456125b9ba86a4d6fdbf3aa18f78a8da8730f1183418e9f9e33ac",
 }
 
 
