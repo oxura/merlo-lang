@@ -5,6 +5,10 @@ contains both production compilation and historical research paths. It is being
 split under [RFC 0001](../rfcs/0001-repository-and-frontend-stabilization.md);
 the flat package is not the accepted long-term architecture.
 
+The stage-by-stage contract index is [Compiler contracts](compiler/index.md).
+Those pages cite the current Python symbols and label RFC 0001 replacement APIs
+as planned; they are the precise companion to this overview.
+
 ## Compilation path
 
 The production coordinator currently records this checked artifact chain:
@@ -30,10 +34,10 @@ lowering.
 
 ## Ownership and runtime
 
-Ordinary values are immutable. Owning values move unless an operation
-explicitly borrows or clones them. Representation descriptors determine copy,
-move, invalidation, and drop behavior. The C backend emits type-specific drop
-glue for text, bytes, collections, boxes, enum payloads, and file resources.
+Ordinary values are immutable. Owning values move unless an operation explicitly
+borrows or clones them. Representation descriptors determine copy, move,
+invalidation, and drop behavior. The C backend emits type-specific drop glue
+for text, bytes, collections, boxes, enum payloads, and file resources.
 
 Capabilities narrow checked filesystem, network, environment, time, randomness,
 and FFI operations. They are program semantics, not an OS sandbox; untrusted
