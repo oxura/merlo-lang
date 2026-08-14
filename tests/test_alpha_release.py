@@ -22,7 +22,10 @@ from merlo.alpha_release import (
     ReleaseProvenance,
     ReleaseValidationError,
     assemble_release,
+    manifest_payload_sha256,
+    manifest_sha256,
     validate_release,
+    verify_manifest,
 )
 
 
@@ -165,3 +168,59 @@ def test_asset_digest_mismatch_is_rejected(tmp_path: Path) -> None:
     bad["merlo-0.1.0-alpha.1.tar.gz"] = "0" * 64
     with pytest.raises(ReleaseValidationError, match="asset digest mismatch"):
         validate_release(replace(inputs, provenance=replace(inputs.provenance, assets=bad)))
+
+
+
+def test_manifest_v2_schema_rejects_invalid_top_level_and_nested_fields(tmp_path: Path) -> None:
+    result = assemble_release(_fixture(tmp_path), tmp_path / "dist" / "merlo-0.1.0-alpha.1")
+    manifest = json.loads((result.path / "manifest.json").read_text(encoding="utf-8"))
+    invalid = dict(manifest)
+    invalid["unexpected"] = True
+    invalid["payload_sha256"] = manifest_payload_sha256(invalid)
+    invalid["manifest_sha256"] = manifest_sha256(invalid)
+    with pytest.raises(ReleaseValidationError, match="top-level keys"):
+        verify_manifest(invalid)
+    invalid = dict(manifest)
+    invalid["status"] = "NOT_A_STATUS"
+    invalid["payload_sha256"] = manifest_payload_sha256(invalid)
+    invalid["manifest_sha256"] = manifest_sha256(invalid)
+    with pytest.raises(ReleaseValidationError, match="invalid status"):
+        verify_manifest(invalid)
+    invalid = dict(manifest)
+    invalid["required"] = dict(manifest["required"])
+    invalid["required"].pop("sources")
+    invalid["payload_sha256"] = manifest_payload_sha256(invalid)
+    invalid["manifest_sha256"] = manifest_sha256(invalid)
+    with pytest.raises(ReleaseValidationError, match="required inventory"):
+        verify_manifest(invalid)
+
+
+def test_validation_report_carries_provenance_package_release(tmp_path: Path) -> None:
+    result = validate_release(_fixture(tmp_path))
+    assert result.to_dict()["release"] == "0.1.0-alpha.1"
+
+
+def test_reassembly_rejects_reordered_sha256sums(tmp_path: Path) -> None:
+    inputs = _fixture(tmp_path)
+    destination = tmp_path / "dist" / "merlo-0.1.0-alpha.1"
+    assemble_release(inputs, destination)
+    checksum_path = destination / "SHA256SUMS"
+    checksum_path.write_text("".join(reversed(checksum_path.read_text(encoding="utf-8").splitlines(True))), encoding="utf-8")
+    with pytest.raises(ReleaseValidationError, match="different content"):
+        assemble_release(inputs, destination)
+
+
+def test_asset_roles_are_distinct_and_asset_keys_canonical(tmp_path: Path) -> None:
+    inputs = _fixture(tmp_path)
+    overlap = inputs.root / "merlo-0.1.0-alpha.1-evidence.whl"
+    overlap.write_bytes(b"overlap")
+    assets = dict(inputs.provenance.assets)
+    assets.pop("merlo-0.1.0-alpha.1-py3-none-any.whl")
+    assets[overlap.name] = _sha(overlap)
+    with pytest.raises(ReleaseValidationError, match="distinct role"):
+        validate_release(replace(inputs, provenance=replace(inputs.provenance, assets=assets)))
+    assets = dict(inputs.provenance.assets)
+    digest = assets.pop("merlo-0.1.0-alpha.1.tar.gz")
+    assets["staging/../merlo-0.1.0-alpha.1.tar.gz"] = digest
+    with pytest.raises(ReleaseValidationError, match="noncanonical"):
+        validate_release(replace(inputs, provenance=replace(inputs.provenance, assets=assets)))
