@@ -1280,6 +1280,14 @@ class _Inference:
             name: _direct_effects(ast.unparse(state.node))
             for name, state in self.functions.items()
         }
+        main = self.functions.get("main")
+        if (
+            main is not None
+            and self.declared_function_kinds.get("main") == "task"
+            and tuple(main.parameters.values()) == ("Text",)
+            and main.return_type == "Text"
+        ):
+            direct["main"].update(("console.read", "console.write"))
         calls = {
             name: {
                 call.func.id
@@ -3113,9 +3121,9 @@ def _assemble_core(
         )
         if name == "main" and tuple(
             type_name for _, type_name in parameters
-        ) != ("Path",):
+        ) not in {("Path",), ("Text",)}:
             raise ConciseApplicationError(
-                f"{path}:{line}: CLI main requires exactly one Path parameter"
+                f"{path}:{line}: CLI main requires exactly one Path or Text parameter"
             )
         tasks.append(
             TaskBoundary(
