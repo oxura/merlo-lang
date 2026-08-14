@@ -172,27 +172,56 @@ def test_attempt_transcript_hash_and_absence_are_enforced() -> None:
     with pytest.raises(ProtocolError, match="absent transcript"):
         validate_attempt_record(record, protocol, task)
 
-def test_strata_baselines_execute_and_preserve_unaffected_contracts() -> None:
-    tasks = json.loads((ROOT / "benchmarks/ai-ab-v1/tasks.json").read_text())["tasks"]
+def test_strata_baselines_emit_normalized_oracle_evidence() -> None:
+    tasks = json.loads(
+        (ROOT / "benchmarks/ai-ab-v1/tasks.json").read_text()
+    )["tasks"]
     for task in tasks:
         oracle = ROOT / "benchmarks/ai-ab-v1" / task["oracle"]["path"]
         fixture_root = ROOT / "benchmarks/ai-ab-v1" / "fixtures" / task["id"]
-        if task["stratum"] == "deterministic_cli_data":
-            continue
         result = subprocess.run(
-            [sys.executable, str(oracle), "--workspace", str(fixture_root), "--arm", "python"],
-            check=True, capture_output=True, text=True,
+            [
+                sys.executable, str(oracle), "--workspace", str(fixture_root),
+                "--arm", "python",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
         )
         report = json.loads(result.stdout)
-        assert report["passed"] is False
+        primary = report["cases"]
+        unaffected = report.get("unaffected_cases", [])
+        evidence = primary + unaffected
+        assert report["task_id"] == task["id"]
+        assert report["task_success"] is False
+        assert report["case_count"] == len(evidence)
+        assert report["passed_count"] == sum(
+            case["outcome"] for case in evidence
+        )
+        assert report["failed_count"] == (
+            report["case_count"] - report["passed_count"]
+        )
+        assert [case["case_id"] for case in primary] == list(
+            range(len(primary))
+        )
+        assert all(
+            case["outcome"] is (case["actual"] == case["expected"])
+            for case in evidence
+        )
         if task["stratum"] == "multi_module_api_migration":
-            assert all(report["unaffected_passed"])
-            requests = [json.dumps(case[0], sort_keys=True) for case in task["language_neutral_spec"]["cases"]]
-            untouched = [json.dumps(case[0], sort_keys=True) for case in task["language_neutral_spec"]["unaffected_cases"]]
-            assert not set(requests) & set(untouched)
-        else:
-            assert report["defect_case_passed"] is False
-            assert report["unaffected_cases_passed"] is True
+            assert unaffected and all(case["outcome"] for case in unaffected)
+            requests = {
+                json.dumps(case[0], sort_keys=True)
+                for case in task["language_neutral_spec"]["cases"]
+            }
+            untouched = {
+                json.dumps(case[0], sort_keys=True)
+                for case in task["language_neutral_spec"]["unaffected_cases"]
+            }
+            assert requests.isdisjoint(untouched)
+        elif task["stratum"] == "regression_repair":
+            assert primary[0]["outcome"] is False
+            assert all(case["outcome"] for case in primary[1:])
 
 
 def test_whitespace_only_edit_cannot_change_incomplete_baseline() -> None:

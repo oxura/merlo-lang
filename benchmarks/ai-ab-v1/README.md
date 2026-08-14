@@ -26,9 +26,9 @@ The fixture and oracle SHA-256 values are fully materialized in the manifest.
 The preregistration root is:
 
 ```text
-protocol_sha256 = 83e816d818341775d5ff6a1986af7723a21afd66388a1265944a24298cf5d3c0
-tasks_sha256    = b339bdefd269564c82b0fabe559314a6157e6bcc1b667daa0a3d2e237342d75c
-combined_root   = a0a606d5bf1c0fadff04700e6c16d34313bc02af57c5621fb7826eeef5cac7cb
+protocol_sha256 = bea37d9089db940e2685a824014dda8d1d69ac986620b71c51f28763ca5adcc7
+tasks_sha256    = a387364b22e1b8f77527e376df2979a92c317bec9e57bbcdcf06765a7dc7ba31
+combined_root   = 54e052048ba629cb457056f816f6e7c03ccd2beca83a35c2e3d033937a0d2f47
 ```
 
 `combined_root` is the SHA-256 of canonical JSON containing the two named

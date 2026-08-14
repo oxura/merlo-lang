@@ -4,52 +4,73 @@ import json
 import subprocess
 from pathlib import Path
 
-# Contract: parse semicolon-separated integer key/value pairs and report the
-# first key's final value. Baseline defect: duplicate keys incorrectly keep the first value.
-CASES = [
-    ('mode=1;mode=2', 2),
-    ('mode=7;count=9', 7),
-    ('count=9;mode=7', 9),
-]
+TASK_ID = 'r09-duplicate-key'
+CASES = [('mode=1;mode=2', 2), ('mode=7;count=9', 7), ('count=9;mode=7', 9)]
+UNTOUCHED = []
+INPUT_ENCODING = 'json'
+
+
+def invoke(root, arm, request):
+    source = root / ("main.py" if arm == "python" else "main.mlo")
+    command = ["python3", "-B", str(source)] if arm == "python" else ["merlo", "run", str(source)]
+    payload = (
+        json.dumps(request, ensure_ascii=False).encode()
+        if INPUT_ENCODING == "json"
+        else request.encode()
+    )
+    try:
+        process = subprocess.run(
+            command,
+            input=payload,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+        )
+    except subprocess.TimeoutExpired:
+        return {"terminal_reason": "timeout"}
+    if process.returncode != 0:
+        return {"terminal_reason": "process_error", "returncode": process.returncode}
+    try:
+        return json.loads(process.stdout)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return {"terminal_reason": "invalid_output"}
+
+
+def evaluate(root, arm, cases):
+    evidence = []
+    for case_id, (request, expected) in enumerate(cases):
+        actual = invoke(root, arm, request)
+        evidence.append({
+            "case_id": case_id,
+            "expected": expected,
+            "actual": actual,
+            "outcome": actual == expected,
+        })
+    return evidence
 
 
 def check(workspace, arm):
     root = Path(workspace) / arm
-    source = root / ("main.py" if arm == "python" else "main.mlo")
-    results = []
-    timed_out = False
-    for n, (request, expected) in enumerate(CASES):
-        cmd = ["python3", "-B", str(source)] if arm == "python" else ["merlo", "run", str(source)]
-        try:
-            p = subprocess.run(
-                cmd,
-                input=json.dumps(request).encode(),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=5,
-            )
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            results.append({"case_id": n, "passed": False, "timeout": True, "actual": None, "expected": expected})
-            break
-        try:
-            actual = json.loads(p.stdout)
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            actual = None
-        results.append({"case_id": n, "passed": p.returncode == 0 and actual == expected, "timeout": False, "actual": actual, "expected": expected})
-    return {
-        "case_id": "r09-duplicate-key",
-        "passed": not timed_out and all(r["passed"] for r in results),
-        "defect_case_passed": bool(results) and results[0]["passed"],
-        "unaffected_cases_passed": len(results) == len(CASES) and all(r["passed"] for r in results[1:]),
-        "timeout": timed_out,
-        "cases": results,
+    primary = evaluate(root, arm, CASES)
+    unaffected = evaluate(root, arm, UNTOUCHED)
+    all_cases = primary + unaffected
+    passed_count = sum(case["outcome"] for case in all_cases)
+    report = {
+        "task_id": TASK_ID,
+        "cases": primary,
+        "case_count": len(all_cases),
+        "passed_count": passed_count,
+        "failed_count": len(all_cases) - passed_count,
+        "task_success": bool(all_cases) and passed_count == len(all_cases),
     }
+    if UNTOUCHED:
+        report["unaffected_cases"] = unaffected
+    return report
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser()
-    p.add_argument("--workspace", required=True)
-    p.add_argument("--arm", required=True)
-    args = p.parse_args()
-    print(json.dumps(check(args.workspace, args.arm)))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--workspace", required=True)
+    parser.add_argument("--arm", required=True, choices=["merlo", "python"])
+    args = parser.parse_args()
+    print(json.dumps(check(args.workspace, args.arm), ensure_ascii=False, sort_keys=True))

@@ -1,17 +1,76 @@
 #!/usr/bin/env python3
-import argparse,json,subprocess
+import argparse
+import json
+import subprocess
 from pathlib import Path
-CASES=[['[server]\nport=8080\nname=merlo\n', {'server': {'name': 'merlo', 'port': '8080'}}], ['[server]\nport=8080\nname=merlo\nport=1\n', {'server': {'name': 'merlo', 'port': '1'}}], ['[server]\nport=9000\nname=merlo\n', {'server': {'name': 'merlo', 'port': '9000'}}]]
-def check(workspace,arm):
- root=Path(workspace)/arm; source=root/("main.py" if arm=="python" else "main.mlo"); results=[]
- for request,expected in CASES:
-  try:
-    proc=subprocess.run((["python3", "-B", str(source)] if arm=="python" else ["merlo","run",str(source)]),input=json.dumps(request, ensure_ascii=False).encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=5)
-  except subprocess.TimeoutExpired:
-    results.append({"passed":False,"terminal_reason":"timeout"}); continue
-  try: actual=json.loads(proc.stdout)
-  except (json.JSONDecodeError,UnicodeDecodeError): actual=None
-  results.append({"passed":proc.returncode==0 and actual==expected,"actual":actual,"expected":expected})
- return {"case_id":"d09-ini-parse","passed":bool(results) and all(x["passed"] for x in results),"cases":results}
-if __name__=="__main__":
- p=argparse.ArgumentParser(); p.add_argument("--workspace",required=True); p.add_argument("--arm",required=True,choices=["merlo","python"]); a=p.parse_args(); print(json.dumps(check(a.workspace,a.arm),sort_keys=True))
+
+TASK_ID = 'd09-ini-parse'
+CASES = [['[server]\nport=8080\nname=merlo\n', {'server': {'name': 'merlo', 'port': '8080'}}], ['[server]\nport=8080\nname=merlo\nport=1\n', {'server': {'name': 'merlo', 'port': '1'}}], ['[server]\nport=9000\nname=merlo\n', {'server': {'name': 'merlo', 'port': '9000'}}]]
+UNTOUCHED = []
+INPUT_ENCODING = 'json'
+
+
+def invoke(root, arm, request):
+    source = root / ("main.py" if arm == "python" else "main.mlo")
+    command = ["python3", "-B", str(source)] if arm == "python" else ["merlo", "run", str(source)]
+    payload = (
+        json.dumps(request, ensure_ascii=False).encode()
+        if INPUT_ENCODING == "json"
+        else request.encode()
+    )
+    try:
+        process = subprocess.run(
+            command,
+            input=payload,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+        )
+    except subprocess.TimeoutExpired:
+        return {"terminal_reason": "timeout"}
+    if process.returncode != 0:
+        return {"terminal_reason": "process_error", "returncode": process.returncode}
+    try:
+        return json.loads(process.stdout)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return {"terminal_reason": "invalid_output"}
+
+
+def evaluate(root, arm, cases):
+    evidence = []
+    for case_id, (request, expected) in enumerate(cases):
+        actual = invoke(root, arm, request)
+        evidence.append({
+            "case_id": case_id,
+            "expected": expected,
+            "actual": actual,
+            "outcome": actual == expected,
+        })
+    return evidence
+
+
+def check(workspace, arm):
+    root = Path(workspace) / arm
+    primary = evaluate(root, arm, CASES)
+    unaffected = evaluate(root, arm, UNTOUCHED)
+    all_cases = primary + unaffected
+    passed_count = sum(case["outcome"] for case in all_cases)
+    report = {
+        "task_id": TASK_ID,
+        "cases": primary,
+        "case_count": len(all_cases),
+        "passed_count": passed_count,
+        "failed_count": len(all_cases) - passed_count,
+        "task_success": bool(all_cases) and passed_count == len(all_cases),
+    }
+    if UNTOUCHED:
+        report["unaffected_cases"] = unaffected
+    return report
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--workspace", required=True)
+    parser.add_argument("--arm", required=True, choices=["merlo", "python"])
+    args = parser.parse_args()
+    print(json.dumps(check(args.workspace, args.arm), ensure_ascii=False, sort_keys=True))
