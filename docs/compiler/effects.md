@@ -3,7 +3,7 @@
 ## Inputs and outputs
 
 - **Current effect vocabulary:** `_EFFECT_CALL_PATTERNS` in
-  [`merlo/concise_application.py`](../../merlo/concise_application.py) maps
+  [`src/merlo/concise_application.py`](../../src/merlo/concise_application.py) maps
   console, filesystem, environment, clock, randomness, network, and process
   spellings to effect names such as `fs.read` and `network.http`.
 - **Current production analysis:** `_Inference._infer_effects()` computes direct

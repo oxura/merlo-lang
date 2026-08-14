@@ -1,0 +1,140 @@
+{
+  "arms": {
+    "c": {
+      "available": true,
+      "median_ms": 387.24672499999997,
+      "relative_mad": 0.0076829365051442325
+    },
+    "merlo": {
+      "available": true,
+      "median_ms": 357.2943975,
+      "relative_mad": 0.007748222528454268
+    },
+    "python": {
+      "available": true,
+      "median_ms": 5914.002655,
+      "relative_mad": 0.0036546344769944404
+    },
+    "rust": {
+      "available": false,
+      "reason": "rustc unavailable"
+    }
+  },
+  "best_native_median_ms": 387.24672499999997,
+  "contract": "merlo.general-representation-benchmark.v1",
+  "expected": {
+    "arrays": 129,
+    "checksum": 4420920719719926053,
+    "fields": 899,
+    "nodes": 2564,
+    "objects": 257
+  },
+  "limitations": [
+    "Raw timing samples and bootstrap intervals were computed in process but not persisted by the first decision run; medians and relative MAD values are the captured process output.",
+    "Rust arm unavailable because rustc was absent."
+  ],
+  "merlo_to_best_native_ratio": 0.9226531160463656,
+  "method": {
+    "cpu_affinity": 0,
+    "maximum_native_ratio": 1.5,
+    "maximum_relative_mad": 0.05,
+    "measurements_per_arm": 30,
+    "minimum_run_ms": 200.0,
+    "randomized_order": true,
+    "repeat": 2048,
+    "taskset_available": true,
+    "warmups_per_arm": 5
+  },
+  "payload_bytes": 19004,
+  "payload_sha256": "d935ca9b2ae71c94932dabc9bb89061f2afb48f2e644d9b5c2d32360ccd0d814",
+  "performance_gate_passed": true,
+  "run_date": "2026-08-13",
+  "schema_version": 1,
+  "surface": {
+    "c": {
+      "distinct_constructs": [
+        "else",
+        "enum",
+        "for",
+        "if",
+        "return",
+        "struct",
+        "switch",
+        "while"
+      ],
+      "explicit_allocations": 3,
+      "explicit_drop_free_operations": 12,
+      "explicit_type_annotations": 152,
+      "lexical_tokens": 4382,
+      "lifetime_annotations": 0,
+      "manual_malloc_free_operations": 15,
+      "manual_retain_release_operations": 0,
+      "maximum_nesting_depth": 6,
+      "ownership_annotations": 0,
+      "path": "tools/benchmarks/merlo/benchmarks/general_representation/reference_json.c",
+      "punctuation_tokens": 2620,
+      "source_bytes": 16502
+    },
+    "merlo": {
+      "distinct_constructs": [
+        "else",
+        "enum",
+        "fn",
+        "if",
+        "let",
+        "match",
+        "record",
+        "return",
+        "var",
+        "while"
+      ],
+      "explicit_allocations": 7,
+      "explicit_drop_free_operations": 0,
+      "explicit_type_annotations": 144,
+      "lexical_tokens": 3831,
+      "lifetime_annotations": 0,
+      "manual_malloc_free_operations": 0,
+      "manual_retain_release_operations": 0,
+      "maximum_nesting_depth": 14,
+      "ownership_annotations": 0,
+      "path": "tools/benchmarks/merlo/programs/general_json.mlo",
+      "punctuation_tokens": 1818,
+      "source_bytes": 20202
+    },
+    "python": {
+      "distinct_constructs": [
+        "class",
+        "def",
+        "else",
+        "except",
+        "for",
+        "if",
+        "return",
+        "try"
+      ],
+      "explicit_allocations": 0,
+      "explicit_drop_free_operations": 0,
+      "explicit_type_annotations": 20,
+      "lexical_tokens": 1055,
+      "lifetime_annotations": 0,
+      "manual_malloc_free_operations": 0,
+      "manual_retain_release_operations": 0,
+      "maximum_nesting_depth": 3,
+      "ownership_annotations": 0,
+      "path": "tools/benchmarks/merlo/benchmarks/general_representation/reference_json.py + tools/benchmarks/merlo/general_json_oracle.py",
+      "punctuation_tokens": 523,
+      "source_bytes": 4884
+    },
+    "rust": {
+      "available": false,
+      "reason": "rustc unavailable"
+    }
+  },
+  "surface_gate": {
+    "zero_merlo_lifetime_annotations": true,
+    "zero_merlo_manual_malloc_free": true,
+    "zero_merlo_manual_retain_release": true,
+    "zero_merlo_normal_path_manual_drop": true
+  },
+  "timing_stable": true
+}

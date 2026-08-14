@@ -35,7 +35,11 @@ test = ["pytest", "build"]
 [project.scripts]
 merlo = "merlo.cli:main"
 
+[tool.setuptools.package-dir]
+"" = "src"
+
 [tool.setuptools.packages.find]
+where = ["src"]
 include = ["merlo*"]
 
 [tool.setuptools.package-data]
@@ -95,14 +99,6 @@ merlo = ["stdlib/*.mlo"]
   "spec/ffi.md",
   "spec/semantic-world.md",
   "spec/alpha-protocol.md",
-]
-"research" = [
-  "research/README.md",
-  "research/semantic-representations.md",
-  "research/ownership-without-lifetime-syntax.md",
-  "research/concise-canonical-equivalence.md",
-  "research/effects-and-capabilities.md",
-  "research/performance-evidence.md",
 ]
 "rfcs" = ["rfcs/README.md"]
 "examples" = ["examples/README.md"]
@@ -171,4 +167,5 @@ compiler_host = "C11 Clang/GCC bootstrap"
 semantic_core = "one semantic core; no future facets in alpha"
 
 [tool.pytest.ini_options]
+pythonpath = ["src", "."]
 testpaths = ["tests"]

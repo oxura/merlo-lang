@@ -1,0 +1,62 @@
+{
+  "fixtures": [
+    {
+      "bytes": 71663,
+      "path": "tools/benchmarks/merlo/benchmarks/productive_external_fixtures/ndjson/cars.ndjson",
+      "provenance": "derived_from_pinned_external",
+      "sha256": "a276e0d71324e5da5f5fb0fba53cba208c89a162ae3384d2175bacf680aca803",
+      "source_sha256": "f686a53678b21f4231e2f6a5ba7ce5761d9d39204fccdea1caa29fb8c460e319",
+      "source_url": "https://raw.githubusercontent.com/vega/vega-datasets/5cae8813f3a088da2345bd6426dacb3291f85324/data/cars.json",
+      "transform": "json-array-to-ndjson"
+    },
+    {
+      "bytes": 1281541,
+      "path": "tools/benchmarks/merlo/benchmarks/productive_external_fixtures/ndjson/movies.ndjson",
+      "provenance": "derived_from_pinned_external",
+      "sha256": "254af867be6cdb0a2e0cb0ea98a4e6ce86c03e650dc106b5822d7b9b5ece0742",
+      "source_sha256": "e63c499759e3b07b49563e036f55290f87feb56def8703ec049ca305ab1523d3",
+      "source_url": "https://raw.githubusercontent.com/vega/vega-datasets/5cae8813f3a088da2345bd6426dacb3291f85324/data/movies.json",
+      "transform": "json-array-to-ndjson"
+    },
+    {
+      "bytes": 3858,
+      "path": "tools/benchmarks/merlo/benchmarks/productive_external_fixtures/csv/iris.csv",
+      "provenance": "pinned_external",
+      "sha256": "9cc1c345c71bcc9b486b74cbf6063fa66f4bb5e0f603a4b3c3471ec2e5e8e355",
+      "source_sha256": "9cc1c345c71bcc9b486b74cbf6063fa66f4bb5e0f603a4b3c3471ec2e5e8e355",
+      "source_url": "https://raw.githubusercontent.com/mwaskom/seaborn-data/71e2436a092d714350de0fc409ca8a8714e7e78f/iris.csv",
+      "transform": "identity"
+    },
+    {
+      "bytes": 9729,
+      "path": "tools/benchmarks/merlo/benchmarks/productive_external_fixtures/csv/tips.csv",
+      "provenance": "pinned_external",
+      "sha256": "e54cc4d2ce1bff65d32ca60b3e4b802e06bde1d7e7caf6f796f6bf7370e863b0",
+      "source_sha256": "e54cc4d2ce1bff65d32ca60b3e4b802e06bde1d7e7caf6f796f6bf7370e863b0",
+      "source_url": "https://raw.githubusercontent.com/mwaskom/seaborn-data/71e2436a092d714350de0fc409ca8a8714e7e78f/tips.csv",
+      "transform": "identity"
+    },
+    {
+      "bytes": 13804,
+      "path": "tools/benchmarks/merlo/benchmarks/productive_external_fixtures/text/cpython-license.txt",
+      "provenance": "pinned_external",
+      "sha256": "b0e25a78cffb43f4d92de8b61ccfa1f1f98ecbc22330b54b5251e7b6ba010231",
+      "source_sha256": "b0e25a78cffb43f4d92de8b61ccfa1f1f98ecbc22330b54b5251e7b6ba010231",
+      "source_url": "https://raw.githubusercontent.com/python/cpython/99b88473f6d73bd054bcd7d43239a03d583db81c/LICENSE",
+      "transform": "identity"
+    },
+    {
+      "bytes": 3304,
+      "path": "tools/benchmarks/merlo/benchmarks/productive_external_fixtures/text/rust-readme.txt",
+      "provenance": "pinned_external",
+      "sha256": "b3f6ef2fef88b98cb9ec013a5c86213095e53e40eb228679574e4d06517f33c8",
+      "source_sha256": "b3f6ef2fef88b98cb9ec013a5c86213095e53e40eb228679574e4d06517f33c8",
+      "source_url": "https://raw.githubusercontent.com/rust-lang/rust/79ef636a60b0f5ca061b09122bbbca3c7b4a3b70/README.md",
+      "transform": "identity"
+    }
+  ],
+  "payload_sha256": "2e4d50d3ea09861adb5bf00f74b2056e2523625c0dc6a6455820c3d5d0810bf3",
+  "schema_version": 1,
+  "selection": "two provenance-verifiable fixtures per required format",
+  "status": "PINNED_EXTERNAL_FIXTURES_VERIFIED"
+}

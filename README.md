@@ -154,14 +154,16 @@ commands with a machine-readable mode return deterministic JSON through
 
 | Path | Contents |
 |---|---|
-| [`merlo/`](merlo/) | Bootstrap compiler, semantic model, native backend, CLI, and LSP |
+| [`src/merlo/`](src/merlo/) | Production compiler, semantic model, native backend, CLI, and LSP |
 | [`stdlib/`](stdlib/) | Merlo standard-library modules |
 | [`examples/`](examples/) | Executable CLI, data, package, network, and FFI projects |
-| [`tests/`](tests/) | Language, compiler, runtime, determinism, and release regressions |
-| [`benchmarks/`](benchmarks/) | Reproducible corpora, fixtures, protocols, and checked evidence |
+| [`tests/`](tests/) | Production language, compiler, runtime, and distribution regressions |
+| [`tools/benchmarks/merlo/`](tools/benchmarks/merlo/) | Explicit benchmark and evidence suites |
 | [`spec/`](spec/) | Normative alpha contracts |
 | [`docs/`](docs/) | Installation, language guide, architecture, tooling, and limitations |
-| [`research/`](research/) | Research questions, methods, results, limitations, and artifacts |
+| [`tools/release/merlo/`](tools/release/merlo/) | Explicit release assembly and validation suite |
+| [`research/archive/`](research/archive/) | Frozen historical protocol and Alpha1 evidence |
+| [`research/`](research/) | Research questions, methods, results, and limitations |
 | [`rfcs/`](rfcs/) | Process for proposed language and runtime changes |
 
 ## Documentation

@@ -3,7 +3,7 @@
 ## Inputs and outputs
 
 `compile_canonical_hir(program, entry_function="main")` in
-[`merlo/structured_hir_v2.py`](../../merlo/structured_hir_v2.py) consumes a
+[`src/merlo/structured_hir_v2.py`](../../src/merlo/structured_hir_v2.py) consumes a
 `CanonicalProgram` and returns `StructuredHIRProgram`. When the canonical
 program has no native module it parses `program.to_source()` through the
 structured builder; otherwise it copies and validates the native module before

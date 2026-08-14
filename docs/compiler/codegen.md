@@ -3,7 +3,7 @@
 ## Inputs and outputs
 
 `emit_general_c(hir, representation, mir)` in
-[`merlo/representation_c_backend.py`](../../merlo/representation_c_backend.py)
+[`src/merlo/representation_c_backend.py`](../../src/merlo/representation_c_backend.py)
 consumes the exact HIR, RIR, and MIR predecessors and returns `GeneratedC`.
 The result contains C11 `source`, its SHA-256, primitive and FFI manifests,
 generated/host line counts, and domain-opaque call metadata. `compile_project()`

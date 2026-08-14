@@ -3,7 +3,7 @@
 ## Inputs and outputs
 
 `lower_rir_to_performance_mir(hir, representation)` in
-[`merlo/representation_mir.py`](../../merlo/representation_mir.py) consumes
+[`src/merlo/representation_mir.py`](../../src/merlo/representation_mir.py) consumes
 both the predecessor `StructuredHIRProgram` and `RepresentationProgram` and
 returns `GeneralPerformanceMIR` (`merlo.performance-mir.general-representation.v1`).
 `optimize_general_mir(mir)` returns a new optimized value with

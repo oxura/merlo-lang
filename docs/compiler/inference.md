@@ -3,11 +3,11 @@
 ## Inputs and outputs
 
 - **Current input:** `elaborate_concise_application()` in
-  [`merlo/concise_application.py`](../../merlo/concise_application.py) reads
+  [`src/merlo/concise_application.py`](../../src/merlo/concise_application.py) reads
   project source, normalizes declared type spellings, and runs its internal
   `_Inference` state over the assembled core. The structural route accepts a
   `SurfaceProgram` through `elaborate_surface()` in
-  [`merlo/surface_elaborator.py`](../../merlo/surface_elaborator.py).
+  [`src/merlo/surface_elaborator.py`](../../src/merlo/surface_elaborator.py).
 - **Current output:** `ConciseApplicationElaboration` contains
   `canonical_program`, canonical and machine source, semantic digests,
   `InferenceDecision` records, `TaskBoundary` signatures, and source origins.
@@ -26,7 +26,7 @@ and return types are preserved in `TaskBoundary`; public interface revisions
 include signature, effects, and capabilities. `InferenceDecision.mutable` is a
 binding mutability fact only; it is not an ownership, move, borrow, or drop
 proof. Ownership is assigned later by `_OwnershipChecker` and `_HIRBuilder` in
-[`merlo/structured_hir_v2.py`](../../merlo/structured_hir_v2.py).
+[`src/merlo/structured_hir_v2.py`](../../src/merlo/structured_hir_v2.py).
 
 The RFC 0001 contract (planned) changes the input boundary to bound nodes and
 records local types, return types, mutability, typed errors, and evidence spans;

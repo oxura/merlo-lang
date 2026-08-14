@@ -40,7 +40,7 @@ development began on 2026-03-19.
 - The locked 100-case external-source challenge remains unsupported: the
   current compiler cannot represent all required string, collection, record,
   parser, exception, file/stream, callable, and Python object-protocol
-  semantics. `benchmarks/merlo_surface_0_2.json` records all 100 blocked case
+  semantics. `tools/benchmarks/merlo/benchmarks/merlo_surface_0_2.json` records all 100 blocked case
   IDs; no compression or general superiority claim is made from that corpus.
 
 ## Before alpha.1

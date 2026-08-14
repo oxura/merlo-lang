@@ -22,9 +22,9 @@ The corpus is small, Linux x86-64 only, and sensitive to compiler versions, CPU 
 
 ## Artifacts
 
-- `merlo/alpha_performance.py`
-- `merlo/productive_performance.py`
-- `benchmarks/alpha_performance/workloads.json`
-- `benchmarks/merlo_alpha_performance.json`
-- `tests/test_alpha_performance.py`
-- `tests/test_productive_performance.py`
+- `tools/benchmarks/merlo/alpha_performance.py`
+- `tools/benchmarks/merlo/productive_performance.py`
+- `research/archive/alpha1/benchmarks/alpha_performance/workloads.json`
+- `research/archive/alpha1/benchmarks/merlo_alpha_performance.json`
+- `tools/benchmarks/merlo/tests/test_alpha_performance.py`
+- `tools/benchmarks/merlo/tests/test_productive_performance.py`

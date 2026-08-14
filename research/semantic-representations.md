@@ -22,8 +22,8 @@ The public alpha has no semantic merge engine, distributed index, or benchmark s
 
 ## Artifacts
 
-- `merlo/semantic_world.py`
-- `merlo/alpha_protocol.py`
+- `src/merlo/semantic_world.py`
+- `src/merlo/alpha_protocol.py`
 - `tests/test_alpha_semantic_world.py`
-- `tests/test_meldra_identity.py`
-- `tests/test_meldra_lineage.py`
+- `research/archive/historical_protocol/tests/test_meldra_identity.py`
+- `research/archive/historical_protocol/tests/test_meldra_lineage.py`
