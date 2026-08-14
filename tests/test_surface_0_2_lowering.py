@@ -258,3 +258,16 @@ def test_break_in_match_inside_loop_targets_loop_exit_in_c() -> None:
     generated = emit_general_c(hir, representation, mir)
     assert "switch" in generated.source
     assert "goto __merlo_loop_exit_" in generated.source
+
+
+def test_structured_hir_keeps_postfix_try_rewrite_after_option_none() -> None:
+    from merlo.structured_hir_v2 import _preprocess
+
+    source = (
+        "fn main() -> UInt64:\n"
+        "    Option.None\n"
+        "    value?\n"
+    )
+    preprocessed = _preprocess(source).source
+    assert "Option.NoneValue" in preprocessed
+    assert "__merlo_try__(value)" in preprocessed

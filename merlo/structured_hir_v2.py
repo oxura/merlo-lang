@@ -483,6 +483,7 @@ def _preprocess(source: str) -> _Preprocessed:
         if re.fullmatch(r"\s*uses\s+.+", line):
             line = ""
         line = re.sub(r"\bOption\.None\b", "Option.NoneValue", line)
+        line = _rewrite_postfix_try(line)
         line = re.sub(r"\btrue\b", "True", line)
         line = re.sub(r"\bfalse\b", "False", line)
         if re.search(r"\b(?:and|or)\s*$", line):
