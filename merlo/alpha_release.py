@@ -276,9 +276,11 @@ def _inventory_paths(root: Path, values: Sequence[Path | str], label: str, expec
         relative = _relative(path, root)
         if relative in actual:
             raise ReleaseValidationError(f"duplicate {label} file: {relative}")
-        actual.add(relative)
         if not path.is_file():
+            if relative in expected:
+                continue
             raise ReleaseValidationError(f"missing {label} artifact: {relative}")
+        actual.add(relative)
     missing = sorted(set(expected) - actual)
     extra = sorted(actual - set(expected))
     if missing:
