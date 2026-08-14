@@ -7,6 +7,7 @@ from pathlib import Path
 from merlo import native_c_backend
 
 
+def test_override_resolves_real_executable(monkeypatch) -> None:
     executable = os.environ.get("PYTHON", sys.executable)
     monkeypatch.setenv("MERLO_C_COMPILER", executable)
 
