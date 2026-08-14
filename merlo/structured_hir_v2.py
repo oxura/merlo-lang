@@ -1489,23 +1489,30 @@ class _HIRBuilder:
                         )
                 kind = "FileOpen" if callee in {"fs.open_read", "fs.open_write"} else "DirectCall"
                 signature_parts = self._result_parts(signature.result_type)
-                type_name = (
-                    expected
-                    if (
-                        expected
-                        and (
-                            (
-                                signature_parts is not None
-                                and expected == signature_parts[0]
-                            )
-                            or (
-                                callee == "network.tcp_connect"
-                                and expected.startswith("Result[TcpStream,")
-                            )
-                        )
+                if (
+                    callee == "network.tcp_connect"
+                    and expected
+                    and expected.startswith("Result[TcpStream,")
+                ):
+                    type_name = expected
+                elif (
+                    signature_parts is not None
+                    and expected == signature_parts[0]
+                ):
+                    function_return = _type_name(
+                        self.functions[self.current_function].returns
                     )
-                    else contextual_result_type(signature.result_type, expected)
-                )
+                    function_parts = self._result_parts(function_return)
+                    type_name = (
+                        f"Result[{signature_parts[0]},{function_parts[1]}]"
+                        if function_parts is not None
+                        else signature.result_type
+                    )
+                else:
+                    type_name = contextual_result_type(
+                        signature.result_type,
+                        expected,
+                    )
                 if expected and expected.startswith("Result["):
                     expected_parts = self._result_parts(expected)
                     result_parts = self._result_parts(signature.result_type)
@@ -1543,7 +1550,8 @@ class _HIRBuilder:
                         else "Bytes"
                     )
             elif receiver_text in {
-                "console", "fs", "env", "clock", "random", "network", "process"
+                "console", "fs", "env", "clock", "random", "network", "tcp",
+                "process",
             }:
                 raise StructuredHIRCompileError(
                     f"{self.path}:{node.lineno}: UnknownIntrinsic: {callee}"
@@ -1635,6 +1643,11 @@ class _HIRBuilder:
                     box_parts = generic_parts(receiver_type, "Box", arity=1)
                     if box_parts is not None:
                         type_name = box_parts[0]
+            elif receiver_type == "Path" and method == "to_text":
+                kind = "BytesTextOperation"
+                type_name = "Text"
+                ownership = "owned"
+                effects.update(("allocate", "copy", "may_fail"))
             elif (
                 receiver_text in {"Text", "TextBuilder"}
                 or receiver_type in {
@@ -1758,6 +1771,13 @@ class _HIRBuilder:
                 if node.value is not None
                 else ()
             )
+            if isinstance(value, HIRNode) and value.type_name != type_name:
+                if self._result_parts(value.type_name) is not None:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: BindingTypeMismatch: "
+                        f"{node.target.id} expects {type_name}, got {value.type_name}; "
+                        "propagate or match the Result explicitly"
+                    )
             binding = self.preprocessed.binding_kinds.get(node.lineno, "let")
             return self._new_node(
                 node,
@@ -1812,6 +1832,15 @@ class _HIRBuilder:
                 if node.value is not None
                 else None
             )
+            if (
+                child is not None
+                and self._result_parts(child.type_name) is not None
+                and self._result_parts(expected_return) is None
+            ):
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: ReturnTypeMismatch: "
+                    f"expected {expected_return}, got {child.type_name}"
+                )
             return_type = child.type_name if child else "Unit"
             ownership = (
                 "owned"

@@ -10,10 +10,16 @@ from merlo.intrinsics import (
     contextual_result_type,
     intrinsic_signature,
 )
+from merlo.structured_hir_v2 import (
+    StructuredHIRCompileError,
+    compile_structured_hir,
+)
 
 
 EXPECTED = {
     "console.read": ((), "Bytes", "console.read"),
+    "console.read_line": ((), "Text", "console.read"),
+    "console.read_all": ((), "Text", "console.read"),
     "console.write": (("TextView",), "Unit", "console.write"),
     "fs.open_read": (("Path",), "Result[FileReader,FileError]", "fs.read"),
     "fs.read": (("Path",), "Result[Bytes,FileError]", "fs.read"),
@@ -29,6 +35,7 @@ EXPECTED = {
     "clock.now": ((), "UInt64", "clock.now"),
     "random.read": (("UInt64",), "Bytes", "random.read"),
     "process.args": ((), "UInt64", "process.args"),
+    "process.arg": (("UInt64",), "Text", "process.args"),
     "network.tcp_connect": (("Text", "UInt64"), "Result[UInt64,AppError]", "network.tcp"),
     "network.tcp_send": (("UInt64", "BytesView"), "Result[UInt64,AppError]", "network.tcp"),
     "network.tcp_receive": (("UInt64", "UInt64"), "Result[Bytes,AppError]", "network.tcp"),
@@ -71,3 +78,23 @@ def test_arity_is_contractual(name: str) -> None:
     signature = intrinsic_signature(name)
     assert signature is not None
     assert signature.arity == len(signature.parameters)
+
+
+def test_result_intrinsic_cannot_be_returned_as_its_ok_type() -> None:
+    source = (
+        "task bad(path: Path) -> Bytes:\n"
+        "    uses fs.read\n"
+        "    return fs.read(path)\n"
+    )
+    with pytest.raises(StructuredHIRCompileError, match="ReturnTypeMismatch"):
+        compile_structured_hir(source, entry_function="bad")
+
+
+def test_removed_tcp_alias_is_rejected() -> None:
+    source = (
+        "task bad() -> UInt64:\n"
+        "    uses network.tcp\n"
+        "    return tcp.connect()\n"
+    )
+    with pytest.raises(StructuredHIRCompileError, match="UnknownIntrinsic"):
+        compile_structured_hir(source, entry_function="bad")

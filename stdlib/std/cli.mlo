@@ -15,13 +15,25 @@ export cli_len(arguments: Arguments) -> UInt64:
     arguments.count
 
 export cli_get(arguments: Arguments, index: UInt64) -> Option[Text]:
-    NoneValue
+    if index >= arguments.count:
+        return NoneValue
+    Some(process.arg(index))
 
 export cli_has(arguments: Arguments, option: TextView) -> Bool:
+    index: UInt64 = 0
+    while index < arguments.count:
+        if process.arg(index) == option.to_text():
+            return true
+        index = index + 1
     false
 
 export cli_value(arguments: Arguments, option: TextView) -> Result[Text,CliError]:
+    index: UInt64 = 0
+    while index + 1 < arguments.count:
+        if process.arg(index) == option.to_text():
+            return Ok(process.arg(index + 1))
+        index = index + 1
     Err(CliError.MissingValue)
 
 export cli_flag(arguments: Arguments, option: TextView) -> Result[Bool,CliError]:
-    Ok(false)
+    Ok(cli_has(arguments, option))

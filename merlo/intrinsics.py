@@ -61,6 +61,8 @@ def _signature(
 # The mapping and all entries are immutable after module initialization.
 _INTRINSIC_ROWS = (
     _signature("console.read", (), "Bytes", "console.read", result_ownership="owned"),
+    _signature("console.read_line", (), "Text", "console.read", result_ownership="owned"),
+    _signature("console.read_all", (), "Text", "console.read", result_ownership="owned"),
     _signature("console.write", ("TextView",), "Unit", "console.write", parameter_ownership=("borrow",)),
     _signature("fs.open_read", ("Path",), "Result[FileReader,FileError]", "fs.read", parameter_ownership=("borrow",), result_ownership="owned"),
     _signature("fs.read", ("Path",), "Result[Bytes,FileError]", "fs.read", parameter_ownership=("borrow",), result_ownership="owned"),
@@ -81,6 +83,7 @@ _INTRINSIC_ROWS = (
     _signature("network.tcp_close", ("UInt64",), "Result[Unit,AppError]", "network.tcp"),
     _signature("network.http_request", ("Text",), "Result[Bytes,AppError]", "network.http", parameter_ownership=("borrow",), result_ownership="owned"),
     _signature("process.args", (), "UInt64", "process.args"),
+    _signature("process.arg", ("UInt64",), "Text", "process.args", result_ownership="owned"),
 )
 INTRINSIC_SIGNATURES: Mapping[str, IntrinsicSignature] = MappingProxyType(
     {row.name: row for row in _INTRINSIC_ROWS}

@@ -20,9 +20,7 @@ export io_write_line(value: TextView) -> Result[Unit,IoError]:
     Ok(Unit)
 
 export io_read_line() -> Result[Text,IoError]:
-    bytes = console.read()
-    Ok(Text.from_bytes(bytes, 0, bytes.len()))
+    Ok(console.read_line())
 
 export io_read_all() -> Result[Text,IoError]:
-    bytes = console.read()
-    Ok(Text.from_bytes(bytes, 0, bytes.len()))
+    Ok(console.read_all())

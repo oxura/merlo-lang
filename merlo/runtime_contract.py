@@ -190,13 +190,39 @@ class ResourceScope:
         self.close_all()
 
 
+class TcpHandle(int):
+    """Integer ABI handle with idempotent Python-side resource ownership."""
+
+    def __new__(
+        cls,
+        value: int,
+        runtime: "GuardedHostRuntime",
+    ) -> "TcpHandle":
+        handle = int.__new__(cls, value)
+        handle._runtime = runtime
+        return handle
+
+    def close(self) -> None:
+        try:
+            self._runtime.tcp_close(int(self))
+        except ResourceCloseError as exc:
+            if str(exc) != "ClosedTcpHandle":
+                raise
+
+
 class GuardedHostRuntime:
     """Synchronous low-level host primitives guarded by a manifest."""
 
-    def __init__(self, manifest: CapabilityManifest, *, argv: Sequence[str] = ()) -> None:
+    def __init__(
+        self,
+        manifest: CapabilityManifest,
+        *,
+        argv: Sequence[str] = (),
+        _tcp_sockets: dict[int, tuple[socket.socket, str]] | None = None,
+    ) -> None:
         self.manifest = manifest
         self.argv = tuple(argv)
-        self._tcp_sockets: dict[int, socket.socket] = {}
+        self._tcp_sockets = {} if _tcp_sockets is None else _tcp_sockets
 
     def require(self, effect: str) -> None:
         if effect not in ALPHA_EFFECTS:
@@ -210,11 +236,23 @@ class GuardedHostRuntime:
             network_hosts=manifest.network_hosts, environment_keys=manifest.environment_keys,
             process_arguments=manifest.process_arguments,
         )
-        return GuardedHostRuntime(narrowed, argv=self.argv)
+        return GuardedHostRuntime(
+            narrowed,
+            argv=self.argv,
+            _tcp_sockets=self._tcp_sockets,
+        )
 
     def console_read(self) -> bytes:
         self.require("console.read")
         return sys.stdin.buffer.readline()
+
+    def console_read_line(self) -> str:
+        self.require("console.read")
+        return sys.stdin.buffer.readline().decode()
+
+    def console_read_all(self) -> str:
+        self.require("console.read")
+        return sys.stdin.buffer.read().decode()
 
     def console_write(self, value: bytes | str) -> None:
         self.require("console.write")
@@ -253,35 +291,44 @@ class GuardedHostRuntime:
             raise ValueError("random size must be a non-negative integer")
         return os.urandom(size)
 
-    def tcp_connect(self, host: str, port: int, *, timeout: float | None = None) -> int:
+    def tcp_connect(
+        self,
+        host: str,
+        port: int,
+        *,
+        timeout: float | None = None,
+    ) -> TcpHandle:
         self.require("network.tcp")
         if host not in self.manifest.network_hosts:
             raise CapabilityHostDeniedError(f"CapabilityHostDenied:{host}")
         connection = socket.create_connection((host, port), timeout=timeout)
         handle = connection.fileno()
-        self._tcp_sockets[handle] = connection
-        return handle
+        self._tcp_sockets[handle] = (connection, host)
+        return TcpHandle(handle, self)
+
+    def _tcp_socket(self, handle: int) -> socket.socket:
+        resource = self._tcp_sockets.get(int(handle))
+        if resource is None:
+            raise ResourceCloseError("ClosedTcpHandle")
+        connection, host = resource
+        if host not in self.manifest.network_hosts:
+            raise CapabilityHostDeniedError(f"CapabilityHostDenied:{host}")
+        return connection
 
     def tcp_send(self, handle: int, data: bytes | bytearray | memoryview) -> int:
         self.require("network.tcp")
-        connection = self._tcp_sockets.get(handle)
-        if connection is None:
-            raise ResourceCloseError("ClosedTcpHandle")
-        return connection.send(bytes(data))
+        return self._tcp_socket(handle).send(bytes(data))
 
     def tcp_receive(self, handle: int, limit: int) -> bytes:
         self.require("network.tcp")
-        connection = self._tcp_sockets.get(handle)
-        if connection is None:
-            raise ResourceCloseError("ClosedTcpHandle")
-        return connection.recv(limit)
+        return self._tcp_socket(handle).recv(limit)
 
     def tcp_close(self, handle: int) -> None:
         self.require("network.tcp")
-        connection = self._tcp_sockets.pop(handle, None)
-        if connection is None:
+        resource = self._tcp_sockets.pop(int(handle), None)
+        if resource is None:
             raise ResourceCloseError("ClosedTcpHandle")
-        connection.close()
+        resource[0].close()
 
     def http_request(self, url: str, *, method: str = "GET", body: bytes | None = None) -> bytes:
         self.require("network.http")
@@ -297,6 +344,13 @@ class GuardedHostRuntime:
         self.require("process.args")
         return max(0, len(self.argv) - 1)
 
+    def process_arg(self, index: int) -> str:
+        self.require("process.args")
+        if not isinstance(index, int) or isinstance(index, bool) or index < 0:
+            raise ValueError("process argument index must be a non-negative integer")
+        position = index + 1
+        return self.argv[position] if position < len(self.argv) else ""
+
 
 HostRuntime = GuardedHostRuntime
 
@@ -304,12 +358,12 @@ HostRuntime = GuardedHostRuntime
 def capability_manifest_for(effects: Iterable[str], **kwargs: object) -> CapabilityManifest:
     return CapabilityManifest(tuple(effects), **kwargs)  # type: ignore[arg-type]
 
-
 __all__ = [
     "ALPHA_EFFECTS", "CLOSED_EFFECTS", "CapabilityHostDeniedError",
     "CapabilityManifest", "CapabilityScopeEscapeError", "EFFECTS",
     "GuardedHostRuntime", "HostRuntime", "MissingCapabilityError",
     "ResourceCloseError", "ResourceScope", "RuntimeCapabilityManifest",
     "RuntimeContract", "RuntimeContractError", "RUNTIME", "RUNTIME_ABI_VERSION",
-    "RUNTIME_CONTRACT", "ScopedCapabilityManifest", "capability_manifest_for",
+    "RUNTIME_CONTRACT", "ScopedCapabilityManifest", "TcpHandle",
+    "capability_manifest_for",
 ]

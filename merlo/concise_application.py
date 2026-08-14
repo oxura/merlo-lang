@@ -1700,7 +1700,8 @@ class _Inference:
                     contextual_expected,
                 )
             if receiver_text in {
-                "console", "fs", "env", "clock", "random", "network", "process"
+                "console", "fs", "env", "clock", "random", "network", "tcp",
+                "process",
             }:
                 raise ConciseApplicationError(
                     f"{self.path}:{node.lineno}: UnknownIntrinsic: {callee}"
