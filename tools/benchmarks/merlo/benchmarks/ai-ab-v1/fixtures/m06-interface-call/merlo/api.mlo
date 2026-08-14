@@ -1,0 +1,13 @@
+module api
+
+export fn transform(input: TextView) -> Text:
+    view = input
+    if view.len() < 2:
+        return "{}"
+    operation = view.byte(0)
+    request_id = view.slice_bytes(2, view.len() - 2).to_text()
+    output = TextBuilder.new()
+    output.append_text("{\"status\":\"ok\",\"request_id\":\"")
+    output.append_text("missing")
+    output.append_text("\"}")
+    output.finish()

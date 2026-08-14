@@ -67,6 +67,7 @@ merlo = ["stdlib/*.mlo", "stdlib/std/*.mlo"]
   "docs/semantic-world.md",
   "docs/alpha-protocol.md",
   "docs/ai-protocol.md",
+  "docs/ai-evaluation.md",
   "docs/tooling.md",
   "docs/lsp.md",
   "docs/examples.md",

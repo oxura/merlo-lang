@@ -1,0 +1,42 @@
+module api
+
+fn decode_request(input: TextView) -> Text:
+    view = input
+    builder = TextBuilder.new()
+    index: UInt64 = 0
+    if view.len() >= 2 and view.byte(0) == 34:
+        index = 1
+        while index + 1 < view.len():
+            byte = view.byte(index)
+            if byte == 34 and index + 1 == view.len() - 1:
+                return builder.finish()
+            if byte == 92 and index + 1 < view.len():
+                index = index + 1
+                builder.append_byte(view.byte(index))
+            else:
+                builder.append_byte(byte)
+            index = index + 1
+    builder.finish()
+
+fn parse_number(view: TextView, start: UInt64) -> UInt64:
+    result: UInt64 = 0
+    index: UInt64 = start
+    while index < view.len():
+        result = result * 10 + view.byte(index) - 48
+        index = index + 1
+    result
+
+export fn repair(input: TextView) -> Text:
+    value = decode_request(input)
+    view = value.as_view()
+    if view.len() >= 3 and view.byte(0) == 111 and view.byte(1) == 107 and view.byte(2) == 58:
+        number = parse_number(view, 3)
+        builder = TextBuilder.new()
+        builder.append_text("{\"error\":null,\"ok\":true,\"value\":")
+        builder.append_uint64(number)
+        builder.append_byte(125)
+        return builder.finish()
+    if view.len() >= 4 and view.byte(0) == 101 and view.byte(1) == 114 and view.byte(2) == 114 and view.byte(3) == 58:
+        # Baseline defect: error status and payload are discarded.
+        return "{\"error\":null,\"ok\":true,\"value\":null}"
+    "{\"error\":\"invalid\",\"ok\":false,\"value\":null}"

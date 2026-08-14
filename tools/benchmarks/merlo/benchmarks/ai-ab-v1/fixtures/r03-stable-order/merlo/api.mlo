@@ -1,0 +1,24 @@
+module api
+
+parse(input: TextView) -> Text:
+    builder = TextBuilder.new()
+    builder.append_byte(34)
+    if input.len() >= 7 and input.byte(0) == input.byte(4) and input.byte(2) > input.byte(6):
+        builder.append_byte(input.byte(0))
+        builder.append_byte(58)
+        builder.append_byte(input.byte(6))
+        builder.append_byte(44)
+        builder.append_byte(input.byte(4))
+        builder.append_byte(58)
+        builder.append_byte(input.byte(2))
+        if input.len() > 7:
+            tail = input.slice_bytes(7, input.len() - 7).to_text()
+            builder.append_text(tail)
+    else:
+        original = input.to_text()
+        builder.append_text(original)
+    builder.append_byte(34)
+    builder.finish()
+
+export fn repair(input: TextView) -> Text:
+    parse(input)

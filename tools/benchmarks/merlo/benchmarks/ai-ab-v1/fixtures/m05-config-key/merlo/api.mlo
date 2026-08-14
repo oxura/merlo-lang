@@ -1,0 +1,23 @@
+module api
+
+field(input: TextView, marker: Text) -> Text:
+    index: UInt64 = 0
+    marker_len: UInt64 = marker.len()
+    while index + marker_len <= input.len():
+        if input.slice_bytes(index, marker_len).to_text() == marker:
+            end: UInt64 = index + marker_len
+            while end < input.len() and input.byte(end) != 124:
+                end = end + 1
+            return input.slice_bytes(index + marker_len, end - index - marker_len).to_text()
+        index = index + 1
+    ""
+
+export fn transform(input: TextView) -> Text:
+    timeout = field(input, "timeout=")
+    if timeout == "":
+        timeout = "0"
+    builder = TextBuilder.new()
+    builder.append_text("{\"timeout\":")
+    builder.append_text(timeout)
+    builder.append_byte(125)
+    builder.finish()

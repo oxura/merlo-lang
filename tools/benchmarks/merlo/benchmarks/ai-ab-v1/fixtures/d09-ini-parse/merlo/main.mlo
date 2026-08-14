@@ -1,0 +1,5 @@
+module d09_ini_parse
+
+export task main(input: Text) -> Text:
+    // Deliberately incomplete baseline; implement the public contract.
+    return input

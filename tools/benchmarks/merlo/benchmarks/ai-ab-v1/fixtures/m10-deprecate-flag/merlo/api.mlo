@@ -1,0 +1,12 @@
+module api
+
+export fn transform(input: TextView) -> Text:
+    view = input
+    if view.len() < 4:
+        return "{}"
+    name = view.slice_bytes(4, view.len() - 4).to_text()
+    output = TextBuilder.new()
+    output.append_text("{\"text\":\"Name: ")
+    output.append_text(name)
+    output.append_text("\"}")
+    output.finish()

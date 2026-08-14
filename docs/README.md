@@ -15,7 +15,10 @@ dependencies; native builds use a C11-capable Clang or GCC and synchronous I/O.
 - [FFI](ffi.md) — explicit C ABI and unsafe boundary
 - [SemanticWorld](semantic-world.md), [AlphaProtocol](alpha-protocol.md), and
   [AI protocol](ai-protocol.md)
+- [Public AI evaluation](ai-evaluation.md) — draft, currently
+  `DRAFT_UNRUN` Merlo/Python same-model A/B
 - [Public native benchmark v1](benchmark.md) — fixed three-workload reproduction and claim boundary
+- [CLI](tooling.md) and [LSP](lsp.md)
 - [Examples](examples.md)
 - [Limitations](limitations.md)
 - [Research notes](../research/README.md)

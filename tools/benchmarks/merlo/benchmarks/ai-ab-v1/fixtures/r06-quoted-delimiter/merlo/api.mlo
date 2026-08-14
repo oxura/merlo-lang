@@ -1,0 +1,32 @@
+module api
+
+fn decode_request(input: TextView) -> Text:
+    view = input
+    builder = TextBuilder.new()
+    index: UInt64 = 0
+    if view.len() >= 2 and view.byte(0) == 34:
+        index = 1
+        while index + 1 < view.len():
+            byte = view.byte(index)
+            if byte == 34 and index + 1 == view.len() - 1:
+                return builder.finish()
+            if byte == 92 and index + 1 < view.len():
+                index = index + 1
+                builder.append_byte(view.byte(index))
+            else:
+                builder.append_byte(byte)
+            index = index + 1
+    builder.finish()
+
+export fn repair(input: TextView) -> Text:
+    value = decode_request(input)
+    view = value.as_view()
+    fields: UInt64 = 1
+    index: UInt64 = 0
+    while index < view.len():
+        if view.byte(index) == 44:
+            fields = fields + 1
+        index = index + 1
+    builder = TextBuilder.new()
+    builder.append_uint64(fields)
+    builder.finish()

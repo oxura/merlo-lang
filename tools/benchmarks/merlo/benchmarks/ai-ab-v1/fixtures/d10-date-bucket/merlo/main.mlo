@@ -1,0 +1,5 @@
+module d10_date_bucket
+
+export task main(input: Text) -> Text:
+    // Deliberately incomplete baseline; implement the public contract.
+    return input

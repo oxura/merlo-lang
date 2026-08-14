@@ -1,0 +1,5 @@
+module d01_json_sort
+
+export task main(input: Text) -> Text:
+    // Deliberately incomplete baseline; implement the public contract.
+    return input

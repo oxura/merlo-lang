@@ -1,0 +1,23 @@
+module api
+
+parse(input: TextView) -> Text:
+    total: UInt64 = 0
+    value: UInt64 = 0
+    index: UInt64 = 0
+    if input.len() == 0:
+        total = 1
+    while index < input.len():
+        byte = input.byte(index)
+        if byte == 44:
+            total = total + value
+            value = 0
+        else:
+            value = value * 10 + byte - 48
+        index = index + 1
+    total = total + value
+    builder = TextBuilder.new()
+    builder.append_uint64(total)
+    builder.finish()
+
+export fn repair(input: TextView) -> Text:
+    parse(input)

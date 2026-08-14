@@ -1,0 +1,5 @@
+module d03_ndjson_group
+
+export task main(input: Text) -> Text:
+    // Deliberately incomplete baseline; implement the public contract.
+    return input
