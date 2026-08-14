@@ -117,9 +117,11 @@ def test_concise_text_entry_reads_stdin_and_writes_returned_text(tmp_path: Path)
     entry.parent.mkdir()
     entry.write_text(
         "module app.main\n\n"
+        "fn echo(input: TextView) -> Text:\n"
+        "    input.to_text()\n\n"
         "export task main(input: Text) -> Text:\n"
         "    uses console.read, console.write\n"
-        "    return input\n",
+        "    return echo(input.view())\n",
         encoding="utf-8",
     )
     compilation = compile_project(

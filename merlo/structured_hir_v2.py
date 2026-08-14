@@ -1765,7 +1765,7 @@ class _HIRBuilder:
                 elif receiver_type == "Bytes" and method == "view":
                     type_name = "BytesView"
                     ownership = "borrow"
-                elif receiver_type == "Text" and method == "as_view":
+                elif receiver_type == "Text" and method in {"as_view", "view"}:
                     type_name = "TextView"
                     ownership = "borrow"
                 elif receiver_type == "Text" and method == "clone":
