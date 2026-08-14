@@ -216,6 +216,10 @@ def pointer_type(type_name: str) -> RawPointerType | None:
 
 def _validate_abi_type(type_name: str, *, allow_result: bool = False) -> None:
     type_name = type_name.strip()
+    pointer = pointer_type(type_name)
+    if pointer is not None:
+        _validate_abi_type(pointer.pointee)
+        return
     result_parts = generic_parts(type_name, "Result", arity=2)
     if result_parts is not None and allow_result:
         _validate_abi_type(result_parts[0])

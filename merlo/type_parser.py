@@ -26,6 +26,7 @@ class _Parser:
     def __init__(self, source: str) -> None:
         self.source = source
         self.index = 0
+        self.generic_spans: list[tuple[int, int, TypeExpr]] = []
 
     def parse(self) -> TypeExpr:
         self._skip_space()
@@ -48,7 +49,7 @@ class _Parser:
         if start == self.index:
             raise GenericTypeSyntaxError(f"expected type name at offset {self.index}")
         name = self.source[start:self.index]
-        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]*|\d+", name):
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]*|\d+|\?", name):
             raise GenericTypeSyntaxError(f"invalid type atom {name!r}")
         self._skip_space()
         if self.index == len(self.source) or self.source[self.index] != "[":
@@ -66,7 +67,9 @@ class _Parser:
             character = self.source[self.index]
             if character == "]":
                 self.index += 1
-                return TypeExpr(name, tuple(arguments))
+                result = TypeExpr(name, tuple(arguments))
+                self.generic_spans.append((start, self.index, result))
+                return result
             if character != ",":
                 raise GenericTypeSyntaxError(f"expected ',' or ']' at offset {self.index}")
             self.index += 1
@@ -126,14 +129,21 @@ def iter_type_expressions(
                 probe += 1
             if probe >= len(source) or source[probe] != "[":
                 continue
-            expression, end = parse_type_prefix(source, start)
+            parser = _Parser(source)
+            parser.index = start
+            parser._expression()
+            end = parser.index
             trailing = end
-            while trailing < len(source) and source[trailing].isspace():
+            while trailing < len(source) and source[trailing] in " \t\r":
                 trailing += 1
             if trailing < len(source) and (source[trailing].isalnum() or source[trailing] in "_["):
                 raise GenericTypeSyntaxError(f"unexpected type text at offset {trailing}")
-            found.append((start, end, expression))
-            index = start + len(name)
+            found.extend(
+                occurrence
+                for occurrence in parser.generic_spans
+                if occurrence[2].name in constructors
+            )
+            index = end
             continue
         index += 1
     return tuple(found)

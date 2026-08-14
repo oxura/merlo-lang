@@ -613,8 +613,8 @@ def lower_concise_sum_types(source: str) -> str:
                     },
                     call_only=frozenset({"Ok", "Err"}),
                 )
-        for type_name, nominal in mapping.items():
-            line = line.replace(type_name, nominal)
+        for type_name in sorted(mapping, key=len, reverse=True):
+            line = line.replace(type_name, mapping[type_name])
         for token, replacement in protected.items():
             line = line.replace(token, replacement)
         output.append(line)

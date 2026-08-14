@@ -42,6 +42,11 @@ def test_nested_sum_types_lower_to_stable_nominal_names() -> None:
     assert "enum Result_Option_Text__AppError_:" in lowered
     assert "enum Option_Text_:" in lowered
     assert "Ok: Option[Text]" in lowered
+    assert "value: Result_Option_Text__AppError_" in lowered
+
+
+def test_parse_type_accepts_inferred_type_sentinel() -> None:
+    assert parse_type("?").canonical == "?"
 
 
 def test_structured_hir_accepts_nested_sum_vec_types() -> None:
