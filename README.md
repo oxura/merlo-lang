@@ -12,10 +12,11 @@
 
 Merlo is an experimental language and compiler built around static types,
 ownership, inferred effects, capabilities, and stable semantic representations.
-The current public toolchain is `0.1.0-alpha.1`: a Python 3.11+ bootstrap
+The current release candidate is `0.1.0-alpha.2`: a Python 3.11+ bootstrap
 compiler with a C11 native backend, project tooling, an LSP server, a standard
-library, and executable examples. Its source release is known to be incomplete;
-the repository is being stabilized for one clean `0.1.0-alpha.2`.
+library, and executable examples. The packaged compiler, archive, benchmark,
+and release-tool boundaries are explicit, and the repository remains the
+source of installation instructions. No PyPI availability is claimed.
 Research and development began privately on 2026-03-19. The first public
 research alpha was released on 2026-08-14.
 
@@ -115,10 +116,10 @@ elaboration that is being replaced under [RFC 0001](rfcs/0001-repository-and-fro
 
 ## Install and run
 
-Use Python 3.11 or newer on Linux x86-64. The alpha.1 artifacts are retained
-for historical evidence and are not the recommended install: the source
-archive is incomplete, and the wheel predates later compiler portability
-repairs. Until alpha.2 is published, install the repaired public source:
+The alpha.1 artifacts remain historical evidence; the source archive is
+incomplete and the wheel predates later compiler portability repairs. For the
+`0.1.0-alpha.2` release candidate, install this repository checkout (no PyPI
+availability is claimed):
 
 ```console
 git clone https://github.com/oxura/merlo-lang.git

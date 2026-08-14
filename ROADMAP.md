@@ -1,9 +1,10 @@
 # Merlo roadmap
 
-## 0.1.0-alpha.1 — current
+## 0.1.0-alpha.2 — release candidate
 
-The alpha packages the Python 3.11+ bootstrap compiler and `merlo` CLI. The
-checked release surface includes:
+The release candidate packages the Python 3.11+ bootstrap compiler and `merlo`
+CLI after the production `src/` compiler, archive, benchmark, and release-tool
+boundaries were made explicit. The checked release surface includes:
 
 - typed source checking and canonical semantic elaboration;
 - Linux x86-64 native output through a C11 Clang/GCC bootstrap;
@@ -12,9 +13,13 @@ checked release surface includes:
 - SemanticWorld queries, AlphaProtocol refactor previews/apply, generated docs,
   and the JSON-RPC/LSP facade;
 - explicit C FFI declarations and unsafe-operation validation;
-- standard-library `.mlo` sources, examples, and the VS Code grammar.
+- standard-library `.mlo` sources, examples, and the VS Code grammar;
+- centralized intrinsic contracts and module-qualified identity;
+- corrected native/public benchmark paths and the capacity-ledger example;
+- a hardened preregistered same-model AI A/B draft; its outcome remains
+  unmeasured and makes no productivity claim.
 
-The alpha has one semantic core. There are no future facets or alternate
+The alpha retains one semantic core. There are no future facets or alternate
 semantic meanings in this release.
 
 ## Explicit alpha limits

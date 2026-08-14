@@ -54,9 +54,9 @@ def _fixture(tmp_path: Path, *, complete: bool = True) -> ReleaseInputs:
     evidence_path = root / "evidence.json"
     evidence_path.write_text("{}", encoding="utf-8")
     for filename, content in (
-        ("merlo-0.1.0a1.tar.gz", b"sdist"),
-        ("merlo-0.1.0a1-py3-none-any.whl", b"wheel"),
-        ("merlo-0.1.0-alpha.1-evidence.zip", b"evidence bundle"),
+        ("merlo-0.1.0a2.tar.gz", b"sdist"),
+        ("merlo-0.1.0a2-py3-none-any.whl", b"wheel"),
+        ("merlo-0.1.0-alpha.2-evidence.zip", b"evidence bundle"),
     ):
         (root / filename).write_bytes(content)
     source_hashes = {"src/merlo/compiler.py": _sha(source)}
@@ -81,8 +81,8 @@ def _fixture(tmp_path: Path, *, complete: bool = True) -> ReleaseInputs:
     gates = tuple(GateInput(name=item.gate, evidence_ids=(item.id,)) for item in evidence)
     provenance = ReleaseProvenance(
         source_commit="0123456789abcdef0123456789abcdef01234567",
-        tag="v0.1.0-alpha.1",
-        versions={"package": "0.1.0-alpha.1", "compiler": "0.1.0-alpha.1", "displayed": "Merlo alpha.1"},
+        tag="v0.1.0-alpha.2",
+        versions={"package": "0.1.0-alpha.2", "compiler": "0.1.0-alpha.2", "displayed": "Merlo alpha.2"},
         platform="Linux",
         architecture="x86_64",
         python={"implementation": "CPython", "version": "3.11.9"},
@@ -90,9 +90,9 @@ def _fixture(tmp_path: Path, *, complete: bool = True) -> ReleaseInputs:
         build_frontend={"name": "build", "version": "1.2.2"},
         source_date_epoch=1_755_158_400,
         assets={
-            "merlo-0.1.0a1.tar.gz": _sha(root / "merlo-0.1.0a1.tar.gz"),
-            "merlo-0.1.0a1-py3-none-any.whl": _sha(root / "merlo-0.1.0a1-py3-none-any.whl"),
-            "merlo-0.1.0-alpha.1-evidence.zip": _sha(root / "merlo-0.1.0-alpha.1-evidence.zip"),
+            "merlo-0.1.0a2.tar.gz": _sha(root / "merlo-0.1.0a2.tar.gz"),
+            "merlo-0.1.0a2-py3-none-any.whl": _sha(root / "merlo-0.1.0a2-py3-none-any.whl"),
+            "merlo-0.1.0-alpha.2-evidence.zip": _sha(root / "merlo-0.1.0-alpha.2-evidence.zip"),
         },
     )
     return ReleaseInputs(
@@ -137,25 +137,25 @@ def test_missing_artifact_and_forged_status_are_rejected(tmp_path: Path) -> None
 
 def test_manifest_covers_payload_files_and_second_different_emission_is_refused(tmp_path: Path) -> None:
     inputs = _fixture(tmp_path)
-    result = assemble_release(inputs, tmp_path / "dist" / "merlo-0.1.0-alpha.1")
+    result = assemble_release(inputs, tmp_path / "dist" / "merlo-0.1.0-alpha.2")
     manifest = json.loads((result.path / "manifest.json").read_text(encoding="utf-8"))
     checksums = (result.path / "checksums.sha256").read_text(encoding="utf-8").splitlines()
     assert set(manifest["files"]) <= {line.split("  ", 1)[1] for line in checksums}
     assert set(inputs.provenance.assets) == set(manifest["assets"])
     assert all(len(digest) == 64 for digest in manifest["assets"].values())
     assert any(line.endswith("manifest.json") for line in checksums)
-    (inputs.root / "merlo-0.1.0a1.tar.gz").write_bytes(b"changed sdist")
+    (inputs.root / "merlo-0.1.0a2.tar.gz").write_bytes(b"changed sdist")
     with pytest.raises(ReleaseValidationError):
         assemble_release(inputs, result.path)
 
 
 def test_existing_payload_and_checksum_tampering_are_rejected(tmp_path: Path) -> None:
     inputs = _fixture(tmp_path)
-    result = assemble_release(inputs, tmp_path / "dist" / "merlo-0.1.0-alpha.1")
+    result = assemble_release(inputs, tmp_path / "dist" / "merlo-0.1.0-alpha.2")
     (result.path / "docs" / "README.md").write_bytes(b"tampered")
     with pytest.raises(ReleaseValidationError, match="assembly payload modified"):
         assemble_release(inputs, result.path)
-    result = assemble_release(inputs, tmp_path / "other" / "merlo-0.1.0-alpha.1")
+    result = assemble_release(inputs, tmp_path / "other" / "merlo-0.1.0-alpha.2")
     checksum_path = result.path / "checksums.sha256"
     checksum_path.write_text(checksum_path.read_text(encoding="utf-8").replace("  docs/README.md", "  docs/README.changed"), encoding="utf-8")
     with pytest.raises(ReleaseValidationError, match="assembly checksum"):
@@ -165,14 +165,14 @@ def test_existing_payload_and_checksum_tampering_are_rejected(tmp_path: Path) ->
 def test_asset_digest_mismatch_is_rejected(tmp_path: Path) -> None:
     inputs = _fixture(tmp_path)
     bad = dict(inputs.provenance.assets)
-    bad["merlo-0.1.0a1.tar.gz"] = "0" * 64
+    bad["merlo-0.1.0a2.tar.gz"] = "0" * 64
     with pytest.raises(ReleaseValidationError, match="asset digest mismatch"):
         validate_release(replace(inputs, provenance=replace(inputs.provenance, assets=bad)))
 
 
 
 def test_manifest_v2_schema_rejects_invalid_top_level_and_nested_fields(tmp_path: Path) -> None:
-    result = assemble_release(_fixture(tmp_path), tmp_path / "dist" / "merlo-0.1.0-alpha.1")
+    result = assemble_release(_fixture(tmp_path), tmp_path / "dist" / "merlo-0.1.0-alpha.2")
     manifest = json.loads((result.path / "manifest.json").read_text(encoding="utf-8"))
     invalid = dict(manifest)
     invalid["unexpected"] = True
@@ -211,12 +211,12 @@ def test_manifest_v2_schema_rejects_invalid_top_level_and_nested_fields(tmp_path
 
 def test_validation_report_carries_provenance_package_release(tmp_path: Path) -> None:
     result = validate_release(_fixture(tmp_path))
-    assert result.to_dict()["release"] == "0.1.0-alpha.1"
+    assert result.to_dict()["release"] == "0.1.0-alpha.2"
 
 
 def test_reassembly_rejects_reordered_sha256sums(tmp_path: Path) -> None:
     inputs = _fixture(tmp_path)
-    destination = tmp_path / "dist" / "merlo-0.1.0-alpha.1"
+    destination = tmp_path / "dist" / "merlo-0.1.0-alpha.2"
     assemble_release(inputs, destination)
     checksum_path = destination / "SHA256SUMS"
     checksum_path.write_text("".join(reversed(checksum_path.read_text(encoding="utf-8").splitlines(True))), encoding="utf-8")
@@ -224,11 +224,11 @@ def test_reassembly_rejects_reordered_sha256sums(tmp_path: Path) -> None:
         assemble_release(inputs, destination)
 
 def test_rehashed_manifest_cannot_forge_cross_field_integrity(tmp_path: Path) -> None:
-    result = assemble_release(_fixture(tmp_path), tmp_path / "dist" / "merlo-0.1.0-alpha.1")
+    result = assemble_release(_fixture(tmp_path), tmp_path / "dist" / "merlo-0.1.0-alpha.2")
     manifest = json.loads((result.path / "manifest.json").read_text(encoding="utf-8"))
     invalid = dict(manifest)
     invalid["files"] = dict(manifest["files"])
-    invalid["files"]["assets/merlo-0.1.0a1.tar.gz"] = "0" * 64
+    invalid["files"]["assets/merlo-0.1.0a2.tar.gz"] = "0" * 64
     invalid["payload_sha256"] = manifest_payload_sha256(invalid)
     invalid["manifest_sha256"] = manifest_sha256(invalid)
     with pytest.raises(ReleaseValidationError, match="asset digest mismatch"):
@@ -242,7 +242,7 @@ def test_rehashed_manifest_cannot_forge_cross_field_integrity(tmp_path: Path) ->
 
 
 def test_manifest_status_derivation_and_failed_evidence_coverage(tmp_path: Path) -> None:
-    result = assemble_release(_fixture(tmp_path), tmp_path / "dist" / "merlo-0.1.0-alpha.1")
+    result = assemble_release(_fixture(tmp_path), tmp_path / "dist" / "merlo-0.1.0-alpha.2")
     manifest = json.loads((result.path / "manifest.json").read_text(encoding="utf-8"))
     repro = dict(manifest)
     repro["gates"] = dict(manifest["gates"])
@@ -275,16 +275,16 @@ def test_manifest_status_derivation_and_failed_evidence_coverage(tmp_path: Path)
 
 def test_asset_roles_are_distinct_and_asset_keys_canonical(tmp_path: Path) -> None:
     inputs = _fixture(tmp_path)
-    overlap = inputs.root / "merlo-0.1.0a1-evidence.whl"
+    overlap = inputs.root / "merlo-0.1.0a2-evidence.whl"
     overlap.write_bytes(b"overlap")
     assets = dict(inputs.provenance.assets)
-    assets.pop("merlo-0.1.0a1-py3-none-any.whl")
+    assets.pop("merlo-0.1.0a2-py3-none-any.whl")
     assets[overlap.name] = _sha(overlap)
     with pytest.raises(ReleaseValidationError, match="distinct role"):
         validate_release(replace(inputs, provenance=replace(inputs.provenance, assets=assets)))
     assets = dict(inputs.provenance.assets)
-    digest = assets.pop("merlo-0.1.0a1.tar.gz")
-    assets["staging/../merlo-0.1.0a1.tar.gz"] = digest
+    digest = assets.pop("merlo-0.1.0a2.tar.gz")
+    assets["staging/../merlo-0.1.0a2.tar.gz"] = digest
     with pytest.raises(ReleaseValidationError, match="noncanonical"):
         validate_release(replace(inputs, provenance=replace(inputs.provenance, assets=assets)))
 
@@ -300,15 +300,15 @@ def test_asset_sources_accept_canonical_dist_paths(tmp_path: Path) -> None:
         source.unlink()
         assets[f"dist/{filename}"] = digest
     inputs = replace(inputs, provenance=replace(inputs.provenance, assets=assets))
-    result = assemble_release(inputs, tmp_path / "dist-output" / "merlo-0.1.0-alpha.1")
+    result = assemble_release(inputs, tmp_path / "dist-output" / "merlo-0.1.0-alpha.2")
     assert set(result.manifest["assets"]) == set(filename.split("/")[-1] for filename in assets)
 
 
 def test_asset_names_reject_version_substrings_and_invalid_alpha_versions(tmp_path: Path) -> None:
     inputs = _fixture(tmp_path)
     bad = dict(inputs.provenance.assets)
-    digest = bad.pop("merlo-0.1.0a1.tar.gz")
-    bad["merlo-1.0.0a1.tar.gz"] = digest
+    digest = bad.pop("merlo-0.1.0a2.tar.gz")
+    bad["merlo-1.0.0a2.tar.gz"] = digest
     with pytest.raises(ReleaseValidationError, match="filenames disagree"):
         validate_release(replace(inputs, provenance=replace(inputs.provenance, assets=bad)))
     versions = dict(inputs.provenance.versions)

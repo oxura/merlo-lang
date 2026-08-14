@@ -1,9 +1,9 @@
 # Installation and first project
 
-Merlo requires Python 3.11 or newer. The supported release target is Linux
-x86-64. The alpha.1 source archive is incomplete, and its wheel predates later
-compiler portability repairs. Until alpha.2 is published, install the repaired
-public source rather than either historical alpha.1 package:
+Merlo requires Python 3.11 or newer. The supported release-candidate target is
+Linux x86-64. The alpha.1 source archive is incomplete, and its wheel predates
+later compiler portability repairs. For the `0.1.0-alpha.2` release candidate,
+install this repository checkout (no PyPI availability is claimed):
 
 ```console
 git clone https://github.com/oxura/merlo-lang.git

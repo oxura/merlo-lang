@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "merlo"
-version = "0.1.0-alpha.1"
+version = "0.1.0a2"
 description = "Merlo alpha compiler, native backend, project tooling, and language server"
 readme = "README.md"
 authors = [{name = "Mansurshakh Japarov"}]
@@ -168,7 +168,7 @@ merlo = ["stdlib/*.mlo"]
 ]
 
 [tool.merlo]
-release = "0.1.0-alpha.1"
+release = "0.1.0-alpha.2"
 edition = "alpha.1"
 platform = "Linux x86-64"
 compiler_host = "C11 Clang/GCC bootstrap"

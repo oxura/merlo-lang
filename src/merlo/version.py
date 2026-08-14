@@ -23,7 +23,7 @@ class CompilerVersions:
 
 
 VERSIONS = CompilerVersions(
-    release="0.1.0-alpha.1",
+    release="0.1.0-alpha.2",
     language="0.2",
     frontend=3,
     canonical=2,

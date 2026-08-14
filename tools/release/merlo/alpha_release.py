@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-RELEASE_VERSION = "0.1.0-alpha.1"
+RELEASE_VERSION = "0.1.0-alpha.2"
 SCHEMA_VERSION = 2
 ALPHA_RELEASE_SUPPORTED = "MERLO_ALPHA_RELEASE_SUPPORTED"
 ALPHA_RELEASE_INCOMPLETE = "MERLO_ALPHA_RELEASE_INCOMPLETE"

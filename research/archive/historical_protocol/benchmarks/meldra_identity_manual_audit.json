@@ -1,0 +1,75 @@
+{
+  "cases": [
+    {
+      "adjudication": "true_positive",
+      "evidence": "Class definition removed from _manager.py and introduced in _compat.py.",
+      "new_commit": "735edb0ab69fdd6c4940606e693c098e93583afb",
+      "old_commit": "cba86adc815a68a09f2765e70ed0cca305cc6ce2",
+      "predicted_new": "src.pluggy._compat.DistFacade",
+      "predicted_old": "src.pluggy._manager.DistFacade",
+      "repository": "pluggy"
+    },
+    {
+      "adjudication": "true_positive",
+      "evidence": "Method moved with DistFacade.",
+      "new_commit": "735edb0ab69fdd6c4940606e693c098e93583afb",
+      "old_commit": "cba86adc815a68a09f2765e70ed0cca305cc6ce2",
+      "predicted_new": "src.pluggy._compat.DistFacade.__dir__",
+      "predicted_old": "src.pluggy._manager.DistFacade.__dir__",
+      "repository": "pluggy"
+    },
+    {
+      "adjudication": "true_positive",
+      "evidence": "Method moved with DistFacade.",
+      "new_commit": "735edb0ab69fdd6c4940606e693c098e93583afb",
+      "old_commit": "cba86adc815a68a09f2765e70ed0cca305cc6ce2",
+      "predicted_new": "src.pluggy._compat.DistFacade.__init__",
+      "predicted_old": "src.pluggy._manager.DistFacade.__init__",
+      "repository": "pluggy"
+    },
+    {
+      "adjudication": "true_positive",
+      "evidence": "Method moved with DistFacade.",
+      "new_commit": "735edb0ab69fdd6c4940606e693c098e93583afb",
+      "old_commit": "cba86adc815a68a09f2765e70ed0cca305cc6ce2",
+      "predicted_new": "src.pluggy._compat.DistFacade.project_name",
+      "predicted_old": "src.pluggy._manager.DistFacade.project_name",
+      "repository": "pluggy"
+    },
+    {
+      "adjudication": "false_positive",
+      "evidence": "list_plugin_distinfo remains at the same locator in the new revision; list_plugin_distributions is an additional method.",
+      "new_commit": "735edb0ab69fdd6c4940606e693c098e93583afb",
+      "old_commit": "cba86adc815a68a09f2765e70ed0cca305cc6ce2",
+      "predicted_new": "src.pluggy._manager.PluginManager.list_plugin_distributions",
+      "predicted_old": "src.pluggy._manager.PluginManager.list_plugin_distinfo",
+      "repository": "pluggy"
+    },
+    {
+      "adjudication": "proxy_ground_truth_error",
+      "evidence": "_standard_os_environ already existed in the old revision; the new fixture combines/replaces behavior, so this is not an unambiguous rename from _reset_os_environ.",
+      "new_commit": "6a2f545bfd8ed31e19066a299296917e034aca58",
+      "old_commit": "36e4a824f340fdee7ed50937ba8e7f6bc7d17f81",
+      "proxy_new": "tests.conftest._standard_os_environ",
+      "proxy_old": "tests.conftest._reset_os_environ",
+      "repository": "flask"
+    }
+  ],
+  "claim": "One verified false identity assignment is enough to show that the >99.5% changed-identity claim is not established. The sample is too small for a population estimate.",
+  "date": "2026-08-10",
+  "git_proxy_disagreements": {
+    "missed_true_moves_in_pluggy": 4,
+    "spurious_unambiguous_rename_in_flask": 1
+  },
+  "kind": "MeldraManualIdentityAudit",
+  "manual_recall": null,
+  "predicted_changed_precision_on_adjudicated_predictions": {
+    "denominator": 5,
+    "false_positive": 1,
+    "numerator": 4,
+    "true_positive": 4,
+    "value": 0.8
+  },
+  "schema": 1,
+  "scope": "Targeted adjudication of changed-only proxy disagreements; not an exhaustive corpus or recall denominator."
+}
