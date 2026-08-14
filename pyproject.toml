@@ -108,6 +108,7 @@ merlo = ["stdlib/*.mlo"]
   "research/effects-and-capabilities.md",
   "research/performance-evidence.md",
 ]
+"rfcs" = ["rfcs/README.md"]
 "examples" = ["examples/README.md"]
 "examples/automation" = [
   "examples/automation/merlo.toml",

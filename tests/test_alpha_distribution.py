@@ -150,7 +150,11 @@ def test_shipped_human_sources_use_and_parse_as_surface_0_2() -> None:
         flags=re.MULTILINE,
     )
     sources = _human_surface_paths()
+<<<<<<< HEAD
     assert len(sources) == 51
+=======
+    assert len(sources) == 41
+>>>>>>> db31b54 (fix: align distribution path locks)
     for path in sources:
         source = path.read_text(encoding="utf-8")
         assert canonical_only.search(source) is None, path
