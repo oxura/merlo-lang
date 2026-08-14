@@ -13,12 +13,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from merlo.concise_application import (
-    ConciseApplicationError,
-    PublicInterface,
-    elaborate_concise_application,
-    elaborate_concise_core,
-)
+from merlo.frontend_model import ConciseApplicationError, PublicInterface
+from merlo.concise_application import elaborate_concise_application, elaborate_concise_core
 from merlo.compiler import compile_project
 from tools.benchmarks.merlo.concise_precedence import (
     parse_expression,
