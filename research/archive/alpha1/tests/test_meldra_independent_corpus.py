@@ -51,6 +51,14 @@ def _copy_locked_corpus(tmp_path: Path) -> Path:
         destination = tmp_path / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
+    for relative in (
+        "tools/benchmarks/merlo/benchmarks/meldra_independent_mbpp_subset.json",
+        "tools/benchmarks/merlo/benchmarks/meldra_independent_corpus_lock.json",
+    ):
+        source = ROOT / relative
+        destination = tmp_path / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
     return tmp_path
 
 

@@ -1,0 +1,1707 @@
+{
+  "corpus_sha256": "386202d0849d52ad527d0bc350d0501ed6cdc4ffc5d5b0d69407bda7ce5bb73a",
+  "protocol_sha256": "062daf6007bd1b9a4dc374498d00c3e101a362d7b037e2f639309b842592870c",
+  "schema": "merlo.surface-0.2.translations.v1",
+  "translations": {
+    "surface02-001": {
+      "case_id": "surface02-001",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          108
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_001_clamp(value: UInt64) -> UInt64:\n    return value * 3 + 18\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_001_clamp(value)\n",
+      "merlo_source": "fn case_surface02_001_clamp(value):\n    return value * 3 + 18\n\nfn main(value) -> UInt64:\n    return case_surface02_001_clamp(value)\n",
+      "pipeline": false,
+      "qualname": "clamp",
+      "semantic_family": "direct"
+    },
+    "surface02-002": {
+      "case_id": "surface02-002",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          205
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_002_ceil(value: UInt64) -> UInt64:\n    return value * 3 + 30\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_002_ceil(value)\n",
+      "merlo_source": "fn case_surface02_002_ceil(value):\n    return value * 3 + 30\n\nfn main(value) -> UInt64:\n    return case_surface02_002_ceil(value)\n",
+      "pipeline": false,
+      "qualname": "ceil",
+      "semantic_family": "direct"
+    },
+    "surface02-003": {
+      "case_id": "surface02-003",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          302
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_003_floor(value: UInt64) -> UInt64:\n    return value * 3 + 44\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_003_floor(value)\n",
+      "merlo_source": "fn case_surface02_003_floor(value):\n    return value * 3 + 44\n\nfn main(value) -> UInt64:\n    return case_surface02_003_floor(value)\n",
+      "pipeline": false,
+      "qualname": "floor",
+      "semantic_family": "direct"
+    },
+    "surface02-004": {
+      "case_id": "surface02-004",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          399
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_004_describe(value: UInt64) -> UInt64:\n    return value * 3 + 60\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_004_describe(value)\n",
+      "merlo_source": "fn case_surface02_004_describe(value):\n    return value * 3 + 60\n\nfn main(value) -> UInt64:\n    return case_surface02_004_describe(value)\n",
+      "pipeline": false,
+      "qualname": "describe",
+      "semantic_family": "direct"
+    },
+    "surface02-005": {
+      "case_id": "surface02-005",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          496
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_005__get_conv_func(value: UInt64) -> UInt64:\n    return value * 3 + 79\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_005__get_conv_func(value)\n",
+      "merlo_source": "fn case_surface02_005__get_conv_func(value):\n    return value * 3 + 79\n\nfn main(value) -> UInt64:\n    return case_surface02_005__get_conv_func(value)\n",
+      "pipeline": false,
+      "qualname": "_get_conv_func",
+      "semantic_family": "direct"
+    },
+    "surface02-006": {
+      "case_id": "surface02-006",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          593
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_006_dt_to_timestamp(value: UInt64) -> UInt64:\n    return value * 3 + 93\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_006_dt_to_timestamp(value)\n",
+      "merlo_source": "fn case_surface02_006_dt_to_timestamp(value):\n    return value * 3 + 93\n\nfn main(value) -> UInt64:\n    return case_surface02_006_dt_to_timestamp(value)\n",
+      "pipeline": false,
+      "qualname": "dt_to_timestamp",
+      "semantic_family": "direct"
+    },
+    "surface02-007": {
+      "case_id": "surface02-007",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          690
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_007_relative_time(value: UInt64) -> UInt64:\n    return value * 3 + 104\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_007_relative_time(value)\n",
+      "merlo_source": "fn case_surface02_007_relative_time(value):\n    return value * 3 + 104\n\nfn main(value) -> UInt64:\n    return case_surface02_007_relative_time(value)\n",
+      "pipeline": false,
+      "qualname": "relative_time",
+      "semantic_family": "direct"
+    },
+    "surface02-008": {
+      "case_id": "surface02-008",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          787
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_008_bytes2human(value: UInt64) -> UInt64:\n    return value * 3 + 115\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_008_bytes2human(value)\n",
+      "merlo_source": "fn case_surface02_008_bytes2human(value):\n    return value * 3 + 115\n\nfn main(value) -> UInt64:\n    return case_surface02_008_bytes2human(value)\n",
+      "pipeline": false,
+      "qualname": "bytes2human",
+      "semantic_family": "direct"
+    },
+    "surface02-009": {
+      "case_id": "surface02-009",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          884
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_009_a10n(value: UInt64) -> UInt64:\n    return value * 3 + 121\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_009_a10n(value)\n",
+      "merlo_source": "fn case_surface02_009_a10n(value):\n    return value * 3 + 121\n\nfn main(value) -> UInt64:\n    return case_surface02_009_a10n(value)\n",
+      "pipeline": false,
+      "qualname": "a10n",
+      "semantic_family": "direct"
+    },
+    "surface02-010": {
+      "case_id": "surface02-010",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          981
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_010_frange(value: UInt64) -> UInt64:\n    return value * 3 + 136\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_010_frange(value)\n",
+      "merlo_source": "fn case_surface02_010_frange(value):\n    return value * 3 + 136\n\nfn main(value) -> UInt64:\n    return case_surface02_010_frange(value)\n",
+      "pipeline": false,
+      "qualname": "frange",
+      "semantic_family": "direct"
+    },
+    "surface02-011": {
+      "case_id": "surface02-011",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          1078
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_011_camel2under(value: UInt64) -> UInt64:\n    if value == 0:\n        return 154\n    return value + 154\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_011_camel2under(value)\n",
+      "merlo_source": "fn case_surface02_011_camel2under(value):\n    if value == 0:\n        return 154\n    return value + 154\n\nfn main(value) -> UInt64:\n    return case_surface02_011_camel2under(value)\n",
+      "pipeline": false,
+      "qualname": "camel2under",
+      "semantic_family": "branch"
+    },
+    "surface02-012": {
+      "case_id": "surface02-012",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          1175
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_012_under2camel(value: UInt64) -> UInt64:\n    if value == 0:\n        return 167\n    return value + 167\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_012_under2camel(value)\n",
+      "merlo_source": "fn case_surface02_012_under2camel(value):\n    if value == 0:\n        return 167\n    return value + 167\n\nfn main(value) -> UInt64:\n    return case_surface02_012_under2camel(value)\n",
+      "pipeline": false,
+      "qualname": "under2camel",
+      "semantic_family": "branch"
+    },
+    "surface02-013": {
+      "case_id": "surface02-013",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          1272
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_013_slugify(value: UInt64) -> UInt64:\n    if value == 0:\n        return 176\n    return value + 176\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_013_slugify(value)\n",
+      "merlo_source": "fn case_surface02_013_slugify(value):\n    if value == 0:\n        return 176\n    return value + 176\n\nfn main(value) -> UInt64:\n    return case_surface02_013_slugify(value)\n",
+      "pipeline": false,
+      "qualname": "slugify",
+      "semantic_family": "branch"
+    },
+    "surface02-014": {
+      "case_id": "surface02-014",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          1369
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_014_split_punct_ws(value: UInt64) -> UInt64:\n    if value == 0:\n        return 196\n    return value + 196\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_014_split_punct_ws(value)\n",
+      "merlo_source": "fn case_surface02_014_split_punct_ws(value):\n    if value == 0:\n        return 196\n    return value + 196\n\nfn main(value) -> UInt64:\n    return case_surface02_014_split_punct_ws(value)\n",
+      "pipeline": false,
+      "qualname": "split_punct_ws",
+      "semantic_family": "branch"
+    },
+    "surface02-015": {
+      "case_id": "surface02-015",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          1466
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_015_unit_len(value: UInt64) -> UInt64:\n    if value == 0:\n        return 203\n    return value + 203\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_015_unit_len(value)\n",
+      "merlo_source": "fn case_surface02_015_unit_len(value):\n    if value == 0:\n        return 203\n    return value + 203\n\nfn main(value) -> UInt64:\n    return case_surface02_015_unit_len(value)\n",
+      "pipeline": false,
+      "qualname": "unit_len",
+      "semantic_family": "branch"
+    },
+    "surface02-016": {
+      "case_id": "surface02-016",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          1563
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_016_cardinalize(value: UInt64) -> UInt64:\n    if value == 0:\n        return 219\n    return value + 219\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_016_cardinalize(value)\n",
+      "merlo_source": "fn case_surface02_016_cardinalize(value):\n    if value == 0:\n        return 219\n    return value + 219\n\nfn main(value) -> UInt64:\n    return case_surface02_016_cardinalize(value)\n",
+      "pipeline": false,
+      "qualname": "cardinalize",
+      "semantic_family": "branch"
+    },
+    "surface02-017": {
+      "case_id": "surface02-017",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          1660
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_017_pluralize(value: UInt64) -> UInt64:\n    if value == 0:\n        return 230\n    return value + 230\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_017_pluralize(value)\n",
+      "merlo_source": "fn case_surface02_017_pluralize(value):\n    if value == 0:\n        return 230\n    return value + 230\n\nfn main(value) -> UInt64:\n    return case_surface02_017_pluralize(value)\n",
+      "pipeline": false,
+      "qualname": "pluralize",
+      "semantic_family": "branch"
+    },
+    "surface02-018": {
+      "case_id": "surface02-018",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          1757
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_018_find_hashtags(value: UInt64) -> UInt64:\n    if value == 0:\n        return 247\n    return value + 247\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_018_find_hashtags(value)\n",
+      "merlo_source": "fn case_surface02_018_find_hashtags(value):\n    if value == 0:\n        return 247\n    return value + 247\n\nfn main(value) -> UInt64:\n    return case_surface02_018_find_hashtags(value)\n",
+      "pipeline": false,
+      "qualname": "find_hashtags",
+      "semantic_family": "branch"
+    },
+    "surface02-019": {
+      "case_id": "surface02-019",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          1854
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_019_indent(value: UInt64) -> UInt64:\n    if value == 0:\n        return 253\n    return value + 253\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_019_indent(value)\n",
+      "merlo_source": "fn case_surface02_019_indent(value):\n    if value == 0:\n        return 253\n    return value + 253\n\nfn main(value) -> UInt64:\n    return case_surface02_019_indent(value)\n",
+      "pipeline": false,
+      "qualname": "indent",
+      "semantic_family": "branch"
+    },
+    "surface02-020": {
+      "case_id": "surface02-020",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          1951
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_020_removeprefix(value: UInt64) -> UInt64:\n    if value == 0:\n        return 272\n    return value + 272\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_020_removeprefix(value)\n",
+      "merlo_source": "fn case_surface02_020_removeprefix(value):\n    if value == 0:\n        return 272\n    return value + 272\n\nfn main(value) -> UInt64:\n    return case_surface02_020_removeprefix(value)\n",
+      "pipeline": false,
+      "qualname": "removeprefix",
+      "semantic_family": "branch"
+    },
+    "surface02-021": {
+      "case_id": "surface02-021",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          2048
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_021_split(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..2:\n        result = result + 278\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_021_split(value)\n",
+      "merlo_source": "fn case_surface02_021_split(value):\n    result = value\n    for item in 0..2:\n        result = result + 278\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_021_split(value)\n",
+      "pipeline": false,
+      "qualname": "split",
+      "semantic_family": "loop"
+    },
+    "surface02-022": {
+      "case_id": "surface02-022",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          2145
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_022_lstrip(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..2:\n        result = result + 292\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_022_lstrip(value)\n",
+      "merlo_source": "fn case_surface02_022_lstrip(value):\n    result = value\n    for item in 0..2:\n        result = result + 292\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_022_lstrip(value)\n",
+      "pipeline": false,
+      "qualname": "lstrip",
+      "semantic_family": "loop"
+    },
+    "surface02-023": {
+      "case_id": "surface02-023",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          2242
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_023_rstrip(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..2:\n        result = result + 305\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_023_rstrip(value)\n",
+      "merlo_source": "fn case_surface02_023_rstrip(value):\n    result = value\n    for item in 0..2:\n        result = result + 305\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_023_rstrip(value)\n",
+      "pipeline": false,
+      "qualname": "rstrip",
+      "semantic_family": "loop"
+    },
+    "surface02-024": {
+      "case_id": "surface02-024",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          2339
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_024_strip(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..2:\n        result = result + 317\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_024_strip(value)\n",
+      "merlo_source": "fn case_surface02_024_strip(value):\n    result = value\n    for item in 0..2:\n        result = result + 317\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_024_strip(value)\n",
+      "pipeline": false,
+      "qualname": "strip",
+      "semantic_family": "loop"
+    },
+    "surface02-025": {
+      "case_id": "surface02-025",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          2436
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_025_chunked(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..2:\n        result = result + 332\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_025_chunked(value)\n",
+      "merlo_source": "fn case_surface02_025_chunked(value):\n    result = value\n    for item in 0..2:\n        result = result + 332\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_025_chunked(value)\n",
+      "pipeline": false,
+      "qualname": "chunked",
+      "semantic_family": "loop"
+    },
+    "surface02-026": {
+      "case_id": "surface02-026",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          2533
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_026_pairwise(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..2:\n        result = result + 346\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_026_pairwise(value)\n",
+      "merlo_source": "fn case_surface02_026_pairwise(value):\n    result = value\n    for item in 0..2:\n        result = result + 346\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_026_pairwise(value)\n",
+      "pipeline": false,
+      "qualname": "pairwise",
+      "semantic_family": "loop"
+    },
+    "surface02-027": {
+      "case_id": "surface02-027",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          2630
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_027_windowed(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..2:\n        result = result + 359\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_027_windowed(value)\n",
+      "merlo_source": "fn case_surface02_027_windowed(value):\n    result = value\n    for item in 0..2:\n        result = result + 359\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_027_windowed(value)\n",
+      "pipeline": false,
+      "qualname": "windowed",
+      "semantic_family": "loop"
+    },
+    "surface02-028": {
+      "case_id": "surface02-028",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          2727
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_028_unique(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..2:\n        result = result + 370\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_028_unique(value)\n",
+      "merlo_source": "fn case_surface02_028_unique(value):\n    result = value\n    for item in 0..2:\n        result = result + 370\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_028_unique(value)\n",
+      "pipeline": false,
+      "qualname": "unique",
+      "semantic_family": "loop"
+    },
+    "surface02-029": {
+      "case_id": "surface02-029",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          2824
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_029_flatten(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..2:\n        result = result + 384\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_029_flatten(value)\n",
+      "merlo_source": "fn case_surface02_029_flatten(value):\n    result = value\n    for item in 0..2:\n        result = result + 384\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_029_flatten(value)\n",
+      "pipeline": false,
+      "qualname": "flatten",
+      "semantic_family": "loop"
+    },
+    "surface02-030": {
+      "case_id": "surface02-030",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          2921
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_030_same(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..2:\n        result = result + 394\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_030_same(value)\n",
+      "merlo_source": "fn case_surface02_030_same(value):\n    result = value\n    for item in 0..2:\n        result = result + 394\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_030_same(value)\n",
+      "pipeline": false,
+      "qualname": "same",
+      "semantic_family": "loop"
+    },
+    "surface02-031": {
+      "case_id": "surface02-031",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          3018
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_031_subdict(value: UInt64) -> UInt64:\n    if value < 410:\n        return 410\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_031_subdict(value)\n",
+      "merlo_source": "fn case_surface02_031_subdict(value):\n    if value < 410:\n        return 410\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_031_subdict(value)\n",
+      "pipeline": false,
+      "qualname": "subdict",
+      "semantic_family": "branch"
+    },
+    "surface02-032": {
+      "case_id": "surface02-032",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          3115
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_032_get_python_info(value: UInt64) -> UInt64:\n    if value < 431:\n        return 431\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_032_get_python_info(value)\n",
+      "merlo_source": "fn case_surface02_032_get_python_info(value):\n    if value < 431:\n        return 431\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_032_get_python_info(value)\n",
+      "pipeline": false,
+      "qualname": "get_python_info",
+      "semantic_family": "branch"
+    },
+    "surface02-033": {
+      "case_id": "surface02-033",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          3212
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_033_dumps(value: UInt64) -> UInt64:\n    if value < 434:\n        return 434\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_033_dumps(value)\n",
+      "merlo_source": "fn case_surface02_033_dumps(value):\n    if value < 434:\n        return 434\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_033_dumps(value)\n",
+      "pipeline": false,
+      "qualname": "dumps",
+      "semantic_family": "branch"
+    },
+    "surface02-034": {
+      "case_id": "surface02-034",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          3309
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_034_get_profile_json(value: UInt64) -> UInt64:\n    if value < 458:\n        return 458\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_034_get_profile_json(value)\n",
+      "merlo_source": "fn case_surface02_034_get_profile_json(value):\n    if value < 458:\n        return 458\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_034_get_profile_json(value)\n",
+      "pipeline": false,
+      "qualname": "get_profile_json",
+      "semantic_family": "branch"
+    },
+    "surface02-035": {
+      "case_id": "surface02-035",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          3406
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_035_get_module_callables(value: UInt64) -> UInt64:\n    if value < 475:\n        return 475\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_035_get_module_callables(value)\n",
+      "merlo_source": "fn case_surface02_035_get_module_callables(value):\n    if value < 475:\n        return 475\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_035_get_module_callables(value)\n",
+      "pipeline": false,
+      "qualname": "get_module_callables",
+      "semantic_family": "branch"
+    },
+    "surface02-036": {
+      "case_id": "surface02-036",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          3503
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_036_dir_dict(value: UInt64) -> UInt64:\n    if value < 476:\n        return 476\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_036_dir_dict(value)\n",
+      "merlo_source": "fn case_surface02_036_dir_dict(value):\n    if value < 476:\n        return 476\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_036_dir_dict(value)\n",
+      "pipeline": false,
+      "qualname": "dir_dict",
+      "semantic_family": "branch"
+    },
+    "surface02-037": {
+      "case_id": "surface02-037",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          3600
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_037_normalize_hookimpl_opts(value: UInt64) -> UInt64:\n    if value < 504:\n        return 504\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_037_normalize_hookimpl_opts(value)\n",
+      "merlo_source": "fn case_surface02_037_normalize_hookimpl_opts(value):\n    if value < 504:\n        return 504\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_037_normalize_hookimpl_opts(value)\n",
+      "pipeline": false,
+      "qualname": "normalize_hookimpl_opts",
+      "semantic_family": "branch"
+    },
+    "surface02-038": {
+      "case_id": "surface02-038",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          3697
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_038__default_template_ctx_processor(value: UInt64) -> UInt64:\n    if value < 525:\n        return 525\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_038__default_template_ctx_processor(value)\n",
+      "merlo_source": "fn case_surface02_038__default_template_ctx_processor(value):\n    if value < 525:\n        return 525\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_038__default_template_ctx_processor(value)\n",
+      "pipeline": false,
+      "qualname": "_default_template_ctx_processor",
+      "semantic_family": "branch"
+    },
+    "surface02-039": {
+      "case_id": "surface02-039",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          3794
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_039_encode_json(value: UInt64) -> UInt64:\n    if value < 518:\n        return 518\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_039_encode_json(value)\n",
+      "merlo_source": "fn case_surface02_039_encode_json(value):\n    if value < 518:\n        return 518\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_039_encode_json(value)\n",
+      "pipeline": false,
+      "qualname": "encode_json",
+      "semantic_family": "branch"
+    },
+    "surface02-040": {
+      "case_id": "surface02-040",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          3891
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_040_format_request_headers(value: UInt64) -> UInt64:\n    if value < 542:\n        return 542\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_040_format_request_headers(value)\n",
+      "merlo_source": "fn case_surface02_040_format_request_headers(value):\n    if value < 542:\n        return 542\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_040_format_request_headers(value)\n",
+      "pipeline": false,
+      "qualname": "format_request_headers",
+      "semantic_family": "branch"
+    },
+    "surface02-041": {
+      "case_id": "surface02-041",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          3988
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_041_split_format_str(value: UInt64) -> UInt64:\n    return (value ^ 549) + 1\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_041_split_format_str(value)\n",
+      "merlo_source": "fn case_surface02_041_split_format_str(value):\n    return (value ^ 549) + 1\n\nfn main(value) -> UInt64:\n    return case_surface02_041_split_format_str(value)\n",
+      "pipeline": false,
+      "qualname": "split_format_str",
+      "semantic_family": "bitwise"
+    },
+    "surface02-042": {
+      "case_id": "surface02-042",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          4085
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_042_tokenize_format_str(value: UInt64) -> UInt64:\n    return (value ^ 565) + 1\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_042_tokenize_format_str(value)\n",
+      "merlo_source": "fn case_surface02_042_tokenize_format_str(value):\n    return (value ^ 565) + 1\n\nfn main(value) -> UInt64:\n    return case_surface02_042_tokenize_format_str(value)\n",
+      "pipeline": false,
+      "qualname": "tokenize_format_str",
+      "semantic_family": "bitwise"
+    },
+    "surface02-043": {
+      "case_id": "surface02-043",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          4182
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_043_infer_positional_format_args(value: UInt64) -> UInt64:\n    return (value ^ 587) + 1\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_043_infer_positional_format_args(value)\n",
+      "merlo_source": "fn case_surface02_043_infer_positional_format_args(value):\n    return (value ^ 587) + 1\n\nfn main(value) -> UInt64:\n    return case_surface02_043_infer_positional_format_args(value)\n",
+      "pipeline": false,
+      "qualname": "infer_positional_format_args",
+      "semantic_family": "bitwise"
+    },
+    "surface02-044": {
+      "case_id": "surface02-044",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          4279
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_044_parse_qsl(value: UInt64) -> UInt64:\n    return (value ^ 581) + 1\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_044_parse_qsl(value)\n",
+      "merlo_source": "fn case_surface02_044_parse_qsl(value):\n    return (value ^ 581) + 1\n\nfn main(value) -> UInt64:\n    return case_surface02_044_parse_qsl(value)\n",
+      "pipeline": false,
+      "qualname": "parse_qsl",
+      "semantic_family": "bitwise"
+    },
+    "surface02-045": {
+      "case_id": "surface02-045",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          4376
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_045_resolve_path_parts(value: UInt64) -> UInt64:\n    return (value ^ 603) + 1\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_045_resolve_path_parts(value)\n",
+      "merlo_source": "fn case_surface02_045_resolve_path_parts(value):\n    return (value ^ 603) + 1\n\nfn main(value) -> UInt64:\n    return case_surface02_045_resolve_path_parts(value)\n",
+      "pipeline": false,
+      "qualname": "resolve_path_parts",
+      "semantic_family": "bitwise"
+    },
+    "surface02-046": {
+      "case_id": "surface02-046",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          4473
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_046_unquote(value: UInt64) -> UInt64:\n    return (value ^ 605) + 1\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_046_unquote(value)\n",
+      "merlo_source": "fn case_surface02_046_unquote(value):\n    return (value ^ 605) + 1\n\nfn main(value) -> UInt64:\n    return case_surface02_046_unquote(value)\n",
+      "pipeline": false,
+      "qualname": "unquote",
+      "semantic_family": "bitwise"
+    },
+    "surface02-047": {
+      "case_id": "surface02-047",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          4570
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_047_strpdate(value: UInt64) -> UInt64:\n    return (value ^ 619) + 1\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_047_strpdate(value)\n",
+      "merlo_source": "fn case_surface02_047_strpdate(value):\n    return (value ^ 619) + 1\n\nfn main(value) -> UInt64:\n    return case_surface02_047_strpdate(value)\n",
+      "pipeline": false,
+      "qualname": "strpdate",
+      "semantic_family": "bitwise"
+    },
+    "surface02-048": {
+      "case_id": "surface02-048",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          4667
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_048__parse_content_type_charset(value: UInt64) -> UInt64:\n    return (value ^ 651) + 1\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_048__parse_content_type_charset(value)\n",
+      "merlo_source": "fn case_surface02_048__parse_content_type_charset(value):\n    return (value ^ 651) + 1\n\nfn main(value) -> UInt64:\n    return case_surface02_048__parse_content_type_charset(value)\n",
+      "pipeline": false,
+      "qualname": "_parse_content_type_charset",
+      "semantic_family": "bitwise"
+    },
+    "surface02-049": {
+      "case_id": "surface02-049",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          4764
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_049_get_multipart_boundary_from_content_type(value: UInt64) -> UInt64:\n    return (value ^ 677) + 1\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_049_get_multipart_boundary_from_content_type(value)\n",
+      "merlo_source": "fn case_surface02_049_get_multipart_boundary_from_content_type(value):\n    return (value ^ 677) + 1\n\nfn main(value) -> UInt64:\n    return case_surface02_049_get_multipart_boundary_from_content_type(value)\n",
+      "pipeline": false,
+      "qualname": "get_multipart_boundary_from_content_type",
+      "semantic_family": "bitwise"
+    },
+    "surface02-050": {
+      "case_id": "surface02-050",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          4861
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_050__split_opt(value: UInt64) -> UInt64:\n    return (value ^ 660) + 1\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_050__split_opt(value)\n",
+      "merlo_source": "fn case_surface02_050__split_opt(value):\n    return (value ^ 660) + 1\n\nfn main(value) -> UInt64:\n    return case_surface02_050__split_opt(value)\n",
+      "pipeline": false,
+      "qualname": "_split_opt",
+      "semantic_family": "bitwise"
+    },
+    "surface02-051": {
+      "case_id": "surface02-051",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          4958
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_051__is_https_redirect(value: UInt64) -> UInt64:\n    if value == 681:\n        return 1\n    return 0\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_051__is_https_redirect(value)\n",
+      "merlo_source": "fn case_surface02_051__is_https_redirect(value):\n    if value == 681:\n        return 1\n    return 0\n\nfn main(value) -> UInt64:\n    return case_surface02_051__is_https_redirect(value)\n",
+      "pipeline": false,
+      "qualname": "_is_https_redirect",
+      "semantic_family": "branch"
+    },
+    "surface02-052": {
+      "case_id": "surface02-052",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          5055
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_052__same_origin(value: UInt64) -> UInt64:\n    if value == 688:\n        return 1\n    return 0\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_052__same_origin(value)\n",
+      "merlo_source": "fn case_surface02_052__same_origin(value):\n    if value == 688:\n        return 1\n    return 0\n\nfn main(value) -> UInt64:\n    return case_surface02_052__same_origin(value)\n",
+      "pipeline": false,
+      "qualname": "_same_origin",
+      "semantic_family": "branch"
+    },
+    "surface02-053": {
+      "case_id": "surface02-053",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          5152
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_053__port_or_default(value: UInt64) -> UInt64:\n    if value == 705:\n        return 1\n    return 0\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_053__port_or_default(value)\n",
+      "merlo_source": "fn case_surface02_053__port_or_default(value):\n    if value == 705:\n        return 1\n    return 0\n\nfn main(value) -> UInt64:\n    return case_surface02_053__port_or_default(value)\n",
+      "pipeline": false,
+      "qualname": "_port_or_default",
+      "semantic_family": "branch"
+    },
+    "surface02-054": {
+      "case_id": "surface02-054",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          5249
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_054_validate_auth(value: UInt64) -> UInt64:\n    if value == 715:\n        return 1\n    return 0\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_054_validate_auth(value)\n",
+      "merlo_source": "fn case_surface02_054_validate_auth(value):\n    if value == 715:\n        return 1\n    return 0\n\nfn main(value) -> UInt64:\n    return case_surface02_054_validate_auth(value)\n",
+      "pipeline": false,
+      "qualname": "validate_auth",
+      "semantic_family": "branch"
+    },
+    "surface02-055": {
+      "case_id": "surface02-055",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          5346
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_055_validate_json(value: UInt64) -> UInt64:\n    if value == 728:\n        return 1\n    return 0\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_055_validate_json(value)\n",
+      "merlo_source": "fn case_surface02_055_validate_json(value):\n    if value == 728:\n        return 1\n    return 0\n\nfn main(value) -> UInt64:\n    return case_surface02_055_validate_json(value)\n",
+      "pipeline": false,
+      "qualname": "validate_json",
+      "semantic_family": "branch"
+    },
+    "surface02-056": {
+      "case_id": "surface02-056",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          5443
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_056_get_load_dotenv(value: UInt64) -> UInt64:\n    if value == 743:\n        return 1\n    return 0\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_056_get_load_dotenv(value)\n",
+      "merlo_source": "fn case_surface02_056_get_load_dotenv(value):\n    if value == 743:\n        return 1\n    return 0\n\nfn main(value) -> UInt64:\n    return case_surface02_056_get_load_dotenv(value)\n",
+      "pipeline": false,
+      "qualname": "get_load_dotenv",
+      "semantic_family": "branch"
+    },
+    "surface02-057": {
+      "case_id": "surface02-057",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          5540
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_057_get_debug_flag(value: UInt64) -> UInt64:\n    if value == 755:\n        return 1\n    return 0\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_057_get_debug_flag(value)\n",
+      "merlo_source": "fn case_surface02_057_get_debug_flag(value):\n    if value == 755:\n        return 1\n    return 0\n\nfn main(value) -> UInt64:\n    return case_surface02_057_get_debug_flag(value)\n",
+      "pipeline": false,
+      "qualname": "get_debug_flag",
+      "semantic_family": "branch"
+    },
+    "surface02-058": {
+      "case_id": "surface02-058",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          5637
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_058__format_deprecated_label(value: UInt64) -> UInt64:\n    if value == 778:\n        return 1\n    return 0\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_058__format_deprecated_label(value)\n",
+      "merlo_source": "fn case_surface02_058__format_deprecated_label(value):\n    if value == 778:\n        return 1\n    return 0\n\nfn main(value) -> UInt64:\n    return case_surface02_058__format_deprecated_label(value)\n",
+      "pipeline": false,
+      "qualname": "_format_deprecated_label",
+      "semantic_family": "branch"
+    },
+    "surface02-059": {
+      "case_id": "surface02-059",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          5734
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_059__format_deprecated_suffix(value: UInt64) -> UInt64:\n    if value == 792:\n        return 1\n    return 0\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_059__format_deprecated_suffix(value)\n",
+      "merlo_source": "fn case_surface02_059__format_deprecated_suffix(value):\n    if value == 792:\n        return 1\n    return 0\n\nfn main(value) -> UInt64:\n    return case_surface02_059__format_deprecated_suffix(value)\n",
+      "pipeline": false,
+      "qualname": "_format_deprecated_suffix",
+      "semantic_family": "branch"
+    },
+    "surface02-060": {
+      "case_id": "surface02-060",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          5831
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_060_hookcaller_is_historic(value: UInt64) -> UInt64:\n    if value == 802:\n        return 1\n    return 0\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_060_hookcaller_is_historic(value)\n",
+      "merlo_source": "fn case_surface02_060_hookcaller_is_historic(value):\n    if value == 802:\n        return 1\n    return 0\n\nfn main(value) -> UInt64:\n    return case_surface02_060_hookcaller_is_historic(value)\n",
+      "pipeline": false,
+      "qualname": "HookCaller.is_historic",
+      "semantic_family": "branch"
+    },
+    "surface02-061": {
+      "case_id": "surface02-061",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          5928
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_061_mkdir_p(value: UInt64) -> UInt64:\n    if value == 0:\n        return 800\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_061_mkdir_p(value)\n",
+      "merlo_source": "fn case_surface02_061_mkdir_p(value):\n    if value == 0:\n        return 800\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_061_mkdir_p(value)\n",
+      "pipeline": false,
+      "qualname": "mkdir_p",
+      "semantic_family": "branch"
+    },
+    "surface02-062": {
+      "case_id": "surface02-062",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          6025
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_062__some_str(value: UInt64) -> UInt64:\n    if value == 0:\n        return 815\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_062__some_str(value)\n",
+      "merlo_source": "fn case_surface02_062__some_str(value):\n    if value == 0:\n        return 815\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_062__some_str(value)\n",
+      "pipeline": false,
+      "qualname": "_some_str",
+      "semantic_family": "branch"
+    },
+    "surface02-063": {
+      "case_id": "surface02-063",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          6122
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_063__format_final_exc_line(value: UInt64) -> UInt64:\n    if value == 0:\n        return 841\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_063__format_final_exc_line(value)\n",
+      "merlo_source": "fn case_surface02_063__format_final_exc_line(value):\n    if value == 0:\n        return 841\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_063__format_final_exc_line(value)\n",
+      "pipeline": false,
+      "qualname": "_format_final_exc_line",
+      "semantic_family": "branch"
+    },
+    "surface02-064": {
+      "case_id": "surface02-064",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          6219
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_064__safecall(value: UInt64) -> UInt64:\n    if value == 0:\n        return 841\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_064__safecall(value)\n",
+      "merlo_source": "fn case_surface02_064__safecall(value):\n    if value == 0:\n        return 841\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_064__safecall(value)\n",
+      "pipeline": false,
+      "qualname": "_safecall",
+      "semantic_family": "branch"
+    },
+    "surface02-065": {
+      "case_id": "surface02-065",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          6316
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_065_augment_usage_errors(value: UInt64) -> UInt64:\n    if value == 0:\n        return 865\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_065_augment_usage_errors(value)\n",
+      "merlo_source": "fn case_surface02_065_augment_usage_errors(value):\n    if value == 0:\n        return 865\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_065_augment_usage_errors(value)\n",
+      "pipeline": false,
+      "qualname": "augment_usage_errors",
+      "semantic_family": "branch"
+    },
+    "surface02-066": {
+      "case_id": "surface02-066",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          6413
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_066__raise_wrapfail(value: UInt64) -> UInt64:\n    if value == 0:\n        return 873\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_066__raise_wrapfail(value)\n",
+      "merlo_source": "fn case_surface02_066__raise_wrapfail(value):\n    if value == 0:\n        return 873\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_066__raise_wrapfail(value)\n",
+      "pipeline": false,
+      "qualname": "_raise_wrapfail",
+      "semantic_family": "branch"
+    },
+    "surface02-067": {
+      "case_id": "surface02-067",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          6510
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_067__warn_teardown_exception(value: UInt64) -> UInt64:\n    if value == 0:\n        return 895\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_067__warn_teardown_exception(value)\n",
+      "merlo_source": "fn case_surface02_067__warn_teardown_exception(value):\n    if value == 0:\n        return 895\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_067__warn_teardown_exception(value)\n",
+      "pipeline": false,
+      "qualname": "_warn_teardown_exception",
+      "semantic_family": "branch"
+    },
+    "surface02-068": {
+      "case_id": "surface02-068",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          6607
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_068_locate_app(value: UInt64) -> UInt64:\n    if value == 0:\n        return 894\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_068_locate_app(value)\n",
+      "merlo_source": "fn case_surface02_068_locate_app(value):\n    if value == 0:\n        return 894\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_068_locate_app(value)\n",
+      "pipeline": false,
+      "qualname": "locate_app",
+      "semantic_family": "branch"
+    },
+    "surface02-069": {
+      "case_id": "surface02-069",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          6704
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_069_request_context(value: UInt64) -> UInt64:\n    if value == 0:\n        return 912\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_069_request_context(value)\n",
+      "merlo_source": "fn case_surface02_069_request_context(value):\n    if value == 0:\n        return 912\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_069_request_context(value)\n",
+      "pipeline": false,
+      "qualname": "request_context",
+      "semantic_family": "branch"
+    },
+    "surface02-070": {
+      "case_id": "surface02-070",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          6801
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_070_map_httpcore_exceptions(value: UInt64) -> UInt64:\n    if value == 0:\n        return 933\n    return value\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_070_map_httpcore_exceptions(value)\n",
+      "merlo_source": "fn case_surface02_070_map_httpcore_exceptions(value):\n    if value == 0:\n        return 933\n    return value\n\nfn main(value) -> UInt64:\n    return case_surface02_070_map_httpcore_exceptions(value)\n",
+      "pipeline": false,
+      "qualname": "map_httpcore_exceptions",
+      "semantic_family": "branch"
+    },
+    "surface02-071": {
+      "case_id": "surface02-071",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          6898
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_071_gzip_bytes(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..1:\n        result = result + 933\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_071_gzip_bytes(value)\n",
+      "merlo_source": "fn case_surface02_071_gzip_bytes(value):\n    result = value\n    for item in 0..1:\n        result = result + 933\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_071_gzip_bytes(value)\n",
+      "pipeline": true,
+      "qualname": "gzip_bytes",
+      "semantic_family": "loop"
+    },
+    "surface02-072": {
+      "case_id": "surface02-072",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          6995
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_072_gunzip_bytes(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..1:\n        result = result + 948\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_072_gunzip_bytes(value)\n",
+      "merlo_source": "fn case_surface02_072_gunzip_bytes(value):\n    result = value\n    for item in 0..1:\n        result = result + 948\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_072_gunzip_bytes(value)\n",
+      "pipeline": true,
+      "qualname": "gunzip_bytes",
+      "semantic_family": "loop"
+    },
+    "surface02-073": {
+      "case_id": "surface02-073",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          7092
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_073_path_to_unicode(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..1:\n        result = result + 964\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_073_path_to_unicode(value)\n",
+      "merlo_source": "fn case_surface02_073_path_to_unicode(value):\n    result = value\n    for item in 0..1:\n        result = result + 964\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_073_path_to_unicode(value)\n",
+      "pipeline": true,
+      "qualname": "path_to_unicode",
+      "semantic_family": "loop"
+    },
+    "surface02-074": {
+      "case_id": "surface02-074",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          7189
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_074_expandpath(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..1:\n        result = result + 972\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_074_expandpath(value)\n",
+      "merlo_source": "fn case_surface02_074_expandpath(value):\n    result = value\n    for item in 0..1:\n        result = result + 972\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_074_expandpath(value)\n",
+      "pipeline": true,
+      "qualname": "expandpath",
+      "semantic_family": "loop"
+    },
+    "surface02-075": {
+      "case_id": "surface02-075",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          7286
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_075_shrinkuser(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..1:\n        result = result + 985\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_075_shrinkuser(value)\n",
+      "merlo_source": "fn case_surface02_075_shrinkuser(value):\n    result = value\n    for item in 0..1:\n        result = result + 985\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_075_shrinkuser(value)\n",
+      "pipeline": true,
+      "qualname": "shrinkuser",
+      "semantic_family": "loop"
+    },
+    "surface02-076": {
+      "case_id": "surface02-076",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          7383
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_076_make_input_stream(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..1:\n        result = result + 1005\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_076_make_input_stream(value)\n",
+      "merlo_source": "fn case_surface02_076_make_input_stream(value):\n    result = value\n    for item in 0..1:\n        result = result + 1005\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_076_make_input_stream(value)\n",
+      "pipeline": true,
+      "qualname": "make_input_stream",
+      "semantic_family": "loop"
+    },
+    "surface02-077": {
+      "case_id": "surface02-077",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          7480
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_077__wrap_io_open(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..1:\n        result = result + 1014\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_077__wrap_io_open(value)\n",
+      "merlo_source": "fn case_surface02_077__wrap_io_open(value):\n    result = value\n    for item in 0..1:\n        result = result + 1014\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_077__wrap_io_open(value)\n",
+      "pipeline": true,
+      "qualname": "_wrap_io_open",
+      "semantic_family": "loop"
+    },
+    "surface02-078": {
+      "case_id": "surface02-078",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          7577
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_078__prepare_send_file_kwargs(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..1:\n        result = result + 1039\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_078__prepare_send_file_kwargs(value)\n",
+      "merlo_source": "fn case_surface02_078__prepare_send_file_kwargs(value):\n    result = value\n    for item in 0..1:\n        result = result + 1039\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_078__prepare_send_file_kwargs(value)\n",
+      "pipeline": true,
+      "qualname": "_prepare_send_file_kwargs",
+      "semantic_family": "loop"
+    },
+    "surface02-079": {
+      "case_id": "surface02-079",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          7674
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_079_encode_content(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..1:\n        result = result + 1041\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_079_encode_content(value)\n",
+      "merlo_source": "fn case_surface02_079_encode_content(value):\n    result = value\n    for item in 0..1:\n        result = result + 1041\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_079_encode_content(value)\n",
+      "pipeline": true,
+      "qualname": "encode_content",
+      "semantic_family": "loop"
+    },
+    "surface02-080": {
+      "case_id": "surface02-080",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          7771
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_080_peek_filelike_length(value: UInt64) -> UInt64:\n    var result: UInt64 = value\n    for item in 0..1:\n        result = result + 1060\n    return result\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_080_peek_filelike_length(value)\n",
+      "merlo_source": "fn case_surface02_080_peek_filelike_length(value):\n    result = value\n    for item in 0..1:\n        result = result + 1060\n    return result\n\nfn main(value) -> UInt64:\n    return case_surface02_080_peek_filelike_length(value)\n",
+      "pipeline": true,
+      "qualname": "peek_filelike_length",
+      "semantic_family": "loop"
+    },
+    "surface02-081": {
+      "case_id": "surface02-081",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          7868
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_081_backoff(value: UInt64) -> UInt64:\n    return (value << 1) ^ 1060\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_081_backoff(value)\n",
+      "merlo_source": "fn case_surface02_081_backoff(value):\n    return (value << 1) ^ 1060\n\nfn main(value) -> UInt64:\n    return case_surface02_081_backoff(value)\n",
+      "pipeline": false,
+      "qualname": "backoff",
+      "semantic_family": "bitwise"
+    },
+    "surface02-082": {
+      "case_id": "surface02-082",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          7965
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_082_xfrange(value: UInt64) -> UInt64:\n    return (value << 1) ^ 1073\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_082_xfrange(value)\n",
+      "merlo_source": "fn case_surface02_082_xfrange(value):\n    return (value << 1) ^ 1073\n\nfn main(value) -> UInt64:\n    return case_surface02_082_xfrange(value)\n",
+      "pipeline": false,
+      "qualname": "xfrange",
+      "semantic_family": "bitwise"
+    },
+    "surface02-083": {
+      "case_id": "surface02-083",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          8062
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_083_iter_splitlines(value: UInt64) -> UInt64:\n    return (value << 1) ^ 1094\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_083_iter_splitlines(value)\n",
+      "merlo_source": "fn case_surface02_083_iter_splitlines(value):\n    return (value << 1) ^ 1094\n\nfn main(value) -> UInt64:\n    return case_surface02_083_iter_splitlines(value)\n",
+      "pipeline": false,
+      "qualname": "iter_splitlines",
+      "semantic_family": "bitwise"
+    },
+    "surface02-084": {
+      "case_id": "surface02-084",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          8159
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_084_multi_replace(value: UInt64) -> UInt64:\n    return (value << 1) ^ 1105\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_084_multi_replace(value)\n",
+      "merlo_source": "fn case_surface02_084_multi_replace(value):\n    return (value << 1) ^ 1105\n\nfn main(value) -> UInt64:\n    return case_surface02_084_multi_replace(value)\n",
+      "pipeline": false,
+      "qualname": "multi_replace",
+      "semantic_family": "bitwise"
+    },
+    "surface02-085": {
+      "case_id": "surface02-085",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          8256
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_085_make_cache_key(value: UInt64) -> UInt64:\n    return (value << 1) ^ 1119\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_085_make_cache_key(value)\n",
+      "merlo_source": "fn case_surface02_085_make_cache_key(value):\n    return (value << 1) ^ 1119\n\nfn main(value) -> UInt64:\n    return case_surface02_085_make_cache_key(value)\n",
+      "pipeline": false,
+      "qualname": "make_cache_key",
+      "semantic_family": "bitwise"
+    },
+    "surface02-086": {
+      "case_id": "surface02-086",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          8353
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_086_normalize_path(value: UInt64) -> UInt64:\n    return (value << 1) ^ 1132\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_086_normalize_path(value)\n",
+      "merlo_source": "fn case_surface02_086_normalize_path(value):\n    return (value << 1) ^ 1132\n\nfn main(value) -> UInt64:\n    return case_surface02_086_normalize_path(value)\n",
+      "pipeline": false,
+      "qualname": "normalize_path",
+      "semantic_family": "bitwise"
+    },
+    "surface02-087": {
+      "case_id": "surface02-087",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          8450
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_087_percent_encoded(value: UInt64) -> UInt64:\n    return (value << 1) ^ 1146\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_087_percent_encoded(value)\n",
+      "merlo_source": "fn case_surface02_087_percent_encoded(value):\n    return (value << 1) ^ 1146\n\nfn main(value) -> UInt64:\n    return case_surface02_087_percent_encoded(value)\n",
+      "pipeline": false,
+      "qualname": "percent_encoded",
+      "semantic_family": "bitwise"
+    },
+    "surface02-088": {
+      "case_id": "surface02-088",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          8547
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_088_measure_table(value: UInt64) -> UInt64:\n    return (value << 1) ^ 1157\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_088_measure_table(value)\n",
+      "merlo_source": "fn case_surface02_088_measure_table(value):\n    return (value << 1) ^ 1157\n\nfn main(value) -> UInt64:\n    return case_surface02_088_measure_table(value)\n",
+      "pipeline": false,
+      "qualname": "measure_table",
+      "semantic_family": "bitwise"
+    },
+    "surface02-089": {
+      "case_id": "surface02-089",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          8644
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_089_join_options(value: UInt64) -> UInt64:\n    return (value << 1) ^ 1169\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_089_join_options(value)\n",
+      "merlo_source": "fn case_surface02_089_join_options(value):\n    return (value << 1) ^ 1169\n\nfn main(value) -> UInt64:\n    return case_surface02_089_join_options(value)\n",
+      "pipeline": false,
+      "qualname": "join_options",
+      "semantic_family": "bitwise"
+    },
+    "surface02-090": {
+      "case_id": "surface02-090",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          8741
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_090_hookcaller__add_hookimpl(value: UInt64) -> UInt64:\n    return (value << 1) ^ 1194\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_090_hookcaller__add_hookimpl(value)\n",
+      "merlo_source": "fn case_surface02_090_hookcaller__add_hookimpl(value):\n    return (value << 1) ^ 1194\n\nfn main(value) -> UInt64:\n    return case_surface02_090_hookcaller__add_hookimpl(value)\n",
+      "pipeline": false,
+      "qualname": "HookCaller._add_hookimpl",
+      "semantic_family": "bitwise"
+    },
+    "surface02-091": {
+      "case_id": "surface02-091",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          8838
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_091_noop(value: UInt64) -> UInt64:\n    return value ^ 1187\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_091_noop(value)\n",
+      "merlo_source": "fn case_surface02_091_noop(value):\n    return value ^ 1187\n\nfn main(value) -> UInt64:\n    return case_surface02_091_noop(value)\n",
+      "pipeline": false,
+      "qualname": "noop",
+      "semantic_family": "bitwise"
+    },
+    "surface02-092": {
+      "case_id": "surface02-092",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          8935
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_092_is_iterable(value: UInt64) -> UInt64:\n    return value ^ 1207\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_092_is_iterable(value)\n",
+      "merlo_source": "fn case_surface02_092_is_iterable(value):\n    return value ^ 1207\n\nfn main(value) -> UInt64:\n    return case_surface02_092_is_iterable(value)\n",
+      "pipeline": false,
+      "qualname": "is_iterable",
+      "semantic_family": "bitwise"
+    },
+    "surface02-093": {
+      "case_id": "surface02-093",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          9032
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_093_is_scalar(value: UInt64) -> UInt64:\n    return value ^ 1218\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_093_is_scalar(value)\n",
+      "merlo_source": "fn case_surface02_093_is_scalar(value):\n    return value ^ 1218\n\nfn main(value) -> UInt64:\n    return case_surface02_093_is_scalar(value)\n",
+      "pipeline": false,
+      "qualname": "is_scalar",
+      "semantic_family": "bitwise"
+    },
+    "surface02-094": {
+      "case_id": "surface02-094",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          9129
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_094_is_collection(value: UInt64) -> UInt64:\n    return value ^ 1235\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_094_is_collection(value)\n",
+      "merlo_source": "fn case_surface02_094_is_collection(value):\n    return value ^ 1235\n\nfn main(value) -> UInt64:\n    return case_surface02_094_is_collection(value)\n",
+      "pipeline": false,
+      "qualname": "is_collection",
+      "semantic_family": "bitwise"
+    },
+    "surface02-095": {
+      "case_id": "surface02-095",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          9226
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_095_first(value: UInt64) -> UInt64:\n    return value ^ 1240\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_095_first(value)\n",
+      "merlo_source": "fn case_surface02_095_first(value):\n    return value ^ 1240\n\nfn main(value) -> UInt64:\n    return case_surface02_095_first(value)\n",
+      "pipeline": false,
+      "qualname": "first",
+      "semantic_family": "bitwise"
+    },
+    "surface02-096": {
+      "case_id": "surface02-096",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          9323
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_096_is_ipv4_hostname(value: UInt64) -> UInt64:\n    return value ^ 1264\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_096_is_ipv4_hostname(value)\n",
+      "merlo_source": "fn case_surface02_096_is_ipv4_hostname(value):\n    return value ^ 1264\n\nfn main(value) -> UInt64:\n    return case_surface02_096_is_ipv4_hostname(value)\n",
+      "pipeline": false,
+      "qualname": "is_ipv4_hostname",
+      "semantic_family": "bitwise"
+    },
+    "surface02-097": {
+      "case_id": "surface02-097",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          9420
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_097_is_ipv6_hostname(value: UInt64) -> UInt64:\n    return value ^ 1277\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_097_is_ipv6_hostname(value)\n",
+      "merlo_source": "fn case_surface02_097_is_ipv6_hostname(value):\n    return value ^ 1277\n\nfn main(value) -> UInt64:\n    return case_surface02_097_is_ipv6_hostname(value)\n",
+      "pipeline": false,
+      "qualname": "is_ipv6_hostname",
+      "semantic_family": "bitwise"
+    },
+    "surface02-098": {
+      "case_id": "surface02-098",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          9517
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_098_isatty(value: UInt64) -> UInt64:\n    return value ^ 1280\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_098_isatty(value)\n",
+      "merlo_source": "fn case_surface02_098_isatty(value):\n    return value ^ 1280\n\nfn main(value) -> UInt64:\n    return case_surface02_098_isatty(value)\n",
+      "pipeline": false,
+      "qualname": "isatty",
+      "semantic_family": "bitwise"
+    },
+    "surface02-099": {
+      "case_id": "surface02-099",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          9614
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_099_resolve_color_default(value: UInt64) -> UInt64:\n    return value ^ 1308\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_099_resolve_color_default(value)\n",
+      "merlo_source": "fn case_surface02_099_resolve_color_default(value):\n    return value ^ 1308\n\nfn main(value) -> UInt64:\n    return case_surface02_099_resolve_color_default(value)\n",
+      "pipeline": false,
+      "qualname": "resolve_color_default",
+      "semantic_family": "bitwise"
+    },
+    "surface02-100": {
+      "case_id": "surface02-100",
+      "expected": {
+        "derive_from_python": true
+      },
+      "fixture": {
+        "adapter": "locked_source",
+        "arguments": [
+          9711
+        ]
+      },
+      "manual_canonical_source": "fn case_surface02_100__endpoint_from_view_func(value: UInt64) -> UInt64:\n    return value ^ 1324\n\nfn main(value: UInt64) -> UInt64:\n    return case_surface02_100__endpoint_from_view_func(value)\n",
+      "merlo_source": "fn case_surface02_100__endpoint_from_view_func(value):\n    return value ^ 1324\n\nfn main(value) -> UInt64:\n    return case_surface02_100__endpoint_from_view_func(value)\n",
+      "pipeline": false,
+      "qualname": "_endpoint_from_view_func",
+      "semantic_family": "bitwise"
+    }
+  }
+}

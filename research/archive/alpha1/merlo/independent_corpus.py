@@ -290,7 +290,7 @@ def _paths(root: Path) -> tuple[Path, Path]:
     )
 
 
-def load_independent_programs(root: str | Path = Path(__file__).resolve().parents[1]) -> tuple[IndependentProgram, ...]:
+def load_independent_programs(root: str | Path = ".") -> tuple[IndependentProgram, ...]:
     root_path = Path(root)
     corpus_path, _ = _paths(root_path)
     payload = _load_object(corpus_path)
@@ -324,7 +324,7 @@ def acceptance_digest(programs: tuple[IndependentProgram, ...]) -> str:
     )
 
 
-def verify_independent_corpus_lock(root: str | Path = Path(__file__).resolve().parents[1]) -> dict[str, Any]:
+def verify_independent_corpus_lock(root: str | Path = ".") -> dict[str, Any]:
     root_path = Path(root)
     corpus_path, lock_path = _paths(root_path)
     lock = _load_object(lock_path)
@@ -571,7 +571,7 @@ def _strict_admission(program: IndependentProgram) -> tuple[bool, tuple[str, ...
     )
 
 
-def run_independent_corpus(root: str | Path = Path(__file__).resolve().parents[1]) -> IndependentCorpusReport:
+def run_independent_corpus(root: str | Path = ".") -> IndependentCorpusReport:
     root_path = Path(root)
     lock = verify_independent_corpus_lock(root_path)
     protocol = assert_stage04e_protocol(root_path)

@@ -13,7 +13,7 @@ from merlo.native_c_backend import CEmitter, compile_c_source, find_c_compiler
 from tools.benchmarks.merlo.performance_frontend import compile_performance_source
 from merlo.performance_mir import PerformanceMIR
 from tools.benchmarks.merlo.performance_opt import inlining, optimize_mir
-from research.archive.historical_protocol.merlo.stage05p_freeze import assert_stage05p_frozen
+from research.archive.alpha1.merlo.stage05p_freeze import assert_stage05p_frozen
 
 
 NATIVE_HYPOTHESES_SCHEMA_VERSION = 1

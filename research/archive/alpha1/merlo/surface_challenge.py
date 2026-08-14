@@ -641,7 +641,7 @@ def _persist_surface_report(path: Path, report: Mapping[str, Any]) -> None:
 
 
 def run_surface_challenge(
-    root: str | Path = Path(__file__).resolve().parents[1],
+    root: str | Path = DEFAULT_ROOT,
     *,
     report_path: str | Path | None = None,
 ) -> dict[str, Any]:

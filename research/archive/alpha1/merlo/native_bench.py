@@ -19,7 +19,7 @@ from typing import Any, Iterable
 from merlo.native_c_backend import CEmitter, NativeBackendError, compile_c_source, find_c_compiler
 from tools.benchmarks.merlo.performance_frontend import PerformanceCompileError, compile_performance_source
 from tools.benchmarks.merlo.performance_opt import optimize_mir
-from research.archive.historical_protocol.merlo.stage05p_freeze import assert_stage05p_frozen
+from research.archive.alpha1.merlo.stage05p_freeze import assert_stage05p_frozen
 
 
 NATIVE_BENCHMARK_SCHEMA_VERSION = 1
@@ -760,7 +760,7 @@ def run_native_benchmark(
     repetitions: int = 3,
     warmups: int = 1,
 ) -> dict[str, Any]:
-    assert_stage05p_frozen()
+    assert_stage05p_frozen(Path(__file__).resolve().parents[1])
     if repetitions < 1 or warmups < 0:
         raise ValueError("invalid benchmark repetition counts")
     root = Path(output_dir)
