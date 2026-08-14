@@ -1960,6 +1960,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         lines = self._statement_impl(node)
         pending = self.pending_expression_lines[start:]
         drops = self.pending_expression_drops[drop_start:]
+        del self.pending_expression_lines[start:]
         del self.pending_expression_drops[drop_start:]
         if isinstance(node, ast.Return):
             for index in range(len(lines) - 1, -1, -1):
