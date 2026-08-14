@@ -209,7 +209,7 @@ def test_reassembly_rejects_reordered_sha256sums(tmp_path: Path) -> None:
     with pytest.raises(ReleaseValidationError, match="different content"):
         assemble_release(inputs, destination)
 
-def test_rehashed_manifest_cannot forge_cross_field_integrity(tmp_path: Path) -> None:
+def test_rehashed_manifest_cannot_forge_cross_field_integrity(tmp_path: Path) -> None:
     result = assemble_release(_fixture(tmp_path), tmp_path / "dist" / "merlo-0.1.0-alpha.1")
     manifest = json.loads((result.path / "manifest.json").read_text(encoding="utf-8"))
     invalid = dict(manifest)
