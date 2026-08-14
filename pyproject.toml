@@ -43,26 +43,9 @@ where = ["src"]
 include = ["merlo*"]
 
 [tool.setuptools.package-data]
-merlo = ["stdlib/*.mlo"]
+merlo = ["stdlib/*.mlo", "stdlib/std/*.mlo"]
 
 [tool.setuptools.data-files]
-"stdlib" = ["stdlib/README.md"]
-"stdlib/std" = [
-  "stdlib/std/core.mlo",
-  "stdlib/std/option.mlo",
-  "stdlib/std/result.mlo",
-  "stdlib/std/text.mlo",
-  "stdlib/std/bytes.mlo",
-  "stdlib/std/collections.mlo",
-  "stdlib/std/io.mlo",
-  "stdlib/std/fs.mlo",
-  "stdlib/std/cli.mlo",
-  "stdlib/std/time.mlo",
-  "stdlib/std/random.mlo",
-  "stdlib/std/json.mlo",
-  "stdlib/std/net.mlo",
-  "stdlib/std/http.mlo",
-]
 "editors/vscode" = ["editors/vscode/package.json"]
 "editors/vscode/syntaxes" = ["editors/vscode/syntaxes/merlo.tmLanguage.json"]
 "docs" = [

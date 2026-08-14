@@ -1,0 +1,66 @@
+module std.collections
+
+export Pair:
+    key: T
+    value: U
+
+export vec_length(value: Vec[T]) -> UInt64:
+    value.len()
+
+export vec_is_empty(value: Vec[T]) -> Bool:
+    value.len() == 0
+
+export vec_get(value: Vec[T], index: UInt64) -> Option[T]:
+    if index >= value.len():
+        return NoneValue
+    Some(value.get(index))
+
+export vec_push(value: Vec[T], item: T) -> Unit:
+    value.push(item)
+
+export vec_pop(value: Vec[T]) -> Option[T]:
+    if value.len() == 0:
+        return NoneValue
+    Some(value.pop())
+
+export vec_reverse(value: Vec[T]) -> Unit:
+    left: UInt64 = 0
+    right: UInt64 = value.len()
+    while left < right and right > 0:
+        right = right - 1
+        item = value.get(left)
+        value.set(left, value.get(right))
+        value.set(right, item)
+        left = left + 1
+
+export vec_contains(value: Vec[T], item: T) -> Bool:
+    index: UInt64 = 0
+    while index < value.len():
+        if value.get(index) == item:
+            return true
+        index = index + 1
+    false
+
+export map_length(value: Map[K,V]) -> UInt64:
+    value.len()
+
+export map_is_empty(value: Map[K,V]) -> Bool:
+    value.len() == 0
+
+export map_get(value: Map[K,V], key: K) -> Option[V]:
+    if not value.contains(key):
+        return NoneValue
+    Some(value.get(key))
+
+export map_put(value: Map[K,V], key: K, item: V) -> Unit:
+    value.insert(key, item)
+
+export map_remove(value: Map[K,V], key: K) -> Option[V]:
+    if not value.contains(key):
+        return NoneValue
+    item = value.get(key)
+    value.remove(key)
+    Some(item)
+
+export map_contains(value: Map[K,V], key: K) -> Bool:
+    value.contains(key)

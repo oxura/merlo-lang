@@ -1,0 +1,31 @@
+module std.random
+
+export enum RandomError:
+    Unavailable
+    InvalidRange
+
+export random_bytes(length: UInt64) -> Result[Bytes,RandomError]:
+    Ok(random.read(length))
+
+export random_u64() -> Result[UInt64,RandomError]:
+    bytes = random.read(8)
+    Ok(random_decode_u64(bytes))
+
+export random_below(bound: UInt64) -> Result[UInt64,RandomError]:
+    if bound == 0:
+        return Err(RandomError.InvalidRange)
+    limit = 18446744073709551615 - (18446744073709551615 % bound)
+    value = random_u64()
+    while value.is_ok() and value.unwrap() >= limit:
+        value = random_u64()
+    if value.is_err():
+        return Err(RandomError.Unavailable)
+    Ok(value.unwrap() % bound)
+
+random_decode_u64(value: Bytes) -> UInt64:
+    result: UInt64 = 0
+    index: UInt64 = 0
+    while index < 8:
+        result = result * 256 + value.byte(index)
+        index = index + 1
+    result

@@ -1,0 +1,114 @@
+module std.http
+
+use std.net
+use std.text
+
+export HttpHeader:
+    name: Text
+    value: Text
+
+export HttpRequest:
+    method: Text
+    path: Text
+    headers: Vec[HttpHeader]
+    body: Bytes
+
+export HttpResponse:
+    status: UInt64
+    reason: Text
+    headers: Vec[HttpHeader]
+    body: Bytes
+
+export enum HttpError:
+    InvalidRequest
+    InvalidResponse
+    InvalidHeader
+    Incomplete
+    Network
+
+export http_request(method: TextView, path: TextView) -> HttpRequest:
+    HttpRequest(method.to_text(), path.to_text(), Vec.new(), Bytes.new())
+
+export http_add_header(request: HttpRequest, name: TextView, value: TextView) -> Unit:
+    request.headers.push(HttpHeader(name.to_text(), value.to_text()))
+
+export http_encode_request(request: HttpRequest) -> Bytes:
+    builder = TextBuilder.new()
+    builder.append_text(request.method)
+    builder.append_byte(32)
+    builder.append_text(request.path)
+    builder.append_text(" HTTP/1.1\r\n")
+    index: UInt64 = 0
+    while index < request.headers.len():
+        header = request.headers.get(index)
+        builder.append_text(header.name)
+        builder.append_text(": ")
+        builder.append_text(header.value)
+        builder.append_text("\r\n")
+        index = index + 1
+    builder.append_text("\r\n")
+    builder.finish().to_bytes() + request.body
+
+export http_parse_response(data: BytesView) -> Result[HttpResponse,HttpError]:
+    payload = data.to_text()
+    separator = payload.find("\r\n\r\n")
+    if separator.is_none():
+        return Err(HttpError.Incomplete)
+    header_text = payload.slice_bytes(0, separator.unwrap()).to_text()
+    body = data.slice(separator.unwrap() + 4, data.len() - separator.unwrap() - 4)
+    lines = text_lines(header_text)
+    if lines.len() == 0:
+        return Err(HttpError.InvalidResponse)
+    status_line = lines.get(0)
+    status = parse_status(status_line)
+    if status.is_err():
+        return Err(HttpError.InvalidResponse)
+    headers = Vec.new()
+    index: UInt64 = 1
+    while index < lines.len():
+        line = lines.get(index)
+        colon = line.find(":")
+        if colon.is_none():
+            return Err(HttpError.InvalidHeader)
+        headers.push(HttpHeader(line.slice_bytes(0, colon.unwrap()).to_text(), line.slice_bytes(colon.unwrap() + 1, line.len() - colon.unwrap() - 1).to_text()))
+        index = index + 1
+    Ok(HttpResponse(status.unwrap(), status_line, headers, body))
+
+export http_request_once(address: net.TcpAddress, request: HttpRequest) -> Result[HttpResponse,HttpError]:
+    stream = net.tcp_connect(address)
+    if stream.is_err():
+        return Err(HttpError.Network)
+    encoded = http_encode_request(request)
+    sent = net.tcp_send_all(stream.unwrap(), encoded)
+    if sent.is_err():
+        net.tcp_close(stream.unwrap())
+        return Err(HttpError.Network)
+    received = net.tcp_receive(stream.unwrap(), 1048576)
+    net.tcp_close(stream.unwrap())
+    if received.is_err():
+        return Err(HttpError.Network)
+    http_parse_response(received.unwrap())
+
+text_lines(value: Text) -> Vec[Text]:
+    lines = Vec.new()
+    start: UInt64 = 0
+    index: UInt64 = 0
+    while index + 1 < value.len():
+        if value.byte(index) == 13 and value.byte(index + 1) == 10:
+            lines.push(value.slice_bytes(start, index - start).to_text())
+            index = index + 2
+            start = index
+        else:
+            index = index + 1
+    if start < value.len():
+        lines.push(value.slice_bytes(start, value.len() - start).to_text())
+    lines
+
+parse_status(value: Text) -> Result[UInt64,HttpError]:
+    if value.len() < 12:
+        return Err(HttpError.InvalidResponse)
+    code = value.slice_bytes(9, 3).to_text()
+    parsed = parse_uint(code)
+    if parsed.is_err():
+        return Err(HttpError.InvalidResponse)
+    Ok(parsed.unwrap())

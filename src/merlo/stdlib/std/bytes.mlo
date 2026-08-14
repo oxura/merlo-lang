@@ -1,0 +1,51 @@
+module std.bytes
+
+export BytesBuilder:
+    value: Bytes
+
+export bytes_len(value: BytesView) -> UInt64:
+    value.len()
+
+export bytes_is_empty(value: BytesView) -> Bool:
+    value.len() == 0
+
+export bytes_byte(value: BytesView, index: UInt64) -> UInt64:
+    value.byte(index)
+
+export bytes_slice(value: BytesView, start: UInt64, length: UInt64) -> Bytes:
+    value.slice(start, length)
+
+export bytes_eq(left: BytesView, right: BytesView) -> Bool:
+    left.to_bytes() == right.to_bytes()
+
+export bytes_from_byte(value: UInt64) -> Bytes:
+    builder = BytesBuilder.new()
+    builder.append_byte(value)
+    builder.finish()
+
+export bytes_builder_new() -> BytesBuilder:
+    BytesBuilder("")
+
+export bytes_builder_append(builder: BytesBuilder, value: BytesView) -> Unit:
+    builder.value = builder.value + value.to_bytes()
+
+export bytes_builder_append_byte(builder: BytesBuilder, value: UInt64) -> Unit:
+    builder.value = builder.value + bytes_from_byte(value)
+
+export bytes_builder_finish(builder: BytesBuilder) -> Bytes:
+    builder.value
+
+export bytes_hex(value: BytesView) -> Text:
+    builder = TextBuilder.new()
+    index: UInt64 = 0
+    while index < value.len():
+        byte = value.byte(index)
+        builder.append_byte(hex_digit(byte / 16))
+        builder.append_byte(hex_digit(byte % 16))
+        index = index + 1
+    builder.finish()
+
+hex_digit(value: UInt64) -> UInt64:
+    if value < 10:
+        return 48 + value
+    87 + value

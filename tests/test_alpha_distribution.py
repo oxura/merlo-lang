@@ -133,6 +133,16 @@ def test_package_data_declares_stdlib_editor_docs_specs_and_examples() -> None:
     assert all((ROOT / path).is_file() for path in STDLIB_PATHS)
     assert (ROOT / "editors/vscode/syntaxes/merlo.tmLanguage.json").is_file()
 
+def test_packaged_stdlib_matches_canonical_sources() -> None:
+    config = _config()
+    patterns = config["tool"]["setuptools"]["package-data"]["merlo"]  # type: ignore[index]
+    assert "stdlib/std/*.mlo" in patterns
+    for relative in STDLIB_PATHS[:14]:
+        name = Path(relative).name
+        canonical = ROOT / "stdlib" / "std" / name
+        packaged = ROOT / "src" / "merlo" / "stdlib" / "std" / name
+        assert packaged.read_bytes() == canonical.read_bytes(), name
+
 
 def test_every_public_distribution_path_exists() -> None:
     required = STDLIB_PATHS + DOC_PATHS + SPEC_PATHS + RESEARCH_PATHS + RFC_PATHS + EXAMPLE_PATHS

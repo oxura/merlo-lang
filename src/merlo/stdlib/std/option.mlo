@@ -1,0 +1,58 @@
+module std.option
+
+export enum Option:
+    Some: T
+    NoneValue
+
+export some(value: T) -> Option[T]:
+    Some(value)
+
+export none() -> Option[T]:
+    NoneValue
+
+export is_some(value: Option[T]) -> Bool:
+    match value:
+        case Some(_):
+            return true
+        case NoneValue:
+            return false
+
+export is_none(value: Option[T]) -> Bool:
+    not is_some(value)
+
+export unwrap_or(value: Option[T], fallback: T) -> T:
+    match value:
+        case Some(item):
+            return item
+        case NoneValue:
+            return fallback
+
+export map_option(value: Option[T], transform: fn(T) -> U) -> Option[U]:
+    match value:
+        case Some(item):
+            return Some(transform(item))
+        case NoneValue:
+            return NoneValue
+
+export and_then_option(value: Option[T], transform: fn(T) -> Option[U]) -> Option[U]:
+    match value:
+        case Some(item):
+            return transform(item)
+        case NoneValue:
+            return NoneValue
+
+export filter_option(value: Option[T], keep: fn(T) -> Bool) -> Option[T]:
+    match value:
+        case Some(item):
+            if keep(item):
+                return Some(item)
+            return NoneValue
+        case NoneValue:
+            return NoneValue
+
+export expect_option(value: Option[T], message: Text) -> T:
+    match value:
+        case Some(item):
+            return item
+        case NoneValue:
+            return panic(message)

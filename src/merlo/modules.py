@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-import sysconfig
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Mapping
@@ -129,13 +128,7 @@ def _declaration(source: str) -> tuple[str | None, str, str, str] | None:
         exported, name, suffix = record.groups()
         return exported, "record", name, suffix
     return None
-_REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-_REPOSITORY_STDLIB_ROOT = _REPOSITORY_ROOT / "stdlib" / "std"
-_STDLIB_ROOT = (
-    _REPOSITORY_STDLIB_ROOT
-    if _REPOSITORY_STDLIB_ROOT.is_dir()
-    else Path(sysconfig.get_path("data")) / "stdlib" / "std"
-)
+_STDLIB_ROOT = Path(__file__).with_name("stdlib") / "std"
 STDLIB_MODULES = {
     "app.json": Path(__file__).with_name("stdlib") / "json.mlo",
     "app.csv": Path(__file__).with_name("stdlib") / "csv.mlo",

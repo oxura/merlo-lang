@@ -1,0 +1,66 @@
+module std.text
+
+export text_len(value: TextView) -> UInt64:
+    value.len()
+
+export text_is_empty(value: TextView) -> Bool:
+    value.len() == 0
+
+export text_byte(value: TextView, index: UInt64) -> UInt64:
+    value.byte(index)
+
+export text_slice(value: TextView, start: UInt64, length: UInt64) -> Text:
+    value.slice_bytes(start, length).to_text()
+
+export text_eq(left: TextView, right: TextView) -> Bool:
+    left.to_text() == right.to_text()
+
+export text_starts_with(value: TextView, prefix: TextView) -> Bool:
+    if prefix.len() > value.len():
+        return false
+    text_slice(value, 0, prefix.len()) == prefix.to_text()
+
+export text_ends_with(value: TextView, suffix: TextView) -> Bool:
+    if suffix.len() > value.len():
+        return false
+    text_slice(value, value.len() - suffix.len(), suffix.len()) == suffix.to_text()
+
+export text_find(value: TextView, needle: UInt64) -> Option[UInt64]:
+    index: UInt64 = 0
+    while index < value.len():
+        if value.byte(index) == needle:
+            return Some(index)
+        index = index + 1
+    None
+
+export text_builder_new() -> TextBuilder:
+    TextBuilder.new()
+
+export text_builder_append(builder: TextBuilder, value: Text) -> Unit:
+    builder.append_text(value)
+
+export text_builder_append_byte(builder: TextBuilder, value: UInt64) -> Unit:
+    builder.append_byte(value)
+
+export text_builder_finish(builder: TextBuilder) -> Text:
+    builder.finish()
+
+export parse_uint(value: TextView) -> Result[UInt64,ParseError]:
+    if value.len() == 0:
+        return Err(ParseError.Empty)
+    index: UInt64 = 0
+    result: UInt64 = 0
+    while index < value.len():
+        byte = value.byte(index)
+        if byte < 48 or byte > 57:
+            return Err(ParseError.InvalidDigit)
+        if result > 1844674407370955161 or (result == 1844674407370955161 and byte > 53):
+            return Err(ParseError.Overflow)
+        result = result * 10 + (byte - 48)
+        index = index + 1
+    Ok(result)
+
+export enum ParseError:
+    Empty
+    InvalidDigit
+    Overflow
