@@ -30,7 +30,7 @@ STAGE05P_DECISIONS = (
 def build_stage05p_protocol(root: str | Path = ".") -> dict[str, Any]:
     root_path = Path(root)
     freeze_raw = (root_path / "tools" / "benchmarks" / "merlo" / "benchmarks" / STAGE05P_FREEZE_FILENAME).read_bytes()
-    mir_schema_path = root_path / "merlo" / "performance_mir_schema_v1.json"
+    mir_schema_path = root_path / "research" / "archive" / "alpha1" / "merlo" / "performance_mir_schema_v1.json"
     return {
         "schema_version": STAGE05P_PROTOCOL_SCHEMA_VERSION,
         "kind": "MeldraStage05PProtocol",
@@ -64,7 +64,7 @@ def build_stage05p_protocol(root: str | Path = ".") -> dict[str, Any]:
         },
         "performance_mir": {
             "schema_version": PERFORMANCE_MIR_SCHEMA_VERSION,
-            "schema_path": "merlo/performance_mir_schema_v1.json",
+            "schema_path": "research/archive/alpha1/merlo/performance_mir_schema_v1.json",
             "schema_sha256": hashlib.sha256(mir_schema_path.read_bytes()).hexdigest(),
             "cfg": "functions -> basic blocks -> typed instructions + terminator",
             "explicit": [

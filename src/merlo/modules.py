@@ -128,23 +128,24 @@ def _declaration(source: str) -> tuple[str | None, str, str, str] | None:
         exported, name, suffix = record.groups()
         return exported, "record", name, suffix
     return None
+_REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 STDLIB_MODULES = {
     "app.json": Path(__file__).with_name("stdlib") / "json.mlo",
     "app.csv": Path(__file__).with_name("stdlib") / "csv.mlo",
-    "std.core": Path(__file__).resolve().parent.parent / "stdlib" / "std" / "core.mlo",
-    "std.option": Path(__file__).resolve().parent.parent / "stdlib" / "std" / "option.mlo",
-    "std.result": Path(__file__).resolve().parent.parent / "stdlib" / "std" / "result.mlo",
-    "std.text": Path(__file__).resolve().parent.parent / "stdlib" / "std" / "text.mlo",
-    "std.bytes": Path(__file__).resolve().parent.parent / "stdlib" / "std" / "bytes.mlo",
-    "std.collections": Path(__file__).resolve().parent.parent / "stdlib" / "std" / "collections.mlo",
-    "std.io": Path(__file__).resolve().parent.parent / "stdlib" / "std" / "io.mlo",
-    "std.fs": Path(__file__).resolve().parent.parent / "stdlib" / "std" / "fs.mlo",
-    "std.cli": Path(__file__).resolve().parent.parent / "stdlib" / "std" / "cli.mlo",
-    "std.time": Path(__file__).resolve().parent.parent / "stdlib" / "std" / "time.mlo",
-    "std.random": Path(__file__).resolve().parent.parent / "stdlib" / "std" / "random.mlo",
-    "std.json": Path(__file__).resolve().parent.parent / "stdlib" / "std" / "json.mlo",
-    "std.net": Path(__file__).resolve().parent.parent / "stdlib" / "std" / "net.mlo",
-    "std.http": Path(__file__).resolve().parent.parent / "stdlib" / "std" / "http.mlo",
+    "std.core": _REPOSITORY_ROOT / "stdlib" / "std" / "core.mlo",
+    "std.option": _REPOSITORY_ROOT / "stdlib" / "std" / "option.mlo",
+    "std.result": _REPOSITORY_ROOT / "stdlib" / "std" / "result.mlo",
+    "std.text": _REPOSITORY_ROOT / "stdlib" / "std" / "text.mlo",
+    "std.bytes": _REPOSITORY_ROOT / "stdlib" / "std" / "bytes.mlo",
+    "std.collections": _REPOSITORY_ROOT / "stdlib" / "std" / "collections.mlo",
+    "std.io": _REPOSITORY_ROOT / "stdlib" / "std" / "io.mlo",
+    "std.fs": _REPOSITORY_ROOT / "stdlib" / "std" / "fs.mlo",
+    "std.cli": _REPOSITORY_ROOT / "stdlib" / "std" / "cli.mlo",
+    "std.time": _REPOSITORY_ROOT / "stdlib" / "std" / "time.mlo",
+    "std.random": _REPOSITORY_ROOT / "stdlib" / "std" / "random.mlo",
+    "std.json": _REPOSITORY_ROOT / "stdlib" / "std" / "json.mlo",
+    "std.net": _REPOSITORY_ROOT / "stdlib" / "std" / "net.mlo",
+    "std.http": _REPOSITORY_ROOT / "stdlib" / "std" / "http.mlo",
 }
 
 

@@ -268,7 +268,7 @@ def paired_corpus(root: str | Path = ".") -> tuple[PairedCase, ...]:
     root_path = Path(root)
     cases = [_numeric_pair(*item) for item in _NUMERIC_CASES]
     cases.extend(_structured_pairs())
-    app_root = root_path / "merlo" / "programs" / "concise_json"
+    app_root = root_path / "src" / "merlo" / "programs" / "concise_json"
     concise = "\n\n".join(
         path.read_text(encoding="utf-8")
         for path in (
@@ -278,7 +278,7 @@ def paired_corpus(root: str | Path = ".") -> tuple[PairedCase, ...]:
         )
     )
     canonical = elaborate_concise_application(app_root / "app" / "main.mlo").canonical_source
-    python = (root_path / "merlo" / "general_json_oracle.py").read_text(encoding="utf-8")
+    python = (root_path / "tools" / "benchmarks" / "merlo" / "general_json_oracle.py").read_text(encoding="utf-8")
     cases.append(
         PairedCase(
             "real_general_json_cli",

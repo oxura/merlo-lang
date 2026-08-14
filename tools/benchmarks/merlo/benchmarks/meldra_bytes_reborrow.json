@@ -676,7 +676,7 @@
       "same_payload_pointer": true
     }
   },
-  "artifact_payload_sha256": "5aa6e4c23c59b79aa51e0e0d84cf79f08a3b461b5a11be713e840137e40e45ae",
+  "artifact_payload_sha256": "bed6f25443ece142488f2a0098422d8698f674ff85509fe76e10949a50db8354",
   "contracts": {
     "abi": {
       "contract": "meldra.bytes-reborrow-abi.v1",

@@ -24,8 +24,8 @@ STDLIB_PATHS = (
     "stdlib/std/json.mlo",
     "stdlib/std/net.mlo",
     "stdlib/std/http.mlo",
-    "merlo/stdlib/json.mlo",
-    "merlo/stdlib/csv.mlo",
+    "src/merlo/stdlib/json.mlo",
+    "src/merlo/stdlib/csv.mlo",
 )
 
 DOC_PATHS = tuple(f"docs/{name}.md" for name in (
@@ -82,7 +82,7 @@ def _human_surface_paths() -> tuple[Path, ...]:
     roots = (
         ROOT / "examples",
         ROOT / "stdlib",
-        ROOT / "merlo" / "stdlib",
+        ROOT / "src" / "merlo" / "stdlib",
     )
     paths = {
         path
@@ -91,7 +91,7 @@ def _human_surface_paths() -> tuple[Path, ...]:
     }
     paths.update(
         path
-        for path in (ROOT / "merlo" / "programs").rglob("*.mlo")
+        for path in (ROOT / "src" / "merlo" / "programs").rglob("*.mlo")
         if "app" in path.parts
     )
     return tuple(sorted(paths))

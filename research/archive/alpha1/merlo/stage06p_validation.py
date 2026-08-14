@@ -269,7 +269,7 @@ def validate_stage06p_artifacts(
     try:
         import jsonschema
 
-        mir_schema = _load_json(root_path / "merlo" / "performance_mir_schema_v1.json")
+        mir_schema = _load_json(root_path / "research" / "archive" / "alpha1" / "merlo" / "performance_mir_schema_v1.json")
         stage06p_mir_extensions = ("retain", "release")
         mir_operations = mir_schema["$defs"]["instruction"]["properties"][
             "op"
@@ -279,7 +279,7 @@ def validate_stage06p_artifacts(
             for operation in stage06p_mir_extensions
             if operation not in mir_operations
         )
-        hir_schema = _load_json(root_path / "merlo" / "native_hir_schema_v1.json")
+        hir_schema = _load_json(root_path / "research" / "archive" / "alpha1" / "merlo" / "native_hir_schema_v1.json")
         mir_paths = list((benchmarks / "stage06p_benchmark" / "mir").glob("**/*_after.json"))
         mir_paths += list((benchmarks / "stage06p_memory").glob("**/mir/*_after.json"))
         mir_paths += list(

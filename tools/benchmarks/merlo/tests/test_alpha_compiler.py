@@ -185,7 +185,8 @@ def test_native_compile_rejects_non_unit_fallthrough_before_c_lowering(
 def test_all_existing_applications_use_direct_canonical_lowering(application: str) -> None:
     from merlo.compiler import compile_project
 
-    entry = Path("tools/benchmarks/merlo/programs") / application / "app" / "main.mlo"
+    base = Path("src/merlo/programs") if application == "concise_json" else Path("tools/benchmarks/merlo/programs")
+    entry = base / application / "app" / "main.mlo"
     compilation = compile_project(entry, require_interface_lock=False)
 
     assert compilation.hir.source == compilation.elaborated.canonical_source

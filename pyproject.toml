@@ -100,7 +100,14 @@ merlo = ["stdlib/*.mlo"]
   "spec/semantic-world.md",
   "spec/alpha-protocol.md",
 ]
-"rfcs" = ["rfcs/README.md"]
+"research" = [
+  "research/README.md",
+  "research/semantic-representations.md",
+  "research/ownership-without-lifetime-syntax.md",
+  "research/concise-canonical-equivalence.md",
+  "research/effects-and-capabilities.md",
+  "research/performance-evidence.md",
+]
 "examples" = ["examples/README.md"]
 "examples/automation" = [
   "examples/automation/merlo.toml",
