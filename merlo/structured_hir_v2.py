@@ -320,20 +320,30 @@ def _ast_pattern_name(pattern: ast.pattern) -> str:
 def _type_name(node: ast.AST | None) -> str:
     if node is None:
         return "Unit"
-    if isinstance(node, ast.Name):
-        type_name = node.id
-    elif isinstance(node, ast.Subscript):
-        owner = _type_name(node.value)
-        parts = (
-            node.slice.elts
-            if isinstance(node.slice, ast.Tuple)
-            else (node.slice,)
-        )
-        type_name = f"{owner}[{','.join(_type_name(item) for item in parts)}]"
-    else:
+
+    def render(item: ast.AST) -> str:
+        if isinstance(item, ast.Name):
+            return item.id
+        if isinstance(item, ast.Attribute):
+            owner = render(item.value)
+            return f"{owner}.{item.attr}"
+        if isinstance(item, ast.Constant) and isinstance(item.value, int):
+            return str(item.value)
+        if isinstance(item, ast.Subscript):
+            parts = (
+                item.slice.elts
+                if isinstance(item.slice, ast.Tuple)
+                else (item.slice,)
+            )
+            return (
+                f"{render(item.value)}["
+                f"{','.join(render(part) for part in parts)}]"
+            )
         raise StructuredHIRCompileError(
-            f"MalformedType: unsupported AST node {type(node).__name__}"
+            f"MalformedType: unsupported AST node {type(item).__name__}"
         )
+
+    type_name = render(node)
     for alias, canonical in _TYPE_ALIASES.items():
         type_name = re.sub(rf"\b{alias}\b", canonical, type_name)
     try:

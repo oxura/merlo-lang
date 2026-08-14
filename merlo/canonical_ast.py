@@ -195,6 +195,7 @@ class CanonicalProgram:
         default=(),
         repr=False,
         compare=False,
+    )
     projection_source: str | None = field(
         default=None,
         repr=False,
@@ -339,8 +340,8 @@ class CanonicalProgram:
             item for item in self.functions if item.name == name
         )
 
-    def to_source(self) -> str:
-        if self.projection_source is not None:
+    def to_source(self, *, prefer_projection: bool = True) -> str:
+        if prefer_projection and self.projection_source is not None:
             return self.projection_source
         chunks: list[str] = []
         for record in self.records:

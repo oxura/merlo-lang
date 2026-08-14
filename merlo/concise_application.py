@@ -3240,7 +3240,7 @@ def elaborate_concise_core(
         elaborated = elaborate_surface(surface)
     except (SurfaceSyntaxError, SurfaceElaborationError) as exc:
         raise ConciseApplicationError(f"{path}: {exc}") from exc
-    canonical = elaborated.canonical.to_source()
+    canonical = elaborated.canonical.to_source(prefer_projection=False)
     semantic_digest = elaborated.canonical.semantic_hash
     decisions = [
         {

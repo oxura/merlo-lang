@@ -2,7 +2,7 @@ from __future__ import annotations
 import ast
 import hashlib
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Iterable
 
 from .canonical_ast import (
@@ -27,6 +27,7 @@ from .surface_ast import (
     SurfaceExpressionStatement,
     SurfaceFor,
     SurfaceFunction,
+    SurfaceIf,
     SurfaceCase,
     SurfaceEnum,
     SurfaceIndex,
