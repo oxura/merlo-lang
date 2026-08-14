@@ -8,11 +8,10 @@ def main() -> None:
     parser.add_argument("--workspace", required=True)
     parser.add_argument("--arm", choices=("merlo", "python"), required=True)
     parser.add_argument("--evidence", required=True)
-    parser.add_argument("--protocol", required=True)
+    parser.add_argument("--budgets-json", required=True)
     args = parser.parse_args()
     evidence = json.loads(Path(args.evidence).read_text(encoding="utf-8"))
-    protocol = json.loads(Path(args.protocol).read_text(encoding="utf-8"))
-    budgets = protocol["budgets"]
+    budgets = json.loads(args.budgets_json)
     fields = (
         "input_tokens", "output_tokens", "iterations", "tool_calls",
         "wall_time_ms",

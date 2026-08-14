@@ -25,9 +25,9 @@ PROVIDER_IDENTITY_INCOMPLETE = "UNMEASURED_PROVIDER_IDENTITY_INCOMPLETE"
 class ProtocolError(ValueError):
     pass
 
-LOCKED_PROTOCOL_SHA256 = "8f10c32db788816cc66998ec241d690c33a007000ab499782ae526be056ca285"
+LOCKED_PROTOCOL_SHA256 = "9bfd1854efe72448a93ba1b91d59ece8de0987de0fae7fa378092514ea87a2fd"
 LOCKED_TASKS_SHA256 = "a387364b22e1b8f77527e376df2979a92c317bec9e57bbcdcf06765a7dc7ba31"
-PREREGISTRATION_ROOT_SHA256 = "0ab5827bf599ad50871c3e47ee85f5c606a23ea276b6ab7e9db7c64a3f87ccc5"
+PREREGISTRATION_ROOT_SHA256 = "1e21914acb2ea99ff8d80d5575a947f44a9dffde5055bbcfa11479c90197b11f"
 
 @dataclass(frozen=True)
 class Validation:
@@ -365,7 +365,7 @@ def validate_protocol(root: str | Path | None = None) -> Validation:
         "included_in_metrics": False,
         "excluded_from_final_metrics": True,
         "manifest_path": "calibration/calibration.json",
-        "manifest_sha256": "a9992e25f9fb7611005a14ffbb1f360bea2d3454b10e5d72ebe6e4af5e97d17c",
+        "manifest_sha256": "c25c743f7359ecddadd6850ef9cedf4dac308029c52f07c1afbf1c27f8784778",
         "runner": "trusted_runner_outside_agent_mount",
         "required_checks": [
             "provider", "tool_calls", "timeouts", "token_accounting",
@@ -555,6 +555,20 @@ def _attempt_evidence_sha256(record: Mapping[str, Any]) -> str:
         "post_digest_map": record.get("post_digest_map"),
         "changed_paths": record.get("changed_paths"),
         "provider_attestation": record.get("provider_attestation"),
+        "transcript_sha256": record.get("transcript_sha256"),
+        "fixture_tree_sha256": record.get("fixture_tree_sha256"),
+        "terminal_reason": record.get("terminal_reason"),
+        "stdout_sha256": (
+            sha256_bytes(record["stdout"].encode("utf-8"))
+            if isinstance(record.get("stdout"), str)
+            else None
+        ),
+        "stderr_sha256": (
+            sha256_bytes(record["stderr"].encode("utf-8"))
+            if isinstance(record.get("stderr"), str)
+            else None
+        ),
+        "contamination_attestation": record.get("contamination_attestation"),
         "metrics": {
             key: record.get(key)
             for key in (
@@ -651,8 +665,7 @@ def validate_attempt_record(
     _validate_trusted_oracle_attestation(record, protocol, task)
     if record["terminal_reason"] not in {
         "completed", "token_budget", "time_budget", "tool_budget",
-        "iteration_budget", "provider_unavailable", "infrastructure_failure",
-        "invalid_protocol",
+        "iteration_budget",
     }:
         raise ProtocolError("invalid terminal reason")
     attestation = record["provider_attestation"]

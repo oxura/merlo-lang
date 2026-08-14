@@ -9,6 +9,7 @@ import sys
 import pytest
 
 from tools.benchmarks.merlo.ai_ab import (
+    _attempt_evidence_sha256,
     PROVIDER_IDENTITY_INCOMPLETE,
     PREREGISTRATION_ROOT_SHA256,
     ProtocolError,
@@ -132,6 +133,26 @@ def test_budget_calibration_rejects_over_limit_evidence(
 
     assert result["status"] == "FAIL"
     assert result["checks"]["input_tokens_bounded"] is False
+
+
+def test_trusted_attempt_digest_binds_terminal_and_raw_output() -> None:
+    record = {
+        "terminal_reason": "completed",
+        "transcript_sha256": "a" * 64,
+        "fixture_tree_sha256": "b" * 64,
+        "stdout": "",
+        "stderr": "",
+        "provider_attestation": {"provider": "locked"},
+        "contamination_attestation": {"network_retrieval": "disabled"},
+    }
+    digest = _attempt_evidence_sha256(record)
+
+    assert _attempt_evidence_sha256({
+        **record, "terminal_reason": "provider_unavailable",
+    }) != digest
+    assert _attempt_evidence_sha256({
+        **record, "stdout": "forged",
+    }) != digest
 
 
 def test_normalized_prompt_parity_is_locked() -> None:

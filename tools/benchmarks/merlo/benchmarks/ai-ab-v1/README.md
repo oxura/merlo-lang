@@ -31,9 +31,9 @@ remain explicit blockers.
 The preregistration component root is:
 
 ```text
-protocol_sha256 = 8f10c32db788816cc66998ec241d690c33a007000ab499782ae526be056ca285
+protocol_sha256 = 9bfd1854efe72448a93ba1b91d59ece8de0987de0fae7fa378092514ea87a2fd
 tasks_sha256    = a387364b22e1b8f77527e376df2979a92c317bec9e57bbcdcf06765a7dc7ba31
-combined_root   = 0ab5827bf599ad50871c3e47ee85f5c606a23ea276b6ab7e9db7c64a3f87ccc5
+combined_root   = 1e21914acb2ea99ff8d80d5575a947f44a9dffde5055bbcfa11479c90197b11f
 ```
 
 `combined_root` is the SHA-256 of canonical JSON containing the two named
