@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
+from .alpha_protocol import AlphaProtocol
 from .public_benchmark import PublicBenchmarkOutputError, run_public_benchmark
 from .bench import run_stage02_bench
 from .compiler import compile_project

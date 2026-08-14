@@ -108,10 +108,8 @@ def test_toolchain_hash_tamper_is_rejected(tmp_path: Path) -> None:
     report = _measured_report(tmp_path)
     tampered = copy.deepcopy(report)
     tampered["compiler_provenance"]["runner_sha256"] = "a" * 64
-    # The typed report remains structurally valid, but its identity is now a
-    # distinct observation and cannot be accepted as the original report.
-    assert tampered["compiler_provenance"] != report["compiler_provenance"]
-    validate_public_report(tampered)
+    with pytest.raises(PublicBenchmarkError):
+        validate_public_report(tampered)
 
 
 def test_missing_c_arm_is_unmeasured(tmp_path: Path) -> None:

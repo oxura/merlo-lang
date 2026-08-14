@@ -585,6 +585,7 @@ def _metadata_by_builds(workloads: Sequence[FrozenWorkload], builds: Mapping[str
                 )
                 metadata[workload.id][arm] = {
                     "status": record.get("status"),
+                    "source": list(record.get("source", [])),
                     "source_sha256": source_sha256,
                     "optimized_artifact_sha256": record.get("binary_sha256"),
                     "optimized_artifact_bytes": record.get("binary_bytes"),

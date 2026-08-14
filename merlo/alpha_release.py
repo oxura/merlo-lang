@@ -830,44 +830,48 @@ def public_benchmark_evidence(
     compiler_sha256: str | None = None,
     lock_sha256: str | None = None,
 ) -> EvidenceRecord:
-    """Adapt a validated public benchmark report into release evidence.
+    """Adapt one canonical retained public report into release evidence."""
+    from .public_benchmark import PublicBenchmarkError, canonical_report_bytes, validate_public_report
 
-    The report is validated before its status is mapped; callers cannot supply
-    an independent pass bit.  The report file is retained as content-addressed
-    raw evidence for the release validator.
-    """
-    from .public_benchmark import PublicBenchmarkError, validate_public_report
-
-    try:
-        validate_public_report(report)
-    except PublicBenchmarkError as exc:
-        raise ReleaseValidationError(f"invalid public benchmark report: {exc}") from exc
-    status = "PASSED" if report.get("status") == "MEASURED" and report.get("passed") is True else "FAILED"
-    path = Path(report_path)
     base = Path(root).resolve()
-    resolved = path if path.is_absolute() else base / path
+    candidate = Path(report_path)
+    resolved = candidate if candidate.is_absolute() else base / candidate
     if not resolved.is_file():
         raise ReleaseValidationError(f"missing public benchmark report: {report_path}")
+    raw_bytes = resolved.read_bytes()
+    try:
+        parsed = json.loads(raw_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ReleaseValidationError("public benchmark report is not valid JSON") from exc
+    if parsed != dict(report) or canonical_report_bytes(parsed) != raw_bytes:
+        raise ReleaseValidationError("public benchmark report path disagrees with supplied report")
+    try:
+        validate_public_report(parsed, root=base)
+    except PublicBenchmarkError as exc:
+        raise ReleaseValidationError(f"invalid public benchmark report: {exc}") from exc
     try:
         relative = resolved.resolve().relative_to(base).as_posix()
     except ValueError as exc:
         raise ReleaseValidationError(f"public benchmark report escapes release root: {report_path}") from exc
-    report_hash = _file_hash(resolved)
-    provenance = report.get("compiler_provenance")
-    lock = report.get("workload_lock")
-    if not isinstance(provenance, Mapping) or not isinstance(lock, Mapping):
+    provenance = parsed.get("compiler_provenance")
+    lock = parsed.get("workload_lock")
+    toolchains = parsed.get("toolchains")
+    if not isinstance(provenance, Mapping) or not isinstance(lock, Mapping) or not isinstance(toolchains, Mapping):
         raise ReleaseValidationError("public benchmark provenance is incomplete")
+    c_toolchain = toolchains.get("c")
+    if compiler_sha256 is None or not isinstance(c_toolchain, Mapping) or c_toolchain.get("binary_sha256") != compiler_sha256:
+        raise ReleaseValidationError("release compiler hash is not bound to C toolchain")
+    report_hash = _digest_bytes(raw_bytes)
     selected_sources = dict(source_hashes or {
         "compiler_input_tree_sha256": str(provenance.get("source_tree_sha256")),
         "runner_sha256": str(provenance.get("runner_sha256")),
     })
-    selected_compiler = compiler_sha256 or str(provenance.get("source_tree_sha256"))
     selected_lock = lock_sha256 or str(lock.get("sha256"))
     payload = {
-        "schema_version": report.get("schema_version"),
-        "claim_id": report.get("claim_id"),
-        "status": report.get("status"),
-        "passed": report.get("passed"),
+        "schema_version": parsed.get("schema_version"),
+        "claim_id": parsed.get("claim_id"),
+        "status": parsed.get("status"),
+        "passed": parsed.get("passed"),
         "report_sha256": report_hash,
         "workload_lock_sha256": lock.get("sha256"),
         "compiler_tree_sha256": provenance.get("source_tree_sha256"),
@@ -877,13 +881,13 @@ def public_benchmark_evidence(
         id="performance.public-native-three-workload-v1",
         kind="public-benchmark",
         gate="performance",
-        status=status,
+        status="PASSED" if parsed.get("status") == "MEASURED" and parsed.get("passed") is True else "FAILED",
         executed=True,
         supported=True,
         payload=payload,
         raw_paths=(relative,),
         source_hashes=selected_sources,
-        compiler_sha256=selected_compiler,
+        compiler_sha256=compiler_sha256,
         lock_sha256=selected_lock,
         raw_hashes={relative: report_hash},
         artifact_hashes={},
