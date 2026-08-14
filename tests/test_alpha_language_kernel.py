@@ -651,3 +651,17 @@ def test_nested_borrowed_slice_rejects_materialized_vec_owner() -> None:
     hir, rir, _mir, optimized = _layers(source)
     with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
         emit_general_c(hir, rir, optimized)
+
+
+def test_vec_view_of_owned_call_rejects_borrowed_escape() -> None:
+    source = (
+        "fn make() -> Vec[UInt64]:\n"
+        "    return Vec.new()\n"
+        "fn wrapper(input: BytesView) -> Slice[UInt64]:\n"
+        "    return make().view()\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    return 0\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
+        emit_general_c(hir, rir, optimized)

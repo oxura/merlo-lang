@@ -3153,7 +3153,17 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             if receiver_text == "TextBuilder" and method == "new":
                 return "merlo_text_builder_new()"
             receiver_type = self._expression_type(node.func.value)
-            receiver = self._address_expression(node.func.value)
+            if (
+                receiver_type is not None
+                and self._is_owning_temporary(node.func.value, receiver_type)
+            ):
+                temporary = self._materialize_owned_argument(
+                    node.func.value,
+                    receiver_type,
+                )
+                receiver = f"&{temporary}"
+            else:
+                receiver = self._address_expression(node.func.value)
             if method == "clone" and receiver_type in self.descriptors and _is_owner(self.descriptors[receiver_type]):
                 return f"merlo_clone_{_identifier(receiver_type)}({receiver})"
             enum_descriptor = self.descriptors.get(receiver_type or "")
