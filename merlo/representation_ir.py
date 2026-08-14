@@ -21,6 +21,9 @@ REPRESENTATION_IR_SCHEMA_VERSION = 1
 REPRESENTATION_IR_CONTRACT = "merlo.representation-ir.v1"
 MAX_U64 = (1 << 64) - 1
 
+def _type_leaf(type_name: str) -> str:
+    return type_name.rsplit("__", 1)[-1].rsplit(".", 1)[-1]
+
 
 class RepresentationCompileError(ValueError):
     """Typed representation/layout/ownership failure."""
@@ -635,13 +638,15 @@ class _DescriptorBuilder:
                 ok_type, err_type = result_parts
                 ok = self.get(ok_type)
                 err = self.get(err_type)
+                canonical_ok = ok.name
+                canonical_err = err.name
                 descriptor = EnumDesc(
                     type_name, "enum", max(ok.size, err.size) + 8,
                     max(ok.alignment, err.alignment), "aggregate", "forbidden",
                     "bitwise_then_invalidate", "tag_switch",
-                    tuple(sorted({ok_type, err_type})), (),
+                    tuple(sorted({canonical_ok, canonical_err})), (),
                     _stable_id("type", "result", ok.source_type_identity, err.source_type_identity),
-                    variants=(("Ok", ok_type, 0), ("Err", err_type, 1)),
+                    variants=(("Ok", canonical_ok, 0), ("Err", canonical_err, 1)),
                 )
                 self.descriptors[type_name] = descriptor
                 return descriptor
@@ -704,6 +709,12 @@ class _DescriptorBuilder:
             return descriptor
         if type_name in self.declarations:
             return self._nominal(type_name)
+        aliases = [
+            name for name in self.declarations
+            if _type_leaf(name) == type_name
+        ]
+        if len(aliases) == 1:
+            return self.get(aliases[0])
         raise RepresentationCompileError(f"unknown representation type: {type_name}")
 
     def _finalize_nominal(self, name: str, completed: set[str]) -> TypeDescriptor:

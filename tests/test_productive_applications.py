@@ -169,8 +169,19 @@ def test_productive_applications_have_multifile_merlo_source_projects():
     assert all(item["domain_opaque_c_helpers"] == [] for item in report["applications"])
     assert report["applications"][0]["reuses_general_json_parser"] is True
 
-@pytest.mark.parametrize("application", ("ndjson", "csv", "grep"))
-def test_productive_projects_compile_extracted_path_result_main(application: str):
+@pytest.mark.parametrize(
+    ("application", "public_error_owner", "internal_error_prefix"),
+    (
+        ("ndjson", "app.report.AppError", "Merlo_app_report_"),
+        ("csv", "app.sales.AppError", "Merlo_app_sales_"),
+        ("grep", "app.main.AppError", "AppError"),
+    ),
+)
+def test_productive_projects_compile_extracted_path_result_main(
+    application: str,
+    public_error_owner: str,
+    internal_error_prefix: str,
+):
     compilation = compile_project(
         PRODUCTIVE_PROJECTS[application][0],
         require_interface_lock=False,
@@ -181,14 +192,22 @@ def test_productive_projects_compile_extracted_path_result_main(application: str
         if function.name == "main"
     )
     assert tuple(parameter.type_name for parameter in entry.parameters) == ("Path",)
-    assert entry.return_type == "Result[Text,AppError]"
+    internal_error = entry.return_type.removeprefix("Result[Text,").removesuffix("]")
+    if internal_error_prefix == "AppError":
+        assert internal_error == internal_error_prefix
+    else:
+        assert internal_error.startswith(internal_error_prefix)
+        assert internal_error.endswith("__AppError")
     task = next(
         item for item in compilation.elaborated.tasks
         if item.name == "main"
     )
-    assert task.return_type == "Result[Text,AppError]"
+    assert task.return_type == f"Result[Text,{public_error_owner}]"
     assert "task main(path: Path)" in compilation.elaborated.canonical_source
-    assert "fn main(path: Path) -> Result_Text_AppError_:" in compilation.elaborated.machine_source
+    assert (
+        f"fn main(path: Path) -> Result_Text_{internal_error}_:"
+        in compilation.elaborated.machine_source
+    )
 
 def test_productive_cli_entrypoints_execute_each_application(tmp_path: Path):
     ndjson = tmp_path / "events.ndjson"

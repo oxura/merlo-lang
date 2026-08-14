@@ -29,7 +29,7 @@
       "parameters": [
         [
           "fields",
-          "Vec[JsonField]"
+          "Vec[app.json.JsonField]"
         ],
         [
           "key",
@@ -37,11 +37,11 @@
         ],
         [
           "fallback",
-          "Json"
+          "app.json.Json"
         ]
       ],
-      "return_type": "Json",
-      "revision_id": "d4779c53654e308dd4b65ab44905f981fb35ec41dbcaf34e5b9dc3362d339402"
+      "return_type": "app.json.Json",
+      "revision_id": "dfe15c283fecd29cecf9d0115a240b02503f7d1029376e60f59a3342f61e5a7c"
     },
     {
       "capabilities": [],
@@ -55,8 +55,8 @@
           "TextView"
         ]
       ],
-      "return_type": "Result[Json,JsonError]",
-      "revision_id": "0d481e0bdc0565cb964d1cb4b028d1eb52821821676b827ccfed64aef3380cd3"
+      "return_type": "Result[app.json.Json,app.json.JsonError]",
+      "revision_id": "aa0c07ef85e3e19bc1a97c5db618bb4592e4c6520e75d5c8cccb6977a673f067"
     },
     {
       "capabilities": [],
@@ -67,15 +67,15 @@
       "parameters": [
         [
           "fields",
-          "Vec[JsonField]"
+          "Vec[app.json.JsonField]"
         ],
         [
           "key",
           "Text"
         ]
       ],
-      "return_type": "Json",
-      "revision_id": "68e96768d75bfb0b846502e439b13d6fbe0490b465247067153282e506d5eb51"
+      "return_type": "app.json.Json",
+      "revision_id": "c7ad7bedd01594039d252ee8f1c830b61aa0c3d84c9cc143a32041c38fdca341"
     },
     {
       "capabilities": [],
@@ -86,6 +86,21 @@
       "parameters": [],
       "return_type": null,
       "revision_id": "7d97ef76862b3fbbc307d07132b2bab8c899aa61fe5710c0b544c186ad568db5"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.main",
+      "name": "main",
+      "parameters": [
+        [
+          "path",
+          "Path"
+        ]
+      ],
+      "return_type": "Result[Text,app.report.AppError]",
+      "revision_id": "7e03b5848915e8aab88e35df653d556f48c7f6dd7e28fdcf5c280686a5e531ba"
     },
     {
       "capabilities": [
@@ -105,8 +120,8 @@
           "Path"
         ]
       ],
-      "return_type": "Result[Text,AppError]",
-      "revision_id": "14fcc3082b5beb9277276f9a431ce22974d76dd90e705e325358034579284bb5"
+      "return_type": "Result[Text,app.report.AppError]",
+      "revision_id": "da7f25e725d59fcd6993f954628748b26dc7fb82e0251e6bc9ab10bc99031020"
     },
     {
       "capabilities": [],
@@ -131,11 +146,11 @@
         ],
         [
           "options",
-          "Options"
+          "app.report.Options"
         ]
       ],
-      "return_type": "Result[Text,AppError]",
-      "revision_id": "2845dc09442b982f442e190d24a1d7a778f4844aee906bbcd114c8da5605d008"
+      "return_type": "Result[Text,app.report.AppError]",
+      "revision_id": "a8e5635c4e63fc47eccf27fee48abf83e7358d582141f204f0e14fae7fb233cc"
     },
     {
       "capabilities": [],
