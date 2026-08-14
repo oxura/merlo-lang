@@ -432,7 +432,7 @@ def build_productive_runner_registry(
                 include_grep_options=True,
             )
 
-        source_dir = base / "merlo" / "programs" / f"productive_{application}" / "app"
+        source_dir = base / "tools" / "benchmarks" / "merlo" / "programs" / f"productive_{application}" / "app"
         source_paths = tuple(
             sorted(path for path in source_dir.glob("*.mlo") if path.is_file())
         )
