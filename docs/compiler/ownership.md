@@ -1,59 +1,62 @@
 # Ownership contract
 
-## Inputs and outputs
+## Purpose
 
-Ownership enters HIR through `HIRParameter.ownership` and `HIRNode.ownership`
-in [`src/merlo/structured_hir_v2.py`](../../src/merlo/structured_hir_v2.py). RIR turns
-those labels into `TypeDescriptor` copy/move/drop classes and type-directed
-`DropPlan` values in [`src/merlo/representation_ir.py`](../../src/merlo/representation_ir.py).
-`RepresentationProgram` serializes descriptors and drop plans; it does **not**
-contain `StoragePolicy` values. `storage_policy_matrix()` exists as a helper
-but is not called by `lower_structured_hir_to_rir()`.
+Ownership metadata follows values from typed HIR through representation and MIR
+to type-directed cleanup. It records copy, move, borrow, invalidation, and drop
+obligations without pretending that metadata alone proves runtime safety.
 
+## Inputs
+
+HIR carries ownership labels on `HIRParameter` and `HIRNode` in
+[`src/merlo/structured_hir_v2.py`](../../src/merlo/structured_hir_v2.py).
+RIR consumes those labels through `TypeDescriptor` and `DropPlan` in
+[`src/merlo/representation_ir.py`](../../src/merlo/representation_ir.py).
 MIR materializes ownership operations and `drop_value` instructions in
-[`src/merlo/representation_mir.py`](../../src/merlo/representation_mir.py); the C
-backend validates the predecessor chain but currently does not consume MIR
-instructions or RIR drop plans to drive emission.
+[`src/merlo/representation_mir.py`](../../src/merlo/representation_mir.py).
+
+## Outputs
+
+Trivial/scalar descriptors may copy. Owning descriptors have a forbidden copy
+class and explicit move/invalidation behavior; borrowed views are trivial-copy
+views. Drop plans distinguish record fields, active enum payloads, arrays,
+vectors, maps, boxes, builders, and file readers. HIR/RIR/MIR serialize
+`ownership`, `ownership_provenance`, and cleanup metadata.
 
 ## Invariants
 
-Trivial/scalar descriptors may copy; owning descriptors have `copy_class`
-`forbidden` and explicit move/invalidation behavior; borrow descriptors are
-trivial-copy views. Descriptor and drop-plan metadata records storage-relevant
-copy, move, and drop actions. Drop plans are type-directed: record fields,
-active enum payloads, arrays, vectors, maps, boxes, builders, and file readers
-use distinct cleanup actions. The HIR/RIR/MIR serialized fields
-`ownership`, `ownership_provenance`, and drop metadata are the cross-stage
-contract; they are semantic data, not comments for a future backend to
-reinterpret.
+A moved owner cannot be reused; a live borrow cannot overlap a conflicting
+mutation. Drop actions are selected from type descriptors and plans, not from
+generated C names or allocation order. RIR does not contain `StoragePolicy`
+values; the `storage_policy_matrix()` helper is not a production lowering
+stage. The backend checks predecessor identity before emission.
 
 ## Failure modes
 
 `RepresentationCompileError` rejects unsupported ownership/layout combinations,
 unknown descriptors, illegal inline recursion, and invalid partial
-initialization. `RepresentationProgram` rejects missing entry functions or
-schema drift. `GeneralPerformanceMIR` rejects missing type-directed drop glue
-when required. Backend predecessor mismatches fail before C emission.
+initialization. RIR rejects schema or entry-function failures. MIR rejects
+missing type-directed drop glue when cleanup is required. Predecessor mismatch
+fails before C emission.
 
-## Identity and provenance
+## Trusted boundary
 
-`TypeDescriptor.source_type_identity` binds physical layout and cleanup to the
-source type identity. RIR operations preserve HIR symbol IDs and source spans
-where present, but derive each operation `revision_id` from the HIR revision,
-operation kind, and ownership provenance. MIR instructions derive further
-revision IDs while retaining that provenance and source span. Drop actions are
-selected from descriptors and plans, never from generated C names or incidental
-allocation order.
+Descriptor copy/move/drop classes and the HIR/RIR/MIR provenance fields are the
+cross-stage ownership contract. Generated C is an implementation of that
+contract, not the source of ownership truth.
 
-## Current-alpha limitations
+## Experimental boundary
 
-- Current alpha ownership is represented in the lowering stack but is not a
-  complete source-level borrow checker: the structured HIR contract explicitly
-  excludes low-level CFG/drop flags, and the production frontend remains
-  transitional.
-- Borrowed views are supported, but `_DescriptorBuilder.get()` rejects every
-  `Shared[...]` type with `SharedOwnershipUnsupported`; no current descriptor
-  enables shared ownership and `StoragePolicy.shared_ownership` is never true
-  in production lowering.
-- The accepted RFC 0001 bound-program ownership facts and clean frontend cutover
-  are planned rather than current APIs.
+The alpha is not a complete source-level borrow checker. Shared ownership is
+not a production descriptor class, and `StoragePolicy.shared_ownership` is not
+set by current lowering. Capturing closures, cycle collection, ordinary
+lifetime annotations, and manual memory operations are outside the alpha
+surface.
+
+## Verification commands
+
+```console
+merlo check PROJECT
+merlo build PROJECT --json
+merlo run PROJECT --json
+```

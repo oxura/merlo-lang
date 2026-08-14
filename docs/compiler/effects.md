@@ -1,66 +1,67 @@
 # Effects and capabilities contract
 
-## Inputs and outputs
+## Purpose
 
-- **Current effect vocabulary:** `_EFFECT_CALL_PATTERNS` in
-  [`src/merlo/concise_application.py`](../../src/merlo/concise_application.py) maps
-  console, filesystem, environment, clock, randomness, network, and process
-  spellings to effect names such as `fs.read` and `network.http`.
-- **Current production analysis:** `_Inference._infer_effects()` computes direct
-  effects from CPython-AST-unparsed function bodies and iterates a bounded
-  same-name call closure. `_validate_declared_task_effects()` requires every
-  task to declare `uses`, rejects unknown names, and rejects only
-  `inferred - declared` (missing effects).
-- **Current public result:** `TaskBoundary.effects` and
-  `TaskBoundary.capabilities` are serialized into public interfaces and task
-  revision IDs. In current concise lowering, capabilities mirror the effect
-  tuple; they are not separate scoped authority objects.
+Effect analysis records host operations on task boundaries and checks declared
+authority before native lowering. Effects describe operations; capabilities
+constrain the corresponding checked authority.
 
-The accepted RFC 0001 contract (planned) defines bound `HostOperation` values
-and `infer_effects(program, hosts)` over `BoundCall.callee`, with distinct
-EffectId and CapabilityId sets.
+## Inputs
+
+The closed alpha vocabulary is `console.read`, `console.write`, `fs.read`,
+`fs.write`, `env.read`, `clock.now`, `random.read`, `network.tcp`,
+`network.http`, and `process.args`. Frontend task boundaries in
+[`src/merlo/frontend_model.py`](../../src/merlo/frontend_model.py) carry effect
+and capability tuples. The runtime vocabulary is defined by
+[`src/merlo/runtime_contract.py`](../../src/merlo/runtime_contract.py).
+
+## Outputs
+
+`TaskBoundary.effects` and `TaskBoundary.capabilities` are sorted, serialized
+in public interfaces, and included in task/interface revision IDs. In this
+alpha the capability tuple mirrors the effect tuple; it is not a separate
+scoped-authority object. A task must declare the effects required by the
+current analysis before the coordinator accepts it.
 
 ## Invariants
 
-Current tasks must declare a non-empty `uses` list and every inferred effect
-must occur in that list. Extra declared effects are currently accepted. The
-current bounded closure does not reject an annotated recursive call graph with
-an `EffectCycle`; it can stop after its iteration bound. Unknown effect names
-are rejected, and resolved tuples are sorted before being stored in
-`TaskBoundary`.
-
-RFC 0001 (planned) requires a fixed point over bound calls with transitive
-wrapper/alias propagation that supports recursive call graphs. Diagnostics are
-for unsatisfied effect declarations or capability authority, not recursion
-itself; pure functions with inferred effects are rejected. Runtime capabilities
-remain semantic guards, not host isolation.
+Unknown effect names are rejected. A task with an inferred effect must expose a
+corresponding declaration; extra declarations are currently accepted. Effects
+propagate through the current private-call closure, and resolved tuples are
+stored deterministically. Capability checks constrain recognized Merlo host
+operations but do not isolate arbitrary native code.
 
 ## Failure modes
 
-Unrecognized host spellings simply contribute no current effect, which is a
-known limitation rather than proof of purity. Missing `uses` declarations,
-unknown effect names, and missing inferred declarations raise
-`ConciseApplicationError` with source path and line where available. Current
-text/AST matching does not guarantee a typed cycle diagnostic or distinguish
-same-spelled methods from resolved calls.
+Missing effect declarations and unknown effect names raise a frontend/project
+diagnostic with a source path and line when available. A host spelling that the
+transitional analyzer does not recognize contributes no effect; that is a known
+limitation, not proof that the function is pure. Same-named methods, aliases,
+and comments are not guaranteed to be distinguished by the current source-based
+analysis.
 
-## Identity and provenance
+## Trusted boundary
 
-Current effects are attached to `TaskBoundary.name` and source location, then
-included in `revision_id` and `PublicInterface.revision_id`. They are not yet
-keyed to a resolved `SymbolId`; same-named calls can therefore affect analysis
-when text matches. Current capability fields have the same provenance because
-they mirror effects. RFC 0001's `HostOperation.symbol`, effect IDs, capability
-IDs, and bound call spans are the required future provenance model.
+The closed runtime vocabulary, task/interface revision payload, and declared
+manifest authority are the checked boundary. An operation without authority is
+rejected before the checked host operation. FFI and generated native code remain
+explicit review boundaries.
 
-## Current-alpha limitations
+## Experimental boundary
 
-- Effect discovery is text/CPython-AST based and only follows function names
-  visible to the concise inference pass; comments, strings, aliases, and
-  same-named methods are not proven harmless by this implementation.
-- The current alpha has no separate capability syntax/checker: the published
-  `TaskBoundary.capabilities` tuple mirrors `effects`. `AlphaProtocol` is a
-  SemanticWorld API, not proof that native operations are sandboxed.
-- The accepted RFC 0001 bound-call fixed point, `EffectCycle` diagnostics, and
-  authority/effect separation are planned; callers must not rely on
-  aspirational `infer_effects` APIs.
+The current alpha effect discovery is source/AST based and does not expose a
+stable public `infer_effects()` API. It does not provide a separate capability
+syntax, a typed `EffectCycle` diagnostic, or a proof that native binaries are
+sandboxed. RFC 0001's bound-call fixed point and distinct effect/capability IDs
+remain future work.
+
+## Verification commands
+
+```console
+merlo check PROJECT
+merlo inspect TASK PROJECT --json
+merlo explain PROJECT
+```
+
+These commands expose checked contract data; they do not turn capability
+manifests into an operating-system security boundary.

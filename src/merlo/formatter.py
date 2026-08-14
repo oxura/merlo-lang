@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from merlo.concise_application import ConciseApplicationError, elaborate_concise_core
+from merlo.frontend_model import ConciseApplicationError
+from merlo.concise_services import elaborate_concise_core
 
 
 def _program(source: str, path: str) -> dict[str, Any]:

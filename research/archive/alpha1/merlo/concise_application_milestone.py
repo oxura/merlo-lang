@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from merlo.frontend_model import ConciseApplicationError, PublicInterface
-from merlo.concise_application import elaborate_concise_application, elaborate_concise_core
+from merlo.concise_services import elaborate_concise_application, elaborate_concise_core
 from merlo.compiler import compile_project
 from tools.benchmarks.merlo.concise_precedence import (
     parse_expression,
@@ -24,13 +24,9 @@ from tools.benchmarks.merlo.concise_precedence import (
 )
 from .native_c_backend import compile_c_source
 from research.archive.alpha1.merlo.semantic_surface import SemanticSurfaceError, compile_semantic_surface
-from merlo.representation_c_backend import emit_general_c
 from merlo.structured_hir_v2 import compile_structured_hir
 from merlo.representation_ir import lower_structured_hir_to_rir
-from merlo.representation_mir import (
-    lower_rir_to_performance_mir,
-    optimize_general_mir,
-)
+from merlo.representation_mir import lower_rir_to_performance_mir
 
 
 CONCISE_MILESTONE_SCHEMA_VERSION = 1

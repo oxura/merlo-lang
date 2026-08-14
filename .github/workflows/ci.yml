@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.11", "3.14"]
+        python: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -92,3 +92,206 @@ jobs:
           "$smoke_root/venv/bin/merlo" check --json "$GITHUB_WORKSPACE/examples/capacity-ledger"
           "$smoke_root/venv/bin/merlo" build --json "$GITHUB_WORKSPACE/examples/capacity-ledger"
           "$smoke_root/venv/bin/merlo" run --json "$GITHUB_WORKSPACE/examples/capacity-ledger" "$GITHUB_WORKSPACE/examples/capacity-ledger/input.txt"
+
+
+  native-examples:
+    name: Native examples (${{ matrix.compiler }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [clang, gcc]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install native test dependencies
+        run: python -m pip install -e '.[test]'
+      - name: Focused native example checks
+        env:
+          MERLO_C_COMPILER: ${{ matrix.compiler }}
+        run: |
+          python - <<'PY'
+          import os
+          import subprocess
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+
+          from merlo.compiler import compile_project
+          from merlo.native_c_backend import compile_c_source, find_c_compiler
+
+          requested = os.environ["MERLO_C_COMPILER"]
+          compiler = find_c_compiler(requested)
+          if compiler is None:
+              raise SystemExit(f"requested compiler is unavailable: {requested}")
+          cases = ("automation", "capacity-ledger")
+          with TemporaryDirectory() as directory:
+              root = Path(directory)
+              for name in cases:
+                  project = Path("examples") / name
+                  compilation = compile_project(
+                      project, emit_native=False, require_interface_lock=False
+                  )
+                  native = compile_c_source(
+                      compilation.generated_c,
+                      output_dir=root / name,
+                      stem="app",
+                      compiler=compiler,
+                  )
+                  if native.status != "MEASURED" or native.binary_path is None:
+                      raise SystemExit(
+                          f"{name} did not build with {requested}: {native.status}"
+                      )
+                  completed = subprocess.run(
+                      [
+                          native.binary_path,
+                          str(project / "input.txt"),
+                      ],
+                      capture_output=True,
+                      text=True,
+                      check=False,
+                  )
+                  expected = (project / "expected.txt").read_text(encoding="utf-8")
+                  if (
+                      completed.returncode != 0
+                      or completed.stdout != expected
+                      or completed.stderr != ""
+                  ):
+                      raise SystemExit(
+                          f"{name} output mismatch with {requested}"
+                      )
+          PY
+
+  native-sanitizers:
+    name: Native ASan UBSan LSan corpus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install sanitizer test dependencies
+        run: python -m pip install -e '.[test]'
+      - name: Compact ASan UBSan LSan gates
+        run: |
+          python - <<'PY'
+          from tools.benchmarks.merlo.alpha_safety import (
+              SANITIZERS,
+              run_representative_alpha_safety,
+          )
+
+          report = run_representative_alpha_safety(
+              ".", limit_per_family=1, include_productive=False
+          )
+          records = report["records"]
+          for sanitizer in SANITIZERS:
+              statuses = [
+                  record["status"]
+                  for record in records
+                  if record["sanitizer"] == sanitizer
+              ]
+              if not statuses or any(status != "PASSED" for status in statuses):
+                  raise SystemExit(
+                      f"{sanitizer} gate did not pass: {sorted(set(statuses))}"
+                  )
+          PY
+
+  deterministic-artifacts:
+    name: Deterministic HIR MIR C and binary artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install deterministic-build dependencies
+        run: python -m pip install -e '.[test]'
+      - name: Compare clean compiler artifacts
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+
+          from merlo.compiler import compile_project
+          from merlo.native_c_backend import compile_c_source, find_c_compiler
+
+          compiler = find_c_compiler()
+          if compiler is None:
+              raise SystemExit("no supported C compiler found")
+          project = Path("examples/capacity-ledger")
+
+          def build(output: Path):
+              compilation = compile_project(
+                  project, emit_native=False, require_interface_lock=False
+              )
+              native = compile_c_source(
+                  compilation.generated_c,
+                  output_dir=output,
+                  stem="app",
+                  compiler=compiler,
+              )
+              if native.status != "MEASURED" or native.binary_sha256 is None:
+                  raise SystemExit(f"native artifact was not measured: {native.status}")
+              return (
+                  compilation.artifacts["hir"].digest,
+                  compilation.artifacts["mir"].digest,
+                  compilation.artifacts["c11"].digest,
+                  hashlib.sha256(compilation.generated_c.encode("utf-8")).hexdigest(),
+                  native.binary_sha256,
+              )
+
+          with TemporaryDirectory() as directory:
+              root = Path(directory)
+              first = build(root / "first")
+              second = build(root / "second")
+          if first != second:
+              raise SystemExit(
+                  "clean HIR/MIR/generated C/binary artifact hashes differ"
+              )
+          PY
+
+  release-manifest:
+    name: Release manifest required files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install release validator
+        run: python -m pip install -e '.[test]'
+      - name: Exercise manifest validation contracts
+        run: python -m pytest tools/release/merlo/tests/test_alpha_release.py -q
+      - name: Verify required release source inventory
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          from tools.release.merlo.alpha_release import (
+              REQUIRED_DOCS,
+              REQUIRED_EXAMPLES,
+              REQUIRED_LICENSES,
+              REQUIRED_METADATA,
+              REQUIRED_SPECS,
+              REQUIRED_STDLIB,
+          )
+
+          root = Path(".")
+          required = (
+              *REQUIRED_LICENSES,
+              *REQUIRED_METADATA,
+              *REQUIRED_DOCS,
+              *REQUIRED_SPECS,
+              *REQUIRED_STDLIB,
+              *REQUIRED_EXAMPLES,
+          )
+          missing = [relative for relative in required if not (root / relative).is_file()]
+          if missing:
+              raise SystemExit(f"missing required release files: {missing}")
+          PY

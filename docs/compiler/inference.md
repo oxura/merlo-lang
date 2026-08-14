@@ -1,62 +1,67 @@
 # Type and error inference contract
 
-## Inputs and outputs
+## Purpose
 
-- **Current input:** `elaborate_concise_application()` in
-  [`src/merlo/concise_application.py`](../../src/merlo/concise_application.py) reads
-  project source, normalizes declared type spellings, and runs its internal
-  `_Inference` state over the assembled core. The structural route accepts a
-  `SurfaceProgram` through `elaborate_surface()` in
-  [`src/merlo/surface_elaborator.py`](../../src/merlo/surface_elaborator.py).
-- **Current output:** `ConciseApplicationElaboration` contains
-  `canonical_program`, canonical and machine source, semantic digests,
-  `InferenceDecision` records, `TaskBoundary` signatures, and source origins.
-  `InferenceDecision` records owner, name, kind, inferred type, mutability,
-  location, and textual evidence.
-- **Lowering consumer:** `compile_project()` passes the resulting
-  `CanonicalProgram` to `compile_canonical_hir()`; inference is complete before
-  HIR construction.
+Inference fills private parameter, return, local, mutability, effect, and typed
+error facts when constraints are sufficient. It preserves explicit public
+contracts and rejects ambiguity instead of choosing a fallback.
+
+## Inputs
+
+The frontend elaboration supplies canonical nodes and the source origins used
+for evidence. The current result model is in
+[`src/merlo/frontend_model.py`](../../src/merlo/frontend_model.py):
+`InferenceDecision` records owner, name, kind, type, mutability, location, and
+evidence; `TaskBoundary` records parameters, return type, effects,
+capabilities, visibility, and source location.
+
+## Outputs
+
+`ConciseApplicationElaboration` contains the canonical program, canonical and
+machine source, semantic digests, inference decisions, task boundaries, public
+interfaces, and source origins. `semantic_ast_equal` and
+`canonical_reference_equal` expose the comparisons made by elaboration. HIR
+construction consumes the completed `CanonicalProgram`; inference is not a
+runtime type test.
 
 ## Invariants
 
-Canonical semantic output is deterministic: `semantic_ast_equal` compares the
-concise and canonical semantic digests, while `canonical_reference_equal`
-records the reference comparison used by elaboration. Declared task parameter
-and return types are preserved in `TaskBoundary`; public interface revisions
-include signature, effects, and capabilities. `InferenceDecision.mutable` is a
-binding mutability fact only; it is not an ownership, move, borrow, or drop
-proof. Ownership is assigned later by `_OwnershipChecker` and `_HIRBuilder` in
-[`src/merlo/structured_hir_v2.py`](../../src/merlo/structured_hir_v2.py).
-
-The RFC 0001 contract (planned) changes the input boundary to bound nodes and
-records local types, return types, mutability, typed errors, and evidence spans;
-it must never inspect raw source or CPython AST nodes.
+Conflicting or unresolved constraints fail. `InferenceDecision.mutable` is a
+binding mutability fact only; it is not an ownership, borrow, move, or drop
+proof. Explicit task parameter and return types are preserved. Public interface
+revisions include their published signature and effect/capability fields.
+`Result` propagation contributes its declared typed error rather than an
+untyped exception escape.
 
 ## Failure modes
 
-`ConciseApplicationError` rejects untyped or ambiguous expressions rather than
-choosing a fallback. The current elaborator rejects unsupported annotations,
-dynamic `Any`-like content, invalid calls, inconsistent assignments, bad
-returns, missing declarations, and interface-lock mismatches. The project
-coordinator turns `TypeError` and `ValueError` from canonical/HIR lowering into
-`production lowering failed` diagnostics.
+The elaborator rejects unsupported annotations, dynamic `Any`-like content,
+invalid calls, inconsistent assignments, bad returns, missing declarations, and
+interface-lock mismatches. Canonical/HIR lowering failures are surfaced by the
+project coordinator as production-lowering diagnostics. Inference never
+silently inserts a dynamic type or truthiness conversion.
 
-## Identity and provenance
+## Trusted boundary
 
-Each `InferenceDecision` carries the source path and line where evidence was
-observed. Canonical nodes retain spans, and `SourceOrigin` maps canonical lines
-back to concise source. Semantic digests hash normalized canonical payloads,
-not Python object identity. Under RFC 0001, inference facts will be keyed by
-bound `SymbolId` and exact spans; aliases cannot duplicate identity.
+Canonical nodes, source spans, semantic digests, and the immutable decision
+records are the trusted inference output. Ownership is checked later by HIR/RIR
+and cannot be inferred from a mutable flag alone.
 
-## Current-alpha limitations
+## Experimental boundary
 
-- The production `_Inference` implementation is embedded in the 2,775-line
-  `concise_application.py` coordinator and works over preprocessed source/
-  CPython AST structures rather than a standalone bound IR.
-- Type and error inference are not exposed as a stable `infer()` module API;
-  `InferenceDecision` is an elaboration result, not a complete typed-tree
-  contract.
-- Generics, subtyping, implicit conversions, traits, overloads, and the RFC
-  0001 typed-error inference model are not current alpha guarantees. RFC 0001
-  is accepted and marks the bound-node implementation as planned.
+The alpha's inference implementation still accepts a CPython-compatible
+expression representation in transitional paths and is not a standalone public
+`infer()` module API. Generics, subtyping, implicit conversions, traits,
+overloads, and the RFC 0001 bound-node typed-error model are outside the
+published alpha contract.
+
+## Verification commands
+
+```console
+merlo check PROJECT
+merlo expand PROJECT
+merlo explain PROJECT
+```
+
+Use diagnostic codes and JSON fields for automation; diagnostic wording and
+source locations may contain host-specific detail.

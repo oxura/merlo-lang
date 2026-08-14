@@ -6,11 +6,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
-from merlo.concise_application import (
+from merlo.frontend_model import (
     ConciseApplicationElaboration,
     ConciseApplicationError,
-    elaborate_concise_application,
 )
+from merlo.concise_services import elaborate_concise_application
 from merlo.modules import ModuleError, ModuleGraph
 from merlo.native_c_backend import NativeBuildResult, compile_c_source
 from merlo.project import Project

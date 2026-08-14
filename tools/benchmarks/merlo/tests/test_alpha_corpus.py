@@ -58,6 +58,20 @@ def test_each_family_representative_compiles_through_production_lineage(tmp_path
     assert set(("optimized_mir", "c11")) <= set(compilation.artifacts)
 
 
+def test_runtime_invalid_case_is_a_clean_native_failure(tmp_path: Path) -> None:
+    corpus = generate_alpha_corpus()
+    case = next(
+        item
+        for item in corpus["cases"]
+        if not item["validity"] and item["expected"]["runtime"]
+    )
+
+    report = run_alpha_corpus(corpus, root=tmp_path, case_ids=[case["id"]])
+
+    assert report["records"][0]["status"] == "PASSED"
+    assert report["records"][0]["diagnostic"] == "ExplicitFailure"
+
+
 def test_alpha_corpus_rejects_resigned_content_tampering() -> None:
     tampered = copy.deepcopy(generate_alpha_corpus())
     tampered["cases"][0]["source"] = tampered["cases"][0]["source"].replace("return Ok(", "return Err(")

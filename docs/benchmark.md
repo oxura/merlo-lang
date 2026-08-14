@@ -1,25 +1,34 @@
 # Public native benchmark v1
 
-The public benchmark is a fixed, executable observation—not a general
-performance claim. From a clean clone on Linux x86-64:
+The public benchmark is source-checkout tooling, not a production `merlo`
+command and not part of the wheel workflow. From a clean Linux x86-64 clone:
 
 ```console
 git clone https://github.com/oxura/merlo-lang.git
 cd merlo-lang
-python3 -m merlo benchmark --output ./merlo-benchmark-v1.json
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install .
+python3 -c 'from tools.benchmarks.merlo.public_benchmark import run_public_benchmark; run_public_benchmark(".", output="./merlo-benchmark-v1.json")'
 ```
 
-The command has exactly one functional option: `--output PATH`. The repository
-lock supplies all three checked-in workloads and all four required arms
-(concise Merlo, canonical Merlo, C, and Python). It does not accept workload
-filters, alternate corpora, seeds, timing counts, compiler flags, baseline
-substitutions, or prior reports. Rust is optional and cannot replace C.
+The callable above is the active entry point under
+`tools/benchmarks/merlo/public_benchmark.py`; it accepts the repository root
+and an optional report path. Do not replace it with a `merlo benchmark`
+subcommand: no such production route is published.
 
-A successful command exits zero only for `status: "MEASURED"` and
-`passed: true`. It writes a canonical JSON report for measured failures,
-missing tools, invalid fixtures, failed builds, and invalid observations as
-well; those outcomes exit one. Invalid command usage or an unwritable output
-path exits two. Existing output is never replaced by a different report.
+The runner has one report destination option at the Python API boundary:
+`output`. The repository lock supplies all three checked-in workloads and all
+four required arms (concise Merlo, canonical Merlo, C, and Python). It does not
+accept workload filters, alternate corpora, seeds, timing counts, compiler
+flags, baseline substitutions, prior reports, or Rust as a replacement for C.
+
+A successful report has `status: "MEASURED"` and `passed: true`. The runner
+writes canonical JSON for measured failures, missing tools, invalid fixtures,
+failed builds, and invalid observations as well; those outcomes are evidence
+of an unmeasured or invalid run, not a pass. Existing output is never replaced
+by a different report.
+
 
 ## Exact claim
 

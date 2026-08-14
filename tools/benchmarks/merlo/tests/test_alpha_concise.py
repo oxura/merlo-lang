@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from merlo.concise_application import (
-    ConciseApplicationError,
+from merlo.frontend_model import ConciseApplicationError
+from merlo.concise_services import (
     _preprocess_core,
     elaborate_concise_application,
     elaborate_concise_core,

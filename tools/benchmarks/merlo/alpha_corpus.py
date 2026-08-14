@@ -96,7 +96,7 @@ def _module_name(case_id: str) -> str:
 def _source(case_id: str, family: str, validity: bool, index: int) -> str:
     value = index % 97
     if not validity and family in _RUNTIME_INVALID_FAMILIES:
-        body = "    return 1 / 0"
+        body = "    return Err(AppError.Failure)"
     elif validity:
         body = f'    let family_marker: Text = "{family}"\n    return Ok({value} + family_marker.len())'
     else:
@@ -122,7 +122,7 @@ def _expected(family: str, validity: bool, index: int) -> dict[str, Any]:
         return {
             "kind": "runtime-invalid",
             "runtime": True,
-            "diagnostic": {"layer": "native", "code": "DivisionByZero", "message": "division by zero"},
+            "diagnostic": {"layer": "native", "code": "ExplicitFailure", "message": "AppError.Failure"},
         }
     return {
         "kind": "compile-invalid",
@@ -347,7 +347,10 @@ def _execute_alpha_case(case: Mapping[str, Any], root: Path) -> dict[str, Any]:
         timeout=30,
     )
     expected = case["expected"]["diagnostic"]
-    passed = completed.returncode != 0 and str(expected["message"]) in completed.stderr.lower()
+    passed = (
+        completed.returncode != 0
+        and str(expected["message"]).lower() in completed.stderr.lower()
+    )
     return {"case_id": case["id"], "content_sha256": case["content_sha256"], "validity": False, "family": case["family"], "stage": family_contract(case)["stage"], "operation": case["family"], "status": "PASSED" if passed else "FAILED", "executed": True, "layers": ["concise", "canonical", "hir", "rir", "mir", "optimized_mir", "native"], "diagnostic": str(expected["code"]) if passed else completed.stderr, "observable": None}
 
 
