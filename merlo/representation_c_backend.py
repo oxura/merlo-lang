@@ -3203,6 +3203,16 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     return f"merlo_{suffix}_entries({receiver})"
             if generic and generic[0] == "Vec":
                 suffix = _identifier(receiver_type)
+                if method == "view":
+                    if expected is None or not expected.startswith("Slice["):
+                        raise RepresentationCBackendError(
+                            "Vec.view requires contextual Slice type"
+                        )
+                    return (
+                        f"({_c_name(expected)}){{ ({receiver})->data, "
+                        f"({receiver})->length }}"
+                    )
+                suffix = _identifier(receiver_type)
                 if method in {"len", "capacity"}:
                     if isinstance(node.func.value, ast.Call):
                         return f"({self._expression(node.func.value)}).length"
