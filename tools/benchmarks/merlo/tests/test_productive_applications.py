@@ -205,8 +205,12 @@ def test_productive_projects_compile_extracted_path_result_main(
     assert task.return_type == f"Result[Text,{public_error_owner}]"
     assert "task main(path: Path)" in compilation.elaborated.canonical_source
     assert (
-        f"fn main(path: Path) -> Result_Text_{internal_error}_:"
+        f"Result[Text,{internal_error}]"
         in compilation.elaborated.machine_source
+    )
+    assert (
+        compilation.elaborated.machine_source
+        == compilation.elaborated.canonical_source
     )
 
 def test_productive_cli_entrypoints_execute_each_application(tmp_path: Path):

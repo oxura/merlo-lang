@@ -10,8 +10,9 @@ leaving layout and low-level control flow to later stages.
 
 `compile_canonical_hir(program, entry_function="main")` in
 [`src/merlo/structured_hir_v2.py`](../../src/merlo/structured_hir_v2.py)
-consumes a `CanonicalProgram`. The production coordinator supplies the same
-canonical predecessor used for semantic digests and interface checks.
+consumes the typed `SurfaceProgram` retained by an in-memory
+`CanonicalProgram`. A canonical JSON/source projection without that Surface
+tree is rejected; serialized projections are not compiler input.
 
 ## Outputs
 
@@ -32,7 +33,7 @@ semantic identity for every function and node.
 
 ## Failure modes
 
-Empty or malformed canonical source, unsupported expressions, invalid map
+A missing retained Surface tree, unsupported expressions, invalid map
 specializations, duplicate declarations, a missing `main`, duplicate node IDs,
 forbidden low-level kinds, and schema drift raise `StructuredHIRCompileError`
 or `ValueError`. The coordinator surfaces construction failures as a production
@@ -40,16 +41,18 @@ lowering diagnostic.
 
 ## Trusted boundary
 
-Canonical program identity and HIR spans/IDs are the semantic handoff to RIR.
-HIR carries ownership and effect facts for later checking but is not itself a
-complete borrow proof or physical-layout specification.
+The retained Surface tree, canonical program identity, and HIR spans/IDs form
+the semantic handoff to RIR. HIR carries ownership and effect facts for later
+checking but is not itself a complete borrow proof or physical-layout
+specification.
 
 ## Experimental boundary
 
-Some alpha paths still use copied CPython-compatible AST nodes while building
-HIR. HIR schema v2 is current and consumed by RIR, but a fully shared bound-node
-frontend remains RFC 0001 work. HIR intentionally does not model low-level CFG
-or drop flags.
+The current HIR builder internally adapts typed Surface nodes to
+CPython-compatible AST objects so the established ownership and representation
+lowerers remain shared. This adapter is implementation-local: Python AST is not
+the frontend stage contract, and no projected source is reparsed. HIR
+intentionally does not model low-level CFG or drop flags.
 
 ## Verification commands
 

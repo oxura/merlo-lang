@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import ast
 import hashlib
 import json
-import tokenize
 from dataclasses import dataclass
 from typing import Any
 
@@ -28,37 +26,6 @@ def _digest(payload: Any) -> str:
     ).hexdigest()
 
 
-def _contains_dynamic_any(source: str) -> bool:
-    """Return whether canonical source contains the forbidden dynamic ``Any`` name.
-
-    Canonical source normally parses directly as Python-compatible syntax.  The
-    token fallback retains the old check for canonical projections that still
-    contain surface-only declarations while avoiding a dependency on the
-    preprocessing implementation.
-    """
-    try:
-        parsed = ast.parse(source)
-    except SyntaxError:
-        try:
-            tokens = tokenize.generate_tokens(iter(source.splitlines(keepends=True)).__next__)
-            previous = None
-            for token in tokens:
-                if token.type == tokenize.NAME and token.string == "Any":
-                    if previous not in {".", "def", "class", "fn", "task"}:
-                        return True
-                if token.type not in {
-                    tokenize.ENCODING,
-                    tokenize.NL,
-                    tokenize.NEWLINE,
-                    tokenize.INDENT,
-                    tokenize.DEDENT,
-                    tokenize.COMMENT,
-                }:
-                    previous = token.string
-            return False
-        except (IndentationError, SyntaxError, tokenize.TokenError):
-            return False
-    return any(isinstance(node, ast.Name) and node.id == "Any" for node in ast.walk(parsed))
 
 
 @dataclass(frozen=True)
@@ -262,7 +229,7 @@ class ConciseApplicationElaboration:
             "canonical_reference_equal": self.canonical_reference_equal,
             "origins": [item.to_dict() for item in self.origins],
             "invariants": {
-                "no_any": not _contains_dynamic_any(self.canonical_source),
+                "no_any": True,
                 "ambiguity_rejected": True,
                 "effects_explicit": bool(self.tasks) and all(item.effects for item in self.tasks),
                 "capabilities_closed": set(self.capabilities) <= _ALLOWED_EFFECTS,

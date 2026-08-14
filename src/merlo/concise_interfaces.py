@@ -1,35 +1,47 @@
 from __future__ import annotations
 
-import ast
 import json
+import re
 from pathlib import Path
 
 from merlo.concise_assembly import _CoreAssembly
-from merlo.concise_inference import _public_type_name
-from merlo.concise_syntax import _normalize_type, _preprocess_core
 from merlo.frontend_model import (
     ConciseApplicationError,
     PublicInterface,
     TaskBoundary,
 )
+
+
+def _public_type_name(type_name: str | None, public_names: dict[str, str]) -> str | None:
+    if type_name is None:
+        return None
+
+    def replace_name(match: re.Match[str]) -> str:
+        start, end = match.span()
+        if (start and type_name[start - 1] == ".") or (
+            end < len(type_name) and type_name[end] == "."
+        ):
+            return match.group(0)
+        return public_names.get(match.group(0), match.group(0))
+
+    return re.sub(r"\b[A-Za-z_]\w*\b", replace_name, type_name)
 def _interfaces(
     assembly: _CoreAssembly,
     tasks: tuple[TaskBoundary, ...],
 ) -> tuple[PublicInterface, ...]:
-    parsed = ast.parse(_preprocess_core(assembly.canonical_source))
-    functions = {
-        item.name: item for item in parsed.body if isinstance(item, ast.FunctionDef)
-    }
     public_names = {
         internal: f"{module}.{public}"
         for module, public, internal in assembly.symbol_names
+    }
+    functions = {
+        item.name: item for item in assembly.canonical_program.functions
     }
     result: list[PublicInterface] = []
     for module, name, kind, internal in assembly.export_symbols:
         if kind == "task":
             continue
         if kind == "fn":
-            node = functions[internal]
+            function = functions[internal]
             result.append(
                 PublicInterface(
                     module,
@@ -37,13 +49,12 @@ def _interfaces(
                     "fn",
                     tuple(
                         (
-                            item.arg,
-                            _public_type_name(_normalize_type(item.annotation), public_names)
-                            or "?",
+                            parameter,
+                            _public_type_name(type_name, public_names) or "?",
                         )
-                        for item in node.args.args
+                        for parameter, type_name in function.parameters
                     ),
-                    _public_type_name(_normalize_type(node.returns), public_names),
+                    _public_type_name(function.return_type, public_names),
                     (),
                     (),
                 )

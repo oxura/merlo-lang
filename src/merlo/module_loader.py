@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from merlo.frontend_model import ConciseApplicationError
+from merlo.module_syntax import ModuleSyntaxError, parse_module_prelude
 from merlo.modules import STDLIB_MODULES
 
 
@@ -37,13 +37,13 @@ def _read_module(
         source = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         raise ConciseApplicationError(f"{path}: cannot read module: {exc}") from exc
-    lines = source.splitlines()
-    if not lines:
-        raise ConciseApplicationError(f"{path}: empty module")
-    match = re.fullmatch(r"module\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)", lines[0].strip())
-    if match is None:
+    try:
+        prelude = parse_module_prelude(source, path=str(path))
+    except ModuleSyntaxError as exc:
+        raise ConciseApplicationError(str(exc)) from exc
+    if prelude.module is None:
         raise ConciseApplicationError(f"{path}:1: expected `module qualified.name`")
-    name = match.group(1)
+    name = prelude.module
     expected = root.joinpath(*name.split(".")).with_suffix(".mlo")
     if external_name is not None:
         if name != external_name:
@@ -51,36 +51,16 @@ def _read_module(
                 f"{path}: declares {name!r}, expected standard module {external_name!r}"
             )
     elif path.resolve() != expected.resolve():
-        raise ConciseApplicationError(f"{path}:1: module {name!r} must live at {expected}")
-    imports = []
-    body_pairs: list[tuple[str, int]] = []
-    header = True
-    for line_number, line in enumerate(lines[1:], 2):
-        stripped = line.strip()
-        if header and not stripped:
-            body_pairs.append(("", line_number))
-            continue
-        import_match = re.fullmatch(r"use\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)", stripped)
-        if header and import_match:
-            imports.append(import_match.group(1))
-            continue
-        header = False
-        if stripped.startswith("use "):
-            raise ConciseApplicationError(
-                f"{path}:{line_number}: imports must precede declarations"
-            )
-        body_pairs.append((line, line_number))
-    while body_pairs and not body_pairs[0][0].strip():
-        body_pairs.pop(0)
-    while body_pairs and not body_pairs[-1][0].strip():
-        body_pairs.pop()
+        raise ConciseApplicationError(
+            f"{path}:{prelude.module_line}: module {name!r} must live at {expected}"
+        )
     return _Module(
         name,
         path,
         source,
-        tuple(imports),
-        "\n".join(line for line, _ in body_pairs) + "\n",
-        tuple(line_number for _, line_number in body_pairs),
+        prelude.imports,
+        prelude.body,
+        prelude.body_source_lines,
     )
 
 

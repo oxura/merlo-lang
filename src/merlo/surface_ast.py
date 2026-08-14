@@ -143,6 +143,12 @@ class SurfaceBinding(SurfaceNode):
 
 
 @dataclass(frozen=True)
+class SurfaceAnnotation(SurfaceNode):
+    name: str
+    type_name: str
+
+
+@dataclass(frozen=True)
 class SurfaceAssignment(SurfaceNode):
     target: SurfaceExpression
     value: SurfaceExpression
@@ -152,6 +158,11 @@ class SurfaceAssignment(SurfaceNode):
 @dataclass(frozen=True)
 class SurfaceExpressionStatement(SurfaceNode):
     expression: SurfaceExpression
+
+
+@dataclass(frozen=True)
+class SurfaceComment(SurfaceNode):
+    text: str
 
 
 @dataclass(frozen=True)
@@ -173,6 +184,12 @@ class SurfaceBreak(SurfaceNode):
 @dataclass(frozen=True)
 class SurfacePass(SurfaceNode):
     pass
+
+
+@dataclass(frozen=True)
+class SurfaceUses(SurfaceNode):
+    effects: tuple[str, ...]
+
 
 @dataclass(frozen=True)
 class SurfacePrint(SurfaceNode):
@@ -213,12 +230,15 @@ class SurfaceMatch(SurfaceNode):
 
 SurfaceStatement: TypeAlias = (
     SurfaceBinding
+    | SurfaceAnnotation
     | SurfaceAssignment
+    | SurfaceComment
     | SurfaceExpressionStatement
     | SurfaceReturn
     | SurfaceContinue
     | SurfaceBreak
     | SurfacePass
+    | SurfaceUses
     | SurfacePrint
     | SurfaceFor
     | SurfaceIf

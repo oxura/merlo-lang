@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Replaces production module and expression text rewrites with a typed Surface
+  AST, structural module binding, and a retained Surface-to-HIR handoff.
+- Rejects serialized canonical projections as compiler input while preserving
+  exact module source spans through HIR and SemanticWorld indexing.
+
 ## 0.1.0-alpha.2 — 2026-08-14
 
 This GitHub prerelease updates the packaged product boundary while retaining

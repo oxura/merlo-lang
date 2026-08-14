@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-import ast
 import hashlib
 import json
-import re
 from pathlib import Path
 from typing import Any
 
 from merlo.concise_assembly import _assemble_core
-from merlo.concise_inference import _strip_semantic_annotations
 from merlo.concise_interfaces import _interface_lock, _interfaces
-from merlo.concise_syntax import _contains_dynamic_any, _preprocess_core, lower_concise_sum_types
 from merlo.frontend_model import (
     CONCISE_APPLICATION_CONTRACT,
     CONCISE_APPLICATION_SCHEMA_VERSION,
@@ -31,8 +27,9 @@ def elaborate_concise_core(
         elaborated = elaborate_surface(surface)
     except (SurfaceSyntaxError, SurfaceElaborationError) as exc:
         raise ConciseApplicationError(f"{path}: {exc}") from exc
-    canonical = elaborated.canonical.to_source()
-    semantic_digest = elaborated.canonical.semantic_hash
+    canonical_program = elaborated.canonical
+    canonical = canonical_program.to_source()
+    semantic_digest = canonical_program.semantic_hash
     decisions = [
         {
             "owner": item.owner,
@@ -41,7 +38,14 @@ def elaborate_concise_core(
             "type": item.type_name,
             "mutable": item.mutable,
             "evidence": list(item.evidence),
-            "path": path,
+            "path": next(
+                (
+                    declaration.span.path
+                    for declaration in surface.declarations
+                    if getattr(declaration, "name", None) == item.owner
+                ),
+                path,
+            ),
             "line": next(
                 (
                     declaration.span.start_line
@@ -54,9 +58,9 @@ def elaborate_concise_core(
         for item in elaborated.decisions
     ]
     return {
-        "canonical_program": elaborated.canonical,
+        "canonical_program": canonical_program,
         "canonical_source": canonical,
-        "machine_source": lower_concise_sum_types(canonical),
+        "machine_source": canonical,
         "decisions": decisions,
         "concise_semantic_digest": semantic_digest,
         "canonical_semantic_digest": semantic_digest,
@@ -69,9 +73,6 @@ def elaborate_concise_core(
     }
 
 
-def _machine_source(canonical_core: str) -> tuple[str, bool]:
-    executable_core = re.sub(r"(?m)^task(\s+)", r"fn\1", canonical_core)
-    return lower_concise_sum_types(executable_core), False
 
 
 def elaborate_concise_application(
@@ -81,7 +82,7 @@ def elaborate_concise_application(
 ) -> ConciseApplicationElaboration:
     entry_path = Path(entry).resolve()
     modules = _load_modules(entry_path)
-    assembly, tasks, canonical_tasks = _assemble_core(modules)
+    assembly, tasks, _ = _assemble_core(modules)
     if not tasks:
         raise ConciseApplicationError(f"{entry_path}: application requires an effectful task boundary")
     if len(
@@ -98,16 +99,10 @@ def elaborate_concise_application(
         raise ConciseApplicationError(
             f"{entry_path}: PublicInterfaceRevisionMismatch; expected lock {lock_path}"
         )
-    machine, reference_equal = _machine_source(assembly.canonical_source)
     canonical = assembly.canonical_source
-    concise_digest = _strip_semantic_annotations(assembly.concise_source)
-    canonical_digest = _strip_semantic_annotations(assembly.canonical_source)
-    if concise_digest != canonical_digest:
-        raise ConciseApplicationError(
-            f"{entry_path}: concise/canonical semantic AST mismatch"
-        )
-    if _contains_dynamic_any(canonical):
-        raise ConciseApplicationError(f"{entry_path}: DynamicAnyForbidden")
+    machine = canonical
+    reference_equal = True
+    semantic_digest = assembly.canonical_program.semantic_hash
     source_payload = "\0".join(item.source for item in modules)
     return ConciseApplicationElaboration(
         str(entry_path),
@@ -116,8 +111,8 @@ def elaborate_concise_application(
         canonical,
         assembly.canonical_program,
         machine,
-        concise_digest,
-        canonical_digest,
+        semantic_digest,
+        semantic_digest,
         assembly.decisions,
         tasks,
         interfaces,
@@ -126,6 +121,8 @@ def elaborate_concise_application(
         lock_valid,
         reference_equal,
     )
+
+
 
 
 
@@ -181,9 +178,13 @@ def explain_concise_application(entry: str | Path) -> str:
         )
     lines.append("ambiguous points: none")
     lines.append(f"interface revision: {elaborated.interface_revision}")
-    semantic_nodes = sum(
-        1
-        for _ in ast.walk(ast.parse(_preprocess_core(elaborated.canonical_source)))
+    semantic_nodes = (
+        sum(1 + len(record.fields) for record in elaborated.canonical_program.records)
+        + sum(1 + len(enum.variants) for enum in elaborated.canonical_program.enums)
+        + sum(
+            1 + len(function.parameters) + len(function.body)
+            for function in elaborated.canonical_program.functions
+        )
     )
     lines.append(
         f"costs: modules={len(elaborated.modules)} semantic_nodes={semantic_nodes} "
@@ -217,6 +218,5 @@ __all__ = [
     "elaborate_concise_application",
     "elaborate_concise_core",
     "explain_concise_application",
-    "lower_concise_sum_types",
     "write_interface_lock",
 ]

@@ -3,13 +3,12 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import re
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 
-from merlo.modules import ModuleGraph, _declaration
+from merlo.modules import ModuleGraph
 from merlo.version import VERSIONS
 
 WORLD_SCHEMA_VERSION = VERSIONS.semantic_world
@@ -130,25 +129,28 @@ class SemanticWorld:
         source_hashes = _source_hashes(graph, root)
         lock_path = (Path(lockfile).resolve() if lockfile is not None else root / "merlo.lock")
         lock_hash = _lock_hash(root, lockfile)
-        entry_module = next(
-            (
-                module.name
-                for module in graph.modules
-                if Path(module.path).resolve() == entry
-            ),
-            graph.modules[-1].name,
-        )
-        hir_by_name = {item.name: item for item in compilation.hir.functions}
-        task_by_name = {item.name: item for item in compilation.elaborated.tasks}
+        hir_by_location = {
+            (str(Path(item.source.path).resolve()), item.source.line): item
+            for item in compilation.hir.functions
+        }
+        task_by_location = {
+            (str(Path(item.path).resolve()), item.line): item
+            for item in compilation.elaborated.tasks
+        }
         modules: list[dict[str, Any]] = []
         symbols: list[dict[str, Any]] = []
-        symbol_lookup: dict[tuple[str, str], str] = {}
+        symbol_by_location = {
+            (str(Path(module.path).resolve()), item.line): item.symbol_id.value
+            for module in graph.modules
+            for item in module.symbols
+        }
         for module in graph.modules:
             module_symbols: list[dict[str, Any]] = []
             for item in module.symbols:
                 start, end, definition = _source_for_symbol(module, item.line)
-                hir = hir_by_name.get(item.name) if module.name == entry_module else None
-                task = task_by_name.get(item.name) if module.name == entry_module else None
+                location = (str(Path(module.path).resolve()), item.line)
+                hir = hir_by_location.get(location)
+                task = task_by_location.get(location)
                 source_span = {
                     "path": module.path,
                     "line": start,
@@ -180,7 +182,6 @@ class SemanticWorld:
                 }
                 symbols.append(record)
                 module_symbols.append(record)
-                symbol_lookup[(module.name, item.name)] = item.symbol_id.value
             resolved_path = Path(module.path).resolve()
             try:
                 source_key = str(resolved_path.relative_to(root))
@@ -198,34 +199,33 @@ class SemanticWorld:
 
         refs: list[dict[str, Any]] = []
         calls: list[dict[str, Any]] = []
+        hir_symbol_ids = {
+            function.name: symbol_by_location.get(
+                (str(Path(function.source.path).resolve()), function.source.line)
+            )
+            for function in compilation.hir.functions
+        }
         for function in compilation.hir.functions:
-            caller_id = symbol_lookup.get((entry_module, function.name))
+            caller_id = hir_symbol_ids.get(function.name)
             if caller_id is None:
                 continue
             for node in function.walk():
                 attributes = node.attribute_map
                 callee_text = attributes.get("callee")
-                if not callee_text or node.kind not in {"DirectCall", "CallbackCall", "ResultPropagation"}:
+                if not callee_text or node.kind not in {
+                    "DirectCall",
+                    "CallbackCall",
+                    "ResultPropagation",
+                }:
                     continue
-                callee_id = None
-                text = str(callee_text)
-                if "." in text:
-                    owner, name = text.rsplit(".", 1)
-                    callee_id = symbol_lookup.get((owner, name))
-                else:
-                    callee_id = symbol_lookup.get((entry_module, text))
-                    if callee_id is None:
-                        candidates = [
-                            symbol_lookup[(module.name, text)]
-                            for module in graph.modules
-                            if (module.name, text) in symbol_lookup
-                        ]
-                        callee_id = candidates[0] if len(candidates) == 1 else None
+                callee_id = hir_symbol_ids.get(str(callee_text))
                 if callee_id is None:
                     continue
                 span = _concise_span(compilation, node, compilation.hir.path)
                 reference = {
-                    "reference_id": _digest((caller_id, callee_id, span, node.kind))[:24],
+                    "reference_id": _digest(
+                        (caller_id, callee_id, span, node.kind)
+                    )[:24],
                     "target_id": callee_id,
                     "owner_id": caller_id,
                     "kind": "call",
@@ -234,100 +234,15 @@ class SemanticWorld:
                     "resolution": "exact",
                 }
                 refs.append(reference)
-                calls.append({"call_id": reference["reference_id"], "caller_id": caller_id, "callee_id": callee_id, "source": span, "kind": node.kind})
-        module_by_name = {item.name: item for item in graph.modules}
-        owner_module_by_id = {
-            item.symbol_id.value: item.name
-            for item in graph.modules
-            for item in item.symbols
-        }
-        module_aliases = {
-            item.name.rsplit(".", 1)[-1]: item.name for item in graph.modules
-        }
-        exported_by_module_name = {
-            (item.name, symbol.name): symbol.symbol_id.value
-            for item in graph.modules
-            for symbol in item.symbols
-            if symbol.exported
-        }
-        symbols_by_module_name = {
-            (item.name, symbol.name): symbol.symbol_id.value
-            for item in graph.modules
-            for symbol in item.symbols
-        }
-        # fills imported modules and keeps every exact call edge in the world.
-        for module in graph.modules:
-            module_path = str(Path(module.path).resolve())
-            lines = module.source.splitlines()
-            declarations = sorted(
-                ((item.line, item.symbol_id.value) for item in module.symbols),
-                key=lambda value: value[0],
-            )
-            for line_number, line_text in enumerate(lines, 1):
-                stripped = line_text.strip()
-                if _declaration(stripped) is not None:
-                    continue
-                owner_id = None
-                for declaration_line, declaration_id in declarations:
-                    if declaration_line <= line_number:
-                        owner_id = declaration_id
-                    else:
-                        break
-                if owner_id is None:
-                    continue
-                for match in re.finditer(
-                    r"(?<![A-Za-z0-9_.])([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\s*\(",
-                    line_text,
-                ):
-                    text = match.group(1)
-                    if "." in text:
-                        owner_name, callee_name = text.rsplit(".", 1)
-                        module_name = owner_name
-                        if module_name not in module_by_name:
-                            module_name = module_aliases.get(module_name, module_name)
-                        callee_id = symbols_by_module_name.get((module_name, callee_name))
-                        if callee_id is not None and (
-                            module_name != owner_module_by_id[owner_id]
-                            and callee_id not in exported_by_module_name.values()
-                        ):
-                            callee_id = None
-                    else:
-                        owner_module = owner_module_by_id[owner_id]
-                        callee_id = symbols_by_module_name.get((owner_module, text))
-                        if callee_id is None:
-                            candidates = [
-                                identifier
-                                for (module_name, name), identifier in exported_by_module_name.items()
-                                if name == text
-                            ]
-                            callee_id = candidates[0] if len(candidates) == 1 else None
-                    if callee_id is None:
-                        continue
-                    span = {
-                        "path": module_path,
-                        "line": line_number,
-                        "column": match.start(1),
-                        "end_line": line_number,
-                        "end_column": match.end(1),
-                    }
-                    reference = {
-                        "reference_id": _digest((owner_id, callee_id, span, "source-call"))[:24],
-                        "target_id": callee_id,
-                        "owner_id": owner_id,
-                        "kind": "call",
-                        "usage": "SourceCall",
-                        "source": span,
-                        "resolution": "exact",
-                    }
-                    refs.append(reference)
-                    calls.append({
+                calls.append(
+                    {
                         "call_id": reference["reference_id"],
-                        "caller_id": owner_id,
+                        "caller_id": caller_id,
                         "callee_id": callee_id,
                         "source": span,
-                        "kind": "SourceCall",
-                    })
-
+                        "kind": node.kind,
+                    }
+                )
         unique_calls = {
             (item["caller_id"], item["callee_id"], item["source"]["path"], item["source"]["line"], item["source"]["column"]): item
             for item in calls

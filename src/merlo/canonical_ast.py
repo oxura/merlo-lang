@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import ast
 import hashlib
 import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from merlo.surface_ast import SourceSpan
+from merlo.surface_ast import SourceSpan, SurfaceProgram
 
 
 def _span_payload(span: SourceSpan) -> dict[str, Any]:
@@ -181,18 +180,8 @@ class CanonicalProgram:
     records: tuple[CanonicalRecord, ...]
     functions: tuple[CanonicalFunction, ...]
     enums: tuple[CanonicalEnum, ...] = ()
-    native_module: ast.Module | None = field(
+    surface_program: SurfaceProgram | None = field(
         default=None,
-        repr=False,
-        compare=False,
-    )
-    native_declaration_kinds: tuple[tuple[str, str], ...] = field(
-        default=(),
-        repr=False,
-        compare=False,
-    )
-    native_binding_kinds: tuple[tuple[int, str], ...] = field(
-        default=(),
         repr=False,
         compare=False,
     )

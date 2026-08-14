@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Mapping
+
+from merlo.module_syntax import ModuleSyntaxError, parse_module_prelude
+from merlo.surface_ast import SurfaceEnum, SurfaceFunction, SurfaceRecord
+from merlo.surface_parser import SurfaceSyntaxError, parse_surface
 
 
 class ModuleError(ValueError):
@@ -102,32 +105,6 @@ class Module:
         }
 
 
-_DECLARATION = re.compile(
-    r"^(export\s+)?(fn|task|record|enum|const)\s+([A-Za-z_]\w*)(.*)$"
-)
-_INFERRED_FUNCTION = re.compile(
-    r"^(export\s+)?([a-z_][A-Za-z0-9_]*)\s*(\(.*)$"
-)
-_INFERRED_RECORD = re.compile(
-    r"^(export\s+)?([A-Z][A-Za-z0-9_]*)\s*(:)$"
-)
-
-
-def _declaration(source: str) -> tuple[str | None, str, str, str] | None:
-    explicit = _DECLARATION.fullmatch(source)
-    if explicit is not None:
-        exported, kind, name, suffix = explicit.groups()
-        return exported, kind, name, suffix
-    function = _INFERRED_FUNCTION.fullmatch(source)
-    if function is not None:
-        exported, name, suffix = function.groups()
-        if re.search(r"(?:=|:)\s*(?:[^:]*)$", suffix):
-            return exported, "fn", name, suffix
-    record = _INFERRED_RECORD.fullmatch(source)
-    if record is not None:
-        exported, name, suffix = record.groups()
-        return exported, "record", name, suffix
-    return None
 _STDLIB_ROOT = Path(__file__).with_name("stdlib") / "std"
 STDLIB_MODULES = {
     "app.json": Path(__file__).with_name("stdlib") / "json.mlo",
@@ -154,67 +131,56 @@ def _normalized_lines(source: str) -> tuple[str, ...]:
 
 
 def _module(source: str, *, path: str, expected_name: str | None = None) -> Module:
-    lines = _normalized_lines(source)
-    if not lines:
-        raise ModuleError(f"{path}: empty module")
-    declaration = re.fullmatch(
-        r"module\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)",
-        lines[0].strip(),
-    )
-    if declaration is None:
+    try:
+        prelude = parse_module_prelude(source, path=path)
+        program = parse_surface(source, path=path)
+    except (ModuleSyntaxError, SurfaceSyntaxError) as exc:
+        raise ModuleError(str(exc)) from exc
+    if prelude.module is None:
         raise ModuleError(f"{path}:1: expected `module qualified.name`")
-    name = declaration.group(1)
+    name = prelude.module
     if expected_name is not None and name != expected_name:
         raise ModuleError(f"{path}: declares {name!r}, expected {expected_name!r}")
-    imports: list[str] = []
+    lines = _normalized_lines(source)
     symbols: list[ModuleSymbol] = []
     seen: set[str] = set()
-    index = 1
-    header = True
-    while index < len(lines):
-        line = lines[index]
-        stripped = line.strip()
-        if not stripped:
-            index += 1
-            continue
-        imported = re.fullmatch(
-            r"use\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)",
-            stripped,
-        )
-        if imported is not None:
-            if not header:
-                raise ModuleError(f"{path}:{index + 1}: imports must precede declarations")
-            imports.append(imported.group(1))
-            index += 1
-            continue
-        header = False
-        matched = _declaration(stripped)
-        if matched is None:
-            raise ModuleError(f"{path}:{index + 1}: unsupported top-level declaration")
-        exported, kind, symbol_name, suffix = matched
+    for declaration in program.declarations:
+        symbol_name = declaration.name
+        line_number = declaration.span.start_line
         if symbol_name in seen:
-            raise ModuleError(f"{path}:{index + 1}: duplicate symbol {symbol_name!r}")
+            raise ModuleError(f"{path}:{line_number}: duplicate symbol {symbol_name!r}")
         seen.add(symbol_name)
-        start = index
-        index += 1
-        while index < len(lines) and (
-            not lines[index].strip() or lines[index].startswith((" ", "\t"))
-        ):
-            index += 1
-        block = "\n".join(lines[start:index]).strip() + "\n"
-        signature = re.sub(r"\s+", " ", f"{kind} {symbol_name}{suffix}".strip())
+        if isinstance(declaration, SurfaceRecord):
+            kind = "record"
+        elif isinstance(declaration, SurfaceEnum):
+            kind = "enum"
+        elif isinstance(declaration, SurfaceFunction):
+            kind = declaration.declared_kind or "fn"
+        else:
+            raise AssertionError(type(declaration).__name__)
+        header = lines[line_number - 1].strip()
+        if declaration.exported:
+            header = header.removeprefix("export ").lstrip()
+        header = header.removeprefix(f"{kind} ").lstrip()
+        if not header.startswith(symbol_name):
+            raise ModuleError(f"{path}:{line_number}: malformed declaration header")
+        suffix = header[len(symbol_name) :]
+        block = "\\n".join(
+            lines[line_number - 1 : declaration.span.end_line]
+        ).strip() + "\\n"
+        signature = " ".join(f"{kind} {symbol_name}{suffix}".split())
         symbol_id = SymbolId(_digest("sym", name, kind, symbol_name))
         interface_id = InterfaceRevisionId(
-            _digest("iface", name, kind, symbol_name, signature, bool(exported))
+            _digest("iface", name, kind, symbol_name, signature, declaration.exported)
         )
         symbols.append(
             ModuleSymbol(
                 name,
                 symbol_name,
                 kind,
-                bool(exported),
+                declaration.exported,
                 signature,
-                start + 1,
+                line_number,
                 symbol_id,
                 RevisionId(_digest("rev", symbol_id.value, block)),
                 interface_id,
@@ -228,7 +194,7 @@ def _module(source: str, *, path: str, expected_name: str | None = None) -> Modu
     return Module(
         name,
         path,
-        tuple(imports),
+        prelude.imports,
         tuple(symbols),
         InterfaceRevisionId(_digest("module_iface", name, exported_interfaces)),
         ImplementationRevisionId(_digest("module_impl", name, lines)),
@@ -330,52 +296,26 @@ class ModuleGraph:
 
     @staticmethod
     def _validate_references(modules: Mapping[str, Module]) -> None:
-        for module in modules.values():
-            locals_by_name = {item.name for item in module.symbols}
-            dependencies = [modules[name] for name in module.imports]
-            aliases = {
-                alias: dependency
-                for dependency in dependencies
-                for alias in (dependency.name, dependency.name.rsplit(".", 1)[-1])
+        from merlo.surface_binding import bind_module
+
+        symbols = {
+            module.name: {
+                symbol.name: (symbol.kind, symbol.exported, symbol.name)
+                for symbol in module.symbols
             }
-
-            def validate_unqualified(name: str) -> None:
-                if name in locals_by_name:
-                    return
-                candidates = [
-                    dependency.symbol(name)
-                    for dependency in dependencies
-                    if any(item.name == name for item in dependency.symbols)
-                ]
-                exported = [item for item in candidates if item.exported]
-                if len(exported) > 1:
-                    raise ModuleError(f"AmbiguousReference: {module.name}.{name}")
-                if candidates and not exported:
-                    owner = candidates[0].module
-                    raise ModuleError(
-                        f"PrivateSymbol: {owner}.{name} is not exported"
-                    )
-
-            for symbol in module.symbols:
-                for name in re.findall(r"\b[A-Za-z_]\w*\b", symbol.signature):
-                    validate_unqualified(name)
-            for alias, name in re.findall(
-                r"\b([A-Za-z_]\w*)\.([A-Za-z_]\w*)\s*\(",
-                module.source,
-            ):
-                dependency = aliases.get(alias)
-                if dependency is None:
-                    continue
-                symbol = dependency.symbol(name)
-                if not symbol.exported:
-                    raise ModuleError(
-                        f"PrivateSymbol: {dependency.name}.{name} is not exported"
-                    )
-            for name in re.findall(
-                r"(?<![\w.])([A-Za-z_]\w*)\s*\(",
-                module.source,
-            ):
-                validate_unqualified(name)
+            for module in modules.values()
+        }
+        for module in modules.values():
+            try:
+                program = parse_surface(module.source, path=module.path)
+                bind_module(
+                    module,
+                    program,
+                    symbols,
+                    reject_unknown_calls=False,
+                )  # type: ignore[arg-type]
+            except (SurfaceSyntaxError, ValueError) as exc:
+                raise ModuleError(str(exc)) from exc
 
     def resolve(self, module: str, name: str, *, requester: str) -> ModuleSymbol:
         symbol = self.module(module).symbol(name)
