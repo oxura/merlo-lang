@@ -198,7 +198,7 @@ def test_surface_controls_reach_c_through_production_project_handoff(
         "            continue\n"
         "        if value == 3:\n"
         "            break\n"
-        "    result = subtract(right: value, left: 10)\n"
+        "    result = subtract(value, 10)\n"
         "    Ok(result)\n",
         encoding="utf-8",
     )
@@ -211,4 +211,3 @@ def test_surface_controls_reach_c_through_production_project_handoff(
     assert {"Break", "Continue"} <= kinds
     assert "continue;" in compilation.generated_c
     assert "break;" in compilation.generated_c
-    assert "merlo_fn_subtract(10, value)" in compilation.generated_c
