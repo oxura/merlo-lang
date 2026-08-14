@@ -3,7 +3,7 @@ module capacity_ledger
 export enum TestFailure:
     Invariant
 
-export main(path: Path) -> Result[Unit, TestFailure]:
+export main(path: Path) -> Result[Text, TestFailure]:
     values: Vec[UInt64] = Vec.new()
     values.push(3)
     values.push(4)
@@ -16,4 +16,5 @@ export main(path: Path) -> Result[Unit, TestFailure]:
         return Err(TestFailure.Invariant)
     if totals.get("beta") != 11:
         return Err(TestFailure.Invariant)
-    Ok(())
+    console.write("")
+    Ok("")
