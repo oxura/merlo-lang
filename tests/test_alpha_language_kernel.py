@@ -8,7 +8,10 @@ import pytest
 
 from merlo.concise_application import ConciseApplicationError, elaborate_concise_core
 from merlo.native_c_backend import compile_c_source
-from merlo.representation_c_backend import emit_general_c
+from merlo.representation_c_backend import (
+    RepresentationCBackendError,
+    emit_general_c,
+)
 from merlo.representation_ir import (
     ArrayDesc,
     CallbackDesc,
@@ -488,3 +491,65 @@ def test_owned_record_return_moves_named_argument_once(tmp_path: Path) -> None:
     assert completed.returncode == 0, completed.stderr.decode()
     assert b"OK result=3" in completed.stdout
     assert b"text_allocations=2 text_frees=2" in completed.stdout
+
+
+def test_borrowed_text_literal_remains_one_stack_argument() -> None:
+    source = (
+        "fn inspect(text: Text) -> UInt64:\n"
+        "    return text.len()\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    return inspect(\"x\")\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    assert "__merlo_owned_temp_" not in generated.source
+    assert generated.source.count("merlo_fn_inspect(") == 2
+
+
+@pytest.mark.parametrize("keyword", ("if", "while"))
+def test_control_flow_rejects_owned_temporary_borrow_arguments(keyword: str) -> None:
+    body = (
+        f"    {keyword} consume(Text.from_bytes(input, 0, input.len())):\n"
+        "        return 1\n"
+        if keyword == "if"
+        else
+        "    while consume(Text.from_bytes(input, 0, input.len())):\n"
+        "        break\n"
+    )
+    source = (
+        "fn consume(value: Text) -> Bool:\n"
+        "    return value.len() > 0\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        + body
+        + "    return 0\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(RepresentationCBackendError, match="control-flow expression"):
+        emit_general_c(hir, rir, optimized)
+
+
+def test_borrowed_view_cannot_escape_materialized_text_owner() -> None:
+    source = (
+        "fn borrow_view(value: Text) -> TextView:\n"
+        "    return value.view()\n"
+        "fn wrapper(input: BytesView) -> TextView:\n"
+        "    return borrow_view(Text.from_bytes(input, 0, input.len()))\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    return wrapper(input).len()\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
+        emit_general_c(hir, rir, optimized)
+
+def test_borrowed_map_cannot_be_shallow_cloned_for_owned_call() -> None:
+    source = (
+        "fn take(value: Map[Text,UInt64]) -> Map[Text,UInt64]:\n"
+        "    return value\n"
+        "fn wrapper(value: Map[Text,UInt64]) -> Map[Text,UInt64]:\n"
+        "    return take(value)\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    return 0\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(RepresentationCBackendError, match="cannot clone borrowed owner"):
+        emit_general_c(hir, rir, optimized)

@@ -205,12 +205,16 @@ class GeneralCEmitter:
         self.pointer_values: set[str] = set()
         self.owned_locals: dict[str, str] = {}
         self.pending_expression_lines: list[str] = []
+        self.pending_expression_drops: list[str] = []
         self.temporary_declarations: list[tuple[str, str]] = []
         self.temporary_ordinal = 0
         self.return_ordinal = 0
         self.loop_ordinal = 0
         self.loop_exit_labels: list[str] = []
         self.match_depth = 0
+        self.expression_context = "statement"
+        self.returning_borrowed = False
+        self.assigning_borrowed = False
         self.frozen_general_json = (
             hashlib.sha256(hir.source.encode()).hexdigest()
             == _FROZEN_GENERAL_JSON_SHA256
@@ -1720,8 +1724,12 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             and _is_owner(self.descriptors[item.type_name])
         }
         self.pending_expression_lines = []
+        self.pending_expression_drops = []
         self.temporary_declarations = []
         self.temporary_ordinal = 0
+        self.expression_context = "statement"
+        self.returning_borrowed = False
+        self.assigning_borrowed = False
         for hir_node in function.walk():
             if hir_node.kind in {"LetBinding", "VarBinding"}:
                 binding_name = hir_node.attribute_map.get("name")
@@ -1948,11 +1956,20 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
 
     def _statement(self, node: ast.stmt) -> list[str]:
         start = len(self.pending_expression_lines)
+        drop_start = len(self.pending_expression_drops)
         lines = self._statement_impl(node)
         pending = self.pending_expression_lines[start:]
         del self.pending_expression_lines[start:]
-        return pending + lines
-
+        del self.pending_expression_drops[drop_start:]
+        if isinstance(node, ast.Return):
+            for index in range(len(lines) - 1, -1, -1):
+                if lines[index].lstrip().startswith("return"):
+                    lines[index:index] = drops
+                    break
+            else:
+                lines.extend(drops)
+            return pending + lines
+        return pending + lines + drops
     def _statement_impl(self, node: ast.stmt) -> list[str]:
         if (
             isinstance(node, ast.Expr)
@@ -1983,7 +2000,23 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             expected = _type_from_annotation(node.annotation)
             if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and node.value.func.id == "__merlo_try__":
                 return self._try_binding(node.target.id, node.value, expected)
-            value = self._expression(node.value, expected=expected, want_pointer=node.target.id in self.pointer_values) if node.value is not None else self._zero_expression(expected)
+            previous_borrowed = self.assigning_borrowed
+            self.assigning_borrowed = (
+                self.descriptors.get(expected) is not None
+                and self.descriptors[expected].kind == "borrow"
+            )
+            try:
+                value = (
+                    self._expression(
+                        node.value,
+                        expected=expected,
+                        want_pointer=node.target.id in self.pointer_values,
+                    )
+                    if node.value is not None
+                    else self._zero_expression(expected)
+                )
+            finally:
+                self.assigning_borrowed = previous_borrowed
             lines = []
             if node.target.id in self.owned_locals:
                 lines.append(
@@ -1997,12 +2030,20 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             expected = self._expression_type(node.targets[0])
             if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and node.value.func.id == "__merlo_try__":
                 return self._try_binding(target, node.value, expected or "Unit")
-            value = self._expression(
-                node.value,
-                expected=expected,
-                want_pointer=isinstance(node.targets[0], ast.Name)
-                and node.targets[0].id in self.pointer_values,
+            previous_borrowed = self.assigning_borrowed
+            self.assigning_borrowed = (
+                self.descriptors.get(expected or "") is not None
+                and self.descriptors[expected or ""].kind == "borrow"
             )
+            try:
+                value = self._expression(
+                    node.value,
+                    expected=expected,
+                    want_pointer=isinstance(node.targets[0], ast.Name)
+                    and node.targets[0].id in self.pointer_values,
+                )
+            finally:
+                self.assigning_borrowed = previous_borrowed
             lines = []
             if (
                 isinstance(node.targets[0], ast.Name)
@@ -2025,7 +2066,12 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 return self._method_statement(node.value)
             return [f"{pad}(void){self._expression(node.value)};"]
         if isinstance(node, ast.If):
-            lines = [f"{pad}if ({self._expression(node.test, expected='Bool')}) {{"]
+            test = self._expression_in_context(
+                node.test,
+                context="control_flow",
+                expected="Bool",
+            )
+            lines = [f"{pad}if ({test}) {{"]
             self.indent += 1
             for statement in node.body:
                 lines.extend(self._statement(statement))
@@ -2039,10 +2085,14 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             lines.append(f"{pad}}}")
             return lines
         if isinstance(node, ast.While):
+            test = self._expression_in_context(
+                node.test,
+                context="control_flow",
+                expected="Bool",
+            )
             self.loop_ordinal += 1
             loop_exit = f"__merlo_loop_exit_{self.loop_ordinal}"
-            lines = [f"{pad}while ({self._expression(node.test, expected='Bool')}) {{"]
-            self.loop_exit_labels.append(loop_exit)
+            lines = [f"{pad}while ({test}) {{"]}
             self.indent += 1
             for statement in node.body:
                 lines.extend(self._statement(statement))
@@ -2254,7 +2304,11 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         pad = self._pad()
         self.return_ordinal += 1
         result_name = f"__merlo_return_{self.return_ordinal}"
-        lines = []
+        return_descriptor = self.descriptors.get(self.current_function.return_type)
+        self.returning_borrowed = (
+            return_descriptor is not None
+            and return_descriptor.kind == "borrow"
+        )
         if (
             self.current_function.return_type == "Unit"
             and node.value is not None
@@ -2278,6 +2332,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             lines.append(f"{pad}{_c_name(self.current_function.return_type)} {result_name} = {expression};")
         for name, type_name in reversed(tuple(self.owned_locals.items())):
             lines.append(f"{pad}merlo_drop_{_identifier(type_name)}(&{name});")
+        self.returning_borrowed = False
         if self.current_function.return_type == "Unit":
             lines.append(f"{pad}return;")
         else:
@@ -2467,15 +2522,24 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         return isinstance(node, (ast.Call, ast.Constant, ast.List, ast.Tuple))
 
     def _materialize_owned_argument(self, argument: ast.AST, type_name: str) -> str:
+        if self.expression_context != "statement":
+            raise RepresentationCBackendError(
+                "owning temporary cannot be materialized in control-flow expression"
+            )
+        if self.returning_borrowed or self.assigning_borrowed:
+            raise RepresentationCBackendError(
+                "borrowed result escapes owning temporary"
+            )
         self.temporary_ordinal += 1
         name = f"__merlo_owned_temp_{self.temporary_ordinal}"
         value = self._move_expression(argument, type_name)
         self.temporary_declarations.append((name, type_name))
         self.env_types[name] = type_name
-        self.owned_locals[name] = type_name
         self.pending_expression_lines.append(f"{self._pad()}{name} = {value};")
+        self.pending_expression_drops.append(
+            f"{self._pad()}merlo_drop_{_identifier(type_name)}(&{name});"
+        )
         return name
-
     def _borrow_view_argument(
         self,
         argument: ast.AST,
@@ -2503,6 +2567,25 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             return f"({expression})->tag"
         return f"({expression}).tag"
 
+
+    def _expression_in_context(
+        self,
+        node: ast.AST | None,
+        *,
+        context: str,
+        expected: str | None = None,
+        want_pointer: bool = False,
+    ) -> str:
+        previous = self.expression_context
+        self.expression_context = context
+        try:
+            return self._expression(
+                node,
+                expected=expected,
+                want_pointer=want_pointer,
+            )
+        finally:
+            self.expression_context = previous
 
     def _expression(self, node: ast.AST | None, *, expected: str | None = None, want_pointer: bool = False) -> str:
         if node is None:
@@ -2633,7 +2716,14 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             )
         if isinstance(node, ast.BoolOp):
             operator = " && " if isinstance(node.op, ast.And) else " || "
-            return "(" + operator.join(self._expression(item, expected="Bool") for item in node.values) + ")"
+            return "(" + operator.join(
+                self._expression_in_context(
+                    item,
+                    context="short_circuit",
+                    expected="Bool",
+                )
+                for item in node.values
+            ) + ")"
         if isinstance(node, ast.Compare):
             pieces = []
             left = node.left
@@ -2827,6 +2917,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                         and isinstance(argument.value, str)
                     ):
                         arguments.append(self._borrowed_text_literal(argument.value))
+                        continue
                     actual_type = self._expression_type(argument)
                     if (
                         parameter.ownership in {"borrow", "borrow_mut"}
@@ -3154,6 +3245,10 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 None,
             ) if self.current_function is not None else None
             if parameter is not None and parameter.ownership in {"borrow", "borrow_mut"}:
+                if descriptor.kind not in {"text", "record", "enum", "vec", "box"}:
+                    raise RepresentationCBackendError(
+                        f"cannot clone borrowed owner of type {type_name}"
+                    )
                 source = (
                     node.id
                     if node.id in self.pointer_values
@@ -3163,8 +3258,6 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     f"merlo_clone_{_identifier(type_name)}"
                     f"((const {_c_name(type_name)} *){source})"
                 )
-            if node.id in self.owned_locals:
-                self.owned_locals.pop(node.id, None)
             if node.id in self.pointer_values:
                 return f"merlo_move_{_identifier(type_name)}({node.id})"
             return f"merlo_move_{_identifier(type_name)}(&{node.id})"
