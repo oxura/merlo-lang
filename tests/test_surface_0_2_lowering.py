@@ -213,3 +213,48 @@ def test_surface_controls_reach_c_through_production_project_handoff(
     assert {"Break", "Continue"} <= kinds
     assert "continue;" in compilation.generated_c
     assert "break;" in compilation.generated_c
+
+
+def test_structured_hir_constructor_and_option_none_preprocessing() -> None:
+    from merlo.structured_hir_v2 import _preprocess, compile_structured_hir
+
+    hir = compile_structured_hir(
+        "fn main() -> UInt64:\n"
+        "    1\n",
+        path="constructor.mlo",
+    )
+    assert hir.function("main").return_type == "UInt64"
+    assert "Option.NoneValue" in _preprocess(
+        "fn main() -> UInt64:\n"
+        "    Option.None\n"
+    ).source
+
+
+def test_break_in_match_inside_loop_targets_loop_exit_in_c() -> None:
+    from merlo.representation_c_backend import emit_general_c
+    from merlo.representation_ir import lower_structured_hir_to_rir
+    from merlo.representation_mir import lower_rir_to_performance_mir
+    from merlo.structured_hir_v2 import compile_structured_hir
+
+    hir = compile_structured_hir(
+        "enum Signal:\n"
+        "    Stop\n"
+        "    Keep\n\n"
+        "fn main() -> UInt64:\n"
+        "    value = 0\n"
+        "    signal: Signal = Signal.Stop\n"
+        "    while value < 4:\n"
+        "        match signal:\n"
+        "            case Signal.Stop:\n"
+        "                break\n"
+        "            case Signal.Keep:\n"
+        "                value += 1\n"
+        "        value += 1\n"
+        "    value\n",
+        path="nested-break.mlo",
+    )
+    representation = lower_structured_hir_to_rir(hir)
+    mir = lower_rir_to_performance_mir(hir, representation)
+    generated = emit_general_c(hir, representation, mir)
+    assert "switch" in generated.source
+    assert "goto __merlo_loop_exit_" in generated.source

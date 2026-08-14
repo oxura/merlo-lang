@@ -482,7 +482,7 @@ def _preprocess(source: str) -> _Preprocessed:
             line = re.sub(r"^(\s*)(?:let|var)\s+", r"\1", line)
         if re.fullmatch(r"\s*uses\s+.+", line):
             line = ""
-        line = _rewrite_postfix_try(line)
+        line = re.sub(r"\bOption\.None\b", "Option.NoneValue", line)
         line = re.sub(r"\btrue\b", "True", line)
         line = re.sub(r"\bfalse\b", "False", line)
         if re.search(r"\b(?:and|or)\s*$", line):
@@ -2097,6 +2097,7 @@ def compile_structured_hir(
         path,
         hashlib.sha256(source.encode()).hexdigest(),
         tuple(types.values()),
+        functions,
         entry_function,
     )
 
