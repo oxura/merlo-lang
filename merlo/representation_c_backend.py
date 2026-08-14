@@ -662,7 +662,7 @@ typedef struct { MerloFileReader *owner; uint64_t generation; } MerloFileLines;"
         return (
             parameter.ownership == "borrow_mut"
             or parameter.ownership == "borrow"
-            and descriptor.kind in {"vec", "map", "box"}
+            and _is_owner(descriptor)
         )
 
     def _function_signature(self, function: HIRFunction) -> str:
@@ -2608,7 +2608,14 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         descriptor = self.descriptors.get(type_name)
         if descriptor is None or not _is_owner(descriptor):
             return False
-        return isinstance(node, (ast.Call, ast.Constant, ast.List, ast.Tuple))
+        if isinstance(node, (ast.Call, ast.Constant, ast.List, ast.Tuple)):
+            return True
+        return (
+            isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Name)
+            and node.value.id == type_name
+            and descriptor.kind == "enum"
+        )
 
     def _materialize_owned_argument(self, argument: ast.AST, type_name: str) -> str:
         if self.expression_context != "statement":
@@ -3005,7 +3012,11 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                         and isinstance(argument, ast.Constant)
                         and isinstance(argument.value, str)
                     ):
-                        arguments.append(self._borrowed_text_literal(argument.value))
+                        arguments.append(
+                            f"&{self._borrowed_text_literal(argument.value)}"
+                            if self._parameter_is_pointer(parameter)
+                            else self._borrowed_text_literal(argument.value)
+                        )
                         continue
                     actual_type = self._expression_type(argument)
                     if (
@@ -3389,6 +3400,20 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         descriptor = self.descriptors[type_name]
         if not _is_owner(descriptor):
             return self._expression(node, expected=type_name)
+        if self._is_borrow_expression(node):
+            if not self._clone_is_deep(type_name):
+                raise RepresentationCBackendError(
+                    f"cannot clone borrowed owner of type {type_name}"
+                )
+            source = self._expression(
+                node,
+                expected=type_name,
+                want_pointer=True,
+            )
+            return (
+                f"merlo_clone_{_identifier(type_name)}"
+                f"((const {_c_name(type_name)} *){source})"
+            )
         if isinstance(node, ast.Name):
             parameter = next(
                 (
