@@ -92,7 +92,7 @@ def test_corpus_and_acceptance_lock_detects_tampering(tmp_path: Path):
         "LOCKED_BEFORE_FRONTEND_HARDENING"
     )
 
-    corpus_path = root / "benchmarks/meldra_independent_mbpp_subset.json"
+    corpus_path = root / "tools/benchmarks/merlo/benchmarks/meldra_independent_mbpp_subset.json"
     payload = json.loads(corpus_path.read_text(encoding="utf-8"))
     payload["records"][0]["acceptance_cases"][0]["expected"] += 1
     corpus_path.write_text(json.dumps(payload), encoding="utf-8")

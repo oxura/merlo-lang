@@ -1,0 +1,445 @@
+module app.json
+
+export enum TokenKind:
+    LBrace
+    RBrace
+    LBracket
+    RBracket
+    Colon
+    Comma
+    Null
+    TrueLiteral
+    FalseLiteral
+    Number
+    String
+    End
+
+export enum ErrorKind:
+    NoError
+    InvalidUtf8
+    UnexpectedByte
+    InvalidLiteral
+    InvalidNumber
+    InvalidString
+    InvalidEscape
+    UnexpectedToken
+    UnexpectedEnd
+    ExpectedColon
+    ExpectedCommaOrEnd
+    DepthExceeded
+    TrailingTokens
+
+export enum Json:
+    Null
+    Bool: Bool
+    Number: Text
+    String: Text
+    Array: Vec[Json]
+    Object: Vec[JsonField]
+
+export Token:
+    kind: TokenKind
+    start: UInt64
+    end: UInt64
+    escaped: Bool
+
+export JsonField:
+    key: Text
+    value: Json
+
+export Parser:
+    input: BytesView
+    tokens: Vec[Token]
+    index: UInt64
+    error: ErrorKind
+    error_offset: UInt64
+
+export Stats:
+    nodes: UInt64
+    nulls: UInt64
+    bools: UInt64
+    numbers: UInt64
+    strings: UInt64
+    arrays: UInt64
+    objects: UInt64
+    fields: UInt64
+    checksum: UInt64
+
+export ProgramResult:
+    ok: Bool
+    error: ErrorKind
+    error_offset: UInt64
+    nodes: UInt64
+    arrays: UInt64
+    objects: UInt64
+    fields: UInt64
+    checksum: UInt64
+
+export set_error(parser: Parser, kind: ErrorKind, offset: UInt64) -> Unit:
+    if parser.error == ErrorKind.NoError:
+        parser.error = kind
+        parser.error_offset = offset
+
+is_space(byte: UInt64) -> Bool:
+    byte == 32 or byte == 9 or byte == 10 or byte == 13
+
+is_digit(byte: UInt64) -> Bool:
+    byte >= 48 and byte <= 57
+
+is_digit_one_to_nine(byte: UInt64) -> Bool:
+    byte >= 49 and byte <= 57
+
+hex_value(byte: UInt64) -> UInt64:
+    if byte >= 48 and byte <= 57:
+        return byte - 48
+    if byte >= 65 and byte <= 70:
+        return byte - 55
+    if byte >= 97 and byte <= 102:
+        return byte - 87
+    256
+
+box_smoke(value: UInt64) -> UInt64:
+    item = Box.new(value)
+    item.get()
+
+export validate_utf8(parser: Parser) -> Bool:
+    index = 0
+    while index < parser.input.len():
+        first = parser.input.byte(index)
+        if first < 128:
+            index = index + 1
+        else:
+            needed = 0
+            scalar = 0
+            minimum = 0
+            if first >= 194 and first <= 223:
+                needed = 1
+                scalar = first - 192
+                minimum = 128
+            else:
+                if first >= 224 and first <= 239:
+                    needed = 2
+                    scalar = first - 224
+                    minimum = 2048
+                else:
+                    if first >= 240 and first <= 244:
+                        needed = 3
+                        scalar = first - 240
+                        minimum = 65536
+                    else:
+                        set_error(parser, ErrorKind.InvalidUtf8, index)
+                        return false
+            if index + needed >= parser.input.len():
+                set_error(parser, ErrorKind.InvalidUtf8, index)
+                return false
+            part = 0
+            while part < needed:
+                continuation = parser.input.byte(index + part + 1)
+                if continuation < 128 or continuation > 191:
+                    set_error(parser, ErrorKind.InvalidUtf8, index + part + 1)
+                    return false
+                scalar = scalar * 64 + continuation - 128
+                part = part + 1
+            if scalar < minimum or scalar > 1114111 or scalar >= 55296 and scalar <= 57343:
+                set_error(parser, ErrorKind.InvalidUtf8, index)
+                return false
+            index = index + needed + 1
+    true
+
+push_token(parser: Parser, kind: TokenKind, start: UInt64, end: UInt64, escaped: Bool) -> Unit:
+    parser.tokens.push(Token(kind, start, end, escaped))
+
+scan_string(parser: Parser, quote: UInt64) -> UInt64:
+    index = quote + 1
+    escaped = false
+    while index < parser.input.len():
+        byte = parser.input.byte(index)
+        if byte == 34:
+            push_token(parser, TokenKind.String, quote + 1, index, escaped)
+            return index + 1
+        if byte < 32:
+            set_error(parser, ErrorKind.InvalidString, index)
+            return parser.input.len()
+        if byte == 92:
+            escaped = true
+            index = index + 1
+            if index >= parser.input.len():
+                set_error(parser, ErrorKind.UnexpectedEnd, index)
+                return parser.input.len()
+            escape = parser.input.byte(index)
+            if escape == 117:
+                if index + 4 >= parser.input.len():
+                    set_error(parser, ErrorKind.UnexpectedEnd, index)
+                    return parser.input.len()
+                digit = 1
+                while digit <= 4:
+                    if hex_value(parser.input.byte(index + digit)) == 256:
+                        set_error(parser, ErrorKind.InvalidEscape, index + digit)
+                        return parser.input.len()
+                    digit = digit + 1
+                index = index + 4
+            else:
+                if not (escape == 34 or escape == 92 or escape == 47 or escape == 98 or escape == 102 or escape == 110 or escape == 114 or escape == 116):
+                    set_error(parser, ErrorKind.InvalidEscape, index)
+                    return parser.input.len()
+        index = index + 1
+    set_error(parser, ErrorKind.UnexpectedEnd, index)
+    index
+
+scan_number(parser: Parser, start: UInt64) -> UInt64:
+    index = start
+    if parser.input.byte(index) == 45:
+        index = index + 1
+        if index >= parser.input.len():
+            set_error(parser, ErrorKind.InvalidNumber, index)
+            return index
+    if parser.input.byte(index) == 48:
+        index = index + 1
+        if index < parser.input.len() and is_digit(parser.input.byte(index)):
+            set_error(parser, ErrorKind.InvalidNumber, index)
+            return index
+    else:
+        if not is_digit_one_to_nine(parser.input.byte(index)):
+            set_error(parser, ErrorKind.InvalidNumber, index)
+            return index
+        while index < parser.input.len() and is_digit(parser.input.byte(index)):
+            index = index + 1
+    if index < parser.input.len() and parser.input.byte(index) == 46:
+        index = index + 1
+        if index >= parser.input.len() or not is_digit(parser.input.byte(index)):
+            set_error(parser, ErrorKind.InvalidNumber, index)
+            return index
+        while index < parser.input.len() and is_digit(parser.input.byte(index)):
+            index = index + 1
+    if index < parser.input.len() and (parser.input.byte(index) == 101 or parser.input.byte(index) == 69):
+        index = index + 1
+        if index < parser.input.len() and (parser.input.byte(index) == 43 or parser.input.byte(index) == 45):
+            index = index + 1
+        if index >= parser.input.len() or not is_digit(parser.input.byte(index)):
+            set_error(parser, ErrorKind.InvalidNumber, index)
+            return index
+        while index < parser.input.len() and is_digit(parser.input.byte(index)):
+            index = index + 1
+    push_token(parser, TokenKind.Number, start, index, false)
+    index
+
+match_literal(parser: Parser, start: UInt64, a: UInt64, b: UInt64, c: UInt64, d: UInt64, e: UInt64, length: UInt64, kind: TokenKind) -> UInt64:
+    if start + length > parser.input.len():
+        set_error(parser, ErrorKind.UnexpectedEnd, start)
+        return parser.input.len()
+    if parser.input.byte(start) != a or parser.input.byte(start + 1) != b or parser.input.byte(start + 2) != c:
+        set_error(parser, ErrorKind.InvalidLiteral, start)
+        return parser.input.len()
+    if length == 4 and parser.input.byte(start + 3) != d:
+        set_error(parser, ErrorKind.InvalidLiteral, start)
+        return parser.input.len()
+    if length == 5 and parser.input.byte(start + 4) != e:
+        set_error(parser, ErrorKind.InvalidLiteral, start)
+        return parser.input.len()
+    push_token(parser, kind, start, start + length, false)
+    start + length
+
+export tokenize(parser: Parser) -> Unit:
+    index = 0
+    while index < parser.input.len() and parser.error == ErrorKind.NoError:
+        byte = parser.input.byte(index)
+        if is_space(byte):
+            index = index + 1
+        else:
+            if byte == 123:
+                push_token(parser, TokenKind.LBrace, index, index + 1, false)
+                index = index + 1
+            else:
+                if byte == 125:
+                    push_token(parser, TokenKind.RBrace, index, index + 1, false)
+                    index = index + 1
+                else:
+                    if byte == 91:
+                        push_token(parser, TokenKind.LBracket, index, index + 1, false)
+                        index = index + 1
+                    else:
+                        if byte == 93:
+                            push_token(parser, TokenKind.RBracket, index, index + 1, false)
+                            index = index + 1
+                        else:
+                            if byte == 58:
+                                push_token(parser, TokenKind.Colon, index, index + 1, false)
+                                index = index + 1
+                            else:
+                                if byte == 44:
+                                    push_token(parser, TokenKind.Comma, index, index + 1, false)
+                                    index = index + 1
+                                else:
+                                    if byte == 34:
+                                        index = scan_string(parser, index)
+                                    else:
+                                        if byte == 110:
+                                            index = match_literal(parser, index, 110, 117, 108, 108, 0, 4, TokenKind.Null)
+                                        else:
+                                            if byte == 116:
+                                                index = match_literal(parser, index, 116, 114, 117, 101, 0, 4, TokenKind.TrueLiteral)
+                                            else:
+                                                if byte == 102:
+                                                    index = match_literal(parser, index, 102, 97, 108, 115, 101, 5, TokenKind.FalseLiteral)
+                                                else:
+                                                    if byte == 45 or is_digit(byte):
+                                                        index = scan_number(parser, index)
+                                                    else:
+                                                        set_error(parser, ErrorKind.UnexpectedByte, index)
+    push_token(parser, TokenKind.End, parser.input.len(), parser.input.len(), false)
+
+export token_at(parser: Parser) -> Token:
+    if parser.index >= parser.tokens.len():
+        return Token(TokenKind.End, parser.input.len(), parser.input.len(), false)
+    parser.tokens.get(parser.index)
+
+advance(parser: Parser) -> Token:
+    token = token_at(parser)
+    if parser.index < parser.tokens.len():
+        parser.index = parser.index + 1
+    token
+
+decode_string(parser: Parser, token: Token) -> Text:
+    if not token.escaped:
+        return Text.from_bytes(parser.input, token.start, token.end)
+    builder = TextBuilder.new()
+    index = token.start
+    while index < token.end:
+        byte = parser.input.byte(index)
+        if byte != 92:
+            builder.append_byte(byte)
+            index = index + 1
+        else:
+            index = index + 1
+            escape = parser.input.byte(index)
+            if escape == 34 or escape == 92 or escape == 47:
+                builder.append_byte(escape)
+            else:
+                if escape == 98:
+                    builder.append_byte(8)
+                else:
+                    if escape == 102:
+                        builder.append_byte(12)
+                    else:
+                        if escape == 110:
+                            builder.append_byte(10)
+                        else:
+                            if escape == 114:
+                                builder.append_byte(13)
+                            else:
+                                if escape == 116:
+                                    builder.append_byte(9)
+                                else:
+                                    scalar = 0
+                                    digit = 1
+                                    while digit <= 4:
+                                        scalar = scalar * 16 + hex_value(parser.input.byte(index + digit))
+                                        digit = digit + 1
+                                    index = index + 4
+                                    if scalar >= 55296 and scalar <= 56319:
+                                        if index + 6 >= token.end or parser.input.byte(index + 1) != 92 or parser.input.byte(index + 2) != 117:
+                                            set_error(parser, ErrorKind.InvalidEscape, index)
+                                        else:
+                                            low = 0
+                                            digit = 3
+                                            while digit <= 6:
+                                                low = low * 16 + hex_value(parser.input.byte(index + digit))
+                                                digit = digit + 1
+                                            if low < 56320 or low > 57343:
+                                                set_error(parser, ErrorKind.InvalidEscape, index + 2)
+                                            else:
+                                                scalar = 65536 + (scalar - 55296) * 1024 + low - 56320
+                                                index = index + 6
+                                    else:
+                                        if scalar >= 56320 and scalar <= 57343:
+                                            set_error(parser, ErrorKind.InvalidEscape, index)
+                                    if parser.error == ErrorKind.NoError:
+                                        builder.append_scalar(scalar)
+            index = index + 1
+    builder.finish()
+
+parse_array(parser: Parser, depth: UInt64) -> Json:
+    items = Vec.new()
+    advance(parser)
+    if token_at(parser).kind == TokenKind.RBracket:
+        advance(parser)
+        return Json.Array(items)
+    while parser.error == ErrorKind.NoError:
+        child = parse_value(parser, depth + 1)
+        items.push(child)
+        if parser.error != ErrorKind.NoError:
+            return Json.Array(items)
+        separator = token_at(parser)
+        if separator.kind == TokenKind.RBracket:
+            advance(parser)
+            return Json.Array(items)
+        if separator.kind != TokenKind.Comma:
+            set_error(parser, ErrorKind.ExpectedCommaOrEnd, separator.start)
+            return Json.Array(items)
+        advance(parser)
+    Json.Array(items)
+
+parse_object(parser: Parser, depth: UInt64) -> Json:
+    fields = Vec.new()
+    advance(parser)
+    if token_at(parser).kind == TokenKind.RBrace:
+        advance(parser)
+        return Json.Object(fields)
+    while parser.error == ErrorKind.NoError:
+        key_token = token_at(parser)
+        if key_token.kind != TokenKind.String:
+            set_error(parser, ErrorKind.UnexpectedToken, key_token.start)
+            return Json.Object(fields)
+        advance(parser)
+        key = decode_string(parser, key_token)
+        colon = token_at(parser)
+        if colon.kind != TokenKind.Colon:
+            set_error(parser, ErrorKind.ExpectedColon, colon.start)
+            fields.push(JsonField(key, Json.Null()))
+            return Json.Object(fields)
+        advance(parser)
+        value = parse_value(parser, depth + 1)
+        fields.push(JsonField(key, value))
+        if parser.error != ErrorKind.NoError:
+            return Json.Object(fields)
+        separator = token_at(parser)
+        if separator.kind == TokenKind.RBrace:
+            advance(parser)
+            return Json.Object(fields)
+        if separator.kind != TokenKind.Comma:
+            set_error(parser, ErrorKind.ExpectedCommaOrEnd, separator.start)
+            return Json.Object(fields)
+        advance(parser)
+    Json.Object(fields)
+
+export parse_value(parser: Parser, depth: UInt64) -> Json:
+    token = token_at(parser)
+    if depth > 128:
+        set_error(parser, ErrorKind.DepthExceeded, token.start)
+        return Json.Null()
+    match token.kind:
+        case TokenKind.Null:
+            advance(parser)
+            return Json.Null()
+        case TokenKind.TrueLiteral:
+            advance(parser)
+            return Json.Bool(true)
+        case TokenKind.FalseLiteral:
+            advance(parser)
+            return Json.Bool(false)
+        case TokenKind.Number:
+            advance(parser)
+            return Json.Number(Text.from_bytes(parser.input, token.start, token.end))
+        case TokenKind.String:
+            advance(parser)
+            return Json.String(decode_string(parser, token))
+        case TokenKind.LBracket:
+            return parse_array(parser, depth)
+        case TokenKind.LBrace:
+            return parse_object(parser, depth)
+        case TokenKind.End:
+            set_error(parser, ErrorKind.UnexpectedEnd, token.start)
+            return Json.Null()
+        case _:
+            set_error(parser, ErrorKind.UnexpectedToken, token.start)
+            return Json.Null()

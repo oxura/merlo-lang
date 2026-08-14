@@ -28,6 +28,13 @@ _INDEPENDENT_CORPUS_FROZEN = (
     b"        ),\n"
 )
 
+_INDEPENDENT_CORPUS_RELOCATED_DEFAULT = (
+    b'def verify_independent_corpus_lock(root: str | Path = Path(__file__).resolve().parents[1])'
+)
+_INDEPENDENT_CORPUS_FROZEN_DEFAULT = (
+    b'def verify_independent_corpus_lock(root: str | Path = ".")'
+)
+
 
 def resolve_frozen_path(root: str | Path, recorded_path: str) -> Path:
     root_path = Path(root)
@@ -46,6 +53,9 @@ def frozen_sha256(root: str | Path, recorded_path: str) -> str:
         payload = payload.replace(_INDEPENDENT_CORPUS_IMPORT, b"")
         payload = payload.replace(
             _INDEPENDENT_CORPUS_CURRENT, _INDEPENDENT_CORPUS_FROZEN
+        )
+        payload = payload.replace(
+            _INDEPENDENT_CORPUS_RELOCATED_DEFAULT, _INDEPENDENT_CORPUS_FROZEN_DEFAULT
         )
     if recorded_path.startswith(_LEGACY_PACKAGE_PREFIX) or recorded_path.startswith("tests/"):
         for current, historical in _BRAND_NORMALIZATION:

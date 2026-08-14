@@ -1,0 +1,233 @@
+{
+  "interfaces": [
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "enum",
+      "module": "app.json",
+      "name": "ErrorKind",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "136420a53b5e27611fe2df1e0b6f9e7f4f244e89fa5d419b5b8c26daaab4d5fc"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "enum",
+      "module": "app.json",
+      "name": "Json",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "39b1a39623cd8286d2f3488ab5b13492aff0654b1f68d4dfd5a322f3cfa76c15"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "enum",
+      "module": "app.json",
+      "name": "TokenKind",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "f9c24753f0d9241d9b12d6daf941a17dc5125f714df44e982b6a84138ef73648"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.json",
+      "name": "parse_value",
+      "parameters": [
+        [
+          "parser",
+          "Parser"
+        ],
+        [
+          "depth",
+          "UInt64"
+        ]
+      ],
+      "return_type": "Json",
+      "revision_id": "019f3b8e3fc47dbf51d0adbabfa93547f2040672427b0786f25f0e1dd5f2f80c"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.json",
+      "name": "set_error",
+      "parameters": [
+        [
+          "parser",
+          "Parser"
+        ],
+        [
+          "kind",
+          "ErrorKind"
+        ],
+        [
+          "offset",
+          "UInt64"
+        ]
+      ],
+      "return_type": "Unit",
+      "revision_id": "044f449290bc3b691c0c3603ebfe0e765d274688c98b20bac6d81cefbad24c03"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.json",
+      "name": "token_at",
+      "parameters": [
+        [
+          "parser",
+          "Parser"
+        ]
+      ],
+      "return_type": "Token",
+      "revision_id": "ef3e4c263d40bc7828fda3e585a6ae969cbdddd82eed868138169bdbc6e65958"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.json",
+      "name": "tokenize",
+      "parameters": [
+        [
+          "parser",
+          "Parser"
+        ]
+      ],
+      "return_type": "Unit",
+      "revision_id": "ed35b0bcbe8694c4444032a86cf997f6ef656e22c4fac1c3fe99bf006bfdac60"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.json",
+      "name": "validate_utf8",
+      "parameters": [
+        [
+          "parser",
+          "Parser"
+        ]
+      ],
+      "return_type": "Bool",
+      "revision_id": "789933083415039a8ca27d6c6052286bc86e9d2319ad3eebd4298bcba735eda6"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "record",
+      "module": "app.json",
+      "name": "JsonField",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "7d97ef76862b3fbbc307d07132b2bab8c899aa61fe5710c0b544c186ad568db5"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "record",
+      "module": "app.json",
+      "name": "Parser",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "a7b643ab895155b888786ac2074c4f7dc4fafff199100a938e91b1d22929ff96"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "record",
+      "module": "app.json",
+      "name": "ProgramResult",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "0741ab727e1a17db160618658e431d31b97cb3d70615a51947bbd49b1f0cd9ed"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "record",
+      "module": "app.json",
+      "name": "Stats",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "cf86694722422fbf6b67491843c43404d898aec5562f68f8f097e8d58a46da83"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "record",
+      "module": "app.json",
+      "name": "Token",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "847d987fb6941101beb2933ae13b3b42b096310b91228e753d76327e3dc27c56"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "enum",
+      "module": "app.main",
+      "name": "AppError",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "5d92a5a2fca3eec1beaadbd8230c9495f0671f99ff0721fb2e712074ba80ee2f"
+    },
+    {
+      "capabilities": [
+        "console.write",
+        "fs.read"
+      ],
+      "effects": [
+        "console.write",
+        "fs.read"
+      ],
+      "kind": "task",
+      "module": "app.main",
+      "name": "main",
+      "parameters": [
+        [
+          "path",
+          "Path"
+        ]
+      ],
+      "return_type": "Result[Text,AppError]",
+      "revision_id": "14fcc3082b5beb9277276f9a431ce22974d76dd90e705e325358034579284bb5"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.stats",
+      "name": "analyze",
+      "parameters": [
+        [
+          "data",
+          "BytesView"
+        ]
+      ],
+      "return_type": "ProgramResult",
+      "revision_id": "34e18d40785b8fbe0a00ca0375cacf441449be5c1775b7ed9546b787040c780a"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.stats",
+      "name": "format_result",
+      "parameters": [
+        [
+          "result",
+          "ProgramResult"
+        ]
+      ],
+      "return_type": "Text",
+      "revision_id": "4c8858e1e3a09ad8d34a1558c160511c8e8156db1760481fb676128a0502653e"
+    }
+  ],
+  "schema_version": 1
+}

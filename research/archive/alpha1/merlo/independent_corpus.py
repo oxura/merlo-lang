@@ -324,7 +324,7 @@ def acceptance_digest(programs: tuple[IndependentProgram, ...]) -> str:
     )
 
 
-def verify_independent_corpus_lock(root: str | Path = ".") -> dict[str, Any]:
+def verify_independent_corpus_lock(root: str | Path = Path(__file__).resolve().parents[1]) -> dict[str, Any]:
     root_path = Path(root)
     corpus_path, lock_path = _paths(root_path)
     lock = _load_object(lock_path)
