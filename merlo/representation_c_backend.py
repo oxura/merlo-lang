@@ -732,8 +732,8 @@ static MerloBytes merlo_bytes_concat(MerloBytes left, MerloBytes right) {
     if (result.length != 0) {
         result.data = (uint8_t *)malloc((size_t)result.length);
         if (result.data == NULL) merlo_allocation_trap();
-        memcpy(result.data, left.data, (size_t)left.length);
-        memcpy(result.data + left.length, right.data, (size_t)right.length);
+        if (left.length) memcpy(result.data, left.data, (size_t)left.length);
+        if (right.length) memcpy(result.data + left.length, right.data, (size_t)right.length);
         ++merlo_allocations;
         merlo_bytes_copied += result.length;
     }
@@ -745,8 +745,8 @@ static MerloText merlo_text_concat(MerloText left, MerloText right) {
     if (result.length != 0) {
         result.data = (uint8_t *)malloc((size_t)result.length);
         if (result.data == NULL) merlo_allocation_trap();
-        memcpy(result.data, left.data, (size_t)left.length);
-        memcpy(result.data + left.length, right.data, (size_t)right.length);
+        if (left.length) memcpy(result.data, left.data, (size_t)left.length);
+        if (right.length) memcpy(result.data + left.length, right.data, (size_t)right.length);
         ++merlo_allocations;
         ++merlo_text_allocations;
         merlo_bytes_copied += result.length;
@@ -3013,8 +3013,18 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             and left_type in {"Text", "Bytes"}
             and right_type == left_type
         ):
+            left_value = (
+                self._materialize_owned_argument(left, left_type)
+                if self._is_owning_temporary(left, left_type)
+                else self._expression(left, expected=left_type)
+            )
+            right_value = (
+                self._materialize_owned_argument(right, right_type)
+                if self._is_owning_temporary(right, right_type)
+                else self._expression(right, expected=right_type)
+            )
             helper = "merlo_text_concat" if left_type == "Text" else "merlo_bytes_concat"
-            return f"{helper}({self._expression(left)}, {self._expression(right)})"
+            return f"{helper}({left_value}, {right_value})"
         operators = {
             ast.Add: "+",
             ast.Sub: "-",

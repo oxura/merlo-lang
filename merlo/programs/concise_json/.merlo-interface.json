@@ -210,8 +210,8 @@
           "Path"
         ]
       ],
-      "return_type": "Result[Text,app.app.main.main.app.main.AppError]",
-      "revision_id": "ba3c803dc2d0a188cb9547b33c24c08a5b3e0e19e0fc06c48bc63ff52a3a0008"
+      "return_type": "Result[Text,app.main.AppError]",
+      "revision_id": "31d82afa363c85ea1113265c2c5244a2a5983d01753ede0e7a12930e878bd7e0"
     },
     {
       "capabilities": [],

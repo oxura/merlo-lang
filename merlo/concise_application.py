@@ -910,13 +910,13 @@ def _rewrite_module_symbols(
                 if internal != public_name:
                     replacements.append((at(tokens[index].start), at(tokens[index].end), internal))
                 consumed.add(index)
-        elif public_name in private_imports and is_call:
+        elif public_name in private_imports:
             dependencies = ", ".join(sorted(private_imports[public_name]))
             raise ConciseApplicationError(
                 f"{module.path}:{tokens[index].start[0]}: PrivateSymbol "
                 f"{dependencies}.{public_name}"
             )
-        elif is_call and public_name not in intrinsic_calls and public_name not in local_names:
+        elif is_call and public_name not in intrinsic_calls:
             raise ConciseApplicationError(
                 f"{module.path}:{tokens[index].start[0]}: UnresolvedName {public_name!r}"
             )
@@ -3315,11 +3315,14 @@ def _validate_declared_task_effects(
 def _public_type_name(type_name: str | None, public_names: dict[str, str]) -> str | None:
     if type_name is None:
         return None
-    return re.sub(
-        r"\b[A-Za-z_]\w*\b",
-        lambda match: public_names.get(match.group(0), match.group(0)),
-        type_name,
-    )
+    def replace(match: re.Match[str]) -> str:
+        start, end = match.span()
+        if (start and type_name[start - 1] == ".") or (
+            end < len(type_name) and type_name[end] == "."
+        ):
+            return match.group(0)
+        return public_names.get(match.group(0), match.group(0))
+    return re.sub(r"\b[A-Za-z_]\w*\b", replace, type_name)
 
 
 def _assemble_core(
@@ -3492,11 +3495,8 @@ def _interfaces(
                 module,
                 task.name,
                 "task",
-                tuple(
-                    (name, _public_type_name(type_name, public_names) or "?")
-                    for name, type_name in task.parameters
-                ),
-                _public_type_name(task.return_type, public_names),
+                task.parameters,
+                task.return_type,
                 task.effects,
                 task.capabilities,
             )

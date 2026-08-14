@@ -517,6 +517,8 @@ class MIRInterpreter:
             if attributes["operator"] == "concat":
                 left, right = operands
                 if isinstance(left, _Text) and isinstance(right, _Text):
+                    left.check()
+                    right.check()
                     result = _Text(
                         bytearray(left.data + right.data),
                         len(left.data) + len(right.data),
@@ -524,6 +526,8 @@ class MIRInterpreter:
                     self.metrics.texts.append(result)
                     self.metrics.allocations += int(bool(result.data))
                 elif isinstance(left, _Bytes) and isinstance(right, _Bytes):
+                    left.check()
+                    right.check()
                     result = _Bytes(
                         bytearray(left.data + right.data),
                         len(left.data) + len(right.data),
@@ -1929,6 +1933,8 @@ class HIREvaluator:
             if isinstance(node.op, ast.Add) and isinstance(left, (_Text, _Bytes)):
                 if type(left) is not type(right):
                     raise NativeExecutionError("ConcatTypeMismatch", "concat operands differ")
+                left.check()
+                right.check()
                 if isinstance(left, _Text):
                     result = _Text(bytearray(left.data + right.data), len(left.data) + len(right.data))
                     self.metrics.texts.append(result)
@@ -1936,6 +1942,10 @@ class HIREvaluator:
                     result = _Bytes(bytearray(left.data + right.data), len(left.data) + len(right.data))
                     self.metrics.bytes_owners.append(result)
                 self.metrics.allocations += int(bool(result.data))
+                for operand_node, operand in ((node.left, left), (node.right, right)):
+                    if isinstance(operand_node, (ast.Call, ast.BinOp)):
+                        operand.alive = False
+                        self.metrics.frees += 1
                 return result
             operator = {
                 ast.Add: lambda: left + right,
