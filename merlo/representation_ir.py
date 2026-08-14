@@ -14,6 +14,7 @@ from .structured_hir_v2 import (
     StructuredHIRProgram,
 )
 from .ffi import pointer_type
+from .type_parser import generic_parts, parse_type
 
 
 REPRESENTATION_IR_SCHEMA_VERSION = 1
@@ -343,43 +344,37 @@ def _stable_id(prefix: str, *parts: Any) -> str:
     payload = json.dumps(parts, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     return f"{prefix}_{hashlib.sha256(payload.encode()).hexdigest()}"
 
-
 def _generic(type_name: str) -> tuple[str, str] | None:
-    if "[" not in type_name or not type_name.endswith("]"):
+    try:
+        parsed = parse_type(type_name)
+    except ValueError:
         return None
-    base, argument = type_name.split("[", 1)
-    return base, argument[:-1]
+    if not parsed.args:
+        return None
+    return parsed.name, ",".join(item.canonical for item in parsed.args)
+
 
 def _map_types(type_name: str) -> tuple[str, str] | None:
-    if not type_name.startswith("Map[") or not type_name.endswith("]"):
-        return None
-    arguments = type_name[4:-1].split(",")
-    if len(arguments) != 2:
-        return None
-    return arguments[0], arguments[1]
+    parts = generic_parts(type_name, "Map", arity=2)
+    return parts if parts is not None else None  # type: ignore[return-value]
 
 
 def _array_parts(type_name: str) -> tuple[str, int] | None:
-    if not type_name.startswith("Array[") or not type_name.endswith("]"):
+    parts = generic_parts(type_name, "Array", arity=2)
+    if parts is None:
         return None
-    payload = type_name[6:-1]
-    if "," not in payload:
-        return None
-    element, raw_length = payload.rsplit(",", 1)
     try:
-        length = int(raw_length)
+        length = int(parts[1])
     except ValueError:
         return None
-    if not element or length < 0 or length > MAX_U64:
+    if length < 0 or length > MAX_U64:
         return None
-    return element, length
+    return parts[0], length
 
 
 def _callback_parts(type_name: str) -> tuple[tuple[str, ...], str] | None:
-    if not type_name.startswith("Fn[") or not type_name.endswith("]"):
-        return None
-    parts = tuple(item.strip() for item in type_name[3:-1].split(","))
-    if len(parts) < 2 or any(not item for item in parts):
+    parts = generic_parts(type_name, "Fn")
+    if parts is None or len(parts) < 2:
         return None
     return parts[:-1], parts[-1]
 
@@ -635,8 +630,9 @@ class _DescriptorBuilder:
         generic = _generic(type_name)
         if generic:
             base, argument = generic
-            if base == "Result" and "," in argument:
-                ok_type, err_type = (part.strip() for part in argument.split(",", 1))
+            result_parts = generic_parts(type_name, "Result", arity=2)
+            if result_parts is not None:
+                ok_type, err_type = result_parts
                 ok = self.get(ok_type)
                 err = self.get(err_type)
                 descriptor = EnumDesc(

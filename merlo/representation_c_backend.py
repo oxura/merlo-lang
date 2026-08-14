@@ -25,6 +25,7 @@ from .structured_hir_v2 import (
     _preprocess_ffi_surface,
 )
 from .version import VERSIONS
+from .type_parser import generic_parts, parse_type
 
 
 C_BACKEND_SCHEMA_VERSION = 1
@@ -65,34 +66,33 @@ class GeneratedC:
 def _identifier(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9_]", "_", value)
 
-
 def _generic(type_name: str) -> tuple[str, str] | None:
-    if "[" not in type_name or not type_name.endswith("]"):
+    try:
+        parsed = parse_type(type_name)
+    except ValueError:
         return None
-    base, rest = type_name.split("[", 1)
-    return base, rest[:-1]
+    if not parsed.args:
+        return None
+    return parsed.name, ",".join(item.canonical for item in parsed.args)
 
 
 def _array_parts(type_name: str) -> tuple[str, int] | None:
-    if not type_name.startswith("Array[") or not type_name.endswith("]"):
+    parts = generic_parts(type_name, "Array", arity=2)
+    if parts is None:
         return None
-    payload = type_name[6:-1]
-    if "," not in payload:
-        return None
-    element, raw_length = payload.rsplit(",", 1)
     try:
-        return element, int(raw_length)
+        return parts[0], int(parts[1])
     except ValueError:
         return None
 
 
 def _callback_parts(type_name: str) -> tuple[tuple[str, ...], str] | None:
-    if not type_name.startswith("Fn[") or not type_name.endswith("]"):
-        return None
-    parts = tuple(item.strip() for item in type_name[3:-1].split(","))
-    if len(parts) < 2 or any(not item for item in parts):
+    parts = generic_parts(type_name, "Fn")
+    if parts is None or len(parts) < 2:
         return None
     return parts[:-1], parts[-1]
+
+
 def _type_from_annotation(node: ast.AST | None) -> str:
     """Normalize an AST annotation to the canonical Merlo type spelling."""
     if node is None:
@@ -106,28 +106,20 @@ def _type_from_annotation(node: ast.AST | None) -> str:
         type_name = re.sub(rf"\b{alias}\b", canonical, type_name)
     return type_name
 
+
 def _result_types(type_name: str | None) -> tuple[str, str] | None:
-    if not type_name or not type_name.startswith("Result[") or not type_name.endswith("]"):
-        return None
-    parts = type_name[7:-1].split(",", 1)
-    return (parts[0].strip(), parts[1].strip()) if len(parts) == 2 else None
+    parts = generic_parts(type_name, "Result", arity=2)
+    return parts if parts is not None else None  # type: ignore[return-value]
+
 
 def _map_types(type_name: str) -> tuple[str, str] | None:
-    if not type_name.startswith("Map[") or not type_name.endswith("]"):
-        return None
-    arguments = type_name[4:-1].split(",")
-    if len(arguments) != 2:
-        return None
-    return arguments[0], arguments[1]
+    parts = generic_parts(type_name, "Map", arity=2)
+    return parts if parts is not None else None  # type: ignore[return-value]
 
 
 def _map_entry_types(type_name: str) -> tuple[str, str] | None:
-    if not type_name.startswith("MapEntry[") or not type_name.endswith("]"):
-        return None
-    arguments = type_name[9:-1].split(",")
-    if len(arguments) != 2:
-        return None
-    return arguments[0], arguments[1]
+    parts = generic_parts(type_name, "MapEntry", arity=2)
+    return parts if parts is not None else None  # type: ignore[return-value]
 
 
 def _c_name(type_name: str) -> str:

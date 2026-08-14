@@ -11,6 +11,7 @@ import json
 import re
 from dataclasses import dataclass
 from typing import Any, Iterable
+from .type_parser import generic_parts, parse_type
 
 FFI_ABI = "C"
 FIXED_WIDTH_TYPES = frozenset({"Int8", "UInt8", "Int16", "UInt16", "Int32", "UInt32", "Int64", "UInt64", "Float32", "Float64", "Bool", "Byte"})
@@ -189,8 +190,6 @@ class FFIProgram:
     def digest(self) -> str:
         return hashlib.sha256(self.to_json().encode()).hexdigest()
 
-
-_TYPE_RE = re.compile(r"^(?P<base>[A-Za-z_]\w*)(?:\[(?P<arg>.*)\])?$")
 _PARAM_RE = re.compile(r"^(?P<name>[A-Za-z_]\w*)\s*:\s*(?P<type>[^({]+?)(?:\s*(?:\{|\()\s*(?P<meta>[^)}]+?)\s*[})])?\s*$")
 
 _EXTERN_RE = re.compile(r'^extern\s*(?:"(?P<quote>[^"]+)"|(?P<bare>C))?\s*(?:fn\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<params>[^)]*)\)\s*(?:->\s*(?P<return>[^\s]+))?\s*(?:effects?\s*[:=]?\s*\[(?P<effects>[^]]*)\])?\s*$')
@@ -198,10 +197,14 @@ _EXTERN_RE = re.compile(r'^extern\s*(?:"(?P<quote>[^"]+)"|(?P<bare>C))?\s*(?:fn\
 def _align(value: int, alignment: int) -> int:
     return value if value % alignment == 0 else value + alignment - value % alignment
 
-
 def _type_parts(type_name: str) -> tuple[str, str | None]:
-    match = _TYPE_RE.match(type_name.strip())
-    return (match.group("base"), match.group("arg")) if match else (type_name.strip(), None)
+    try:
+        parsed = parse_type(type_name.strip())
+    except ValueError:
+        return (type_name.strip(), None)
+    if not parsed.args:
+        return parsed.name, None
+    return parsed.name, ",".join(item.canonical for item in parsed.args)
 
 
 def pointer_type(type_name: str) -> RawPointerType | None:
@@ -217,14 +220,13 @@ def _validate_abi_type(type_name: str, *, allow_result: bool = False) -> None:
     if pointer is not None:
         _validate_abi_type(pointer.pointee)
         return
-    base, argument = _type_parts(type_name)
-    if base == "Result" and argument and allow_result:
-        parts = [item.strip() for item in argument.split(",", 1)]
-        if len(parts) == 2:
-            _validate_abi_type(parts[0])
-            if not parts[1]:
-                raise FFICompileError("ForeignErrorTypeMissing", type_name)
-            return
+    result_parts = generic_parts(type_name, "Result", arity=2)
+    if result_parts is not None and allow_result:
+        _validate_abi_type(result_parts[0])
+        if not result_parts[1]:
+            raise FFICompileError("ForeignErrorTypeMissing", type_name)
+        return
+    base, _ = _type_parts(type_name)
     if type_name not in FIXED_WIDTH_TYPES and base not in {"Unit", "void"}:
         raise FFICompileError("FixedWidthABIRequired", type_name)
 
