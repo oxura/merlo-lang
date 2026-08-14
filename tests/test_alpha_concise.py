@@ -568,6 +568,17 @@ def test_qualified_modules_keep_distinct_full_type_identities(tmp_path: Path) ->
     assert "vendor.left.parse" not in elaborated.canonical_source
     assert "must not rewrite this comment" in elaborated.canonical_source
     assert len({item.revision_id for item in elaborated.interfaces if item.kind == "fn"}) == 2
+    first_revision = elaborated.interface_revision
+    entry.write_text(
+        entry.read_text(encoding="utf-8").replace(
+            "app.left.Item", "vendor.left.Item"
+        ).replace(
+            "app.left.parse(value)", "vendor.left.parse(value)"
+        ),
+        encoding="utf-8",
+    )
+    second = elaborate_concise_application(entry, require_interface_lock=False)
+    assert second.interface_revision != first_revision
 
 
 def test_imported_main_is_not_the_cli_entry_and_metadata_is_source_facing(
