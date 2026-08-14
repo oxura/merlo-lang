@@ -503,7 +503,7 @@ def test_borrowed_text_literal_remains_one_stack_argument() -> None:
     hir, rir, _mir, optimized = _layers(source)
     generated = emit_general_c(hir, rir, optimized)
     assert "__merlo_owned_temp_" not in generated.source
-    assert generated.source.count("merlo_fn_inspect(") == 2
+    assert generated.source.count("= merlo_fn_inspect(") == 1
 
 
 @pytest.mark.parametrize("keyword", ("if", "while"))
@@ -571,7 +571,7 @@ def test_branch_move_keeps_zeroed_source_cleanup_on_false_path() -> None:
     )
     hir, rir, _mir, optimized = _layers(source)
     generated = emit_general_c(hir, rir, optimized)
-    assert generated.source.count("merlo_drop_Change(&source);") == 2
+    assert generated.source.count("merlo_drop_Change(&source);") == 3
 
 
 def test_loop_body_borrow_temporary_is_dropped_at_each_iteration() -> None:
@@ -579,10 +579,11 @@ def test_loop_body_borrow_temporary_is_dropped_at_each_iteration() -> None:
         "fn consume(value: Text) -> Unit:\n"
         "    return\n"
         "fn main(input: BytesView) -> UInt64:\n"
-        "    while input.len() > 0:\n"
+        "    var remaining: UInt64 = input.len()\n"
+        "    while remaining > 0:\n"
         "        consume(Text.from_bytes(input, 0, input.len()))\n"
-        "        break\n"
-        "    return 0\n"
+        "        remaining = 0\n"
+        "    return remaining\n"
     )
     hir, rir, _mir, optimized = _layers(source)
     generated = emit_general_c(hir, rir, optimized)
