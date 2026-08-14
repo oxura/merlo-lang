@@ -1,0 +1,352 @@
+name: Alpha prerelease
+
+on:
+  push:
+    tags:
+      - "v*-alpha.*"
+
+permissions:
+  contents: read
+
+jobs:
+  production:
+    name: Production Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Install production test dependencies
+        run: python -m pip install -e '.[test]' pyflakes
+      - name: Production tests
+        run: python -m pytest tests/ -q
+      - name: Production pyflakes
+        run: python -m pyflakes src/merlo tests
+
+  tooling:
+    name: Python 3.14 tooling tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install tooling test dependencies
+        run: python -m pip install -e '.[test]'
+      - name: Active benchmark tests
+        run: python -m pytest tools/benchmarks/merlo/tests/ -q
+      - name: Release-tool tests
+        run: python -m pytest tools/release/merlo/tests/ -q
+
+  archive:
+    name: Python 3.14 archive tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install archive test dependencies
+        run: python -m pip install -e '.[test]'
+      - name: Historical protocol tests
+        run: python -m pytest research/archive/historical_protocol/tests/ -q
+      - name: Alpha1 archive tests
+        run: python -m pytest research/archive/alpha1/tests/ -q
+
+  artifacts:
+    name: Build and smoke release artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install release tools
+        run: python -m pip install build twine
+      - name: Build reproducible wheel and sdist
+        run: |
+          set -euo pipefail
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$GITHUB_SHA")"
+          first="$RUNNER_TEMP/merlo-dist-first"
+          second="$RUNNER_TEMP/merlo-dist-second"
+          rm -rf "$first" "$second" dist
+          mkdir -p "$first" "$second"
+          (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --wheel --sdist --outdir "$first")
+          (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --wheel --sdist --outdir "$second")
+          python - "$first" "$second" "$SOURCE_DATE_EPOCH" <<'PY'
+          import sys
+          from pathlib import Path
+          from tools.release.merlo.alpha_release import canonicalize_sdist
+
+          epoch = int(sys.argv[3])
+          for root in (Path(sys.argv[1]), Path(sys.argv[2])):
+              sdists = sorted(root.glob("merlo-*.tar.gz"))
+              if len(sdists) != 1:
+                  raise SystemExit(f"expected one sdist in {root}")
+              canonicalize_sdist(sdists[0], epoch)
+          PY
+          python - "$first" "$second" <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          import os
+          import re
+          import sys
+          import tarfile
+          import zipfile
+          from pathlib import Path
+
+          first = Path(sys.argv[1])
+          second = Path(sys.argv[2])
+          tag = os.environ["GITHUB_REF_NAME"]
+          match = re.fullmatch(r"v(\d+\.\d+\.\d+)-alpha\.(\d+)", tag)
+          if match is None:
+              raise SystemExit(f"unexpected prerelease tag: {tag}")
+          expected_version = f"{match.group(1)}a{match.group(2)}"
+          expected_wheel = f"merlo-{expected_version}"
+
+          def hashes(root: Path) -> dict[str, str]:
+              return {
+                  path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+                  for path in root.iterdir()
+                  if path.is_file()
+              }
+
+          first_hashes = hashes(first)
+          second_hashes = hashes(second)
+          if first_hashes != second_hashes:
+              raise SystemExit("repeated builds differ")
+          wheel_names = [name for name in first_hashes if name.startswith(expected_wheel) and name.endswith(".whl")]
+          sdist_names = [name for name in first_hashes if name == f"merlo-{expected_version}.tar.gz"]
+          if len(wheel_names) != 1 or len(sdist_names) != 1:
+              raise SystemExit(f"unexpected release artifacts: {sorted(first_hashes)}")
+
+          wheel = first / wheel_names[0]
+          with zipfile.ZipFile(wheel) as archive:
+              metadata_name = next(name for name in archive.namelist() if name.endswith(".dist-info/METADATA"))
+              metadata = archive.read(metadata_name).decode("utf-8")
+          if f"Name: merlo\n" not in metadata or f"Version: {expected_version}\n" not in metadata:
+              raise SystemExit("wheel metadata does not match the tag")
+
+          sdist = first / sdist_names[0]
+          with tarfile.open(sdist, "r:gz") as archive:
+              pkg_info_name = next(name for name in archive.getnames() if name.endswith("/PKG-INFO"))
+              pkg_info = archive.extractfile(pkg_info_name)
+              if pkg_info is None:
+                  raise SystemExit("sdist PKG-INFO is missing")
+              metadata = pkg_info.read().decode("utf-8")
+          if f"Name: merlo\n" not in metadata or f"Version: {expected_version}\n" not in metadata:
+              raise SystemExit("sdist metadata does not match the tag")
+          PY
+          mkdir -p dist
+          cp "$first"/* dist/
+      - name: Validate release metadata and artifacts
+        run: |
+          set -euo pipefail
+          python -m twine check dist/*
+          test -n "$(find dist -maxdepth 1 -name 'merlo-*.whl' -print -quit)"
+          test -n "$(find dist -maxdepth 1 -name 'merlo-*.tar.gz' -print -quit)"
+      - name: Install wheel in a fresh environment
+        run: |
+          set -euo pipefail
+          smoke_root="$RUNNER_TEMP/merlo-release-smoke"
+          rm -rf "$smoke_root"
+          mkdir -p "$smoke_root"
+          python -m venv "$smoke_root/venv"
+          "$smoke_root/venv/bin/python" -m pip install dist/*.whl
+          "$smoke_root/venv/bin/merlo" --help
+          "$smoke_root/venv/bin/merlo" new --json "$smoke_root/project"
+          "$smoke_root/venv/bin/merlo" check --json "$smoke_root/project"
+          "$smoke_root/venv/bin/merlo" build --json "$smoke_root/project"
+          "$smoke_root/venv/bin/merlo" run --json "$smoke_root/project"
+          "$smoke_root/venv/bin/merlo" check --json "$GITHUB_WORKSPACE/examples/capacity-ledger"
+          "$smoke_root/venv/bin/merlo" build --json "$GITHUB_WORKSPACE/examples/capacity-ledger"
+          "$smoke_root/venv/bin/merlo" run --json "$GITHUB_WORKSPACE/examples/capacity-ledger" "$GITHUB_WORKSPACE/examples/capacity-ledger/input.txt"
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: merlo-${{ github.ref_name }}-artifacts
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload capacity-ledger smoke binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: merlo-${{ github.ref_name }}-capacity-ledger-smoke
+          path: examples/capacity-ledger/.merlo/build/app
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Create GitHub prerelease
+    needs: [production, tooling, archive, artifacts]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout exact release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+      - name: Download capacity-ledger smoke binary
+        uses: actions/download-artifact@v4
+        with:
+          name: merlo-${{ github.ref_name }}-capacity-ledger-smoke
+          path: smoke
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: merlo-${{ github.ref_name }}-artifacts
+          path: dist
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install release builder frontend
+        run: python -m pip install build dist/*.whl
+      - name: Write canonical CI attestation
+        env:
+          MERLO_REPOSITORY: ${{ github.repository }}
+          MERLO_RUN_ID: ${{ github.run_id }}
+          MERLO_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          MERLO_TAG: ${{ github.ref_name }}
+          MERLO_COMMIT: ${{ github.sha }}
+          MERLO_PRODUCTION_RESULT: ${{ needs.production.result }}
+          MERLO_TOOLING_RESULT: ${{ needs.tooling.result }}
+          MERLO_ARCHIVE_RESULT: ${{ needs.archive.result }}
+          MERLO_ARTIFACTS_RESULT: ${{ needs.artifacts.result }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$MERLO_COMMIT"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          responsibilities = {
+              "production": ["full_tests", "lsp", "examples"],
+              "tooling": ["corpus", "sanitizers", "simplicity", "performance"],
+              "artifacts": ["clean_demo", "packaging", "reproducibility"],
+              "archive": [],
+          }
+          results = {
+              "production": os.environ["MERLO_PRODUCTION_RESULT"],
+              "tooling": os.environ["MERLO_TOOLING_RESULT"],
+              "archive": os.environ["MERLO_ARCHIVE_RESULT"],
+              "artifacts": os.environ["MERLO_ARTIFACTS_RESULT"],
+          }
+          payload = {
+              "schema_version": 1,
+              "repository": os.environ["MERLO_REPOSITORY"],
+              "run_id": int(os.environ["MERLO_RUN_ID"]),
+              "run_url": os.environ["MERLO_RUN_URL"],
+              "commit": os.environ["MERLO_COMMIT"],
+              "tag": os.environ["MERLO_TAG"],
+              "jobs": {
+                  name: {"result": results[name], "responsibilities": values}
+                  for name, values in responsibilities.items()
+              },
+          }
+          Path(".merlo-ci-attestation.json").write_text(
+              json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n",
+              encoding="utf-8",
+          )
+      - name: Prepare release builder inputs
+        run: |
+          set -euo pipefail
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+          install -m 755 smoke/app "$GITHUB_WORKSPACE/.merlo-release-smoke"
+          python -m tools.release.merlo.alpha_release \
+            --root "$GITHUB_WORKSPACE" \
+            --dist "$GITHUB_WORKSPACE/dist" \
+            --output "$GITHUB_WORKSPACE/release" \
+            --tag "$GITHUB_REF_NAME" \
+            --commit "$GITHUB_SHA" \
+            --source-date-epoch "$SOURCE_DATE_EPOCH" \
+            --binary "$GITHUB_WORKSPACE/.merlo-release-smoke" \
+            --attestation "$GITHUB_WORKSPACE/.merlo-ci-attestation.json"
+      - name: Upload assembled release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: merlo-${{ github.ref_name }}-release
+          path: release/**
+          if-no-files-found: error
+          retention-days: 14
+      - name: Stage assembled assets for GitHub release
+        run: |
+          set -euo pipefail
+          cp release/assets/*.whl dist/
+          cp release/assets/*.tar.gz dist/
+          cp release/assets/*-evidence.zip dist/
+          cp release/manifest.json release/SHA256SUMS release/checksums.sha256 dist/
+      - name: Create prerelease with generated notes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const path = require("path");
+            const { owner, repo } = context.repo;
+            const tag = context.ref.replace("refs/tags/", "");
+            let release;
+            try {
+              const response = await github.rest.repos.getReleaseByTag({
+                owner,
+                repo,
+                tag,
+              });
+              release = response.data;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              const response = await github.rest.repos.createRelease({
+                owner,
+                repo,
+                tag_name: tag,
+                name: tag,
+                prerelease: true,
+                generate_release_notes: true,
+              });
+              release = response.data;
+            }
+            const existing = await github.paginate(github.rest.repos.listReleaseAssets, {
+              owner,
+              repo,
+              release_id: release.id,
+              per_page: 100,
+            });
+            for (const name of fs.readdirSync("dist").sort()) {
+              const file = path.join("dist", name);
+              const stat = fs.statSync(file);
+              if (!stat.isFile()) continue;
+              const oldAsset = existing.find((asset) => asset.name === name);
+              if (oldAsset) {
+                await github.rest.repos.deleteReleaseAsset({
+                  owner,
+                  repo,
+                  asset_id: oldAsset.id,
+                });
+              }
+              await github.rest.repos.uploadReleaseAsset({
+                owner,
+                repo,
+                release_id: release.id,
+                name,
+                data: fs.readFileSync(file),
+                headers: {
+                  "content-type": name.endsWith(".whl") || name.endsWith(".zip") ? "application/zip" :
+                    name.endsWith(".json") || name.endsWith(".sha256") || name === "SHA256SUMS" ? "text/plain" :
+                    "application/gzip",
+                  "content-length": stat.size,
+                },
+              });
+            }

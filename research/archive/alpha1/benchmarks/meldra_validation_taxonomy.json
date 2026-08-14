@@ -1,0 +1,617 @@
+{
+  "category_breakdown": [
+    {
+      "false_block": {
+        "denominator": 20,
+        "numerator": 10,
+        "ratio": 0.5
+      },
+      "key": "async-backend",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 10,
+          "cumulative_count": 10,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 10,
+          "ratio": 1.0
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 20,
+        "numerator": 3,
+        "ratio": 0.15
+      },
+      "key": "backend-framework",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 3,
+          "cumulative_count": 3,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 3,
+          "ratio": 1.0
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 10,
+        "numerator": 7,
+        "ratio": 0.7
+      },
+      "key": "bot-framework",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 7,
+          "cumulative_count": 7,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 7,
+          "ratio": 1.0
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 10,
+        "numerator": 2,
+        "ratio": 0.2
+      },
+      "key": "cli-framework",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 2,
+          "cumulative_count": 2,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 2,
+          "ratio": 1.0
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 7,
+        "numerator": 1,
+        "ratio": 0.142857
+      },
+      "key": "cli-library",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 1,
+          "cumulative_count": 1,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 1,
+          "ratio": 1.0
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 0,
+        "numerator": 0,
+        "ratio": null
+      },
+      "key": "data-access-library",
+      "pareto": [],
+      "raw_multi_cause_counts": []
+    },
+    {
+      "false_block": {
+        "denominator": 10,
+        "numerator": 3,
+        "ratio": 0.3
+      },
+      "key": "data-pipeline",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 3,
+          "cumulative_count": 3,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 3,
+          "ratio": 1.0
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 10,
+        "numerator": 1,
+        "ratio": 0.1
+      },
+      "key": "data-transformation",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 1,
+          "cumulative_count": 1,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 1,
+          "ratio": 1.0
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 10,
+        "numerator": 8,
+        "ratio": 0.8
+      },
+      "key": "distributed-task-processing",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 8,
+          "cumulative_count": 8,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 8,
+          "ratio": 1.0
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 6,
+        "numerator": 1,
+        "ratio": 0.166667
+      },
+      "key": "http-client",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 1,
+          "cumulative_count": 1,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 1,
+          "ratio": 1.0
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 10,
+        "numerator": 8,
+        "ratio": 0.8
+      },
+      "key": "http-library",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 8,
+          "cumulative_count": 8,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 8,
+          "ratio": 1.0
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 10,
+        "numerator": 8,
+        "ratio": 0.8
+      },
+      "key": "load-testing",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 7,
+          "cumulative_count": 7,
+          "cumulative_ratio": 0.875,
+          "ratio": 0.875
+        },
+        {
+          "cause": "EntityBudgetExceeded",
+          "count": 1,
+          "cumulative_count": 8,
+          "cumulative_ratio": 1.0,
+          "ratio": 0.125
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 7,
+          "ratio": 0.875
+        },
+        {
+          "cause": "EntityBudgetExceeded",
+          "count": 1,
+          "ratio": 0.125
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 7,
+        "numerator": 4,
+        "ratio": 0.571429
+      },
+      "key": "plugin-architecture",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 4,
+          "cumulative_count": 4,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 4,
+          "ratio": 1.0
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 10,
+        "numerator": 7,
+        "ratio": 0.7
+      },
+      "key": "plugin-heavy-crawler",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 7,
+          "cumulative_count": 7,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 7,
+          "ratio": 1.0
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 10,
+        "numerator": 8,
+        "ratio": 0.8
+      },
+      "key": "serialization-library",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 8,
+          "cumulative_count": 8,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 8,
+          "ratio": 1.0
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 10,
+        "numerator": 3,
+        "ratio": 0.3
+      },
+      "key": "terminal-ui",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 3,
+          "cumulative_count": 3,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 3,
+          "ratio": 1.0
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 10,
+        "numerator": 7,
+        "ratio": 0.7
+      },
+      "key": "test-framework",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 7,
+          "cumulative_count": 7,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 7,
+          "ratio": 1.0
+        }
+      ]
+    },
+    {
+      "false_block": {
+        "denominator": 10,
+        "numerator": 2,
+        "ratio": 0.2
+      },
+      "key": "tooling",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 2,
+          "cumulative_count": 2,
+          "cumulative_ratio": 1.0,
+          "ratio": 1.0
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 2,
+          "ratio": 1.0
+        }
+      ]
+    }
+  ],
+  "false_block": {
+    "denominator": 180,
+    "numerator": 83,
+    "ratio": 0.461111
+  },
+  "infrastructure": {
+    "categories": [
+      {
+        "category": "timeout",
+        "count": 25,
+        "ratio": 0.471698
+      },
+      {
+        "category": "identity_collision",
+        "count": 28,
+        "ratio": 0.528302
+      },
+      {
+        "category": "parser_frontend",
+        "count": 0,
+        "ratio": 0.0
+      },
+      {
+        "category": "checkout_archive",
+        "count": 0,
+        "ratio": 0.0
+      },
+      {
+        "category": "missing_dependency",
+        "count": 0,
+        "ratio": 0.0
+      },
+      {
+        "category": "test_harness",
+        "count": 0,
+        "ratio": 0.0
+      },
+      {
+        "category": "encoding",
+        "count": 0,
+        "ratio": 0.0
+      },
+      {
+        "category": "unknown",
+        "count": 0,
+        "ratio": 0.0
+      }
+    ],
+    "classified_count": 53,
+    "source_count": 53
+  },
+  "kind": "MeldraValidationFailureTaxonomy",
+  "operation_breakdown": [
+    {
+      "false_block": {
+        "denominator": 0,
+        "numerator": 0,
+        "ratio": null
+      },
+      "key": "change_signature",
+      "pareto": [],
+      "raw_multi_cause_counts": []
+    },
+    {
+      "false_block": {
+        "denominator": 0,
+        "numerator": 0,
+        "ratio": null
+      },
+      "key": "move",
+      "pareto": [],
+      "raw_multi_cause_counts": []
+    },
+    {
+      "false_block": {
+        "denominator": 180,
+        "numerator": 83,
+        "ratio": 0.461111
+      },
+      "key": "rename",
+      "pareto": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 82,
+          "cumulative_count": 82,
+          "cumulative_ratio": 0.987952,
+          "ratio": 0.987952
+        },
+        {
+          "cause": "EntityBudgetExceeded",
+          "count": 1,
+          "cumulative_count": 83,
+          "cumulative_ratio": 1.0,
+          "ratio": 0.012048
+        }
+      ],
+      "raw_multi_cause_counts": [
+        {
+          "cause": "UnsupportedBinding",
+          "count": 82,
+          "ratio": 0.987952
+        },
+        {
+          "cause": "EntityBudgetExceeded",
+          "count": 1,
+          "ratio": 0.012048
+        }
+      ]
+    }
+  ],
+  "pareto": [
+    {
+      "cause": "UnsupportedBinding",
+      "count": 82,
+      "cumulative_count": 82,
+      "cumulative_ratio": 0.987952,
+      "ratio": 0.987952
+    },
+    {
+      "cause": "EntityBudgetExceeded",
+      "count": 1,
+      "cumulative_count": 83,
+      "cumulative_ratio": 1.0,
+      "ratio": 0.012048
+    }
+  ],
+  "primary_cause_priority": [
+    "IdentityCollision",
+    "TargetCollision",
+    "SyntaxInvalid",
+    "UnsupportedBinding",
+    "UnsupportedSignatureMigration",
+    "MissingArgumentMigration",
+    "MoveDependencyCollision",
+    "CyclicDependency",
+    "PublicApiCompatibility",
+    "EntityBudgetExceeded"
+  ],
+  "raw_multi_cause_counts": [
+    {
+      "cause": "UnsupportedBinding",
+      "count": 82,
+      "ratio": 0.987952
+    },
+    {
+      "cause": "EntityBudgetExceeded",
+      "count": 1,
+      "ratio": 0.012048
+    }
+  ],
+  "schema": 1,
+  "source": "tools/benchmarks/merlo/benchmarks/meldra_external_results.json",
+  "validation_metrics": {
+    "confusion_matrix": {
+      "false_negative": 83,
+      "false_positive": 0,
+      "true_negative": 267,
+      "true_positive": 97
+    },
+    "evaluated_tasks": 447,
+    "expected_safe_tasks": 200,
+    "expected_unsafe_tasks": 300,
+    "false_block": {
+      "denominator": 180,
+      "numerator": 83,
+      "rate": 0.461111
+    },
+    "false_block_rate": 0.461111,
+    "false_safe": {
+      "denominator": 267,
+      "numerator": 0,
+      "rate": 0.0
+    },
+    "false_safe_rate": 0.0,
+    "infrastructure_errors": 53,
+    "safe_automation": {
+      "coverage": 0.538889,
+      "denominator": 180,
+      "numerator": 97
+    },
+    "safe_automation_coverage": 0.538889,
+    "total_tasks": 500
+  }
+}

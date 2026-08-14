@@ -1,0 +1,83 @@
+{
+  "counts": {
+    "PASS": 4,
+    "UNMEASURED_OUTSIDE_FROZEN_SUBSET": 1
+  },
+  "hypotheses": [
+    {
+      "evidence": {
+        "after_digest": "e6e9d555b301d306b2075d3e2cd8bb5426cfdc63350c1faa4843fd1eede3d309",
+        "allocations_removed": 2,
+        "before_digest": "81054a6f29fdf84b02c7125c0283a31753a5340c225268871995eb983b53fa59",
+        "fused_collection_loops": 1,
+        "loops_fused": 1,
+        "residual_collection_operations": []
+      },
+      "id": "high_level_collection_pipelines_lower_to_one_loop",
+      "scope": "one map-filter-fold chain over a fixed UInt64 array",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "allocations_removed": 1,
+        "copy_count": 0,
+        "heap_allocation_count": 0,
+        "in_place_reuses": 1,
+        "stack_allocation_count": 1,
+        "store_index_count": 1
+      },
+      "id": "unique_values_update_without_copy",
+      "scope": "non-escaping fixed array with one unique in-place update",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "impure_ablation_calls_inlined": 0,
+        "impure_ablation_residual_calls": 1,
+        "pure_calls_inlined": 1,
+        "pure_residual_calls": 0
+      },
+      "id": "pure_functions_enable_stronger_optimization",
+      "scope": "single-basic-block direct function; purity ablated at MIR level",
+      "status": "PASS"
+    },
+    {
+      "evidence": {
+        "devirtualization_pass": false,
+        "interface_constructs": 0,
+        "virtual_calls": 0
+      },
+      "id": "closed_interfaces_enable_devirtualization",
+      "reason": "The frozen Stage 0.5P subset permits direct calls only. Adding an interface model solely to pass this hypothesis would violate the scope.",
+      "status": "UNMEASURED_OUTSIDE_FROZEN_SUBSET"
+    },
+    {
+      "evidence": {
+        "binary_equal": true,
+        "binary_sha256_a": "6218d27ae5c40211246b68571e31125650cbb201417c0479a347f582bcc3b413",
+        "binary_sha256_b": "6218d27ae5c40211246b68571e31125650cbb201417c0479a347f582bcc3b413",
+        "build_statuses": [
+          "MEASURED",
+          "MEASURED"
+        ],
+        "c_source_equal": true,
+        "c_source_sha256_a": "c041e8c852373c6d2c0a01a427dcae1ca6377ead98444fd5ca027d97e65ed4ac",
+        "c_source_sha256_b": "c041e8c852373c6d2c0a01a427dcae1ca6377ead98444fd5ca027d97e65ed4ac",
+        "compiler": "/usr/bin/clang",
+        "mir_digest_a": "fcd6d86a2b24ff09541dc305329b266e6ae79988ce0c0d2fdbcfb1b2ee3fe6fb",
+        "mir_digest_b": "fcd6d86a2b24ff09541dc305329b266e6ae79988ce0c0d2fdbcfb1b2ee3fe6fb",
+        "mir_equal": true
+      },
+      "id": "deterministic_source_produces_deterministic_native_output",
+      "scope": "same compiler, flags, source mapping, and host; separate output directories",
+      "status": "PASS"
+    }
+  ],
+  "kind": "MeldraStage05PNativeHypotheses",
+  "schema_version": 1,
+  "stage04e_freeze": {
+    "manifest_sha256": "8925fd572eb38edc9710be4d47a167c5fb5f0fff472e8ec17d4138fd102d5e25",
+    "mismatches": [],
+    "ok": true
+  }
+}

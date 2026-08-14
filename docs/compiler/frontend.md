@@ -7,19 +7,19 @@ landed.
 ## Inputs and outputs
 
 - **Current input:** `parse_surface(source, path=...)` in
-  [`merlo/surface_parser.py`](../../merlo/surface_parser.py) consumes non-empty
+  [`src/merlo/surface_parser.py`](../../src/merlo/surface_parser.py) consumes non-empty
   UTF-8 text and produces an immutable `SurfaceProgram` from
-  [`merlo/surface_ast.py`](../../merlo/surface_ast.py). `SourceSpan` is attached
+  [`src/merlo/surface_ast.py`](../../src/merlo/surface_ast.py). `SourceSpan` is attached
   to every `SurfaceNode`.
 - **Current output:** `_Parser.parse()` emits declarations, statements, and
   expressions such as `SurfaceFunction`, `SurfaceRecord`, `SurfaceEnum`,
   `SurfaceCall`, `SurfaceMatch`, and `SurfaceTry`. `elaborate_surface()` in
-  [`merlo/surface_elaborator.py`](../../merlo/surface_elaborator.py) then returns
+  [`src/merlo/surface_elaborator.py`](../../src/merlo/surface_elaborator.py) then returns
   `SurfaceElaboration(canonical, decisions)`.
 - **Project entry today:** `compile_project()` in
-  [`merlo/compiler.py`](../../merlo/compiler.py) instead enters through
+  [`src/merlo/compiler.py`](../../src/merlo/compiler.py) instead enters through
   `elaborate_concise_application()` in
-  [`merlo/concise_application.py`](../../merlo/concise_application.py), which
+  [`src/merlo/concise_application.py`](../../src/merlo/concise_application.py), which
   assembles a `CanonicalProgram` before calling `compile_canonical_hir()`.
 
 ## Invariants

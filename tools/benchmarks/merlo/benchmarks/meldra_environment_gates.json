@@ -1,0 +1,20 @@
+{
+  "date": "2026-08-10",
+  "kind": "MeldraExternalPrerequisiteGates",
+  "lsp_baseline": {
+    "available": false,
+    "checked_binaries": [
+      "pyright-langserver",
+      "basedpyright-langserver"
+    ],
+    "reason": "No language servers are configured for the project and neither checked binary is present on PATH.",
+    "status": "UNMEASURED"
+  },
+  "same_model_agent_ab": {
+    "api_key_available": false,
+    "model": "accounts/fireworks/models/glm-5p2",
+    "reason": "FIREWORKS_API_KEY is unavailable; no model request was sent and all success/token/tool denominators remain zero.",
+    "status": "UNMEASURED"
+  },
+  "schema": 1
+}

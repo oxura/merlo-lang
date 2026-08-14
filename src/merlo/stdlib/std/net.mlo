@@ -1,0 +1,41 @@
+module std.net
+
+export TcpAddress:
+    host: Text
+    port: UInt64
+
+export TcpStream:
+    handle: UInt64
+
+export enum NetError:
+    InvalidAddress
+    ConnectionRefused
+    Timeout
+    Closed
+    System
+
+export tcp_address(host: Text, port: UInt64) -> TcpAddress:
+    TcpAddress(host, port)
+
+export tcp_connect(address: TcpAddress) -> Result[TcpStream,NetError]:
+    network.tcp_connect(address.host, address.port)
+
+export tcp_send(stream: TcpStream, data: BytesView) -> Result[UInt64,NetError]:
+    network.tcp_send(stream.handle, data)
+
+export tcp_receive(stream: TcpStream, limit: UInt64) -> Result[Bytes,NetError]:
+    network.tcp_receive(stream.handle, limit)
+
+export tcp_send_all(stream: TcpStream, data: BytesView) -> Result[Unit,NetError]:
+    offset: UInt64 = 0
+    while offset < data.len():
+        sent = tcp_send(stream, data.slice(offset, data.len() - offset))
+        if sent.is_err():
+            return Err(sent.unwrap_err())
+        if sent.unwrap() == 0:
+            return Err(NetError.Closed)
+        offset = offset + sent.unwrap()
+    Ok(Unit)
+
+export tcp_close(stream: TcpStream) -> Result[Unit,NetError]:
+    network.tcp_close(stream.handle)

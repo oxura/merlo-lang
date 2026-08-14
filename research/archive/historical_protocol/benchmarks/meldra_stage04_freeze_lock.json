@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "kind": "MeldraStage04FreezeLock",
+  "status": "LOCKED_BEFORE_HELD_OUT_STAGE04E",
+  "freeze_id": "stage04_cdabcc45ff1c8d377517c8861967f577aba61a08c5491d5f228cde745c0066e1",
+  "canonical_manifest_sha256": "bd04f5076d6e530bf41ec20223edd0ded63409698d7f53e2a8750845e2c5915d"
+}

@@ -1,0 +1,116 @@
+{
+  "benchmark": {
+    "generation_seed": 20260810,
+    "generator": "stage04-deterministic-v1",
+    "observed_result_sha256": "7b2e33c175abcdea595cde7633d49903605a42d4ad0c66dda1101a78a86d099f",
+    "program_count": 40,
+    "support_profile_sha256": "35523759bc917d1904ba5e6e18cc0766067c042e233ac20fee07a179263a3f6c"
+  },
+  "change_policy": {
+    "allowed_changes": "new Stage 0.4E harnesses and tests that do not alter frozen semantics",
+    "frozen_files": [
+      "core_semantics",
+      "frontend_benchmark",
+      "frontend_evaluator",
+      "frontend_semantics",
+      "frontend_syntax",
+      "python_binder"
+    ],
+    "held_out_feedback_changes": "forbidden"
+  },
+  "core_ir": {
+    "schema_id": "https://meldra.dev/schema/core-ir-v1.json",
+    "schema_sha256": "5bf9700ce20c3f6d906e3be2982412cec00a7dc21f692055489cc87787040ac4",
+    "schema_version": 1
+  },
+  "date": "2026-08-10",
+  "freeze_id": "stage04_cdabcc45ff1c8d377517c8861967f577aba61a08c5491d5f228cde745c0066e1",
+  "grammar": {
+    "constructs": [
+      "package",
+      "module",
+      "use",
+      "export",
+      "record",
+      "enum",
+      "newtype",
+      "capability",
+      "value",
+      "fn",
+      "task",
+      "let",
+      "match"
+    ],
+    "implementation_sha256": "f4313100bdab3539f20a1be2eba1780bd3bd9830c0f3f8f0c664bdfb34cdef8d",
+    "roundtrip": "byte-exact",
+    "source_encoding": "UTF-8",
+    "version": 1
+  },
+  "implementation_sha256": {
+    "core_semantics": "7340f895cf521d4a06ccdd042f377e4ac4e20bf85dc913b1c95dabc5c8fd7bdc",
+    "frontend_benchmark": "7cf0529abd493fc8524c32ca0dfb76c7f442b2cb9f89de86546dc1c7ef82dc3a",
+    "frontend_evaluator": "634f3d2ba07473aa5b035d8bcecfa51210a31b5c888d199abc2eaed3a4b8c496",
+    "frontend_semantics": "86855c24cce41eccaa217675beee96d105b29568644b75d1c889ee6587a87bfd",
+    "frontend_syntax": "f4313100bdab3539f20a1be2eba1780bd3bd9830c0f3f8f0c664bdfb34cdef8d",
+    "python_binder": "a87b672a794dc64db3e64cc1b3d4c12d51bc02c8c2834e7b0e11b2c3b7e4e9a2"
+  },
+  "kind": "MeldraStage04ImmutableFreeze",
+  "schema_version": 1,
+  "semantics": {
+    "binding": {
+      "rules": [
+        "every internal reference resolves to exactly one local declaration or explicit import",
+        "unknown and ambiguous internal references are compile errors",
+        "cross-package access requires an explicitly exported symbol",
+        "foreign and dynamic boundaries are explicit and never Exact internal bindings"
+      ],
+      "sha256": "2369faf9d3e2f75c7750a2945597d9b61791ca0a25a06232af39f362f79cb9ed"
+    },
+    "capabilities": {
+      "rules": [
+        "effectful members require a typed capability value",
+        "capabilities cannot be synthesized or widened implicitly",
+        "ambient authority is unavailable inside the closed frontend",
+        "capability escalation blocks before materialization"
+      ],
+      "sha256": "a3718f28cbdd001bc3a790277aa2f715d065385a6320b15cca6025e68e26dbbb"
+    },
+    "effects": {
+      "rules": [
+        "task effects are an explicit closed set",
+        "every effect call is a subset of its caller declared effects",
+        "effect handlers are explicit evaluator inputs",
+        "effect widening is a public contract change"
+      ],
+      "sha256": "9894c505eb26201a51fb2f57a339ed22e1b19c349b32372b879629cc64ecacbb"
+    },
+    "identity": {
+      "rules": [
+        "explicit ChangeIR provenance may preserve SymbolId",
+        "every semantic content change creates a new RevisionId",
+        "external textual edits do not inherit SymbolId automatically",
+        "identity target collisions are rejected"
+      ],
+      "sha256": "e2df1de6c02adb3723615b7a73102f2a99f71e084d7f8178481f61e8bf6c81a9"
+    },
+    "interfaces": {
+      "rules": [
+        "package interface revisions hash only exported contracts",
+        "package implementation revisions hash all semantic declarations",
+        "private implementation edits do not invalidate downstream packages",
+        "public contract changes invalidate exact importing packages only"
+      ],
+      "sha256": "afd09d60aeafa0d69f95aa4f3b3a735288e2417192808318c463775983bc0351"
+    },
+    "types": {
+      "rules": [
+        "record enum newtype and capability types are nominal",
+        "function and task arguments and returns are checked exactly",
+        "enum matches are exhaustive and contain no duplicate arms",
+        "pure functions have an empty effect set"
+      ],
+      "sha256": "c93dbcce642286eb3dbb00fd10cd07f840e7c8ffec21a11847587a373a52f078"
+    }
+  },
+  "status": "FROZEN_BEFORE_STAGE04E_HELD_OUT_EXECUTION"
+}

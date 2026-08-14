@@ -1,0 +1,99 @@
+{
+  "interfaces": [
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.csv",
+      "name": "fields",
+      "parameters": [
+        [
+          "line",
+          "TextView"
+        ],
+        [
+          "delimiter",
+          "UInt64"
+        ]
+      ],
+      "return_type": "Vec[Text]",
+      "revision_id": "7d8b0ddd1cb483a918890963fe5502be135c965c8e87d488ef591fdcf4289099"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.main",
+      "name": "main",
+      "parameters": [
+        [
+          "path",
+          "Path"
+        ]
+      ],
+      "return_type": "Result[Text,app.sales.AppError]",
+      "revision_id": "3af0a7083c664f7a00c648f308ff17ea3c34e6e717fc828a41308f936cf69d00"
+    },
+    {
+      "capabilities": [
+        "console.write",
+        "fs.read"
+      ],
+      "effects": [
+        "console.write",
+        "fs.read"
+      ],
+      "kind": "task",
+      "module": "app.main",
+      "name": "main",
+      "parameters": [
+        [
+          "path",
+          "Path"
+        ]
+      ],
+      "return_type": "Result[Text,app.sales.AppError]",
+      "revision_id": "75743a13e915c496c353498b32802a6f1c5779afbee23873754bbed7f3a321a1"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "enum",
+      "module": "app.sales",
+      "name": "AppError",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "7c8eef62ef3022ef250529478696c7d514722073a5d192db95e33971b96501c0"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.sales",
+      "name": "aggregate",
+      "parameters": [
+        [
+          "lines",
+          "FileLines"
+        ],
+        [
+          "options",
+          "app.sales.Options"
+        ]
+      ],
+      "return_type": "Result[Text,app.sales.AppError]",
+      "revision_id": "38d04333616ea8454af5032797de0aee2ca9e64915c386f8ed8243d1b356d231"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "record",
+      "module": "app.sales",
+      "name": "Options",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "b1b8e6acc42350f534f8c52ec939bcd09a891a5d6695754e43154559f1e7dc20"
+    }
+  ],
+  "schema_version": 1
+}

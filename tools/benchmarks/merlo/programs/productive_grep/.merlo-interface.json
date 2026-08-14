@@ -1,0 +1,78 @@
+{
+  "interfaces": [
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "enum",
+      "module": "app.main",
+      "name": "AppError",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "5d92a5a2fca3eec1beaadbd8230c9495f0671f99ff0721fb2e712074ba80ee2f"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.main",
+      "name": "main",
+      "parameters": [
+        [
+          "path",
+          "Path"
+        ]
+      ],
+      "return_type": "Result[Text,app.main.AppError]",
+      "revision_id": "beb0aec9c62e8b9bdd9b88f92fa6b39f037811dd4740645183c09041b00579c6"
+    },
+    {
+      "capabilities": [
+        "console.write",
+        "fs.read"
+      ],
+      "effects": [
+        "console.write",
+        "fs.read"
+      ],
+      "kind": "task",
+      "module": "app.main",
+      "name": "main",
+      "parameters": [
+        [
+          "path",
+          "Path"
+        ]
+      ],
+      "return_type": "Result[Text,app.main.AppError]",
+      "revision_id": "31d82afa363c85ea1113265c2c5244a2a5983d01753ede0e7a12930e878bd7e0"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.search",
+      "name": "find",
+      "parameters": [
+        [
+          "lines",
+          "FileLines"
+        ],
+        [
+          "needle",
+          "Text"
+        ],
+        [
+          "ignore_case",
+          "Bool"
+        ],
+        [
+          "count_only",
+          "Bool"
+        ]
+      ],
+      "return_type": "Text",
+      "revision_id": "45a99fcfb3b14d3ec157f5117c8f9920b2ed1512f682e142bbfb4a399e2237af"
+    }
+  ],
+  "schema_version": 1
+}

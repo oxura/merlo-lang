@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Python ${{ matrix.python }}
+  production:
+    name: Production Python ${{ matrix.python }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -23,13 +23,15 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           cache: pip
-      - name: Install
-        run: python -m pip install -e '.[test]'
-      - name: Test
+      - name: Install production test dependencies
+        run: python -m pip install -e '.[test]' pyflakes
+      - name: Production tests
         run: python -m pytest tests/ -q
+      - name: Production pyflakes
+        run: python -m pyflakes src/merlo tests
 
-  smoke:
-    name: CLI and native smoke
+  tooling:
+    name: Python 3.14 tooling tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,18 +39,15 @@ jobs:
         with:
           python-version: "3.14"
           cache: pip
-      - name: Install
+      - name: Install tooling test dependencies
         run: python -m pip install -e '.[test]'
-      - name: Exercise production CLI
-        run: |
-          merlo --help
-          merlo check examples/automation --json
-          merlo test examples/automation --json
-          merlo build examples/automation --json
-          merlo run examples/automation --json
+      - name: Active benchmark tests
+        run: python -m pytest tools/benchmarks/merlo/tests/ -q
+      - name: Release-tool tests
+        run: python -m pytest tools/release/merlo/tests/ -q
 
-  package:
-    name: Build wheel
+  archive:
+    name: Python 3.14 archive tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,5 +55,40 @@ jobs:
         with:
           python-version: "3.14"
           cache: pip
-      - run: python -m pip install build
-      - run: python -m build --wheel
+      - name: Install archive test dependencies
+        run: python -m pip install -e '.[test]'
+      - name: Historical protocol tests
+        run: python -m pytest research/archive/historical_protocol/tests/ -q
+      - name: Alpha1 archive tests
+        run: python -m pytest research/archive/alpha1/tests/ -q
+
+  package-smoke:
+    name: Wheel install and project smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Build wheel
+        run: |
+          set -euo pipefail
+          python -m pip install build
+          (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --wheel --outdir "$GITHUB_WORKSPACE/dist")
+      - name: Install wheel in a fresh environment
+        run: |
+          set -euo pipefail
+          smoke_root="$RUNNER_TEMP/merlo-wheel-smoke"
+          rm -rf "$smoke_root"
+          mkdir -p "$smoke_root"
+          python -m venv "$smoke_root/venv"
+          "$smoke_root/venv/bin/python" -m pip install dist/*.whl
+          "$smoke_root/venv/bin/merlo" --help
+          "$smoke_root/venv/bin/merlo" new --json "$smoke_root/project"
+          "$smoke_root/venv/bin/merlo" check --json "$smoke_root/project"
+          "$smoke_root/venv/bin/merlo" build --json "$smoke_root/project"
+          "$smoke_root/venv/bin/merlo" run --json "$smoke_root/project"
+          "$smoke_root/venv/bin/merlo" check --json "$GITHUB_WORKSPACE/examples/capacity-ledger"
+          "$smoke_root/venv/bin/merlo" build --json "$GITHUB_WORKSPACE/examples/capacity-ledger"
+          "$smoke_root/venv/bin/merlo" run --json "$GITHUB_WORKSPACE/examples/capacity-ledger" "$GITHUB_WORKSPACE/examples/capacity-ledger/input.txt"

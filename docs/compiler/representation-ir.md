@@ -3,7 +3,7 @@
 ## Inputs and outputs
 
 `lower_structured_hir_to_rir(hir)` in
-[`merlo/representation_ir.py`](../../merlo/representation_ir.py) consumes a
+[`src/merlo/representation_ir.py`](../../src/merlo/representation_ir.py) consumes a
 `StructuredHIRProgram`. It builds `TypeDescriptor` values, type-directed
 `DropPlan` values, and `RIRFunction` trees of `RIROperation` nodes, returning a
 `RepresentationProgram` with contract `merlo.representation-ir.v1` and schema

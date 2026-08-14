@@ -5,14 +5,11 @@ from pathlib import Path
 
 from merlo.cli import EXIT_DIAGNOSTIC, EXIT_OK, build_parser, main
 from merlo.package import package_from_root
-from merlo.compiler import compile_project
-from merlo.docgen import generate_documentation
 from merlo.project import Project
-from merlo.semantic_world import SemanticWorld
 from merlo.test_runner import run_project_tests
 
 
-def test_parser_has_project_and_historical_namespaces() -> None:
+def test_parser_has_project_namespace() -> None:
     parser = build_parser()
     cases = {
         "new": ["new"],
@@ -35,11 +32,9 @@ def test_parser_has_project_and_historical_namespaces() -> None:
         "context": ["context", "main"],
         "refactor": ["refactor", "rename", "main", "renamed"],
         "add": ["add", "--path", "lib", "../lib"],
-        "historical": ["historical", "bench"],
     }
     for command, arguments in cases.items():
         assert parser.parse_args(arguments).command == command
-    assert parser.parse_args(["historical", "bench"]).command == "historical"
 
 
 def test_new_json_is_deterministic_and_discovers_source_project(tmp_path: Path, capsys) -> None:
@@ -122,14 +117,6 @@ def test_source_shorthand_still_validates_ancestor_lock(tmp_path: Path, capsys) 
     assert payload["diagnostics"][0]["message"].endswith("merlo.lock")
 
 
-def test_world_queries_and_docs_use_exact_public_interfaces(tmp_path: Path) -> None:
-    project = Project.create(tmp_path / "app", name="app")
-    compilation = compile_project(project.root, require_interface_lock=False)
-    world = SemanticWorld.build(compilation, state_path=project.root / ".merlo" / "world.json", lockfile=project.lock_path, require_interface_lock=False)
-    documentation = generate_documentation(world)
-    assert documentation.digest == world.digest
-    assert "main" in documentation.markdown
-    assert world.resolve("main")["symbol_id"] in documentation.markdown
 
 
 def test_empty_project_test_suite_is_successful(tmp_path: Path) -> None:

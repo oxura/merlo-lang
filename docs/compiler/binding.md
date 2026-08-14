@@ -3,7 +3,7 @@
 ## Inputs and outputs
 
 - **Current module input:** `ModuleGraph.load(entry)` in
-  [`merlo/modules.py`](../../merlo/modules.py) reads the entry module and
+  [`src/merlo/modules.py`](../../src/merlo/modules.py) reads the entry module and
   reachable `use` modules. Each `Module` records its qualified name, path,
   imports, source, and `ModuleSymbol` declarations.
 - **Current symbol output:** `ModuleSymbol` carries `SymbolId`, `RevisionId`,
@@ -11,7 +11,7 @@
   `to_json()` is the `modules` artifact recorded by `compile_project()`.
 - **Current project binding:** `elaborate_concise_application()` and its
   `_load_modules()`/`_interfaces()` helpers in
-  [`merlo/concise_application.py`](../../merlo/concise_application.py) assemble
+  [`src/merlo/concise_application.py`](../../src/merlo/concise_application.py) assemble
   `PublicInterface` and `TaskBoundary` values for canonical lowering.
 
 The current code has no production `BoundProgram`; that name belongs to the

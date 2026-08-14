@@ -1,13 +1,20 @@
 # Changelog
 
-## 0.1.0-alpha.2 — unreleased
+## 0.1.0-alpha.2 — 2026-08-14
 
-This release is reserved for repository and frontend stabilization under
-[RFC 0001](rfcs/0001-repository-and-frontend-stabilization.md). It will separate
-production and research code, remove text-based semantic inference, strengthen
-CI and release manifests, and provide a clean wheel-first installation path.
+This GitHub prerelease updates the packaged product boundary while retaining
+the `alpha.1` language edition and the `0.2` language contract. No PyPI
+availability is claimed.
 
-No alpha.2 artifact has been published yet.
+- Packages the production compiler from `src/` and separates production code
+  from archive, benchmark, and release-tool namespaces.
+- Centralizes intrinsic contracts and gives declarations module-qualified
+  identities.
+- Corrects native and public benchmark paths and their claim boundaries.
+- Adds the checked multi-lane `capacity-ledger` example and its generated lock.
+- Hardens the preregistered same-model AI A/B draft with frozen inputs,
+  equal-model/budget constraints, and explicit unmeasured outcomes when a
+  provider is unavailable. It reports no measured AI advantage.
 
 ## 0.1.0-alpha.1 — 2026-08-14
 
@@ -17,7 +24,7 @@ development began on 2026-03-19.
 > **Known release defects:** the alpha.1 public source archive omitted
 > `stdlib/std/core.mlo`; its wheel predates later Python and Clang portability
 > repairs. Both packages remain historical evidence and are not the recommended
-> installation path while alpha.2 is being prepared.
+> installation path for the alpha.2 prerelease.
 
 - Adds a Python 3.11+ bootstrap package and the `merlo` console script.
 - Publishes project creation, checking, native build/run, tests, formatting,
@@ -40,7 +47,7 @@ development began on 2026-03-19.
 - The locked 100-case external-source challenge remains unsupported: the
   current compiler cannot represent all required string, collection, record,
   parser, exception, file/stream, callable, and Python object-protocol
-  semantics. `benchmarks/merlo_surface_0_2.json` records all 100 blocked case
+  semantics. `tools/benchmarks/merlo/benchmarks/merlo_surface_0_2.json` records all 100 blocked case
   IDs; no compression or general superiority claim is made from that corpus.
 
 ## Before alpha.1

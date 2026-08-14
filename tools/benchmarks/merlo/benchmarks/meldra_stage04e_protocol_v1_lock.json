@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "kind": "MeldraStage04EProtocolLock",
+  "status": "LOCKED_BEFORE_EXTERNAL_EXECUTION",
+  "protocol_id": "meldra-stage04e-external-semantic-differential-v1",
+  "protocol_sha256": "a878be72aa853449254ef9ea505b5be6ea3125282013047244a6ee488505a4fe",
+  "parent_freeze_id": "stage04_cdabcc45ff1c8d377517c8861967f577aba61a08c5491d5f228cde745c0066e1"
+}

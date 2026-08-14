@@ -109,7 +109,7 @@ def test_surface_nodes_are_frozen_and_canonical_hash_is_semantic() -> None:
 
 
 def test_parser_has_no_semantic_layer_imports() -> None:
-    tree = ast.parse(Path("merlo/surface_parser.py").read_text(encoding="utf-8"))
+    tree = ast.parse(Path("src/merlo/surface_parser.py").read_text(encoding="utf-8"))
     imports = {
         alias.name
         for node in ast.walk(tree)

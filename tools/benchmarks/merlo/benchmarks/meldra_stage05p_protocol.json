@@ -1,0 +1,160 @@
+{
+  "allowed_decisions": [
+    "GO_NATIVE_LANGUAGE_RESEARCH",
+    "CONTINUE_PERFORMANCE_RESEARCH",
+    "GO_PYTHON_PLATFORM_ONLY",
+    "NO_GO_NATIVE_LANGUAGE"
+  ],
+  "backend": {
+    "compilers": [
+      "clang",
+      "gcc",
+      "cc"
+    ],
+    "flags": [
+      "-O3",
+      "-fwrapv",
+      "-fno-ident",
+      "-Werror",
+      "-Wl,--build-id=none"
+    ],
+    "kind": "portable_C11",
+    "missing_compiler_policy": "UNMEASURED_COMPILER_UNAVAILABLE"
+  },
+  "benchmark": {
+    "categories": [
+      "arithmetic",
+      "arrays",
+      "pipelines",
+      "strings",
+      "records",
+      "trees",
+      "sorting",
+      "allocation-heavy",
+      "startup"
+    ],
+    "competitors": [
+      "C",
+      "Rust",
+      "Go",
+      "C#",
+      "Python"
+    ],
+    "fairness": "same algorithm, runtime input, expected checksum, and release optimization",
+    "metrics": [
+      "runtime",
+      "peak_rss",
+      "instrumented_algorithm_allocations",
+      "binary_size",
+      "startup",
+      "compile_time",
+      "correctness"
+    ]
+  },
+  "frontend_relationship": {
+    "policy": "Stage 0.5P uses a separate restricted surface adapter and Performance MIR; no Stage 0.4 frontend or Python-sidecar file may change.",
+    "reason": "Frozen Stage 0.4 CoreIR cannot encode var, for, while, fixed arrays, width-specific scalars, allocations, moves, drops, or bounds checks.",
+    "status": "ADAPTER_REQUIRED"
+  },
+  "goal": "Test whether a minimal pure Meldra subset can lower through typed Performance MIR to competitive native code; seek counterexamples, not a claim that Meldra is fast.",
+  "hypotheses": [
+    "high_level_collection_pipelines_lower_to_one_loop",
+    "unique_values_update_without_copy",
+    "pure_functions_enable_stronger_optimization",
+    "closed_interfaces_enable_devirtualization",
+    "deterministic_source_produces_deterministic_native_output"
+  ],
+  "kind": "MeldraStage05PProtocol",
+  "memory_model": {
+    "escape_analysis": "conservative returned-value escape classification",
+    "in_place_reuse": "unique index stores mutate owned payload",
+    "known_limit": "Shared fallback allocates payload and reference count separately; alias retain insertion is not in the restricted surface.",
+    "shared_fallback": "heap payload plus atomicity-free reference count and explicit drop",
+    "unique": "move invalidates source; non-escaping fixed payloads use stack"
+  },
+  "non_goals": [
+    "flow",
+    "machine",
+    "async_runtime",
+    "package_manager",
+    "ui",
+    "gpu",
+    "mobile",
+    "llvm_backend",
+    "large_standard_library"
+  ],
+  "optimization_pipeline": [
+    "monomorphization",
+    "collection_fusion",
+    "inlining",
+    "constant_folding",
+    "bounds_check_elimination",
+    "memory_model_lowering",
+    "dead_code_elimination"
+  ],
+  "pass_evidence": {
+    "required_snapshots": [
+      "before_mir",
+      "after_mir",
+      "statistics"
+    ],
+    "statistics": [
+      "instructions_removed",
+      "allocations_removed",
+      "loops_fused",
+      "bounds_checks_removed",
+      "calls_inlined",
+      "specializations_created",
+      "stack_allocations",
+      "heap_allocations",
+      "in_place_reuses"
+    ]
+  },
+  "performance_mir": {
+    "cfg": "functions -> basic blocks -> typed instructions + terminator",
+    "explicit": [
+      "layouts",
+      "moves",
+      "alloc_stack",
+      "alloc_heap",
+      "drops",
+      "direct_calls",
+      "bounds_checks",
+      "source_mappings"
+    ],
+    "schema_path": "meldra/performance_mir_schema_v1.json",
+    "schema_sha256": "d73168485cff917a16b97f97983c96079335dd754cf5928b2d94cc4ee4ac0f8a",
+    "schema_version": 1
+  },
+  "schema_version": 1,
+  "stage04e_freeze_sha256": "8925fd572eb38edc9710be4d47a167c5fb5f0fff472e8ec17d4138fd102d5e25",
+  "subset": {
+    "arrays": "fixed_length_owned_descriptor_and_contiguous_payload",
+    "float_semantics": "IEEE_754",
+    "forms": [
+      "fn",
+      "let",
+      "var",
+      "if",
+      "match",
+      "for",
+      "while",
+      "direct_function_calls"
+    ],
+    "functions": "pure_and_direct_calls_only",
+    "integer_semantics": "two_complement_wrapping",
+    "ordinary_values": "value_semantics",
+    "records": "declared_order_explicit_size_alignment_offsets",
+    "slices": "borrowed_descriptor_data_length",
+    "types": [
+      "Int64",
+      "UInt64",
+      "Float32",
+      "Float64",
+      "Bool",
+      "records",
+      "arrays",
+      "slices"
+    ]
+  }
+}

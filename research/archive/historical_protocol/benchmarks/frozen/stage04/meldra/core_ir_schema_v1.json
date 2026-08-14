@@ -1,0 +1,110 @@
+{
+  "$id": "https://meldra.dev/schema/core-ir-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "$defs": {
+    "declaration": {
+      "additionalProperties": false,
+      "anyOf": [
+        {"required": ["typed_contract"]},
+        {"required": ["signature"]},
+        {"required": ["type"]},
+        {"required": ["members"]}
+      ],
+      "properties": {
+        "capabilities": {"items": {"minLength": 1, "type": "string"}, "type": "array", "uniqueItems": true},
+        "effects": {"items": {"minLength": 1, "type": "string"}, "type": "array", "uniqueItems": true},
+        "export": {"type": "boolean"},
+        "id": {"minLength": 1, "type": "string"},
+        "implementation": {},
+        "kind": {"enum": ["capability", "function", "interface", "task", "value"]},
+        "members": {"type": "object"},
+        "name": {"minLength": 1, "type": "string"},
+        "references": {"items": {"$ref": "#/$defs/reference"}, "type": "array"},
+        "signature": {},
+        "type": {},
+        "typed_contract": {}
+      },
+      "required": ["id", "name", "kind", "export", "implementation", "effects", "capabilities", "references"],
+      "type": "object"
+    },
+    "export": {
+      "oneOf": [
+        {"minLength": 1, "type": "string"},
+        {
+          "additionalProperties": false,
+          "properties": {"name": {"minLength": 1, "type": "string"}},
+          "required": ["name"],
+          "type": "object"
+        }
+      ]
+    },
+    "foreignImport": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {"minLength": 1, "type": "string"},
+        "foreign": {"minLength": 1, "type": "string"},
+        "name": {"minLength": 1, "type": "string"}
+      },
+      "required": ["foreign", "name", "alias"],
+      "type": "object"
+    },
+    "internalImport": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {"minLength": 1, "type": "string"},
+        "module": {"minLength": 1, "type": "string"},
+        "name": {"minLength": 1, "type": "string"},
+        "package": {"minLength": 1, "type": "string"}
+      },
+      "required": ["package", "module", "name", "alias"],
+      "type": "object"
+    },
+    "module": {
+      "additionalProperties": false,
+      "properties": {
+        "declarations": {"items": {"$ref": "#/$defs/declaration"}, "type": "array"},
+        "exports": {"items": {"$ref": "#/$defs/export"}, "type": "array", "uniqueItems": true},
+        "imports": {
+          "items": {"oneOf": [{"$ref": "#/$defs/internalImport"}, {"$ref": "#/$defs/foreignImport"}]},
+          "type": "array"
+        },
+        "name": {"minLength": 1, "type": "string"}
+      },
+      "required": ["name", "imports", "exports", "declarations"],
+      "type": "object"
+    },
+    "package": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {"minLength": 1, "type": "string"},
+        "modules": {"items": {"$ref": "#/$defs/module"}, "minItems": 1, "type": "array"},
+        "name": {"minLength": 1, "type": "string"}
+      },
+      "required": ["id", "name", "modules"],
+      "type": "object"
+    },
+    "reference": {
+      "additionalProperties": false,
+      "oneOf": [
+        {"required": ["target_id"]},
+        {"required": ["foreign"]}
+      ],
+      "properties": {
+        "foreign": {"minLength": 1, "type": "string"},
+        "name": {"minLength": 1, "type": "string"},
+        "target_id": {"minLength": 1, "type": "string"},
+        "usage": {"minLength": 1, "type": "string"}
+      },
+      "required": ["name", "usage"],
+      "type": "object"
+    }
+  },
+  "properties": {
+    "packages": {"items": {"$ref": "#/$defs/package"}, "minItems": 1, "type": "array"},
+    "schema_version": {"const": 1, "type": "integer"}
+  },
+  "required": ["schema_version", "packages"],
+  "title": "Meldra canonical CoreIR v1",
+  "type": "object"
+}

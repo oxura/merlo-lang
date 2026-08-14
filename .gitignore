@@ -38,16 +38,16 @@ core.[0-9]*
 alpha-corpus-*/
 
 # Reproducible benchmark build products
-benchmarks/**/bin/
-benchmarks/**/obj/
-benchmarks/**/publish/
-benchmarks/**/target/
-benchmarks/**/assembly/
-benchmarks/**/*sanitizers/
-benchmarks/**/*sanitizers/**
-benchmarks/**/native_batches/
-benchmarks/**/native_batches/**
-benchmarks/**/program
-benchmarks/**/program.sanitized
-benchmarks/**/compile-cache/
-benchmarks/**/*.sanitized
+tools/benchmarks/merlo/benchmarks/**/bin/
+tools/benchmarks/merlo/benchmarks/**/obj/
+tools/benchmarks/merlo/benchmarks/**/publish/
+tools/benchmarks/merlo/benchmarks/**/target/
+tools/benchmarks/merlo/benchmarks/**/assembly/
+tools/benchmarks/merlo/benchmarks/**/*sanitizers/
+tools/benchmarks/merlo/benchmarks/**/*sanitizers/**
+tools/benchmarks/merlo/benchmarks/**/native_batches/
+tools/benchmarks/merlo/benchmarks/**/native_batches/**
+tools/benchmarks/merlo/benchmarks/**/program
+tools/benchmarks/merlo/benchmarks/**/program.sanitized
+tools/benchmarks/merlo/benchmarks/**/compile-cache/
+tools/benchmarks/merlo/benchmarks/**/*.sanitized

@@ -1,0 +1,167 @@
+{
+  "interfaces": [
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "enum",
+      "module": "app.json",
+      "name": "Json",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "39b1a39623cd8286d2f3488ab5b13492aff0654b1f68d4dfd5a322f3cfa76c15"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "enum",
+      "module": "app.json",
+      "name": "JsonError",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "982e540cf9c0794e626497a361ea73f1b4451b2444484e9426dd4ea7e3359834"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.json",
+      "name": "optional",
+      "parameters": [
+        [
+          "fields",
+          "Vec[app.json.JsonField]"
+        ],
+        [
+          "key",
+          "Text"
+        ],
+        [
+          "fallback",
+          "app.json.Json"
+        ]
+      ],
+      "return_type": "app.json.Json",
+      "revision_id": "dfe15c283fecd29cecf9d0115a240b02503f7d1029376e60f59a3342f61e5a7c"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.json",
+      "name": "parse",
+      "parameters": [
+        [
+          "input",
+          "TextView"
+        ]
+      ],
+      "return_type": "Result[app.json.Json,app.json.JsonError]",
+      "revision_id": "aa0c07ef85e3e19bc1a97c5db618bb4592e4c6520e75d5c8cccb6977a673f067"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.json",
+      "name": "required",
+      "parameters": [
+        [
+          "fields",
+          "Vec[app.json.JsonField]"
+        ],
+        [
+          "key",
+          "Text"
+        ]
+      ],
+      "return_type": "app.json.Json",
+      "revision_id": "c7ad7bedd01594039d252ee8f1c830b61aa0c3d84c9cc143a32041c38fdca341"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "record",
+      "module": "app.json",
+      "name": "JsonField",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "7d97ef76862b3fbbc307d07132b2bab8c899aa61fe5710c0b544c186ad568db5"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.main",
+      "name": "main",
+      "parameters": [
+        [
+          "path",
+          "Path"
+        ]
+      ],
+      "return_type": "Result[Text,app.report.AppError]",
+      "revision_id": "7e03b5848915e8aab88e35df653d556f48c7f6dd7e28fdcf5c280686a5e531ba"
+    },
+    {
+      "capabilities": [
+        "console.write",
+        "fs.read"
+      ],
+      "effects": [
+        "console.write",
+        "fs.read"
+      ],
+      "kind": "task",
+      "module": "app.main",
+      "name": "main",
+      "parameters": [
+        [
+          "path",
+          "Path"
+        ]
+      ],
+      "return_type": "Result[Text,app.report.AppError]",
+      "revision_id": "da7f25e725d59fcd6993f954628748b26dc7fb82e0251e6bc9ab10bc99031020"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "enum",
+      "module": "app.report",
+      "name": "AppError",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "2a8c7fa51c1005f533e4f90707d0b17b934a8debc0de173f11038817963eaa87"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.report",
+      "name": "analyze",
+      "parameters": [
+        [
+          "lines",
+          "FileLines"
+        ],
+        [
+          "options",
+          "app.report.Options"
+        ]
+      ],
+      "return_type": "Result[Text,app.report.AppError]",
+      "revision_id": "a8e5635c4e63fc47eccf27fee48abf83e7358d582141f204f0e14fae7fb233cc"
+    },
+    {
+      "capabilities": [],
+      "effects": [],
+      "kind": "record",
+      "module": "app.report",
+      "name": "Options",
+      "parameters": [],
+      "return_type": null,
+      "revision_id": "9ef169dc2ba4ff9ce7c2cf9c4606b9bccbf255bdd9bd8fc840ac10e19de40b91"
+    }
+  ],
+  "schema_version": 1
+}

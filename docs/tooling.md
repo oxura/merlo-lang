@@ -29,6 +29,15 @@ refactor responses supported by the alpha implementation. It is a Python API
 surface in this release; no separate `merlo lsp` production subcommand is
 claimed.
 
-Historical benchmark, frontend, and world commands are available only below
-`merlo historical ...`; they are retained for readable research artifacts, not
-as current production routes.
+## Explicit non-production suites
+
+The production contract suite is isolated from research tooling:
+
+```text
+python -m pytest tests/
+python -m pytest tools/benchmarks/merlo/tests/
+python -m pytest tools/release/merlo/tests/
+python -m pytest research/archive/historical_protocol/tests/
+python -m pytest research/archive/alpha1/tests/
+```
+

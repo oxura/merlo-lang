@@ -1,0 +1,3 @@
+module calibration.c02
+fn main() -> Int64:
+    return 1

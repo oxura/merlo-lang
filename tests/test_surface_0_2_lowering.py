@@ -156,7 +156,7 @@ def test_project_compilation_uses_surface_tree_without_canonical_reparse(
         raise AssertionError("production compiler reparsed canonical text")
 
     monkeypatch.setattr(
-        "merlo.compiler.compile_structured_hir",
+        "merlo.structured_hir_v2.compile_structured_hir",
         reject_text_reparse,
     )
     compilation = compile_project(

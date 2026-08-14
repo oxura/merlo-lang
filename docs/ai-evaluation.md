@@ -1,11 +1,12 @@
 # Controlled AI evaluation
 
 The public AI productivity study is separate from Merlo's executable compiler
-benchmark. `benchmarks/ai-ab-v1` is **`DRAFT_UNRUN`**: its 30 paired
+benchmark. `tools/benchmarks/merlo/benchmarks/ai-ab-v1` is **`DRAFT_UNRUN`**: its 30 paired
 language-neutral tasks, expanded fixtures, oracles, prompt parity lock, seeded
-90-pair schedule, budgets, and claim gates remain under review before the
-alpha2 compiler, container, provider, and calibration locks are published. No
-model call has occurred. Legacy agent reports are not evidence for this study.
+90-pair schedule, budgets, six disjoint calibration tasks, and claim gates are
+bound to the alpha2 baseline but remain unexecuted pending immutable container,
+provider, and external preregistration-root locks. No model call has occurred.
+Legacy agent reports are not evidence for this study.
 
 ## Protocol
 

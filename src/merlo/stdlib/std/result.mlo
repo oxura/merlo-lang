@@ -1,0 +1,56 @@
+module std.result
+
+export enum Result:
+    Ok: T
+    Err: E
+
+export ok(value: T) -> Result[T,E]:
+    Ok(value)
+
+export err(error: E) -> Result[T,E]:
+    Err(error)
+
+export is_ok(value: Result[T,E]) -> Bool:
+    match value:
+        case Ok(_):
+            return true
+        case Err(_):
+            return false
+
+export is_err(value: Result[T,E]) -> Bool:
+    not is_ok(value)
+
+export unwrap_or_result(value: Result[T,E], fallback: T) -> T:
+    match value:
+        case Ok(item):
+            return item
+        case Err(_):
+            return fallback
+
+export map_result(value: Result[T,E], transform: fn(T) -> U) -> Result[U,E]:
+    match value:
+        case Ok(item):
+            return Ok(transform(item))
+        case Err(error):
+            return Err(error)
+
+export map_error(value: Result[T,E], transform: fn(E) -> F) -> Result[T,F]:
+    match value:
+        case Ok(item):
+            return Ok(item)
+        case Err(error):
+            return Err(transform(error))
+
+export and_then_result(value: Result[T,E], transform: fn(T) -> Result[U,E]) -> Result[U,E]:
+    match value:
+        case Ok(item):
+            return transform(item)
+        case Err(error):
+            return Err(error)
+
+export expect_result(value: Result[T,E], message: Text) -> T:
+    match value:
+        case Ok(item):
+            return item
+        case Err(_):
+            return panic(message)

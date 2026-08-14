@@ -1,0 +1,78 @@
+module app.stats
+use app.json
+
+checksum_byte(stats: Stats, byte: UInt64) -> Unit:
+    stats.checksum = wrapping_mul(stats.checksum ^ byte, 1099511628211)
+
+checksum_text(stats: Stats, text: Text) -> Unit:
+    index = 0
+    while index < text.len():
+        checksum_byte(stats, text.byte(index))
+        index = index + 1
+
+visit_json(value: Json, stats: Stats) -> Unit:
+    stats.nodes = stats.nodes + 1
+    checksum_byte(stats, value.tag())
+    match value:
+        case Json.Null():
+            stats.nulls = stats.nulls + 1
+        case Json.Bool(flag):
+            stats.bools = stats.bools + 1
+            if flag:
+                checksum_byte(stats, 1)
+            else:
+                checksum_byte(stats, 0)
+        case Json.Number(raw):
+            stats.numbers = stats.numbers + 1
+            checksum_text(stats, raw)
+        case Json.String(text):
+            stats.strings = stats.strings + 1
+            checksum_text(stats, text)
+        case Json.Array(items):
+            stats.arrays = stats.arrays + 1
+            index = 0
+            while index < items.len():
+                visit_json(items.get(index), stats)
+                index = index + 1
+        case Json.Object(fields):
+            stats.objects = stats.objects + 1
+            stats.fields = stats.fields + fields.len()
+            index = 0
+            while index < fields.len():
+                field = fields.get(index)
+                checksum_text(stats, field.key)
+                visit_json(field.value, stats)
+                index = index + 1
+
+export analyze(data: BytesView) -> ProgramResult:
+    parser = Parser(data, Vec.new(), 0, ErrorKind.NoError, 0)
+    if validate_utf8(parser):
+        tokenize(parser)
+    root = parse_value(parser, 0)
+    if parser.error == ErrorKind.NoError and token_at(parser).kind != TokenKind.End:
+        set_error(parser, ErrorKind.TrailingTokens, token_at(parser).start)
+    stats = Stats(0, 0, 0, 0, 0, 0, 0, 0, 1469598103934665603)
+    if parser.error == ErrorKind.NoError:
+        visit_json(root, stats)
+    ProgramResult(parser.error == ErrorKind.NoError, parser.error, parser.error_offset, stats.nodes, stats.arrays, stats.objects, stats.fields, stats.checksum)
+
+export format_result(result: ProgramResult) -> Text:
+    output = TextBuilder.new()
+    if result.ok:
+        output.append_text("OK checksum=")
+        output.append_uint64(result.checksum)
+        output.append_text(" nodes=")
+        output.append_uint64(result.nodes)
+        output.append_text(" arrays=")
+        output.append_uint64(result.arrays)
+        output.append_text(" objects=")
+        output.append_uint64(result.objects)
+        output.append_text(" fields=")
+        output.append_uint64(result.fields)
+    else:
+        output.append_text("ERROR kind=")
+        output.append_uint64(result.error.tag())
+        output.append_text(" offset=")
+        output.append_uint64(result.error_offset)
+    output.append_byte(10)
+    output.finish()

@@ -8,4 +8,4 @@ These notes describe questions investigated by the Merlo prototype. They are tec
 - [Effects and capability boundaries](effects-and-capabilities.md)
 - [Reproducible multi-arm performance evidence](performance-evidence.md)
 
-Claims that depend on generated measurements are valid only for the checked report, source hashes, fixtures, and toolchain recorded under `benchmarks/`.
+Claims that depend on generated measurements are valid only for the checked report, source hashes, fixtures, and toolchain recorded under `tools/benchmarks/merlo/benchmarks/`.

@@ -24,8 +24,8 @@ STDLIB_PATHS = (
     "stdlib/std/json.mlo",
     "stdlib/std/net.mlo",
     "stdlib/std/http.mlo",
-    "merlo/stdlib/json.mlo",
-    "merlo/stdlib/csv.mlo",
+    "src/merlo/stdlib/json.mlo",
+    "src/merlo/stdlib/csv.mlo",
 )
 
 DOC_PATHS = tuple(f"docs/{name}.md" for name in (
@@ -82,7 +82,6 @@ def _human_surface_paths() -> tuple[Path, ...]:
     roots = (
         ROOT / "examples",
         ROOT / "stdlib",
-        ROOT / "merlo" / "stdlib",
     )
     paths = {
         path
@@ -91,7 +90,11 @@ def _human_surface_paths() -> tuple[Path, ...]:
     }
     paths.update(
         path
-        for path in (ROOT / "merlo" / "programs").rglob("*.mlo")
+        for path in (ROOT / "src" / "merlo" / "stdlib").glob("*.mlo")
+    )
+    paths.update(
+        path
+        for path in (ROOT / "src" / "merlo" / "programs").rglob("*.mlo")
         if "app" in path.parts
     )
     return tuple(sorted(paths))
@@ -114,11 +117,11 @@ def test_alpha_package_metadata_and_console_entrypoint() -> None:
     config = _config()
     project = config["project"]
     assert project["name"] == "merlo"
-    assert project["version"] == "0.1.0-alpha.1"
+    assert project["version"] == "0.1.0a2"
     assert project["requires-python"] == ">=3.11"
     assert project["dependencies"] == []
     assert project["scripts"]["merlo"] == "merlo.cli:main"
-    assert config["tool"]["merlo"]["release"] == "0.1.0-alpha.1"
+    assert config["tool"]["merlo"]["release"] == "0.1.0-alpha.2"
 
 
 def test_package_data_declares_stdlib_editor_docs_specs_and_examples() -> None:
@@ -132,6 +135,16 @@ def test_package_data_declares_stdlib_editor_docs_specs_and_examples() -> None:
     assert set(EXAMPLE_PATHS + RESEARCH_PATHS + RFC_PATHS) <= paths
     assert all((ROOT / path).is_file() for path in STDLIB_PATHS)
     assert (ROOT / "editors/vscode/syntaxes/merlo.tmLanguage.json").is_file()
+
+def test_packaged_stdlib_matches_canonical_sources() -> None:
+    config = _config()
+    patterns = config["tool"]["setuptools"]["package-data"]["merlo"]  # type: ignore[index]
+    assert "stdlib/std/*.mlo" in patterns
+    for relative in STDLIB_PATHS[:14]:
+        name = Path(relative).name
+        canonical = ROOT / "stdlib" / "std" / name
+        packaged = ROOT / "src" / "merlo" / "stdlib" / "std" / name
+        assert packaged.read_bytes() == canonical.read_bytes(), name
 
 
 def test_every_public_distribution_path_exists() -> None:
@@ -150,7 +163,7 @@ def test_shipped_human_sources_use_and_parse_as_surface_0_2() -> None:
         flags=re.MULTILINE,
     )
     sources = _human_surface_paths()
-    assert len(sources) == 51
+    assert len(sources) == 45
     for path in sources:
         source = path.read_text(encoding="utf-8")
         assert canonical_only.search(source) is None, path
