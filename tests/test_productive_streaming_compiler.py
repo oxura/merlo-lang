@@ -5,7 +5,8 @@ import subprocess
 import threading
 from pathlib import Path
 
-from merlo.concise_application import ConciseApplicationError, elaborate_concise_core
+from merlo.frontend_model import ConciseApplicationError
+from merlo.concise_services import elaborate_concise_core
 from merlo.native_c_backend import compile_c_source
 from merlo.representation_c_backend import emit_general_c
 from merlo.representation_ir import lower_structured_hir_to_rir

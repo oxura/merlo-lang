@@ -28,7 +28,7 @@ def test_alpha_versions_are_independent_and_frozen() -> None:
 
 
 def test_active_stage_contracts_match_version_matrix() -> None:
-    from merlo.concise_application import CONCISE_APPLICATION_SCHEMA_VERSION
+    from merlo.frontend_model import CONCISE_APPLICATION_SCHEMA_VERSION
     from merlo.representation_c_backend import RUNTIME_ABI_VERSION
     from merlo.representation_ir import REPRESENTATION_IR_SCHEMA_VERSION
     from merlo.representation_mir import GENERAL_MIR_SCHEMA_VERSION
@@ -69,7 +69,7 @@ def test_compile_project_records_one_complete_parent_digest_chain() -> None:
 
 def test_compile_project_rejects_interface_drift_when_lock_is_required(tmp_path: Path) -> None:
     from merlo.compiler import compile_project
-    from merlo.concise_application import ConciseApplicationError
+    from merlo.frontend_model import ConciseApplicationError
 
     source = tmp_path / "app" / "main.mlo"
     source.parent.mkdir()
@@ -150,7 +150,7 @@ def test_native_compile_rejects_non_unit_fallthrough_before_c_lowering(
     tmp_path: Path,
 ) -> None:
     from merlo.compiler import compile_project
-    from merlo.concise_application import ConciseApplicationError
+    from merlo.frontend_model import ConciseApplicationError
 
     entry = tmp_path / "app" / "main.mlo"
     entry.parent.mkdir()

@@ -12,9 +12,10 @@
 
 Merlo is an experimental language and compiler built around static types,
 ownership, inferred effects, capabilities, and stable semantic representations.
-The current prerelease is `0.1.0-alpha.2`: a Python 3.11+ bootstrap compiler
-with a C11 native backend, project tooling, an LSP server, a standard library,
-and executable examples. The packaged compiler, archive, benchmark, and
+The current prerelease is `0.1.0-alpha.2`: a bootstrap compiler requiring
+Python 3.11 or newer with no third-party Python runtime dependencies, a C11
+native backend, project tooling, an LSP server, a standard library, and
+executable examples. The packaged compiler, archive, benchmark, and
 release-tool boundaries are explicit. No PyPI availability is claimed.
 Research and development began privately on 2026-03-19. The first public
 research alpha was released on 2026-08-14.
@@ -50,6 +51,29 @@ ok
 
 The larger [JSON CLI example](examples/json-cli/src/main.mlo) reads a file,
 parses JSON, matches its root value, and builds typed output.
+For a small data-processing project, the checked-in capacity-ledger example
+accepts a path argument:
+
+```console
+merlo check examples/capacity-ledger
+merlo build examples/capacity-ledger
+merlo run examples/capacity-ledger -- examples/capacity-ledger/input.txt
+capacity-ledger
+entries=4
+alpha_minutes=40
+beta_minutes=50
+```
+
+The [JSON CLI example](examples/json-cli/src/main.mlo) has the same project
+shape. Its checked-in input produces:
+
+```console
+merlo run examples/json-cli -- examples/json-cli/input.json
+json-bytes=33 root=object fields=2
+```
+
+These outputs are fixtures from the examples; they are not performance claims.
+
 
 ## What is implemented
 
@@ -80,15 +104,10 @@ Merlo is designed around structured semantics for coding agents. The
 productivity advantage has not yet been independently validated. No general
 native-performance, simplicity, or AI-productivity superiority is claimed.
 
-The public native benchmark is a separate, narrow observation over the three
-checked-in Linux x86-64 workloads:
-
-```console
-python3 -m merlo benchmark --output ./merlo-benchmark-v1.json
-```
-
-Its exact claim and clean-clone reproduction are documented in
-[Public native benchmark v1](docs/benchmark.md). This does not claim general
+The public native benchmark is separate source-checkout tooling under
+`tools/benchmarks/merlo`. It is not a `merlo` production command. Its exact
+claim and reproduction boundary are documented in
+[Public native benchmark v1](docs/benchmark.md); it does not claim general
 native performance, language ranking, Rust performance, or AI productivity.
 
 ## Compiler
@@ -122,6 +141,8 @@ the GitHub prerelease wheel (no PyPI availability is claimed):
 ```console
 python -m pip install https://github.com/oxura/merlo-lang/releases/download/v0.1.0-alpha.2/merlo-0.1.0a2-py3-none-any.whl
 merlo new hello --name hello
+merlo check hello
+merlo build hello
 merlo run hello
 ```
 

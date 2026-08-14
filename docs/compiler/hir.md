@@ -1,50 +1,60 @@
 # Structured HIR contract
 
-## Inputs and outputs
+## Purpose
+
+Structured HIR is the typed semantic tree between canonical elaboration and
+physical representation. It preserves source and semantic identity while
+leaving layout and low-level control flow to later stages.
+
+## Inputs
 
 `compile_canonical_hir(program, entry_function="main")` in
-[`src/merlo/structured_hir_v2.py`](../../src/merlo/structured_hir_v2.py) consumes a
-`CanonicalProgram` and returns `StructuredHIRProgram`. When the canonical
-program has no native module it parses `program.to_source()` through the
-structured builder; otherwise it copies and validates the native module before
-constructing the same typed tree. `compile_project()` is the production caller.
+[`src/merlo/structured_hir_v2.py`](../../src/merlo/structured_hir_v2.py)
+consumes a `CanonicalProgram`. The production coordinator supplies the same
+canonical predecessor used for semantic digests and interface checks.
 
-`StructuredHIRProgram` contains source text/digest, `HIRTypeDecl` and
-`HIRFunction` tuples, an entry function, schema version `2`, and contract
-`merlo.structured-typed-hir.v2`. Functions contain typed `HIRParameter` values
-and tree-shaped `HIRNode` bodies.
+## Outputs
+
+The function returns `StructuredHIRProgram`, contract
+`merlo.structured-typed-hir.v2`, schema version `2`. It contains source
+text/digest, `HIRTypeDecl`/`HIRField`/`HIRVariant` values, `HIRFunction`
+records, typed parameters, an entry function, and tree-shaped `HIRNode`
+bodies. `HIRNode.walk()` is the traversal used by current source-map
+projection.
 
 ## Invariants
 
-`HIRNode` records an ID, kind, `SourceSpan`, scope, optional type, ownership,
-effects, optional `symbol_id`, revision ID, attributes, and children. HIR is a
-tree: CFG blocks, gotos, allocation, raw pointers, and drop flags are rejected
-in `StructuredHIRProgram.__post_init__`. Type and function names, node IDs, and
-the entry function must be unique/present. The JSON representation includes
-source and semantic identity fields for every function and node.
+Each node has an ID, kind, span, scope, optional type, ownership, effects,
+optional symbol/revision IDs, attributes, and children. Names, node IDs, and the
+entry function are unique. HIR is a tree: CFG blocks, gotos, allocation, raw
+pointers, and drop flags are rejected here. Stable JSON includes source and
+semantic identity for every function and node.
 
 ## Failure modes
 
 Empty or malformed canonical source, unsupported expressions, invalid map
-specializations, duplicate declarations, missing `main`, duplicate node IDs,
+specializations, duplicate declarations, a missing `main`, duplicate node IDs,
 forbidden low-level kinds, and schema drift raise `StructuredHIRCompileError`
-or `ValueError`. `compile_project()` surfaces construction failures as
-`ConciseApplicationError("production lowering failed: ...")`.
+or `ValueError`. The coordinator surfaces construction failures as a production
+lowering diagnostic.
 
-## Identity and provenance
+## Trusted boundary
 
-`HIRTypeDecl`, `HIRField`, `HIRVariant`, `HIRParameter`, `HIRFunction`, and
-`HIRNode` preserve `symbol_id`, `revision_id`, and source spans where the
-canonical input provides them. `StructuredHIRProgram.digest` hashes its stable
-JSON. `HIRNode.walk()` is the traversal consumed by compiler source-map
-projection. HIR deliberately carries semantics and source provenance but not
-physical layout decisions.
+Canonical program identity and HIR spans/IDs are the semantic handoff to RIR.
+HIR carries ownership and effect facts for later checking but is not itself a
+complete borrow proof or physical-layout specification.
 
-## Current-alpha limitations
+## Experimental boundary
 
-- The production path still preprocesses canonical source and may use copied
-  CPython AST nodes; this is not the RFC 0001 bound-node-only frontend.
-- HIR schema v2 exists and is consumed by RIR, but the accepted RFC 0001
-  `BoundProgram` handoff and fully shared frontend object have not landed.
-- HIR is intentionally not a complete ownership proof or control-flow IR;
-  those obligations belong to RIR/MIR and the backend.
+Some alpha paths still use copied CPython-compatible AST nodes while building
+HIR. HIR schema v2 is current and consumed by RIR, but a fully shared bound-node
+frontend remains RFC 0001 work. HIR intentionally does not model low-level CFG
+or drop flags.
+
+## Verification commands
+
+```console
+merlo check PROJECT
+merlo expand PROJECT
+merlo inspect main PROJECT --json
+```

@@ -90,7 +90,15 @@ def _materialize_case(case: Mapping[str, Any], root: Path) -> Path:
     return project
 
 
-def _compile_sanitized(source: str, *, compiler: str, sanitizer: str, directory: Path, stem: str) -> tuple[list[str], subprocess.CompletedProcess[bytes] | None]:
+def _compile_sanitized(
+    source: str,
+    *,
+    compiler: str,
+    sanitizer: str,
+    directory: Path,
+    stem: str,
+    arguments: Sequence[str] = (),
+) -> tuple[list[str], subprocess.CompletedProcess[bytes] | None]:
     directory.mkdir(parents=True, exist_ok=True)
     source_path = directory / f"{stem}.c"
     binary_path = directory / stem
@@ -102,7 +110,7 @@ def _compile_sanitized(source: str, *, compiler: str, sanitizer: str, directory:
         return command, None
     if built.returncode != 0:
         return command, built
-    run_command = [str(binary_path)]
+    run_command = [str(binary_path), *arguments]
     try:
         return run_command, subprocess.run(run_command, capture_output=True, check=False, shell=False, timeout=30, env=_environment(sanitizer))
     except (OSError, subprocess.TimeoutExpired):
@@ -125,7 +133,14 @@ def _run_case(case: Mapping[str, Any], sanitizer: str, compiler: str | None, dir
     except Exception as exc:
         data = str(exc).encode("utf-8")
         return _record(case_id=str(case["id"]), sanitizer=sanitizer, command=[compiler, "<production-compile>"], toolchain=compiler, stdout=b"", stderr=data, return_code=1, status="FAILED", expectation=expectation, executed=True, reason="production compiler rejected an executable safety case")
-    command, completed = _compile_sanitized(compilation.generated_c, compiler=compiler, sanitizer=sanitizer, directory=directory / "native", stem=str(case["id"]))
+    command, completed = _compile_sanitized(
+        compilation.generated_c,
+        compiler=compiler,
+        sanitizer=sanitizer,
+        directory=directory / "native",
+        stem=str(case["id"]),
+        arguments=(str(project),),
+    )
     if completed is None:
         return _record(case_id=str(case["id"]), sanitizer=sanitizer, command=command, toolchain=compiler, stdout=b"", stderr=b"", return_code=None, status="UNSUPPORTED", expectation=expectation, executed=False, reason="sanitized native process could not be exercised")
     violation = any(marker.lower() in completed.stderr.decode("utf-8", errors="replace").lower() for marker in _SANITIZER_MARKERS)
@@ -163,7 +178,10 @@ def run_alpha_safety(
     compiler = _compiler()
     records: list[dict[str, Any]] = []
     destination = Path(output_dir).resolve() if output_dir is not None else Path(root).resolve() / ".merlo" / "alpha-safety"
-    with tempfile.TemporaryDirectory(prefix="alpha-safety-", dir=str(destination.parent if destination.parent.exists() else None)) as temporary:
+    temporary_parent = destination.parent if destination.parent.exists() else None
+    with tempfile.TemporaryDirectory(
+        prefix="alpha-safety-", dir=temporary_parent
+    ) as temporary:
         work = Path(temporary)
         for sanitizer in SANITIZERS:
             for case in selected:

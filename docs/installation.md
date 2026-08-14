@@ -22,7 +22,7 @@ merlo --help
 ```
 
 Native commands also require a C11-capable Clang or GCC. The bootstrap compiler
-requires the Python interpreter but has no third-party Python runtime
+requires Python 3.11 or newer and has no third-party Python runtime
 dependencies.
 
 ## Clean demo
@@ -34,6 +34,12 @@ merlo fmt hello --check
 merlo test hello
 merlo build hello
 merlo run hello
+```
+
+The generated program writes:
+
+```text
+ok
 ```
 
 `merlo new` creates a manifest, lockfile, and `src/main.mlo`. The generated

@@ -1,68 +1,71 @@
 # Binding contract
 
-## Inputs and outputs
+## Purpose
 
-- **Current module input:** `ModuleGraph.load(entry)` in
-  [`src/merlo/modules.py`](../../src/merlo/modules.py) reads the entry module and
-  reachable `use` modules. Each `Module` records its qualified name, path,
-  imports, source, and `ModuleSymbol` declarations.
-- **Current symbol output:** `ModuleSymbol` carries `SymbolId`, `RevisionId`,
-  `InterfaceRevisionId`, kind, signature, export status, and line. The graph's
-  `to_json()` is the `modules` artifact recorded by `compile_project()`.
-- **Current project binding:** `elaborate_concise_application()` and its
-  `_load_modules()`/`_interfaces()` helpers in
-  [`src/merlo/concise_application.py`](../../src/merlo/concise_application.py) assemble
-  `PublicInterface` and `TaskBoundary` values for canonical lowering.
+Binding resolves a project module graph, imports, declarations, and public
+interfaces before type or effect analysis. It gives tooling and compilation the
+same module identity and revision inputs.
 
-The current code has no production `BoundProgram`; that name belongs to the
-accepted RFC 0001 contract and is explicitly planned.
+## Inputs
+
+- `ModuleGraph.load(entry)` in
+  [`src/merlo/modules.py`](../../src/merlo/modules.py) reads the entry module
+  and reachable `use` modules.
+- Project assembly also uses `_load_modules()` and `_read_module()` in
+  [`src/merlo/module_loader.py`](../../src/merlo/module_loader.py), which
+  validate module headers, paths, and imports.
+- The frontend model in
+  [`src/merlo/frontend_model.py`](../../src/merlo/frontend_model.py) carries
+  `PublicInterface` and `TaskBoundary` records to the canonical lowering path.
+
+## Outputs
+
+A module has a qualified name, path, imports, source, and declarations.
+`ModuleSymbol` carries `SymbolId`, `RevisionId`, `InterfaceRevisionId`, kind,
+signature, export status, and source line. Public interfaces and task
+boundaries serialize deterministic signature, effect, capability, and revision
+fields. The world/lock artifacts record the resulting module graph.
 
 ## Invariants
 
-`ModuleGraph.load()` resolves each declaration once per module, requires a
-module header matching the expected name, rejects duplicate names, and checks
-imports for missing modules and cycles. `Module.symbol(name)` requires exactly
-one match. Current module/interface revisions are deterministic digests of the
-module identity, declaration kind/name, and top-level signature data. The
-current `_interfaces()` representation for exported records and enums does not
-include their field/variant shape, so a public shape edit is not guaranteed to
-change the published interface revision.
+A module header must match its qualified path. Duplicate declarations, missing
+imports, import cycles, and ambiguous symbol lookups fail before inference.
+Digest inputs include module identity, declaration kind/name, and signature
+payload. An alias resolves to one target identity; it is not a second host
+symbol.
 
-RFC 0001 (planned) makes these facts explicit in immutable `BoundProgram`,
-`BoundReference`, and `BoundCall` records and requires deterministic public
-signatures. Including exported member/type shape in interface revisions is an
-additional stabilization requirement, not current behavior. Missing and
-ambiguous names must fail before type or effect inference; aliases resolve to
-one target `SymbolId`, not a second host identity.
+The current concise interface payload does not include every exported record or
+enum member shape. A shape edit is therefore not promised to change the current
+interface revision unless the published signature payload changes.
 
 ## Failure modes
 
-`ModuleError` reports an empty module, invalid/mismatched module header,
-unknown import, import cycle, duplicate declaration, or ambiguous symbol.
-`ConciseApplicationError` reports a module-binding failure when
-`compile_project()` catches `ModuleError`. An invalid or stale
-`.merlo-interface.json` is rejected by the concise elaboration path when the
-interface lock is required, but its current snapshot cannot detect every
-exported record/enum shape change.
+`ModuleError` reports an empty or malformed module, mismatched header, unknown
+import, cycle, duplicate declaration, or ambiguous symbol. Project assembly
+surfaces the failure as a frontend diagnostic. Invalid or stale interface and
+lock files are rejected rather than silently mixed with another revision.
 
-## Identity and provenance
+## Trusted boundary
 
-`modules.py::_digest()` derives stable IDs from module identity, declaration
-kind/name, signatures, and revision payloads. `ModuleSymbol` exposes the IDs
-rather than an incidental Python object identity. Current canonical inference
-records `SourceOrigin(canonical_line, path, source_line)` separately; it does
-not yet attach every call to a bound symbol. RFC 0001 requires every bound call
-and reference to carry its owner, target/callee `SymbolId`, and exact
-`SourceSpan`.
+Module loading, symbol digesting, and interface-lock checks are the binding
+boundary. HIR and SemanticWorld may consume their identities, but neither may
+re-resolve a name by text matching after binding.
 
-## Current-alpha limitations
+## Experimental boundary
 
-- Declaration discovery in `modules.py` uses regular expressions and the
-  concise route has additional text-oriented discovery; it is not the
-  RFC 0001 lexer/parser/binder pipeline.
-- Public interface locking is real, but current exported record/enum shape is
-  not included in the concise `PublicInterface` payload or top-level module
-  interface digest.
-- The accepted RFC 0001 clean cutover explicitly removes
-  `concise_application.py` after all callers migrate; no compatibility import
-  is promised.
+The alpha still retains regular-expression declaration discovery in the flat
+module loader, and exported member-shape hashing is incomplete. RFC 0001's
+immutable `BoundProgram`, `BoundReference`, and `BoundCall` records are not
+published alpha APIs; callers should use the documented production commands
+and current flat-module symbols instead.
+
+## Verification commands
+
+```console
+merlo check PROJECT
+merlo map PROJECT --projection json
+merlo inspect TARGET PROJECT --json
+```
+
+The JSON forms expose current graph/identity data; exact diagnostic prose is
+not a compatibility contract.

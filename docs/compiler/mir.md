@@ -1,54 +1,61 @@
 # Performance MIR contract
 
-## Inputs and outputs
+## Purpose
+
+Performance MIR makes representation operations and control flow explicit for
+deterministic backend optimization. It is the last IR before C11 emission.
+
+## Inputs
 
 `lower_rir_to_performance_mir(hir, representation)` in
-[`src/merlo/representation_mir.py`](../../src/merlo/representation_mir.py) consumes
-both the predecessor `StructuredHIRProgram` and `RepresentationProgram` and
-returns `GeneralPerformanceMIR` (`merlo.performance-mir.general-representation.v1`).
-`optimize_general_mir(mir)` returns a new optimized value with
-`optimized=True` and named optimization passes. `compile_project()` emits both
-`mir` and `optimized_mir` artifacts.
+[`src/merlo/representation_mir.py`](../../src/merlo/representation_mir.py)
+consumes both the HIR predecessor and its `RepresentationProgram`.
+`optimize_general_mir(mir)` consumes the resulting MIR and returns an optimized
+value.
 
-A `GeneralPerformanceMIR` contains `GeneralMIRFunction` CFGs, each made of
-`GeneralMIRBlock` instructions and a `GeneralMIRTerminator`. Instructions carry
-operands/results, type, source span, symbol/revision IDs, ownership provenance,
-effects, and attributes.
+## Outputs
+
+The lowerer returns `GeneralPerformanceMIR`, contract
+`merlo.performance-mir.general-representation.v1`. It contains
+`GeneralMIRFunction` CFGs made of `GeneralMIRBlock` instructions and
+`GeneralMIRTerminator` values. Instructions carry operands/results, type,
+source span, symbol/revision IDs, ownership provenance, effects, and
+attributes. The coordinator records both `mir` and `optimized_mir` artifacts;
+the optimized value has its own digest and `optimized=True`.
 
 ## Invariants
 
-MIR makes basic blocks, branches, calls, loads/stores, allocations, enum tags,
-moves, drops, and bounds checks explicit in its serialized invariants. Domain
-JSON operations are rejected. `entry_function` must exist; schema version must
-remain `1`. If `requires_drop_glue` is true, at least one `drop_value`
-instruction must exist. Predecessor digests (`source_hir_digest`,
-`representation_ir_digest`, descriptor and drop-plan digests) are retained.
-
-Optimization is deterministic and must preserve the source identity,
-ownership provenance, effects, and predecessor relationship while changing only
-instruction selection/shape authorized by the existing passes.
+Blocks, branches, calls, loads/stores, allocation, enum tags, moves, drops, and
+bounds checks are explicit. Domain JSON operations are rejected; the entry
+function must exist and schema version remains `1`. When cleanup is required,
+at least one `drop_value` instruction is present. HIR, RIR, descriptor, and
+drop-plan predecessor digests are retained. Optimization preserves source
+identity, ownership provenance, effects, and predecessor lineage.
 
 ## Failure modes
 
 Missing entry functions, schema drift, domain intrinsics, missing required drop
-glue, malformed CFG construction, and predecessor mismatch are hard
-`ValueError`/`RepresentationCBackendError` failures, not fallback paths. The
-coordinator wraps type/value failures during lowering in
-`ConciseApplicationError`.
+glue, malformed CFG construction, and predecessor mismatch are hard failures,
+not fallback paths. The coordinator surfaces type/value failures as production
+lowering diagnostics.
 
-## Identity and provenance
+## Trusted boundary
 
-`GeneralMIRInstruction` copies source spans, operation symbols, effects, and
-ownership provenance from RIR. Its revision ID is derived from the RIR
-revision, MIR operation, and instruction ordinal. The MIR digest is the SHA-256
-of stable sorted JSON, and the optimized artifact has its own digest and parent
-link rather than overwriting the unoptimized proof object.
+The MIR digest and predecessor links bind optimization to the exact HIR/RIR
+inputs. The recorded invariants and instruction provenance are the contract
+consumed by the C11 backend; an optimized digest is not a proof of arbitrary
+native-code equivalence.
 
-## Current-alpha limitations
+## Experimental boundary
 
-- The current MIR is a backend-oriented performance IR, not the planned
-  `ir/mir` package boundary in RFC 0001.
-- Optimization passes are intentionally narrow; a MIR digest proves the
-  recorded artifact chain, not equivalence to arbitrary native code.
-- There is one native target and no async scheduler, register allocator, or
-  multi-target ABI contract in this alpha.
+This alpha has one native target and narrow deterministic optimization passes.
+MIR is backend-oriented and does not provide an async scheduler, register
+allocator, or multi-target ABI contract. The RFC 0001 `ir/mir` package boundary
+is not a current import.
+
+## Verification commands
+
+```console
+merlo build PROJECT --json
+merlo run PROJECT --json
+```

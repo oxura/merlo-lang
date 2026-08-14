@@ -142,7 +142,7 @@ def test_cache_timing_report_has_required_edit_and_link_metrics(tmp_path: Path) 
 
 def test_compile_project_rejects_stale_project_lock(tmp_path: Path) -> None:
     from merlo.compiler import compile_project
-    from merlo.concise_application import ConciseApplicationError
+    from merlo.frontend_model import ConciseApplicationError
 
     project = Project.create(tmp_path / "app", name="app")
     project.manifest_path.write_text(
