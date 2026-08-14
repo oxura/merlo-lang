@@ -204,6 +204,9 @@ class GeneralCEmitter:
         self.env_types: dict[str, str] = {}
         self.pointer_values: set[str] = set()
         self.owned_locals: dict[str, str] = {}
+        self.pending_expression_lines: list[str] = []
+        self.temporary_declarations: list[tuple[str, str]] = []
+        self.temporary_ordinal = 0
         self.return_ordinal = 0
         self.loop_ordinal = 0
         self.loop_exit_labels: list[str] = []
@@ -1716,6 +1719,9 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             if item.ownership == "owned"
             and _is_owner(self.descriptors[item.type_name])
         }
+        self.pending_expression_lines = []
+        self.temporary_declarations = []
+        self.temporary_ordinal = 0
         for hir_node in function.walk():
             if hir_node.kind in {"LetBinding", "VarBinding"}:
                 binding_name = hir_node.attribute_map.get("name")
@@ -1737,24 +1743,36 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     self.owned_locals.pop(child.target.id, None)
                 elif _is_owner(self.descriptors[type_name]):
                     self.owned_locals.setdefault(child.target.id, type_name)
-        lines = [self._function_signature(function) + " {"]
+        declarations = []
+        parameter_names = {item.name for item in function.parameters}
         for name, type_name in self.env_types.items():
-            if name in {item.name for item in function.parameters}:
+            if name in parameter_names:
                 continue
             if name in self.pointer_values:
-                lines.append(f"    {_c_name(type_name)} *{name} = NULL;")
+                declarations.append(f"    {_c_name(type_name)} *{name} = NULL;")
             elif _is_owner(self.descriptors[type_name]):
-                lines.append(f"    {_c_name(type_name)} {name} = merlo_zero_{_identifier(type_name)}();")
+                declarations.append(
+                    f"    {_c_name(type_name)} {name} = merlo_zero_{_identifier(type_name)}();"
+                )
             else:
-                lines.append(f"    {_c_name(type_name)} {name} = {{0}};")
+                declarations.append(f"    {_c_name(type_name)} {name} = {{0}};")
         self.indent = 1
+        body = []
         for statement in node.body:
-            lines.extend(self._statement(statement))
+            body.extend(self._statement(statement))
         if function.return_type == "Unit" and not any(isinstance(item, ast.Return) for item in ast.walk(node)):
-            lines.extend(self._drop_owned_lines("    "))
-            lines.append("    return;")
+            body.extend(self._drop_owned_lines("    "))
+            body.append("    return;")
         elif function.return_type == "Unit":
-            lines.append("    return;")
+            body.append("    return;")
+        temporary_declarations = [
+            f"    {_c_name(type_name)} {name} = merlo_zero_{_identifier(type_name)}();"
+            for name, type_name in self.temporary_declarations
+        ]
+        lines = [self._function_signature(function) + " {"]
+        lines.extend(declarations)
+        lines.extend(temporary_declarations)
+        lines.extend(body)
         lines.append("}")
         return "\n".join(lines)
 
@@ -1929,6 +1947,13 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         return lines
 
     def _statement(self, node: ast.stmt) -> list[str]:
+        start = len(self.pending_expression_lines)
+        lines = self._statement_impl(node)
+        pending = self.pending_expression_lines[start:]
+        del self.pending_expression_lines[start:]
+        return pending + lines
+
+    def _statement_impl(self, node: ast.stmt) -> list[str]:
         if (
             isinstance(node, ast.Expr)
             and isinstance(node.value, ast.Call)
@@ -2435,6 +2460,22 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             return self._borrowed_text_literal(node.value)
         return self._expression(node, expected=type_name)
 
+    def _is_owning_temporary(self, node: ast.AST, type_name: str) -> bool:
+        descriptor = self.descriptors.get(type_name)
+        if descriptor is None or not _is_owner(descriptor):
+            return False
+        return isinstance(node, (ast.Call, ast.Constant, ast.List, ast.Tuple))
+
+    def _materialize_owned_argument(self, argument: ast.AST, type_name: str) -> str:
+        self.temporary_ordinal += 1
+        name = f"__merlo_owned_temp_{self.temporary_ordinal}"
+        value = self._move_expression(argument, type_name)
+        self.temporary_declarations.append((name, type_name))
+        self.env_types[name] = type_name
+        self.owned_locals[name] = type_name
+        self.pending_expression_lines.append(f"{self._pad()}{name} = {value};")
+        return name
+
     def _borrow_view_argument(
         self,
         argument: ast.AST,
@@ -2786,7 +2827,17 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                         and isinstance(argument.value, str)
                     ):
                         arguments.append(self._borrowed_text_literal(argument.value))
-                        continue
+                    actual_type = self._expression_type(argument)
+                    if (
+                        parameter.ownership in {"borrow", "borrow_mut"}
+                        and actual_type is not None
+                        and self._is_owning_temporary(argument, actual_type)
+                    ):
+                        temporary = self._materialize_owned_argument(
+                            argument,
+                            actual_type,
+                        )
+                        argument = ast.Name(id=temporary)
                     wants_pointer = self._parameter_is_pointer(parameter)
                     view_argument = self._borrow_view_argument(
                         argument,
@@ -2796,13 +2847,28 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     if view_argument is not None:
                         arguments.append(view_argument)
                         continue
-                    arguments.append(
-                        self._expression(
+                    if (
+                        parameter.ownership in {"borrow", "borrow_mut"}
+                        and self._is_owning_temporary(argument, parameter.type_name)
+                    ):
+                        temporary = self._materialize_owned_argument(
                             argument,
-                            expected=parameter.type_name,
-                            want_pointer=wants_pointer,
+                            parameter.type_name,
                         )
-                    )
+                        arguments.append(f"&{temporary}" if wants_pointer else temporary)
+                        continue
+                    if parameter.ownership == "owned":
+                        arguments.append(
+                            self._move_expression(argument, parameter.type_name)
+                        )
+                    else:
+                        arguments.append(
+                            self._expression(
+                                argument,
+                                expected=parameter.type_name,
+                                want_pointer=wants_pointer,
+                            )
+                        )
                 return f"merlo_fn_{name}({', '.join(arguments)})"
 
         if isinstance(node.func, ast.Attribute):
@@ -3087,17 +3153,16 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 ),
                 None,
             ) if self.current_function is not None else None
-            if (
-                parameter is not None
-                and parameter.ownership == "borrow"
-                and descriptor.kind == "text"
-            ):
+            if parameter is not None and parameter.ownership in {"borrow", "borrow_mut"}:
                 source = (
                     node.id
                     if node.id in self.pointer_values
                     else f"&{node.id}"
                 )
-                return f"merlo_text_clone((const MerloText *){source})"
+                return (
+                    f"merlo_clone_{_identifier(type_name)}"
+                    f"((const {_c_name(type_name)} *){source})"
+                )
             if node.id in self.owned_locals:
                 self.owned_locals.pop(node.id, None)
             if node.id in self.pointer_values:

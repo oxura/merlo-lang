@@ -441,3 +441,50 @@ def test_owned_text_reborrows_as_text_view_for_native_calls(tmp_path: Path) -> N
     completed = subprocess.run([str(binary)], input=b"hello", capture_output=True, check=False)
     assert completed.returncode == 0, completed.stderr.decode()
     assert b"OK result=5" in completed.stdout
+
+
+def test_nested_owned_record_call_temporary_has_one_drop(tmp_path: Path) -> None:
+    source = (
+        "record Change:\n"
+        "    old_path: Text\n"
+        "    new_path: Text\n"
+        "fn rename(change: Change) -> UInt64:\n"
+        "    return change.old_path.len() + change.new_path.len()\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    return rename(Change(\"draft.txt\", \"published.txt\"))\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    assert "__merlo_owned_temp_1 = merlo_make_Change(" in generated.source
+    assert generated.source.count(
+        "merlo_drop_Change(&__merlo_owned_temp_1);"
+    ) == 1
+
+    binary = _native(source, tmp_path, "owned-record-call")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=22" in completed.stdout
+    assert b"text_allocations=2 text_frees=2" in completed.stdout
+
+
+def test_owned_record_return_moves_named_argument_once(tmp_path: Path) -> None:
+    source = (
+        "record Change:\n"
+        "    old_path: Text\n"
+        "    new_path: Text\n"
+        "fn take(change: Change) -> Change:\n"
+        "    return change\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let source: Change = Change(\"a\", \"bc\")\n"
+        "    let result: Change = take(source)\n"
+        "    return result.old_path.len() + result.new_path.len()\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    assert "merlo_fn_take(merlo_move_Change(&source))" in generated.source
+
+    binary = _native(source, tmp_path, "owned-record-return")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=3" in completed.stdout
+    assert b"text_allocations=2 text_frees=2" in completed.stdout
