@@ -3096,7 +3096,10 @@ def _assemble_core(
     )
     _validate_declared_task_effects(modules, inference.function_effects)
     canonical_program = inference.canonical_program()
-    canonical = canonical_program.to_source()
+    canonical = (
+        canonical_program.projection_source
+        or canonical_program.to_source()
+    )
     public_functions = {
         name for _, name, kind in exports if kind in {"fn", "task"}
     }
@@ -3240,7 +3243,7 @@ def elaborate_concise_core(
         elaborated = elaborate_surface(surface)
     except (SurfaceSyntaxError, SurfaceElaborationError) as exc:
         raise ConciseApplicationError(f"{path}: {exc}") from exc
-    canonical = elaborated.canonical.to_source(prefer_projection=False)
+    canonical = elaborated.canonical.to_source()
     semantic_digest = elaborated.canonical.semantic_hash
     decisions = [
         {

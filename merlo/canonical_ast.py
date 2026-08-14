@@ -340,9 +340,7 @@ class CanonicalProgram:
             item for item in self.functions if item.name == name
         )
 
-    def to_source(self, *, prefer_projection: bool = True) -> str:
-        if prefer_projection and self.projection_source is not None:
-            return self.projection_source
+    def to_source(self) -> str:
         chunks: list[str] = []
         for record in self.records:
             prefix = "export " if record.exported else ""

@@ -1773,7 +1773,7 @@ class _SurfaceNativeBuilder:
                 case.pattern_span or case.span,
             )
         if variant in {"None", "NoneValue"} and payload is None:
-            return self._loc(ast.MatchClass(cls=self._name("None", case.span), patterns=[], kwd_attrs=[], kwd_patterns=[]), case.pattern_span or case.span)
+            return self._loc(ast.MatchClass(cls=self._name("NoneValue", case.span), patterns=[], kwd_attrs=[], kwd_patterns=[]), case.pattern_span or case.span)
         if payload is None:
             return self._loc(
                 ast.MatchClass(
