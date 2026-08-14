@@ -54,6 +54,259 @@ def test_ambiguous_and_bool_numeric_programs_are_rejected() -> None:
         expand_source("fn add_flag() -> UInt64:\n    true + 1\n")
 
 
+def _elaborate_control_flow_application(root: Path, functions: str):
+    app = root / "app"
+    app.mkdir(parents=True)
+    entry = app / "main.mlo"
+    entry.write_text(
+        "module app.main\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        f"{functions}\n\n"
+        "export task main(path: Path) -> Result[UInt64, AppError]:\n"
+        "    uses console.write\n"
+        "    console.write(\"control\")\n"
+        "    return Ok(0)\n",
+        encoding="utf-8",
+    )
+    return elaborate_concise_application(
+        entry,
+        require_interface_lock=False,
+    )
+
+
+def test_definite_assignment_intersects_conditional_paths_and_rejects_partial_locals(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(ConciseApplicationError, match="UnresolvedName.*value"):
+        _elaborate_control_flow_application(
+            tmp_path / "partial-branch",
+            "fn read(flag: Bool) -> UInt64:\n"
+            "    if flag:\n"
+            "        value = 1\n"
+            "    return value\n",
+        )
+
+    with pytest.raises(ConciseApplicationError, match="UnresolvedName.*value"):
+        _elaborate_control_flow_application(
+            tmp_path / "loop-only",
+            "fn read() -> UInt64:\n"
+            "    while false:\n"
+            "        value = 1\n"
+            "    return value\n",
+        )
+
+
+def test_definite_assignment_preserves_prebranch_bindings_and_accepts_both_branches(
+    tmp_path: Path,
+) -> None:
+    elaborated = _elaborate_control_flow_application(
+        tmp_path / "compatible-branches",
+        "fn read(flag: Bool) -> UInt64:\n"
+        "    value = 0\n"
+        "    if flag:\n"
+        "        value = 1\n"
+        "    return value\n",
+    )
+
+    assert "var value: UInt64 = 0" in elaborated.canonical_source
+
+    both_branches = _elaborate_control_flow_application(
+        tmp_path / "both-branches",
+        "fn read(flag: Bool) -> UInt64:\n"
+        "    if flag:\n"
+        "        value = 1\n"
+        "    else:\n"
+        "        value = 2\n"
+        "    return value\n",
+    )
+
+    assert "var value: UInt64 = 1" in both_branches.canonical_source
+
+
+def test_non_unit_functions_require_total_return_but_unit_keeps_fallthrough(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(ConciseApplicationError, match="MissingReturn"):
+        _elaborate_control_flow_application(
+            tmp_path / "partial-return",
+            "fn read(flag: Bool) -> UInt64:\n"
+            "    if flag:\n"
+            "        return 1\n",
+        )
+
+    elaborated = _elaborate_control_flow_application(
+        tmp_path / "total-return",
+        "fn read(flag: Bool) -> UInt64:\n"
+        "    if flag:\n"
+        "        return 1\n"
+        "    else:\n"
+        "        return 2\n"
+        "\n"
+        "fn log(flag: Bool) -> Unit:\n"
+        "    if flag:\n"
+        "        return\n",
+    )
+
+    assert "fn read(flag: Bool) -> UInt64:" in elaborated.canonical_source
+    assert "fn log(flag: Bool) -> Unit:" in elaborated.canonical_source
+
+
+def test_control_flow_diagnostics_cover_shadowing_annotations_augassign_and_matches(
+    tmp_path: Path,
+) -> None:
+    known_global = _elaborate_control_flow_application(
+        tmp_path / "binding-rhs",
+        "fn items(value: UInt64) -> UInt64:\n"
+        "    return value\n"
+        "\n"
+        "fn read() -> UInt64:\n"
+        "    items = items(1)\n"
+        "    return items\n",
+    )
+    assert "fn read() -> UInt64:" in known_global.canonical_source
+
+    before_later_binding = _elaborate_control_flow_application(
+        tmp_path / "before-later-binding",
+        "fn items(value: UInt64) -> UInt64:\n"
+        "    return value\n"
+        "\n"
+        "fn read() -> UInt64:\n"
+        "    value = items(1)\n"
+        "    items = 0\n"
+        "    return value\n",
+    )
+    assert "fn read() -> UInt64:" in before_later_binding.canonical_source
+
+    with pytest.raises(ConciseApplicationError, match="UnresolvedName.*items"):
+        _elaborate_control_flow_application(
+            tmp_path / "conditional-shadow-self-init",
+            "fn items(value: UInt64) -> UInt64:\n"
+            "    return value\n"
+            "\n"
+            "fn read(flag: Bool) -> UInt64:\n"
+            "    if flag:\n"
+            "        items = 0\n"
+            "    items = items(1)\n"
+            "    return items\n",
+        )
+
+    multiline_global = _elaborate_control_flow_application(
+        tmp_path / "multiline-binding-rhs",
+        "fn items(value: UInt64) -> UInt64:\n"
+        "    return value\n"
+        "\n"
+        "fn read() -> UInt64:\n"
+        "    items = (\n"
+        "        items(1)\n"
+        "    )\n"
+        "    return items\n",
+    )
+    assert "fn read() -> UInt64:" in multiline_global.canonical_source
+
+    with pytest.raises(ConciseApplicationError, match="UnresolvedName.*item"):
+        _elaborate_control_flow_application(
+            tmp_path / "zero-iteration-for-shadow",
+            "fn item(value: UInt64) -> UInt64:\n"
+            "    return value\n"
+            "\n"
+            "fn read() -> UInt64:\n"
+            "    for item in []:\n"
+            "        return item(1)\n"
+            "    return item(1)\n",
+        )
+
+    with pytest.raises(ConciseApplicationError, match="UnresolvedName.*helper"):
+        _elaborate_control_flow_application(
+            tmp_path / "shadowed-call",
+            "fn helper() -> UInt64:\n"
+            "    return 1\n"
+            "\n"
+            "fn read(flag: Bool) -> UInt64:\n"
+            "    if flag:\n"
+            "        helper = 0\n"
+            "    return helper()\n",
+        )
+
+    with pytest.raises(ConciseApplicationError, match="UnresolvedName.*value"):
+        _elaborate_control_flow_application(
+            tmp_path / "annotation-only",
+            "fn read() -> UInt64:\n"
+            "    value: UInt64\n"
+            "    return value\n",
+        )
+
+    with pytest.raises(ConciseApplicationError, match="UnresolvedName.*value"):
+        _elaborate_control_flow_application(
+            tmp_path / "augassign",
+            "fn read(flag: Bool) -> UInt64:\n"
+            "    if flag:\n"
+            "        value = 0\n"
+            "    value += 1\n"
+            "    return value\n",
+        )
+
+    wildcard = _elaborate_control_flow_application(
+        tmp_path / "wildcard-match",
+        "fn read(value: UInt64) -> UInt64:\n"
+        "    match value:\n"
+        "        case _:\n"
+        "            return 1\n",
+    )
+    assert "fn read(value: UInt64) -> UInt64:" in wildcard.canonical_source
+
+    with pytest.raises(ConciseApplicationError, match="UnresolvedName.*item"):
+        _elaborate_control_flow_application(
+            tmp_path / "one-arm-capture",
+            "enum Choice:\n"
+            "    A: UInt64\n"
+            "    B\n\n"
+            "fn read(value: Choice) -> UInt64:\n"
+            "    match value:\n"
+            "        case Choice.A(item):\n"
+            "            marker = 1\n"
+            "        case Choice.B:\n"
+            "            marker = 2\n"
+            "    return item\n",
+        )
+
+    for name, function_source in (
+        (
+            "literal-if",
+            "fn read() -> UInt64:\n"
+            "    if true:\n"
+            "        value = 1\n"
+            "    return value\n",
+        ),
+        (
+            "infinite-loop",
+            "fn read() -> UInt64:\n"
+            "    while true:\n"
+            "        value = 1\n",
+        ),
+        (
+            "nested-break",
+            "fn read() -> UInt64:\n"
+            "    while true:\n"
+            "        while true:\n"
+            "            break\n",
+        ),
+    ):
+        _elaborate_control_flow_application(tmp_path / name, function_source)
+
+    with pytest.raises(ConciseApplicationError, match="NonExhaustiveMatch"):
+        _elaborate_control_flow_application(
+            tmp_path / "non-exhaustive-match",
+            "enum Choice:\n"
+            "    A\n"
+            "    B\n\n"
+            "fn read(value: Choice) -> UInt64:\n"
+            "    match value:\n"
+            "        case Choice.A:\n"
+            "            return 1\n",
+        )
+
+
 def test_canonical_scalar_aliases_materialize_width_and_sign() -> None:
     source = (
         "fn signed(value: Int) -> Int:\n"
