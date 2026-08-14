@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .native_c_backend import CEmitter, compile_c_source
-from tools.benchmarks.merlo.json_streaming import JsonTokenError, tokenize_json
+from .json_streaming import JsonTokenError, tokenize_json
 from research.archive.alpha1.merlo.native_hir import NativeHIRProgram, compile_native_hir, lower_native_hir_to_performance
 from .performance_mir import MIRFunction, MIRInstruction, PerformanceMIR, PerformanceType
 from .performance_opt import OPTIMIZATION_PIPELINE

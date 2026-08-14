@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-from tools.benchmarks.merlo.json_streaming import (
+from .json_streaming import (
     FNV_OFFSET,
     FNV_PRIME,
     JSON_STREAMING_LIMITATIONS,
