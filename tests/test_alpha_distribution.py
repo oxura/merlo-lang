@@ -114,11 +114,11 @@ def test_alpha_package_metadata_and_console_entrypoint() -> None:
     config = _config()
     project = config["project"]
     assert project["name"] == "merlo"
-    assert project["version"] == "0.1.0-alpha.1"
+    assert project["version"] == "0.1.0a2"
     assert project["requires-python"] == ">=3.11"
     assert project["dependencies"] == []
     assert project["scripts"]["merlo"] == "merlo.cli:main"
-    assert config["tool"]["merlo"]["release"] == "0.1.0-alpha.1"
+    assert config["tool"]["merlo"]["release"] == "0.1.0-alpha.2"
 
 
 def test_package_data_declares_stdlib_editor_docs_specs_and_examples() -> None:
