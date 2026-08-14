@@ -8,7 +8,7 @@ from collections import defaultdict
 from typing import Any
 
 from research.archive.alpha1.merlo.native_hir import NativeHIRProgram
-from merlo.performance_mir import MIRInstruction, PerformanceMIR
+from .performance_mir import MIRInstruction, PerformanceMIR
 
 
 BYTES_REBORROW_HIR_SCHEMA_VERSION = 1

@@ -12,11 +12,11 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from research.archive.historical_protocol.merlo.frontend_semantics import check_frontend
-from merlo.native_c_backend import CEmitter, compile_c_source
+from .native_c_backend import CEmitter, compile_c_source
 from research.archive.alpha1.merlo.native_differential import evaluate_hir, evaluate_mir, evaluate_surface
 from research.archive.alpha1.merlo.native_hir import compile_native_hir, lower_native_hir_to_performance
-from tools.benchmarks.merlo.performance_frontend import PerformanceCompileError
-from tools.benchmarks.merlo.performance_opt import OPTIMIZATION_PIPELINE
+from .performance_frontend import PerformanceCompileError
+from .performance_opt import OPTIMIZATION_PIPELINE
 
 
 NATIVE_RANDOM_SCHEMA_VERSION = 2

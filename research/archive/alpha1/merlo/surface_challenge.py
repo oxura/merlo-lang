@@ -18,7 +18,7 @@ from typing import Any, Mapping, Sequence
 
 from research.archive.alpha1.merlo.native_differential import MIRInterpreter
 from research.archive.alpha1.merlo.native_hir import compile_native_hir, lower_native_hir_to_performance
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from .performance_opt import optimize_mir
 from research.archive.alpha1.merlo.semantic_surface import SemanticSurfaceError, compile_semantic_surface
 
 

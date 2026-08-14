@@ -21,12 +21,12 @@ from research.archive.alpha1.merlo.bytes_borrowed_return import (
 )
 from research.archive.alpha1.merlo.bytes_experiment import _compile_sanitized, _disassembly
 from research.archive.alpha1.merlo.bytes_reborrow_experiment import _function_source
-from merlo.native_c_backend import CEmitter, compile_c_source, compile_native
+from .native_c_backend import CEmitter, compile_c_source, compile_native
 from research.archive.alpha1.merlo.native_differential import HIREvaluator, MIRInterpreter
 from research.archive.alpha1.merlo.native_hir import compile_native_hir
-from tools.benchmarks.merlo.performance_frontend import PerformanceCompileError, compile_performance_source
-from merlo.performance_mir import PerformanceMIR
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from .performance_frontend import PerformanceCompileError, compile_performance_source
+from .performance_mir import PerformanceMIR
+from .performance_opt import optimize_mir
 
 
 BYTES_BORROWED_RETURN_EXPERIMENT_SCHEMA_VERSION = 1

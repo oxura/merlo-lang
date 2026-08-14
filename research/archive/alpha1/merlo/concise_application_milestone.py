@@ -26,7 +26,7 @@ from tools.benchmarks.merlo.concise_precedence import (
     semantic_ast_digest,
     validate_precedence_corpus,
 )
-from merlo.native_c_backend import compile_c_source
+from .native_c_backend import compile_c_source
 from research.archive.alpha1.merlo.semantic_surface import SemanticSurfaceError, compile_semantic_surface
 from merlo.representation_c_backend import emit_general_c
 from merlo.structured_hir_v2 import compile_structured_hir

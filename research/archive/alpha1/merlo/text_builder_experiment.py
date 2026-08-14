@@ -16,7 +16,7 @@ from typing import Any, Iterable
 
 from research.archive.alpha1.merlo.bytes_experiment import _compile_sanitized
 from research.archive.historical_protocol.merlo.legacy_evidence import frozen_sha256
-from merlo.native_c_backend import CEmitter, compile_c_source
+from .native_c_backend import CEmitter, compile_c_source
 from research.archive.alpha1.merlo.native_differential import (
     evaluate_hir,
     evaluate_mir,
@@ -24,11 +24,11 @@ from research.archive.alpha1.merlo.native_differential import (
     evaluate_surface,
 )
 from research.archive.alpha1.merlo.native_hir import compile_native_hir
-from tools.benchmarks.merlo.performance_frontend import (
+from .performance_frontend import (
     PerformanceCompileError,
     compile_performance_source,
 )
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from .performance_opt import optimize_mir
 from research.archive.alpha1.merlo.text_builder_core import (
     text_builder_abi_manifest,
     text_builder_hir_manifest,

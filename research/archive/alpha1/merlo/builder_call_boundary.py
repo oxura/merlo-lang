@@ -6,7 +6,7 @@ import hashlib
 from typing import Any
 
 from research.archive.alpha1.merlo.native_hir import NativeHIRProgram
-from merlo.performance_mir import BYTES, BYTES_BUILDER, PerformanceMIR
+from .performance_mir import BYTES, BYTES_BUILDER, PerformanceMIR
 
 BUILDER_CALL_HIR_SCHEMA_VERSION = 1
 BUILDER_CALL_MIR_SCHEMA_VERSION = 1

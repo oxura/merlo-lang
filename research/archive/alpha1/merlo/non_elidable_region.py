@@ -21,7 +21,7 @@ from research.archive.alpha1.merlo.fair_memory_strategy import (
 )
 from research.archive.alpha1.merlo.memory_model_experiment import _compile_meldra
 from research.archive.alpha1.merlo.native_bench import _Build, _compile_external
-from merlo.native_c_backend import find_c_compiler
+from .native_c_backend import find_c_compiler
 from research.archive.alpha1.merlo.native_differential import run_differential
 from research.archive.alpha1.merlo.stage06p_benchmark import BENCHMARK_SEED, _cpu_state, _run_one
 

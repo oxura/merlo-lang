@@ -14,9 +14,9 @@ from pathlib import Path
 from typing import Any
 
 from research.archive.alpha1.merlo.native_bench import WORKLOADS, _meldra_source
-from merlo.native_c_backend import CEmitter
-from tools.benchmarks.merlo.performance_frontend import compile_performance_source
-from tools.benchmarks.merlo.performance_opt import (
+from .native_c_backend import CEmitter
+from .performance_frontend import compile_performance_source
+from .performance_opt import (
     bounds_check_elimination,
     collection_fusion,
     constant_folding,

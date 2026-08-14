@@ -13,17 +13,17 @@ from pathlib import Path
 from typing import Any, Callable
 
 from research.archive.alpha1.merlo.native_bench import WORKLOADS, _meldra_source
-from merlo.native_c_backend import CEmitter, compiler_version, find_c_compiler
+from .native_c_backend import CEmitter, compiler_version, find_c_compiler
 from research.archive.alpha1.merlo.native_hir import (
     compile_native_hir,
     lower_native_hir_to_performance,
     validate_native_source,
 )
-from tools.benchmarks.merlo.performance_frontend import (
+from .performance_frontend import (
     _preprocess,
     compile_performance_source,
 )
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from .performance_opt import optimize_mir
 from research.archive.alpha1.merlo.stage06p_benchmark import BENCHMARK_SEED, _distribution
 
 

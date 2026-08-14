@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from research.archive.alpha1.merlo.native_bench import WORKLOADS, _meldra_source
-from merlo.native_c_backend import CEmitter, compile_c_source
-from tools.benchmarks.merlo.performance_frontend import compile_performance_source
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from .native_c_backend import CEmitter, compile_c_source
+from .performance_frontend import compile_performance_source
+from .performance_opt import optimize_mir
 
 DETERMINISM_EVIDENCE_SCHEMA_VERSION = 1
 

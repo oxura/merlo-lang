@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from research.archive.alpha1.merlo.native_hir import NativeHIRProgram
-from merlo.performance_mir import PerformanceMIR
+from .performance_mir import PerformanceMIR
 
 
 BYTES_HIR_SCHEMA_VERSION = 1

@@ -16,9 +16,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-from merlo.native_c_backend import CEmitter, NativeBackendError, compile_c_source, find_c_compiler
-from tools.benchmarks.merlo.performance_frontend import PerformanceCompileError, compile_performance_source
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from .native_c_backend import CEmitter, NativeBackendError, compile_c_source, find_c_compiler
+from .performance_frontend import PerformanceCompileError, compile_performance_source
+from .performance_opt import optimize_mir
 from research.archive.alpha1.merlo.stage05p_freeze import assert_stage05p_frozen
 
 

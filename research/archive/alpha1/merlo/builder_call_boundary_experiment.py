@@ -15,11 +15,11 @@ from research.archive.alpha1.merlo.builder_call_boundary import (
     builder_call_hir_manifest,
     builder_call_mir_manifest,
 )
-from merlo.native_c_backend import CEmitter, compile_c_source
+from .native_c_backend import CEmitter, compile_c_source
 from research.archive.alpha1.merlo.native_differential import MIRInterpreter, evaluate_hir
 from research.archive.alpha1.merlo.native_hir import compile_native_hir
-from tools.benchmarks.merlo.performance_frontend import PerformanceCompileError, compile_performance_source
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from .performance_frontend import PerformanceCompileError, compile_performance_source
+from .performance_opt import optimize_mir
 
 BUILDER_CALL_VALID_FAMILIES = (
     "return_identity",

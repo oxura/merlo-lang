@@ -19,12 +19,12 @@ from typing import Any, Iterable
 
 from research.archive.alpha1.merlo.bytes_contract import bytes_hir_manifest, bytes_mir_manifest
 from research.archive.alpha1.merlo.native_bench import _Build, _compile_external
-from merlo.native_c_backend import CEmitter, compile_c_source, find_c_compiler
+from .native_c_backend import CEmitter, compile_c_source, find_c_compiler
 from research.archive.alpha1.merlo.native_differential import MIRInterpreter
 from research.archive.alpha1.merlo.native_hir import compile_native_hir
-from tools.benchmarks.merlo.performance_frontend import PerformanceCompileError, compile_performance_source
-from merlo.performance_mir import PerformanceMIR
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from .performance_frontend import PerformanceCompileError, compile_performance_source
+from .performance_mir import PerformanceMIR
+from .performance_opt import optimize_mir
 
 
 BYTES_EXPERIMENT_SCHEMA_VERSION = 1

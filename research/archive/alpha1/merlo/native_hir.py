@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from research.archive.historical_protocol.merlo.frontend_semantics import FrontendCompilation
-from merlo.performance_mir import PerformanceMIR, SourceMapping
+from .performance_mir import PerformanceMIR, SourceMapping
 
 
 NATIVE_HIR_SCHEMA_VERSION = 1
@@ -475,7 +475,7 @@ def _adapt_stage06_intrinsics(source: str) -> str:
 def validate_native_source(source: str, *, path: str = "main.mlo") -> None:
     """Validate Stage 0.6P lexical scopes and borrow-only rules before lowering."""
 
-    from tools.benchmarks.merlo.performance_frontend import (
+    from .performance_frontend import (
         PerformanceCompileError,
         _preprocess,
     )
@@ -766,7 +766,7 @@ def compile_native_hir(
     """Adapt frozen Stage 0.5P parsing/lowering into Native Typed HIR v1."""
 
     # Imports are local to keep the frozen module independent from this Stage 0.6P bridge.
-    from tools.benchmarks.merlo.performance_frontend import _preprocess, compile_performance_source
+    from .performance_frontend import _preprocess, compile_performance_source
 
     validate_native_source(source, path=path)
     adapted_source = _adapt_stage06_intrinsics(source)

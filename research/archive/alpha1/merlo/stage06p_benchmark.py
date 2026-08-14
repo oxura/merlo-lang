@@ -26,9 +26,9 @@ from research.archive.alpha1.merlo.native_bench import (
     competitor_source,
     reference_checksum,
 )
-from merlo.native_c_backend import CEmitter, NativeBackendError, compile_c_source
-from tools.benchmarks.merlo.performance_frontend import PerformanceCompileError, compile_performance_source
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from .native_c_backend import CEmitter, NativeBackendError, compile_c_source
+from .performance_frontend import PerformanceCompileError, compile_performance_source
+from .performance_opt import optimize_mir
 
 
 STAGE06P_BENCHMARK_SCHEMA_VERSION = 3

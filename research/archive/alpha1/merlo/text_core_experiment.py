@@ -21,11 +21,11 @@ from research.archive.alpha1.merlo.builder_call_boundary_experiment import (
 
 from research.archive.alpha1.merlo.bytes_experiment import _compile_sanitized
 from research.archive.historical_protocol.merlo.legacy_evidence import frozen_sha256
-from merlo.native_c_backend import CEmitter, compile_c_source, find_c_compiler
+from .native_c_backend import CEmitter, compile_c_source, find_c_compiler
 from research.archive.alpha1.merlo.native_differential import evaluate_hir, evaluate_mir
 from research.archive.alpha1.merlo.native_hir import compile_native_hir
-from tools.benchmarks.merlo.performance_frontend import PerformanceCompileError, compile_performance_source
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from .performance_frontend import PerformanceCompileError, compile_performance_source
+from .performance_opt import optimize_mir
 from research.archive.alpha1.merlo.text_core import (
     text_abi_manifest,
     text_hir_manifest,

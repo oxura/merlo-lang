@@ -14,11 +14,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-from merlo.native_c_backend import CEmitter, NativeBuildResult, compile_c_source
+from .native_c_backend import CEmitter, NativeBuildResult, compile_c_source
 from research.archive.alpha1.merlo.native_hir import NativeHIRProgram, compile_native_hir, lower_native_hir_to_performance
-from tools.benchmarks.merlo.performance_frontend import PerformanceCompileError
-from merlo.performance_mir import PerformanceMIR
-from tools.benchmarks.merlo.performance_opt import PassSnapshot, optimize_mir
+from .performance_frontend import PerformanceCompileError
+from .performance_mir import PerformanceMIR
+from .performance_opt import PassSnapshot, optimize_mir
 
 
 SEMANTIC_SURFACE_SCHEMA_VERSION = 1

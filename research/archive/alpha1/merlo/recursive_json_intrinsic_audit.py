@@ -7,11 +7,11 @@ import json
 from pathlib import Path
 from typing import Any
 
-from merlo.json_streaming_c import json_streaming_c_source
-from merlo.native_c_backend import CEmitter
+from .json_streaming_c import json_streaming_c_source
+from .native_c_backend import CEmitter
 from research.archive.alpha1.merlo.native_hir import compile_native_hir, lower_native_hir_to_performance
-from tools.benchmarks.merlo.performance_frontend import compile_performance_source
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from .performance_frontend import compile_performance_source
+from .performance_opt import optimize_mir
 
 
 AUDIT_SCHEMA_VERSION = 1

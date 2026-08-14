@@ -10,8 +10,8 @@ from typing import Any, Callable
 
 from research.archive.alpha1.merlo.native_differential import ExecutionObservation, evaluate_mir
 from research.archive.alpha1.merlo.native_hir import compile_native_hir, lower_native_hir_to_performance
-from merlo.performance_mir import PerformanceMIR
-from tools.benchmarks.merlo.performance_opt import (
+from .performance_mir import PerformanceMIR
+from .performance_opt import (
     OPTIMIZATION_PIPELINE,
     OPTIMIZATION_PASS_VERSIONS,
     region_ownership_lowering,

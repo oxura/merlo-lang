@@ -7,7 +7,7 @@ from collections import defaultdict
 from typing import Any
 
 from research.archive.alpha1.merlo.native_hir import NativeHIRProgram
-from merlo.performance_mir import PerformanceMIR, SourceMapping
+from .performance_mir import PerformanceMIR, SourceMapping
 
 
 BYTES_BORROWED_RETURN_HIR_SCHEMA_VERSION = 1

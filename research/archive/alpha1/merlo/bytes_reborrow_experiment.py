@@ -20,12 +20,12 @@ from research.archive.alpha1.merlo.bytes_reborrow import (
     bytes_reborrow_mir_manifest,
     validate_bytes_reborrow_mir,
 )
-from merlo.native_c_backend import CEmitter, compile_c_source, compile_native
+from .native_c_backend import CEmitter, compile_c_source, compile_native
 from research.archive.alpha1.merlo.native_differential import HIREvaluator, MIRInterpreter
 from research.archive.alpha1.merlo.native_hir import compile_native_hir
-from tools.benchmarks.merlo.performance_frontend import PerformanceCompileError, compile_performance_source
-from merlo.performance_mir import PerformanceMIR
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from .performance_frontend import PerformanceCompileError, compile_performance_source
+from .performance_mir import PerformanceMIR
+from .performance_opt import optimize_mir
 
 
 BYTES_REBORROW_EXPERIMENT_SCHEMA_VERSION = 1

@@ -14,11 +14,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
-from merlo.native_c_backend import CEmitter, compile_c_source
+from .native_c_backend import CEmitter, compile_c_source
 from tools.benchmarks.merlo.json_streaming import JsonTokenError, tokenize_json
 from research.archive.alpha1.merlo.native_hir import NativeHIRProgram, compile_native_hir, lower_native_hir_to_performance
-from merlo.performance_mir import MIRFunction, MIRInstruction, PerformanceMIR, PerformanceType
-from tools.benchmarks.merlo.performance_opt import OPTIMIZATION_PIPELINE
+from .performance_mir import MIRFunction, MIRInstruction, PerformanceMIR, PerformanceType
+from .performance_opt import OPTIMIZATION_PIPELINE
 
 
 NATIVE_DIFFERENTIAL_SCHEMA_VERSION = 2
@@ -1611,7 +1611,7 @@ class HIREvaluator:
             for item in module.body
             if isinstance(item, ast.ClassDef)
         }
-        from tools.benchmarks.merlo.performance_frontend import _preprocess
+        from .performance_frontend import _preprocess
 
         self.declaration_kinds = _preprocess(program.cst.source).declaration_kinds
         self.numeric_context: list[str | None] = []

@@ -23,11 +23,11 @@ from research.archive.alpha1.merlo.bytes_builder import (
 )
 from research.archive.alpha1.merlo.bytes_experiment import _compile_sanitized, _distribution
 from research.archive.alpha1.merlo.native_bench import _Build
-from merlo.native_c_backend import CEmitter, compile_c_source
+from .native_c_backend import CEmitter, compile_c_source
 from research.archive.alpha1.merlo.native_differential import MIRInterpreter, evaluate_hir
 from research.archive.alpha1.merlo.native_hir import compile_native_hir
-from tools.benchmarks.merlo.performance_frontend import PerformanceCompileError, compile_performance_source
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from .performance_frontend import PerformanceCompileError, compile_performance_source
+from .performance_opt import optimize_mir
 
 BYTES_BUILDER_EXPERIMENT_SCHEMA_VERSION = 1
 BYTES_BUILDER_EXPERIMENT_KIND = "MeldraBytesBuilderCapacityGrowthExperiment"

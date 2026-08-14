@@ -5,17 +5,17 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from merlo.native_c_backend import (
+from .native_c_backend import (
     NATIVE_BACKEND_IMPLEMENTATION_VERSION,
     NATIVE_BACKEND_SCHEMA_VERSION,
 )
 from research.archive.alpha1.merlo.native_hir import NATIVE_HIR_SCHEMA_VERSION
-from tools.benchmarks.merlo.performance_frontend import (
+from .performance_frontend import (
     PERFORMANCE_FRONTEND_IMPLEMENTATION_VERSION,
     PERFORMANCE_FRONTEND_SCHEMA_VERSION,
 )
-from merlo.performance_mir import PERFORMANCE_MIR_SCHEMA_VERSION
-from tools.benchmarks.merlo.performance_opt import (
+from .performance_mir import PERFORMANCE_MIR_SCHEMA_VERSION
+from .performance_opt import (
     OPTIMIZATION_PASS_VERSIONS,
     PERFORMANCE_MEMORY_MODEL_VERSION,
 )
