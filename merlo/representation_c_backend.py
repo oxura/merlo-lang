@@ -3168,7 +3168,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         descriptor = self.descriptors.get(type_name)
         if descriptor is None or not _is_owner(descriptor):
             return False
-        if isinstance(node, (ast.Call, ast.Constant, ast.List, ast.Tuple)):
+        if isinstance(node, (ast.Call, ast.Constant, ast.List, ast.Tuple, ast.BinOp)):
             return True
         return (
             isinstance(node, ast.Attribute)

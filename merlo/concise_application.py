@@ -703,19 +703,30 @@ def _module_symbols(
     return symbols
 
 
-def _module_local_names(source: str) -> set[str]:
+def _function_local_names_at(source: str, line: int) -> set[str]:
     try:
         parsed = ast.parse(_preprocess_core(source))
     except SyntaxError:
         return set()
+    function = next(
+        (
+            node
+            for node in parsed.body
+            if isinstance(node, ast.FunctionDef)
+            and node.lineno <= line <= getattr(node, "end_lineno", node.lineno)
+        ),
+        None,
+    )
+    if function is None:
+        return set()
     names: set[str] = set()
-    for node in ast.walk(parsed):
+    for node in ast.walk(function):
         if isinstance(node, ast.FunctionDef):
             names.update(argument.arg for argument in node.args.args)
         elif isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    names.add(target.id)
+            names.update(
+                target.id for target in node.targets if isinstance(target, ast.Name)
+            )
         elif isinstance(node, (ast.AnnAssign, ast.AugAssign, ast.For)):
             target = getattr(node, "target", None)
             if isinstance(target, ast.Name):
@@ -725,6 +736,7 @@ def _module_local_names(source: str) -> set[str]:
                 if isinstance(pattern, ast.MatchAs) and pattern.name:
                     names.add(pattern.name)
     return names
+
 
 
 def _token_offset(source: str) -> Any:
@@ -875,7 +887,6 @@ def _rewrite_module_symbols(
         "console", "clock", "env", "fs", "network", "process", "random",
         "Text", "Bytes", "TextBuilder", "Vec", "Map", "Box", "Option", "Result",
     }
-    local_names = _module_local_names(source)
     for order, index in enumerate(significant):
         if index in consumed or name(index) is None:
             continue
@@ -936,7 +947,8 @@ def _rewrite_module_symbols(
             and name(attribute) is not None
             and tokens[opening].string == "("
             and receiver not in intrinsic_receivers
-            and receiver not in local_names
+            and receiver
+            not in _function_local_names_at(source, tokens[index].start[0])
         ):
             raise ConciseApplicationError(
                 f"{module.path}:{tokens[index].start[0]}: "

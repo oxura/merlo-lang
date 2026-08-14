@@ -434,3 +434,20 @@ def test_text_and_bytes_concat_is_strict_and_reaches_all_native_layers(tmp_path)
 """
     with pytest.raises(PerformanceCompileError, match="binary operator|type mismatch"):
         compile_performance_source(invalid)
+
+
+    empty_bytes = """fn main() -> UInt64:
+ let joined: Bytes = Bytes.new(0) + Bytes.new(0)
+ return joined.len()
+"""
+    empty_results = _evaluate_all(empty_bytes, ())
+    assert all(result.status == "OK" for result in empty_results[3:])
+    assert all(result.frees == 0 for result in empty_results[3:])
+
+    chained_text = """fn main() -> UInt64:
+ let joined: Text = Text.from_ascii(65) + Text.from_ascii(66) + Text.from_ascii(67)
+ return joined.len_bytes()
+"""
+    chained_results = _evaluate_all(chained_text, ())
+    assert all(result.status == "OK" for result in chained_results[3:])
+    assert [result.return_value for result in chained_results[3:]] == [3, 3, 3]

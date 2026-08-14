@@ -675,3 +675,23 @@ def test_private_and_unknown_calls_fail_at_module_binding(tmp_path: Path) -> Non
     )
     with pytest.raises(ConciseApplicationError, match="UnresolvedName"):
         elaborate_concise_application(entry, require_interface_lock=False)
+
+
+def test_unresolved_receiver_is_scoped_to_current_function(tmp_path: Path) -> None:
+    app = tmp_path / "app"
+    app.mkdir()
+    entry = app / "main.mlo"
+    entry.write_text(
+        "module app.main\n\n"
+        "fn helper(foo: UInt64) -> UInt64:\n"
+        "    return foo\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "export task main(path: Path) -> Result[UInt64, AppError]:\n"
+        "    uses console.write\n"
+        "    console.write(\"ok\")\n"
+        "    return Ok(foo.bar())\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ConciseApplicationError, match="UnresolvedImport foo.bar"):
+        elaborate_concise_application(entry, require_interface_lock=False)

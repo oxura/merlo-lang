@@ -1943,7 +1943,10 @@ class HIREvaluator:
                     self.metrics.bytes_owners.append(result)
                 self.metrics.allocations += int(bool(result.data))
                 for operand_node, operand in ((node.left, left), (node.right, right)):
-                    if isinstance(operand_node, (ast.Call, ast.BinOp)):
+                    if (
+                        isinstance(operand_node, (ast.Call, ast.BinOp))
+                        and operand.capacity > 0
+                    ):
                         operand.alive = False
                         self.metrics.frees += 1
                 return result
