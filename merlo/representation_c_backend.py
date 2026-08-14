@@ -2512,8 +2512,36 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
 
     def _text_comparison_value(self, node: ast.AST, type_name: str) -> str:
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
+
             return self._borrowed_text_literal(node.value)
         return self._expression(node, expected=type_name)
+
+    def _clone_is_deep(self, type_name: str, seen: frozenset[str] = frozenset()) -> bool:
+        descriptor = self.descriptors[type_name]
+        if not _is_owner(descriptor) or type_name in seen:
+            return True
+        next_seen = seen | {type_name}
+        if descriptor.kind == "text":
+            children = ()
+        elif descriptor.kind == "enum":
+            children = (
+                payload
+                for _, payload, _ in descriptor.variants
+                if payload is not None
+            )
+        elif descriptor.kind == "record":
+            children = (field_type for _, field_type, _ in descriptor.fields)
+        elif descriptor.kind in {"vec", "box", "array"}:
+            children = (
+                getattr(descriptor, "element_type", None)
+                or getattr(descriptor, "payload_type", None),
+            )
+        else:
+            return False
+        return all(
+            child is None or self._clone_is_deep(child, next_seen)
+            for child in children
+        )
 
     def _is_owning_temporary(self, node: ast.AST, type_name: str) -> bool:
         descriptor = self.descriptors.get(type_name)
@@ -3245,7 +3273,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 None,
             ) if self.current_function is not None else None
             if parameter is not None and parameter.ownership in {"borrow", "borrow_mut"}:
-                if descriptor.kind not in {"text", "record", "enum", "vec", "box"}:
+                if not self._clone_is_deep(type_name):
                     raise RepresentationCBackendError(
                         f"cannot clone borrowed owner of type {type_name}"
                     )
