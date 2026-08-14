@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import sysconfig
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Mapping
@@ -129,23 +130,29 @@ def _declaration(source: str) -> tuple[str | None, str, str, str] | None:
         return exported, "record", name, suffix
     return None
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+_REPOSITORY_STDLIB_ROOT = _REPOSITORY_ROOT / "stdlib" / "std"
+_STDLIB_ROOT = (
+    _REPOSITORY_STDLIB_ROOT
+    if _REPOSITORY_STDLIB_ROOT.is_dir()
+    else Path(sysconfig.get_path("data")) / "stdlib" / "std"
+)
 STDLIB_MODULES = {
     "app.json": Path(__file__).with_name("stdlib") / "json.mlo",
     "app.csv": Path(__file__).with_name("stdlib") / "csv.mlo",
-    "std.core": _REPOSITORY_ROOT / "stdlib" / "std" / "core.mlo",
-    "std.option": _REPOSITORY_ROOT / "stdlib" / "std" / "option.mlo",
-    "std.result": _REPOSITORY_ROOT / "stdlib" / "std" / "result.mlo",
-    "std.text": _REPOSITORY_ROOT / "stdlib" / "std" / "text.mlo",
-    "std.bytes": _REPOSITORY_ROOT / "stdlib" / "std" / "bytes.mlo",
-    "std.collections": _REPOSITORY_ROOT / "stdlib" / "std" / "collections.mlo",
-    "std.io": _REPOSITORY_ROOT / "stdlib" / "std" / "io.mlo",
-    "std.fs": _REPOSITORY_ROOT / "stdlib" / "std" / "fs.mlo",
-    "std.cli": _REPOSITORY_ROOT / "stdlib" / "std" / "cli.mlo",
-    "std.time": _REPOSITORY_ROOT / "stdlib" / "std" / "time.mlo",
-    "std.random": _REPOSITORY_ROOT / "stdlib" / "std" / "random.mlo",
-    "std.json": _REPOSITORY_ROOT / "stdlib" / "std" / "json.mlo",
-    "std.net": _REPOSITORY_ROOT / "stdlib" / "std" / "net.mlo",
-    "std.http": _REPOSITORY_ROOT / "stdlib" / "std" / "http.mlo",
+    "std.core": _STDLIB_ROOT / "core.mlo",
+    "std.option": _STDLIB_ROOT / "option.mlo",
+    "std.result": _STDLIB_ROOT / "result.mlo",
+    "std.text": _STDLIB_ROOT / "text.mlo",
+    "std.bytes": _STDLIB_ROOT / "bytes.mlo",
+    "std.collections": _STDLIB_ROOT / "collections.mlo",
+    "std.io": _STDLIB_ROOT / "io.mlo",
+    "std.fs": _STDLIB_ROOT / "fs.mlo",
+    "std.cli": _STDLIB_ROOT / "cli.mlo",
+    "std.time": _STDLIB_ROOT / "time.mlo",
+    "std.random": _STDLIB_ROOT / "random.mlo",
+    "std.json": _STDLIB_ROOT / "json.mlo",
+    "std.net": _STDLIB_ROOT / "net.mlo",
+    "std.http": _STDLIB_ROOT / "http.mlo",
 }
 
 
