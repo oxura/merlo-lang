@@ -1,8 +1,5 @@
 module std.text
 
-export TextBuilder:
-    value: Text
-
 export text_len(value: TextView) -> UInt64:
     value.len()
 
@@ -37,10 +34,10 @@ export text_find(value: TextView, needle: UInt64) -> Option[UInt64]:
     None
 
 export text_builder_new() -> TextBuilder:
-    TextBuilder("")
+    TextBuilder.new()
 
 export text_builder_append(builder: TextBuilder, value: TextView) -> Unit:
-    builder.append_text(value)
+    builder.append_text(value.to_text())
 
 export text_builder_append_byte(builder: TextBuilder, value: UInt64) -> Unit:
     builder.append_byte(value)
