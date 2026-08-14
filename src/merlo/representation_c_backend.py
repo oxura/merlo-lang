@@ -727,6 +727,33 @@ static MerloText merlo_text_from_view(const MerloTextView *view) {
 static MerloText merlo_text_clone(const MerloText *text) {
     return merlo_text_from_view((const MerloTextView *)text);
 }
+static MerloBytes merlo_bytes_concat(MerloBytes left, MerloBytes right) {
+    if (right.length > UINT64_MAX - left.length) merlo_allocation_trap();
+    MerloBytes result = { NULL, left.length + right.length };
+    if (result.length != 0) {
+        result.data = (uint8_t *)malloc((size_t)result.length);
+        if (result.data == NULL) merlo_allocation_trap();
+        if (left.length) memcpy(result.data, left.data, (size_t)left.length);
+        if (right.length) memcpy(result.data + left.length, right.data, (size_t)right.length);
+        ++merlo_allocations;
+        merlo_bytes_copied += result.length;
+    }
+    return result;
+}
+static MerloText merlo_text_concat(MerloText left, MerloText right) {
+    if (right.length > UINT64_MAX - left.length) merlo_allocation_trap();
+    MerloText result = { NULL, left.length + right.length };
+    if (result.length != 0) {
+        result.data = (uint8_t *)malloc((size_t)result.length);
+        if (result.data == NULL) merlo_allocation_trap();
+        if (left.length) memcpy(result.data, left.data, (size_t)left.length);
+        if (right.length) memcpy(result.data + left.length, right.data, (size_t)right.length);
+        ++merlo_allocations;
+        ++merlo_text_allocations;
+        merlo_bytes_copied += result.length;
+    }
+    return result;
+}
 
 static MerloTextView merlo_text_view_slice_bytes(
     const MerloTextView *view, uint64_t start, uint64_t length
@@ -2203,10 +2230,19 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 self.owned_locals.pop(name, None)
         return lines
 
+    def _canonical_nominal(self, type_name: str) -> str:
+        if type_name in self.descriptors:
+            return type_name
+        matches = [
+            name for name in self.descriptors
+            if name.rsplit("__", 1)[-1].rsplit(".", 1)[-1] == type_name
+        ]
+        return matches[0] if len(matches) == 1 else type_name
+
     def _result_parts(self, type_name: str | None) -> tuple[str, str] | None:
         parts = _result_types(type_name)
         if parts is not None:
-            return parts
+            return tuple(self._canonical_nominal(item) for item in parts)
         descriptor = self.descriptors.get(type_name or "")
         if descriptor is None or descriptor.kind != "enum":
             return None
@@ -2970,6 +3006,25 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         *,
         expected: str | None = None,
     ) -> str:
+        left_type = self._expression_type(left)
+        right_type = self._expression_type(right)
+        if (
+            isinstance(operation, ast.Add)
+            and left_type in {"Text", "Bytes"}
+            and right_type == left_type
+        ):
+            left_value = (
+                self._materialize_owned_argument(left, left_type)
+                if self._is_owning_temporary(left, left_type)
+                else self._expression(left, expected=left_type)
+            )
+            right_value = (
+                self._materialize_owned_argument(right, right_type)
+                if self._is_owning_temporary(right, right_type)
+                else self._expression(right, expected=right_type)
+            )
+            helper = "merlo_text_concat" if left_type == "Text" else "merlo_bytes_concat"
+            return f"{helper}({left_value}, {right_value})"
         operators = {
             ast.Add: "+",
             ast.Sub: "-",
@@ -3113,7 +3168,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         descriptor = self.descriptors.get(type_name)
         if descriptor is None or not _is_owner(descriptor):
             return False
-        if isinstance(node, (ast.Call, ast.Constant, ast.List, ast.Tuple)):
+        if isinstance(node, (ast.Call, ast.Constant, ast.List, ast.Tuple, ast.BinOp)):
             return True
         return (
             isinstance(node, ast.Attribute)

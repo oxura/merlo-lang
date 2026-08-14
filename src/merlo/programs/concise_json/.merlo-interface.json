@@ -39,15 +39,15 @@
       "parameters": [
         [
           "parser",
-          "Parser"
+          "app.json.Parser"
         ],
         [
           "depth",
           "UInt64"
         ]
       ],
-      "return_type": "Json",
-      "revision_id": "019f3b8e3fc47dbf51d0adbabfa93547f2040672427b0786f25f0e1dd5f2f80c"
+      "return_type": "app.json.Json",
+      "revision_id": "38c60df47cfbc5960ea083c079788e2c7e6e4d974bfd754fb783331256434ce5"
     },
     {
       "capabilities": [],
@@ -58,11 +58,11 @@
       "parameters": [
         [
           "parser",
-          "Parser"
+          "app.json.Parser"
         ],
         [
           "kind",
-          "ErrorKind"
+          "app.json.ErrorKind"
         ],
         [
           "offset",
@@ -70,7 +70,7 @@
         ]
       ],
       "return_type": "Unit",
-      "revision_id": "044f449290bc3b691c0c3603ebfe0e765d274688c98b20bac6d81cefbad24c03"
+      "revision_id": "0a0eb64bf291b5936c6e6158478a44eece642db52f5aebbc12df88b21991f680"
     },
     {
       "capabilities": [],
@@ -81,11 +81,11 @@
       "parameters": [
         [
           "parser",
-          "Parser"
+          "app.json.Parser"
         ]
       ],
-      "return_type": "Token",
-      "revision_id": "ef3e4c263d40bc7828fda3e585a6ae969cbdddd82eed868138169bdbc6e65958"
+      "return_type": "app.json.Token",
+      "revision_id": "3e2b74c58aaa296fedc7d030f00c52b8ae2a7fb9531468495f689fcc16845fee"
     },
     {
       "capabilities": [],
@@ -96,11 +96,11 @@
       "parameters": [
         [
           "parser",
-          "Parser"
+          "app.json.Parser"
         ]
       ],
       "return_type": "Unit",
-      "revision_id": "ed35b0bcbe8694c4444032a86cf997f6ef656e22c4fac1c3fe99bf006bfdac60"
+      "revision_id": "7dc33eb59d92dd2b832143e7db3a0e89ac1f221d73e0966cbe1f742921458089"
     },
     {
       "capabilities": [],
@@ -111,11 +111,11 @@
       "parameters": [
         [
           "parser",
-          "Parser"
+          "app.json.Parser"
         ]
       ],
       "return_type": "Bool",
-      "revision_id": "789933083415039a8ca27d6c6052286bc86e9d2319ad3eebd4298bcba735eda6"
+      "revision_id": "6cecf8f81087cd228cfe52a638690ea6c3558c0693a623a13d12695c388457bd"
     },
     {
       "capabilities": [],
@@ -178,6 +178,21 @@
       "revision_id": "5d92a5a2fca3eec1beaadbd8230c9495f0671f99ff0721fb2e712074ba80ee2f"
     },
     {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.main",
+      "name": "main",
+      "parameters": [
+        [
+          "path",
+          "Path"
+        ]
+      ],
+      "return_type": "Result[Text,app.main.AppError]",
+      "revision_id": "beb0aec9c62e8b9bdd9b88f92fa6b39f037811dd4740645183c09041b00579c6"
+    },
+    {
       "capabilities": [
         "console.write",
         "fs.read"
@@ -195,8 +210,8 @@
           "Path"
         ]
       ],
-      "return_type": "Result[Text,AppError]",
-      "revision_id": "14fcc3082b5beb9277276f9a431ce22974d76dd90e705e325358034579284bb5"
+      "return_type": "Result[Text,app.main.AppError]",
+      "revision_id": "31d82afa363c85ea1113265c2c5244a2a5983d01753ede0e7a12930e878bd7e0"
     },
     {
       "capabilities": [],
@@ -210,8 +225,8 @@
           "BytesView"
         ]
       ],
-      "return_type": "ProgramResult",
-      "revision_id": "34e18d40785b8fbe0a00ca0375cacf441449be5c1775b7ed9546b787040c780a"
+      "return_type": "app.json.ProgramResult",
+      "revision_id": "dc7a861bd36383347d6fc1758a641f4dee158de92958677b5b9c17b3e29e388c"
     },
     {
       "capabilities": [],
@@ -222,11 +237,11 @@
       "parameters": [
         [
           "result",
-          "ProgramResult"
+          "app.json.ProgramResult"
         ]
       ],
       "return_type": "Text",
-      "revision_id": "4c8858e1e3a09ad8d34a1558c160511c8e8156db1760481fb676128a0502653e"
+      "revision_id": "ed84ac4ced3e31d1d2ce7a086a978fc74e2805f41a8783af0350238eaf08e696"
     }
   ],
   "schema_version": 1

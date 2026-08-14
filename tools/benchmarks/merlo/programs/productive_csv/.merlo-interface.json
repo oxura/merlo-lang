@@ -20,6 +20,21 @@
       "revision_id": "7d8b0ddd1cb483a918890963fe5502be135c965c8e87d488ef591fdcf4289099"
     },
     {
+      "capabilities": [],
+      "effects": [],
+      "kind": "fn",
+      "module": "app.main",
+      "name": "main",
+      "parameters": [
+        [
+          "path",
+          "Path"
+        ]
+      ],
+      "return_type": "Result[Text,app.sales.AppError]",
+      "revision_id": "3af0a7083c664f7a00c648f308ff17ea3c34e6e717fc828a41308f936cf69d00"
+    },
+    {
       "capabilities": [
         "console.write",
         "fs.read"
@@ -37,8 +52,8 @@
           "Path"
         ]
       ],
-      "return_type": "Result[Text,AppError]",
-      "revision_id": "14fcc3082b5beb9277276f9a431ce22974d76dd90e705e325358034579284bb5"
+      "return_type": "Result[Text,app.sales.AppError]",
+      "revision_id": "75743a13e915c496c353498b32802a6f1c5779afbee23873754bbed7f3a321a1"
     },
     {
       "capabilities": [],
@@ -63,11 +78,11 @@
         ],
         [
           "options",
-          "Options"
+          "app.sales.Options"
         ]
       ],
-      "return_type": "Result[Text,AppError]",
-      "revision_id": "da275550121c53bd7eb9f356f7c718b4c121e51e208c4decd3c7a5735648b0a5"
+      "return_type": "Result[Text,app.sales.AppError]",
+      "revision_id": "38d04333616ea8454af5032797de0aee2ca9e64915c386f8ed8243d1b356d231"
     },
     {
       "capabilities": [],

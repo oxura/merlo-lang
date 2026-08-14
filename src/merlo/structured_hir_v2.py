@@ -43,6 +43,19 @@ _SCALAR_TYPES = frozenset(
 _INTEGER_TYPES = frozenset({"Byte", "Int8", "UInt8", "Int16", "UInt16", "Int32", "UInt32", "Int64", "UInt64"})
 _TYPE_ALIASES = {"Int": "Int64", "UInt": "UInt64", "Float": "Float64"}
 
+def _type_leaf(type_name: str) -> str:
+    return type_name.rsplit("__", 1)[-1].rsplit(".", 1)[-1]
+
+
+def _type_compatible(actual: str, expected: str) -> bool:
+    if actual == expected:
+        return True
+    # A bare source-facing alias may denote a qualified imported declaration.
+    return (
+        _type_leaf(actual) == _type_leaf(expected)
+        and (("__" in actual or "." in actual) != ("__" in expected or "." in expected))
+    )
+
 
 class StructuredHIRCompileError(ValueError):
     """Typed source/HIR construction failure."""
@@ -1333,7 +1346,7 @@ class _HIRBuilder:
                     f"{self.path}:{node.lineno}: postfix propagation requires a Result-returning function"
                 )
             expected_error = function_parts[1]
-            if error_type != expected_error:
+            if not _type_compatible(error_type, expected_error):
                 raise StructuredHIRCompileError(
                     f"{self.path}:{node.lineno}: propagated error {error_type} does not match {expected_error}"
                 )
@@ -1584,7 +1597,9 @@ class _HIRBuilder:
                 if (
                     callee == "network.tcp_connect"
                     and expected
-                    and expected.startswith("Result[TcpStream,")
+                    and expected.startswith("Result[")
+                    and (expected_parts := self._result_parts(expected)) is not None
+                    and _type_leaf(expected_parts[0]) == "TcpStream"
                 ):
                     type_name = expected
                 elif (
@@ -1612,11 +1627,11 @@ class _HIRBuilder:
                         expected_parts is None
                         or result_parts is None
                         or (
-                            expected_parts[0] != result_parts[0]
+                            not _type_compatible(expected_parts[0], result_parts[0])
                             and not (
                                 callee == "network.tcp_connect"
-                                and expected_parts[0] == "TcpStream"
-                                and result_parts[0] == "UInt64"
+                                and _type_leaf(expected_parts[0]) == "TcpStream"
+                                and _type_leaf(result_parts[0]) == "UInt64"
                             )
                         )
                     ):
