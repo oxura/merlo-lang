@@ -6,6 +6,8 @@ import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
+
+_ARCHIVE_ROOT = Path(__file__).resolve().parents[1]
 from typing import Any, Mapping
 
 from .legacy_evidence import frozen_sha256, resolve_frozen_path
@@ -75,7 +77,7 @@ def _sha256_file(path: Path) -> str:
 
 
 def load_stage04_freeze(root: str | Path = ".") -> dict[str, Any]:
-    root_path = Path(root).resolve()
+    root_path = (Path(root).resolve() if str(root) != "." else _ARCHIVE_ROOT)
     path = root_path / "benchmarks" / STAGE04_FREEZE_FILENAME
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, Mapping):
@@ -88,7 +90,7 @@ def load_stage04_freeze(root: str | Path = ".") -> dict[str, Any]:
 
 
 def verify_stage04_freeze(root: str | Path = ".") -> FreezeVerification:
-    root_path = Path(root).resolve()
+    root_path = (Path(root).resolve() if str(root) != "." else _ARCHIVE_ROOT)
     manifest = load_stage04_freeze(root_path)
     mismatches: list[FreezeMismatch] = []
 

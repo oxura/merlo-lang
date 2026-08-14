@@ -8,6 +8,8 @@ import platform
 import subprocess
 import sys
 from pathlib import Path
+
+_ARCHIVE_ROOT = Path(__file__).resolve().parents[1]
 from typing import Any, Iterable
 
 from .legacy_evidence import frozen_sha256
@@ -96,7 +98,7 @@ def _git_revision(root: Path) -> dict[str, Any]:
 
 
 def build_stage05p_freeze_v2(root: str | Path = ".") -> dict[str, Any]:
-    root_path = Path(root).resolve()
+    root_path = (Path(root).resolve() if str(root) != "." else _ARCHIVE_ROOT)
     frozen_files = {
         relative: frozen_sha256(root_path, relative)
         for relative in STAGE05P_V2_FROZEN_PATHS
@@ -213,7 +215,7 @@ def build_stage05p_freeze_v2(root: str | Path = ".") -> dict[str, Any]:
 
 
 def write_stage05p_freeze_v2(root: str | Path = ".") -> dict[str, Any]:
-    root_path = Path(root)
+    root_path = (Path(root) if str(root) != "." else _ARCHIVE_ROOT)
     payload = build_stage05p_freeze_v2(root_path)
     (root_path / "benchmarks" / STAGE05P_FREEZE_V2_FILENAME).write_text(
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",

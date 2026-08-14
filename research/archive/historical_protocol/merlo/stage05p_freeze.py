@@ -6,6 +6,8 @@ import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
+
+_ARCHIVE_ROOT = Path(__file__).resolve().parents[1]
 from typing import Any
 
 from .legacy_evidence import frozen_sha256, resolve_frozen_path
@@ -50,7 +52,7 @@ class Stage05PFreezeVerification:
 
 
 def build_stage05p_freeze(root: str | Path = ".") -> dict[str, Any]:
-    root_path = Path(root)
+    root_path = (Path(root) if str(root) != "." else _ARCHIVE_ROOT)
     files = {
         relative: frozen_sha256(root_path, relative)
         for relative in STAGE05P_FROZEN_PATHS
@@ -76,7 +78,7 @@ def build_stage05p_freeze(root: str | Path = ".") -> dict[str, Any]:
 
 
 def verify_stage05p_freeze(root: str | Path = ".") -> Stage05PFreezeVerification:
-    root_path = Path(root)
+    root_path = (Path(root) if str(root) != "." else _ARCHIVE_ROOT)
     path = root_path / "benchmarks" / STAGE05P_FREEZE_FILENAME
     raw = path.read_bytes()
     payload = json.loads(raw)

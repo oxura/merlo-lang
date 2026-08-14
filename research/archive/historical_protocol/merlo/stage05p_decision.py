@@ -7,6 +7,8 @@ import json
 import math
 from collections import Counter
 from pathlib import Path
+
+_ARCHIVE_ROOT = Path(__file__).resolve().parents[1]
 from typing import Any
 
 from .native_hypotheses import NATIVE_HYPOTHESES_FILENAME
@@ -29,7 +31,7 @@ def _geometric_mean(values: list[float]) -> float | None:
 
 
 def build_stage05p_decision(root: str | Path = ".") -> dict[str, Any]:
-    root_path = Path(root)
+    root_path = (Path(root) if str(root) != "." else _ARCHIVE_ROOT)
     freeze = assert_stage05p_frozen(root_path)
     benchmark_path = root_path / "benchmarks" / "stage05p_runs" / "report.json"
     hypotheses_path = root_path / "benchmarks" / NATIVE_HYPOTHESES_FILENAME
@@ -229,7 +231,7 @@ def build_stage05p_decision(root: str | Path = ".") -> dict[str, Any]:
 
 
 def write_stage05p_decision(root: str | Path = ".") -> dict[str, Any]:
-    root_path = Path(root)
+    root_path = (Path(root) if str(root) != "." else _ARCHIVE_ROOT)
     payload = build_stage05p_decision(root_path)
     (root_path / "benchmarks" / STAGE05P_DECISION_FILENAME).write_text(
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",

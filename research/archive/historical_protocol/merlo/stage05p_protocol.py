@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+
+_ARCHIVE_ROOT = Path(__file__).resolve().parents[1]
 from typing import Any
 
 from .performance_mir import (
@@ -28,7 +30,7 @@ STAGE05P_DECISIONS = (
 
 
 def build_stage05p_protocol(root: str | Path = ".") -> dict[str, Any]:
-    root_path = Path(root)
+    root_path = (Path(root) if str(root) != "." else _ARCHIVE_ROOT)
     freeze_raw = (root_path / "benchmarks" / STAGE05P_FREEZE_FILENAME).read_bytes()
     mir_schema_path = root_path / "merlo" / "performance_mir_schema_v1.json"
     return {
@@ -152,7 +154,7 @@ def build_stage05p_protocol(root: str | Path = ".") -> dict[str, Any]:
 
 
 def write_stage05p_protocol(root: str | Path = ".") -> dict[str, Any]:
-    root_path = Path(root)
+    root_path = (Path(root) if str(root) != "." else _ARCHIVE_ROOT)
     payload = build_stage05p_protocol(root_path)
     (root_path / "benchmarks" / STAGE05P_PROTOCOL_FILENAME).write_text(
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",

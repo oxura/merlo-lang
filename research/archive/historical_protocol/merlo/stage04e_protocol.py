@@ -6,6 +6,8 @@ import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
+
+_ARCHIVE_ROOT = Path(__file__).resolve().parents[1]
 from typing import Any, Mapping
 
 from .stage04e_freeze import assert_stage04_frozen
@@ -76,7 +78,7 @@ def _load_object(path: Path) -> dict[str, Any]:
 
 
 def load_stage04e_protocol(root: str | Path = ".") -> dict[str, Any]:
-    root_path = Path(root).resolve()
+    root_path = (Path(root).resolve() if str(root) != "." else _ARCHIVE_ROOT)
     protocol = _load_object(
         root_path / "benchmarks" / STAGE04E_PROTOCOL_FILENAME
     )
@@ -92,7 +94,7 @@ def load_stage04e_protocol_version(
 ) -> dict[str, Any]:
     if version not in {1, 2}:
         raise ValueError("Stage 0.4E protocol version must be 1 or 2")
-    root_path = Path(root).resolve()
+    root_path = (Path(root).resolve() if str(root) != "." else _ARCHIVE_ROOT)
     protocol = _load_object(
         root_path
         / "benchmarks"
@@ -108,7 +110,7 @@ def load_stage04e_protocol_version(
 
 
 def verify_stage04e_protocol(root: str | Path = ".") -> ProtocolVerification:
-    root_path = Path(root).resolve()
+    root_path = (Path(root).resolve() if str(root) != "." else _ARCHIVE_ROOT)
     frozen = assert_stage04_frozen(root_path)
     protocol_path = root_path / "benchmarks" / STAGE04E_PROTOCOL_FILENAME
     protocol = load_stage04e_protocol(root_path)
