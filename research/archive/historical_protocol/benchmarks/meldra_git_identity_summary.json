@@ -1658,7 +1658,7 @@
     "repositories": 20,
     "requested_pairs": 20
   },
-  "manual_audit_artifact": "tools/benchmarks/merlo/benchmarks/meldra_identity_manual_audit.json",
+  "manual_audit_artifact": "benchmarks/meldra_identity_manual_audit.json",
   "metric_policy": "Preserved same-address links are reported separately and are not evidence for rename/move identity precision.",
   "schema": 1
 }
