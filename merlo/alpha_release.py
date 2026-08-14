@@ -820,6 +820,76 @@ def write_validation_report_once(path: Path | str, validation: ValidationResult)
     return destination
 
 
+
+def public_benchmark_evidence(
+    report: Mapping[str, Any],
+    report_path: Path | str,
+    *,
+    root: Path | str = ".",
+    source_hashes: Mapping[str, str] | None = None,
+    compiler_sha256: str | None = None,
+    lock_sha256: str | None = None,
+) -> EvidenceRecord:
+    """Adapt a validated public benchmark report into release evidence.
+
+    The report is validated before its status is mapped; callers cannot supply
+    an independent pass bit.  The report file is retained as content-addressed
+    raw evidence for the release validator.
+    """
+    from .public_benchmark import PublicBenchmarkError, validate_public_report
+
+    try:
+        validate_public_report(report)
+    except PublicBenchmarkError as exc:
+        raise ReleaseValidationError(f"invalid public benchmark report: {exc}") from exc
+    status = "PASSED" if report.get("status") == "MEASURED" and report.get("passed") is True else "FAILED"
+    path = Path(report_path)
+    base = Path(root).resolve()
+    resolved = path if path.is_absolute() else base / path
+    if not resolved.is_file():
+        raise ReleaseValidationError(f"missing public benchmark report: {report_path}")
+    try:
+        relative = resolved.resolve().relative_to(base).as_posix()
+    except ValueError as exc:
+        raise ReleaseValidationError(f"public benchmark report escapes release root: {report_path}") from exc
+    report_hash = _file_hash(resolved)
+    provenance = report.get("compiler_provenance")
+    lock = report.get("workload_lock")
+    if not isinstance(provenance, Mapping) or not isinstance(lock, Mapping):
+        raise ReleaseValidationError("public benchmark provenance is incomplete")
+    selected_sources = dict(source_hashes or {
+        "compiler_input_tree_sha256": str(provenance.get("source_tree_sha256")),
+        "runner_sha256": str(provenance.get("runner_sha256")),
+    })
+    selected_compiler = compiler_sha256 or str(provenance.get("source_tree_sha256"))
+    selected_lock = lock_sha256 or str(lock.get("sha256"))
+    payload = {
+        "schema_version": report.get("schema_version"),
+        "claim_id": report.get("claim_id"),
+        "status": report.get("status"),
+        "passed": report.get("passed"),
+        "report_sha256": report_hash,
+        "workload_lock_sha256": lock.get("sha256"),
+        "compiler_tree_sha256": provenance.get("source_tree_sha256"),
+        "runner_sha256": provenance.get("runner_sha256"),
+    }
+    return EvidenceRecord(
+        id="performance.public-native-three-workload-v1",
+        kind="public-benchmark",
+        gate="performance",
+        status=status,
+        executed=True,
+        supported=True,
+        payload=payload,
+        raw_paths=(relative,),
+        source_hashes=selected_sources,
+        compiler_sha256=selected_compiler,
+        lock_sha256=selected_lock,
+        raw_hashes={relative: report_hash},
+        artifact_hashes={},
+    )
+
+
 __all__ = [
     "ALLOWED_STATUSES", "ALPHA_RELEASE_INCOMPLETE", "ALPHA_RELEASE_REPRODUCIBILITY_DEFECT",
     "ALPHA_RELEASE_SAFETY_DEFECT", "ALPHA_RELEASE_SUPPORTED", "AssemblyResult", "EvidenceRecord",
@@ -827,5 +897,5 @@ __all__ = [
     "REQUIRED_LICENSES", "REQUIRED_METADATA", "REQUIRED_SPECS", "REQUIRED_STDLIB", "ReleaseInputs",
     "ReleaseProvenance", "ReleaseValidationError", "SCHEMA_VERSION", "ValidationResult",
     "assemble_release", "manifest_payload_sha256", "manifest_sha256", "validate_release",
-    "verify_manifest", "write_validation_report_once",
+    "public_benchmark_evidence",
 ]

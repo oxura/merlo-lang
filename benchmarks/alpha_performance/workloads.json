@@ -1,8 +1,30 @@
 {
   "schema": "merlo.alpha-performance.workloads.v2",
+  "claim_id": "public-native-three-workload-v1",
   "arms": ["merlo_concise", "merlo_canonical", "c", "python", "rust"],
   "required_arms": ["merlo_concise", "merlo_canonical", "c", "python"],
   "optional_arms": ["rust"],
+  "class_ratio_limits": {
+    "numeric_array": 1.15,
+    "text_bytes_collections": 1.25,
+    "cli_data": 1.5
+  },
+  "protocol": {
+    "seed": 20260813,
+    "warmups": 5,
+    "measured_runs": 30,
+    "sample_replicates": 31,
+    "bootstrap_replicates": 2000,
+    "sample_aggregation": "minimum",
+    "schedule": "seeded_randomized_strictly_sequential",
+    "mad_limit": 0.05,
+    "ratio_limits": {
+      "numeric_array": 1.15,
+      "text_bytes_collections": 1.25,
+      "cli_data": 1.5
+    }
+  },
+  "corpus_policy": "all_three_checked_in_workloads_required; no_filters_or_fallback_sources",
   "workloads": [
     {
       "id": "numeric_array_sum",

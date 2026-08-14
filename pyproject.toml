@@ -42,6 +42,7 @@ include = ["merlo*"]
 merlo = ["stdlib/*.mlo"]
 
 [tool.setuptools.data-files]
+"docs" = ["docs/benchmark.md"]
 "stdlib" = ["stdlib/README.md"]
 "stdlib/std" = [
   "stdlib/std/core.mlo",
