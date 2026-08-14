@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from research.archive.alpha1.merlo.frontend_bench import generate_paired_corpus, run_binding_comparison
@@ -314,7 +315,7 @@ def _runtime_audit() -> str:
 def run_maximal_python_benchmark(
     program_count: int = 40,
 ) -> MaximalPythonBenchmarkReport:
-    protocol = assert_stage04e_protocol()
+    protocol = assert_stage04e_protocol(Path(__file__).resolve().parents[2])
     current, maximal, meldra, manifest = _maximal_binding(program_count)
     runtime, runtime_digest, dynamic_rejections = _runtime_summary()
     private, public = _interface_checks()

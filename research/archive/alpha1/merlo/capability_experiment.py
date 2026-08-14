@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Mapping
+from pathlib import Path
 
 from research.archive.historical_protocol.merlo.frontend_evaluator import EvaluationError, ReferenceEvaluator
 from research.archive.historical_protocol.merlo.frontend_semantics import FrontendCheckResult, check_frontend
@@ -764,7 +765,7 @@ def _observe_meldra(
 
 
 def run_capability_experiment() -> CapabilityExperimentReport:
-    protocol = assert_stage04e_protocol()
+    protocol = assert_stage04e_protocol(Path(__file__).resolve().parents[2])
     cases = generate_capability_cases()
     current_attacks = []
     current_controls = []

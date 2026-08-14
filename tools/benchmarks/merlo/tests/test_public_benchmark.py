@@ -126,6 +126,9 @@ def test_validator_rejects_public_contract_tampering(tmp_path: Path) -> None:
 def test_lock_requires_complete_protocol(tmp_path: Path) -> None:
     lock_path = (
         tmp_path
+        / "tools"
+        / "benchmarks"
+        / "merlo"
         / "benchmarks"
         / "alpha_performance"
         / "workloads.json"
@@ -134,6 +137,9 @@ def test_lock_requires_complete_protocol(tmp_path: Path) -> None:
     lock = json.loads(
         (
             ROOT
+            / "tools"
+            / "benchmarks"
+            / "merlo"
             / "benchmarks"
             / "alpha_performance"
             / "workloads.json"

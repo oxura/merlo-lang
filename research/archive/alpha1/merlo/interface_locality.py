@@ -831,7 +831,7 @@ def _meldra_observation(case: LocalityCase) -> LocalityObservation:
 
 
 def run_interface_locality_benchmark() -> InterfaceLocalityReport:
-    protocol = assert_stage04e_protocol()
+    protocol = assert_stage04e_protocol(Path(__file__).resolve().parents[2])
     cases = generate_locality_cases()
     current = []
     maximal = []
