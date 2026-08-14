@@ -12,7 +12,7 @@ from research.archive.alpha1.merlo.agent_experiment import (
 )
 
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_frozen_agent_manifest_uses_one_model_and_equal_budgets():

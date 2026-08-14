@@ -7,8 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from research.archive.historical_protocol.merlo.identity_ground_truth import IdentityReviewQueue
-from research.archive.historical_protocol.merlo.stage04e_protocol import assert_stage04e_protocol
+from .identity_ground_truth import IdentityReviewQueue
+from .stage04e_protocol import assert_stage04e_protocol
 
 
 IDENTITY_CLAIMS_SCHEMA_VERSION = 1
@@ -24,7 +24,7 @@ def build_identity_claims_report(
 ) -> dict[str, Any]:
     root_path = Path(root)
     protocol = assert_stage04e_protocol(root_path)
-    benchmark_root = root_path / "tools" / "benchmarks" / "merlo" / "benchmarks"
+    benchmark_root = root_path / "benchmarks"
     summary_path = benchmark_root / "meldra_git_identity_summary.json"
     audit_path = benchmark_root / "meldra_identity_manual_audit.json"
     queue_path = benchmark_root / "meldra_identity_review_queue.json"

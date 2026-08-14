@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from research.archive.historical_protocol.merlo.model import Evidence, Obligation, ProgramIR, SemanticImpact, SourceEdit
+from .model import Evidence, Obligation, ProgramIR, SemanticImpact, SourceEdit
 
 
 def analyze_impact(

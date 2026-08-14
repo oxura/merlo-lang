@@ -22,14 +22,14 @@ from research.archive.historical_protocol.merlo.frontend_syntax import (
 )
 
 
-ROOT = Path(__file__).parents[4]
+ROOT = Path(__file__).parents[1]
 
 
 SAMPLE = b"""package shop.checkout\n\nuse shop.catalog::{Cart, Product}\nexport Order, total\n\nnewtype OrderId = Int\n\nrecord Order:\n    id: OrderId\n    total: Int\n\nenum Status:\n    Pending\n    Paid\n\nvalue multiplier: Int = 2\n\nfn total(value: Int) -> Int:\n    let scaled = value * multiplier\n    if scaled > 0:\n        scaled\n    else:\n        0\n"""
 
 
 def test_core_ir_v1_schema_is_frozen_and_rejects_other_versions():
-    path = ROOT / "merlo" / "core_ir_schema_v1.json"
+    path = ROOT / "benchmarks" / "frozen" / "stage04" / "meldra" / "core_ir_schema_v1.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
 
     assert payload["$id"] == CORE_SCHEMA_ID

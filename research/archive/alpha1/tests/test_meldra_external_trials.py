@@ -15,7 +15,7 @@ from research.archive.alpha1.merlo.external_trials import (
 )
 
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _observation(**overrides: object) -> ExternalTrialObservation:

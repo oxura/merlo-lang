@@ -17,31 +17,31 @@ from research.archive.alpha1.merlo.independent_corpus import (
 )
 
 
-ROOT = Path(__file__).parents[4]
+ROOT = Path(__file__).parents[1]
 _REQUIRED_FILES = (
-    "research/archive/historical_protocol/merlo/core_semantics.py",
-    "research/archive/alpha1/merlo/frontend_bench.py",
-    "research/archive/historical_protocol/merlo/frontend_evaluator.py",
-    "research/archive/historical_protocol/benchmarks/frozen/stage04/meldra/frontend_semantics.py",
-    "research/archive/historical_protocol/benchmarks/frozen/stage04/meldra/frontend_syntax.py",
-    "research/archive/historical_protocol/merlo/frontend_semantics.py",
-    "research/archive/historical_protocol/merlo/frontend_syntax.py",
-    "research/archive/historical_protocol/merlo/python_binder.py",
-    "research/archive/alpha1/merlo/core_ir_schema_v1.json",
-    "research/archive/alpha1/merlo/STAGE_0_4_FREEZE.json",
-    "research/archive/alpha1/merlo/independent_corpus.py",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage04_support_profile.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage04_frontend_benchmark.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage04_freeze.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage04_freeze_lock.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage04e_protocol.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage04e_protocol_lock.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage04e_protocol_v1.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage04e_protocol_v1_lock.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage04e_protocol_v2.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage04e_protocol_v2_lock.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_independent_mbpp_subset.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_independent_corpus_lock.json",
+    "merlo/core_semantics.py",
+    "benchmarks/frozen/stage04/meldra/frontend_bench.py",
+    "merlo/frontend_evaluator.py",
+    "benchmarks/frozen/stage04/meldra/frontend_semantics.py",
+    "benchmarks/frozen/stage04/meldra/frontend_syntax.py",
+    "merlo/frontend_semantics.py",
+    "merlo/frontend_syntax.py",
+    "merlo/python_binder.py",
+    "benchmarks/frozen/stage04/meldra/core_ir_schema_v1.json",
+    "benchmarks/frozen/stage04/meldra/STAGE_0_4_FREEZE.json",
+    "merlo/independent_corpus.py",
+    "benchmarks/meldra_stage04_support_profile.json",
+    "benchmarks/meldra_stage04_frontend_benchmark.json",
+    "benchmarks/meldra_stage04_freeze.json",
+    "benchmarks/meldra_stage04_freeze_lock.json",
+    "benchmarks/meldra_stage04e_protocol.json",
+    "benchmarks/meldra_stage04e_protocol_lock.json",
+    "benchmarks/meldra_stage04e_protocol_v1.json",
+    "benchmarks/meldra_stage04e_protocol_v1_lock.json",
+    "benchmarks/meldra_stage04e_protocol_v2.json",
+    "benchmarks/meldra_stage04e_protocol_v2_lock.json",
+    "benchmarks/meldra_independent_mbpp_subset.json",
+    "benchmarks/meldra_independent_corpus_lock.json",
 )
 
 
@@ -84,7 +84,7 @@ def test_corpus_and_acceptance_lock_detects_tampering(tmp_path: Path):
         "LOCKED_BEFORE_FRONTEND_HARDENING"
     )
 
-    corpus_path = root / "tools/benchmarks/merlo/benchmarks/meldra_independent_mbpp_subset.json"
+    corpus_path = root / "benchmarks/meldra_independent_mbpp_subset.json"
     payload = json.loads(corpus_path.read_text(encoding="utf-8"))
     payload["records"][0]["acceptance_cases"][0]["expected"] += 1
     corpus_path.write_text(json.dumps(payload), encoding="utf-8")
@@ -95,7 +95,7 @@ def test_corpus_and_acceptance_lock_detects_tampering(tmp_path: Path):
 
 def test_harness_lock_detects_post_freeze_rewrites(tmp_path: Path):
     root = _copy_locked_corpus(tmp_path)
-    harness = root / "research/archive/alpha1/merlo/independent_corpus.py"
+    harness = root / "merlo/independent_corpus.py"
     harness.write_text(harness.read_text(encoding="utf-8") + "\n", encoding="utf-8")
 
     with pytest.raises(RuntimeError, match="harness_sha256"):

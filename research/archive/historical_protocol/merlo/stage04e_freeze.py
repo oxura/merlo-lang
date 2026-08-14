@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
-from research.archive.historical_protocol.merlo.legacy_evidence import frozen_sha256, resolve_frozen_path
+from .legacy_evidence import frozen_sha256, resolve_frozen_path
 
 
 STAGE04_FREEZE_SCHEMA_VERSION = 1
@@ -76,7 +76,7 @@ def _sha256_file(path: Path) -> str:
 
 def load_stage04_freeze(root: str | Path = ".") -> dict[str, Any]:
     root_path = Path(root).resolve()
-    path = root_path / "tools" / "benchmarks" / "merlo" / "benchmarks" / STAGE04_FREEZE_FILENAME
+    path = root_path / "benchmarks" / STAGE04_FREEZE_FILENAME
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, Mapping):
         raise ValueError("Stage 0.4 freeze manifest must be an object")
@@ -104,7 +104,7 @@ def verify_stage04_freeze(root: str | Path = ".") -> FreezeVerification:
         resolve_frozen_path(root_path, f"meldra/{STAGE04_CANONICAL_FREEZE_FILENAME}")
     )
     lock_path = (
-        root_path / "tools" / "benchmarks" / "merlo" / "benchmarks" / STAGE04_FREEZE_LOCK_FILENAME
+        root_path / "benchmarks" / STAGE04_FREEZE_LOCK_FILENAME
     )
     if not canonical_path.is_file() or not lock_path.is_file():
         mismatches.append(
@@ -197,8 +197,8 @@ def verify_stage04_freeze(root: str | Path = ".") -> FreezeVerification:
     if not isinstance(benchmark, Mapping):
         benchmark = {}
     artifacts = {
-        "support_profile_sha256": "tools/benchmarks/merlo/benchmarks/meldra_stage04_support_profile.json",
-        "observed_result_sha256": "tools/benchmarks/merlo/benchmarks/meldra_stage04_frontend_benchmark.json",
+        "support_profile_sha256": "benchmarks/meldra_stage04_support_profile.json",
+        "observed_result_sha256": "benchmarks/meldra_stage04_frontend_benchmark.json",
     }
     for key, relative_path in artifacts.items():
         expected = str(benchmark.get(key, ""))

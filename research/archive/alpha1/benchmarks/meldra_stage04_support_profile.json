@@ -1,0 +1,32 @@
+{
+  "date": "2026-08-10",
+  "excluded": [
+    "ambiguous duplicate declarations",
+    "docs examples tutorials demos and test sources",
+    "dynamic decorators and metaclasses",
+    "external stubs plugins and native extension internals",
+    "generated or runtime members",
+    "getattr with runtime names",
+    "monkey patching",
+    "wildcard imports and exports"
+  ],
+  "included": [
+    "annotated class fields and enum-style members",
+    "explicit absolute imports and aliases",
+    "explicit nominal annotations",
+    "lexical locals parameters and nested scopes",
+    "module-level classes functions and constants",
+    "source-product files",
+    "statically typed field access",
+    "unique declaration identifiers"
+  ],
+  "kind": "MeldraStage04SupportProfile",
+  "policy": {
+    "denominator": "one preregistered logical-reference manifest shared by all arms",
+    "out_of_profile": "reported separately and never counted as an in-profile false block",
+    "posthoc_changes": "forbidden for the same benchmark run"
+  },
+  "profile_id": "meldra-stage04-python-binding-p0",
+  "schema": 1,
+  "status": "FROZEN_BEFORE_BENCHMARK_EXECUTION"
+}

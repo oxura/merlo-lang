@@ -7,7 +7,7 @@ from pathlib import Path
 from research.archive.historical_protocol.merlo.stage04e_decision import build_stage04e_decision
 
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_frozen_go_gates_fail_on_observed_evidence_not_defaults():

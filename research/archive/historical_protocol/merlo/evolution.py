@@ -13,9 +13,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Mapping
 
-from research.archive.historical_protocol.merlo.evidence import create_evidence
-from research.archive.historical_protocol.merlo.impact import analyze_impact
-from research.archive.historical_protocol.merlo.model import (
+from .evidence import create_evidence
+from .impact import analyze_impact
+from .model import (
     ChangePlan,
     ChangeSignature,
     EditCapability,
@@ -33,7 +33,7 @@ from research.archive.historical_protocol.merlo.model import (
     SourceEdit,
     Span,
 )
-from research.archive.historical_protocol.merlo.obligations import (
+from .obligations import (
     build_graph,
     identity_obligations,
     make_obligation,

@@ -16,17 +16,17 @@ from research.archive.alpha1.merlo.native_bench import (
     reference_checksum,
     run_native_benchmark,
 )
-from merlo.native_c_backend import CEmitter, compile_native, find_c_compiler
+from research.archive.alpha1.merlo.native_c_backend import CEmitter, compile_native, find_c_compiler
 from research.archive.alpha1.merlo.native_hypotheses import evaluate_native_hypotheses
-from tools.benchmarks.merlo.performance_frontend import PerformanceCompileError, compile_performance_source
-from merlo.performance_mir import STAGE05P_NON_GOALS, scalar_layout
-from tools.benchmarks.merlo.performance_opt import inlining, optimize_mir
-from research.archive.historical_protocol.merlo.stage05p_decision import build_stage05p_decision
-from research.archive.historical_protocol.merlo.stage05p_freeze import assert_stage05p_frozen, verify_stage05p_freeze
-from research.archive.historical_protocol.merlo.stage05p_protocol import build_stage05p_protocol
+from research.archive.alpha1.merlo.performance_frontend import PerformanceCompileError, compile_performance_source
+from research.archive.alpha1.merlo.performance_mir import STAGE05P_NON_GOALS, scalar_layout
+from research.archive.alpha1.merlo.performance_opt import inlining, optimize_mir
+from research.archive.alpha1.merlo.stage05p_decision import build_stage05p_decision
+from research.archive.alpha1.merlo.stage05p_freeze import assert_stage05p_frozen, verify_stage05p_freeze
+from research.archive.alpha1.merlo.stage05p_protocol import build_stage05p_protocol
 
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _operations(mir, function: str = "main") -> list[str]:

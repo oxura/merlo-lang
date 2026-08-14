@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Mapping
 
-from research.archive.historical_protocol.merlo.stage04e_protocol import assert_stage04e_protocol
+from .stage04e_protocol import assert_stage04e_protocol
 
 
 STAGE04E_DECISION_SCHEMA_VERSION = 1
@@ -65,7 +65,7 @@ def build_stage04e_decision(
 ) -> dict[str, Any]:
     root_path = Path(root)
     protocol_verification = assert_stage04e_protocol(root_path)
-    benchmark_root = root_path / "tools" / "benchmarks" / "merlo" / "benchmarks"
+    benchmark_root = root_path / "benchmarks"
     artifacts = {name: _load(benchmark_root / name) for name in _INPUTS}
     protocol = _load(benchmark_root / "meldra_stage04e_protocol.json")
     go = protocol["language_alpha_go"]

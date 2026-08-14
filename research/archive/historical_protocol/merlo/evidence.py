@@ -4,7 +4,7 @@ import hashlib
 from dataclasses import replace
 from typing import Any, Iterable
 
-from research.archive.historical_protocol.merlo.model import (
+from .model import (
     Evidence,
     EvidenceDependency,
     EvidenceStatus,

@@ -4,8 +4,8 @@ import time
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
-from research.archive.historical_protocol.merlo.evidence import invalidated_evidence_ids
-from research.archive.historical_protocol.merlo.model import Evidence, ProgramIR, Resolution
+from .evidence import invalidated_evidence_ids
+from .model import Evidence, ProgramIR, Resolution
 
 
 @dataclass(frozen=True)

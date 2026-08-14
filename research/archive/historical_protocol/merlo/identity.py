@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import Any, Iterable, Mapping
 
-from research.archive.historical_protocol.merlo.model import (
+from .model import (
     Entity,
     IdentityCandidate,
     IdentityHint,

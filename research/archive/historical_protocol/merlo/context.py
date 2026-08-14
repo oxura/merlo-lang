@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-from research.archive.historical_protocol.merlo.impact import analyze_impact
-from research.archive.historical_protocol.merlo.model import (
+from .impact import analyze_impact
+from .model import (
     EditCapability,
     Entity,
     Evidence,

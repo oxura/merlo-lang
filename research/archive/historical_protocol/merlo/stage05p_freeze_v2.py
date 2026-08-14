@@ -10,12 +10,12 @@ import sys
 from pathlib import Path
 from typing import Any, Iterable
 
-from research.archive.historical_protocol.merlo.legacy_evidence import frozen_sha256
-from research.archive.alpha1.merlo.native_bench import WORKLOADS, competitor_source, reference_checksum
-from merlo.native_c_backend import NATIVE_BACKEND_SCHEMA_VERSION, compiler_version, find_c_compiler
-from tools.benchmarks.merlo.performance_frontend import PERFORMANCE_FRONTEND_SCHEMA_VERSION
-from merlo.performance_mir import PERFORMANCE_MIR_SCHEMA_VERSION
-from tools.benchmarks.merlo.performance_opt import OPTIMIZATION_PIPELINE
+from .legacy_evidence import frozen_sha256
+from .native_bench import WORKLOADS, competitor_source, reference_checksum
+from .native_c_backend import NATIVE_BACKEND_SCHEMA_VERSION, compiler_version, find_c_compiler
+from .performance_frontend import PERFORMANCE_FRONTEND_SCHEMA_VERSION
+from .performance_mir import PERFORMANCE_MIR_SCHEMA_VERSION
+from .performance_opt import OPTIMIZATION_PIPELINE
 
 
 STAGE05P_FREEZE_V2_SCHEMA_VERSION = 2
@@ -36,12 +36,12 @@ STAGE05P_V2_FROZEN_PATHS = (
     "meldra/stage05p_freeze.py",
     "meldra/stage05p_protocol.py",
     "meldra/stage05p_decision.py",
-    "tools/benchmarks/merlo/tests/test_meldra_stage05p.py",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage05p_freeze.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage05p_protocol.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage05p_hypotheses.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage05p_decision.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage06p_stage05p_audit.json",
+    "tests/test_meldra_stage05p.py",
+    "benchmarks/meldra_stage05p_freeze.json",
+    "benchmarks/meldra_stage05p_protocol.json",
+    "benchmarks/meldra_stage05p_hypotheses.json",
+    "benchmarks/meldra_stage05p_decision.json",
+    "benchmarks/meldra_stage06p_stage05p_audit.json",
 )
 
 
@@ -55,7 +55,7 @@ def _canonical_digest(value: Any) -> str:
 
 
 def _source_files(root: Path) -> tuple[Path, ...]:
-    corpus = root / "tools" / "benchmarks" / "merlo" / "benchmarks" / "stage05p_audit" / "run_1" / "corpus"
+    corpus = root / "benchmarks" / "stage05p_audit" / "run_1" / "corpus"
     suffixes = {".meldra", ".c", ".rs", ".go", ".cs", ".py"}
     return tuple(
         sorted(
@@ -215,7 +215,7 @@ def build_stage05p_freeze_v2(root: str | Path = ".") -> dict[str, Any]:
 def write_stage05p_freeze_v2(root: str | Path = ".") -> dict[str, Any]:
     root_path = Path(root)
     payload = build_stage05p_freeze_v2(root_path)
-    (root_path / "tools" / "benchmarks" / "merlo" / "benchmarks" / STAGE05P_FREEZE_V2_FILENAME).write_text(
+    (root_path / "benchmarks" / STAGE05P_FREEZE_V2_FILENAME).write_text(
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )

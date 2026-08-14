@@ -8,15 +8,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-from research.archive.historical_protocol.merlo.analyzer import scan_python
-from research.archive.historical_protocol.merlo.evidence import rebind_evidence, validate_evidence
-from research.archive.historical_protocol.merlo.evolution import (
+from .analyzer import scan_python
+from .evidence import rebind_evidence, validate_evidence
+from .evolution import (
     apply_plan,
     plan_change_signature,
     plan_move,
     plan_rename,
 )
-from research.archive.historical_protocol.merlo.model import (
+from .model import (
     ChangePlan,
     EditCapability,
     Evidence,
@@ -26,7 +26,7 @@ from research.archive.historical_protocol.merlo.model import (
     ObligationStatus,
     ProgramIR,
 )
-from research.archive.historical_protocol.merlo.obligations import make_obligation
+from .obligations import make_obligation
 
 
 WORLD_SCHEMA = 2
@@ -269,7 +269,7 @@ class SoftwareWorld:
             self.obligations = previous_obligations
             self.evidence = previous_evidence
             self.plans = previous_plans
-            from research.archive.historical_protocol.merlo.evolution import ChangeBlocked
+            from .evolution import ChangeBlocked
 
             if isinstance(exc, ChangeBlocked):
                 raise

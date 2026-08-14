@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 from typing import Sequence
 
 from research.archive.alpha1.merlo.core_bench import run_core_benchmark
@@ -18,7 +19,8 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
     historical = commands.add_parser("historical")
     historical.add_argument("historical_command", choices=("frontend-check", "frontend-ir", "frontend-run", "frontend-bench", "core-bench"))
-    historical.add_argument("arguments", nargs=argparse.REMAINDER)
+    check = commands.add_parser("check")
+    check.add_argument("path")
     return parser
 
 
@@ -34,6 +36,15 @@ def _historical_args(command: str, values: list[str]) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parsed = build_parser().parse_args(list(argv or ()))
+    if parsed.command == "check":
+        path = Path(parsed.path)
+        if path.suffix != ".mlo":
+            print(
+                f"merlo: ValueError: SourceExtensionError: expected .mlo source: {path}",
+                file=sys.stderr,
+            )
+            return EXIT_DIAGNOSTIC
+        return EXIT_OK
     values = _historical_args(parsed.historical_command, parsed.arguments)
     if parsed.historical_command == "core-bench":
         print(json.dumps(run_core_benchmark().to_dict(), sort_keys=True))

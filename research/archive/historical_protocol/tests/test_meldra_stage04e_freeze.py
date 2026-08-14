@@ -11,22 +11,22 @@ from research.archive.historical_protocol.merlo.stage04e_freeze import (
 )
 
 
-ROOT = Path(__file__).parents[4]
+ROOT = Path(__file__).parents[1]
 _FROZEN_PATHS = (
-    "research/archive/historical_protocol/merlo/core_semantics.py",
-    "research/archive/alpha1/merlo/frontend_bench.py",
-    "research/archive/historical_protocol/merlo/frontend_evaluator.py",
-    "research/archive/historical_protocol/merlo/frontend_semantics.py",
-    "research/archive/historical_protocol/merlo/frontend_syntax.py",
-    "research/archive/historical_protocol/benchmarks/frozen/stage04/meldra/frontend_semantics.py",
-    "research/archive/historical_protocol/benchmarks/frozen/stage04/meldra/frontend_syntax.py",
-    "research/archive/historical_protocol/merlo/python_binder.py",
-    "research/archive/alpha1/merlo/core_ir_schema_v1.json",
-    "research/archive/alpha1/merlo/STAGE_0_4_FREEZE.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage04_support_profile.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage04_frontend_benchmark.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage04_freeze.json",
-    "tools/benchmarks/merlo/benchmarks/meldra_stage04_freeze_lock.json",
+    "merlo/core_semantics.py",
+    "benchmarks/frozen/stage04/meldra/frontend_bench.py",
+    "merlo/frontend_evaluator.py",
+    "merlo/frontend_semantics.py",
+    "merlo/frontend_syntax.py",
+    "benchmarks/frozen/stage04/meldra/frontend_semantics.py",
+    "benchmarks/frozen/stage04/meldra/frontend_syntax.py",
+    "merlo/python_binder.py",
+    "benchmarks/frozen/stage04/meldra/core_ir_schema_v1.json",
+    "benchmarks/frozen/stage04/meldra/STAGE_0_4_FREEZE.json",
+    "benchmarks/meldra_stage04_support_profile.json",
+    "benchmarks/meldra_stage04_frontend_benchmark.json",
+    "benchmarks/meldra_stage04_freeze.json",
+    "benchmarks/meldra_stage04_freeze_lock.json",
 )
 
 

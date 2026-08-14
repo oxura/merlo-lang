@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from research.archive.historical_protocol.merlo.context import TaskCapsule, compile_context, source_read
-from research.archive.historical_protocol.merlo.impact import analyze_impact
-from research.archive.historical_protocol.merlo.model import ChangePlan, EditCapability
-from research.archive.historical_protocol.merlo.world import SoftwareWorld
+from .context import TaskCapsule, compile_context, source_read
+from .impact import analyze_impact
+from .model import ChangePlan, EditCapability
+from .world import SoftwareWorld
 
 
 class MerloProtocol:

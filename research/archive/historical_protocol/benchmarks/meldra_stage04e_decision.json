@@ -1,0 +1,178 @@
+{
+  "advance_language_alpha": false,
+  "all_required_go_gates_pass": false,
+  "decision": "NO_GO_LANGUAGE_ALPHA_USE_SEMANTIC_LAYER",
+  "do_not_claim": [
+    "production-ready new language",
+    "external runtime soundness",
+    "99.5% Python rename or move identity",
+    "agent productivity advantage",
+    "capability safety with zero runtime escape"
+  ],
+  "gates": [
+    {
+      "evidence": "GENERATED_PILOT_NOT_EXTERNAL_EVIDENCE",
+      "id": "runtime_soundness",
+      "observed": {
+        "independent_programs": 0,
+        "primary_external_gate_status": "UNMEASURED",
+        "runtime_observations": 460,
+        "unsound_exact_count": 0,
+        "unsound_exact_rate": 0.0
+      },
+      "passed": false,
+      "reason": "Generated runtime fixtures pass the internal metric, but the frozen primary external runtime gate is UNMEASURED.",
+      "required": {
+        "meldra_unsound_exact": 0,
+        "minimum_runtime_observations": 300,
+        "one_sided_95_upper_bound_max": 0.01,
+        "strict_python_residual_risk_or_material_burden_required": true
+      }
+    },
+    {
+      "evidence": "GENERATED_HELD_OUT_FROM_FREEZE_NOT_EXTERNAL",
+      "id": "capability_safety",
+      "observed": {
+        "attacks": 120,
+        "false_block_rate": 0.0,
+        "false_safe": 24,
+        "pre_materialization_detection_rate": 0.6,
+        "runtime_escapes": 24,
+        "violation_detection_recall": 0.8
+      },
+      "passed": false,
+      "reason": "Meldra detects 80% of generated attacks; 24 are false-safe and reach runtime, violating the zero-escape frozen gate.",
+      "required": {
+        "detection_recall_min": 0.99,
+        "false_block_rate_max": 0.03,
+        "false_safe_max": 0,
+        "minimum_attacks": 100,
+        "pre_materialization_rate_min": 1.0,
+        "runtime_escapes_max": 0
+      }
+    },
+    {
+      "evidence": "GENERATED_PILOT_NOT_EXTERNAL_EVIDENCE",
+      "id": "interface_locality",
+      "observed": {
+        "changes": 108,
+        "independent_programs": 0,
+        "missed_invalidations": 0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "passed": false,
+      "reason": "Generated locality cases pass numerically, but there are zero independent programs and the primary external gate is UNMEASURED.",
+      "required": {
+        "median_context_closure_reduction_min": 0.3,
+        "minimum_changes": 100,
+        "missed_invalidations_max": 0,
+        "precision_min": 0.99,
+        "recall_min": 0.99
+      }
+    },
+    {
+      "evidence": "UNMEASURED_PROVIDER_UNAVAILABLE",
+      "id": "agent_value",
+      "observed": {
+        "baseline_measured_tasks": 0,
+        "baseline_success_rate": null,
+        "meldra_measured_tasks": 0,
+        "meldra_success_rate": null,
+        "provider_evidence": "UNMEASURED_PROVIDER_UNAVAILABLE"
+      },
+      "passed": false,
+      "reason": "The same-model provider key is unavailable; all 90 paired tasks and all four ablations are explicitly UNMEASURED.",
+      "required": {
+        "or_long_horizon_regression_reduction_min": 0.3,
+        "or_success_noninferiority_points": 2.0,
+        "same_model_required": true,
+        "success_gain_points_min": 10.0,
+        "with_token_or_iteration_reduction_min": 0.3
+      }
+    },
+    {
+      "evidence": "GENERATED_SUPPORT_PROFILE_PILOT",
+      "id": "expressiveness",
+      "observed": {
+        "foreign_escape_rate": 0.0,
+        "fully_expressible_rate": 1.0,
+        "independent_meldra_implementation_authors": 0,
+        "median_source_overhead": 0.116913
+      },
+      "passed": false,
+      "reason": "Repository-authored translations pass external specifications, but no independent author produced a Meldra implementation.",
+      "required": {
+        "foreign_escape_rate_max": 0.1,
+        "fully_expressible_rate_min": 0.9,
+        "median_source_overhead_max": 0.25
+      }
+    },
+    {
+      "evidence": "EXTERNAL_SOURCE_PRODUCT_GENERATED_CHANGES",
+      "id": "engineering_integrity",
+      "observed": {
+        "external_acceptance_all_pass": false,
+        "external_infrastructure_failures": 0,
+        "external_success_rates": {
+          "change_signature": 1.0,
+          "move": 0.466667,
+          "rename": 0.966667
+        },
+        "hardening_gates_all_pass": true,
+        "source_restoration_failures": 0
+      },
+      "passed": false,
+      "reason": "Fuzz, mutation, and determinism gates pass, but external acceptance is 29/30 Rename, 14/30 Move, and 30/30 ChangeSignature.",
+      "required": {
+        "determinism_required": true,
+        "external_acceptance_required": true,
+        "fuzz_required": true,
+        "mutation_required": true
+      }
+    }
+  ],
+  "identity_claim": "NO_BROAD_PYTHON_IDENTITY_CLAIM",
+  "inputs": {
+    "meldra_agent_experiment.json": "80d7efca0c6a19f7f1a0e004d736332488dce6f5c06043036dc0ece20dbbd03a",
+    "meldra_benchmark_integrity.json": "84f9384bb9dcdc31766bce6ce1b15cfea50b4aba4791c08d1973d4fa08ddd30a",
+    "meldra_capability_experiment.json": "e2f91ff4248badeb9aab09ae187d3e69fe77efb9382627a7af94e15d3a4127f1",
+    "meldra_effect_context.json": "c875800590ae2aee936c80774dea8ae829c82014fb776d19f9a42ab00def2c94",
+    "meldra_environment_gates.json": "d428aea16ceadba44c66ce54a14be872d98ff46e9f6b1fa50058fcdf501b706c",
+    "meldra_external_trials.json": "9e10570f10d64e51d105078e14f137478291a2366ccc9867d271e4449bcff140",
+    "meldra_frontend_hardening.json": "ad97b88d279a8c80636177a16c2845e63aba8a11dccbddb765063777b01c543d",
+    "meldra_identity_claims.json": "5ec3ca11f3dc4cdee6bf6ed68d86653ad3a8656f9806bddebd99ac3084ca9e0a",
+    "meldra_independent_corpus_results.json": "be24cc250461ecf1bfcc144554ae560f7337156960499d2d6efb7fdd7a4a7db5",
+    "meldra_interface_locality.json": "17d67e84518f731572130c7132e78fbc4913d8a7e2b21cd1d5779bfdf097629d",
+    "meldra_maximal_python.json": "2291665031912a36c3d03865972ab759e32c8bbb10be84af7b7895e8a4789dad",
+    "meldra_runtime_soundness.json": "9891378a19fe8469e6f4701dc7957f2f3ca2b9ef766b634598691c3db20b707e",
+    "meldra_stage04_frontend_benchmark.json": "7b2e33c175abcdea595cde7633d49903605a42d4ad0c66dda1101a78a86d099f"
+  },
+  "kind": "MeldraStage04EDecision",
+  "language_alpha_decision": "NO_GO",
+  "no_go_reasons": [
+    "mandatory_same_model_agent_metric_unmeasured",
+    "capability_false_safe_and_runtime_escape_gate_failed",
+    "external_move_acceptance_failed",
+    "primary_external_runtime_and_locality_evidence_unmeasured",
+    "independent_meldra_authorship_missing",
+    "broad_python_changed_identity_claim_not_established"
+  ],
+  "preserve": [
+    "frozen Meldra closed frontend and evaluator as research artifacts",
+    "typed effects and capability contracts as semantic-layer features",
+    "source-preserving ChangeIR with scoped identity guarantees",
+    "strict Python profile and runtime audit harness"
+  ],
+  "protocol_sha256": "29b4401c31871f219554985a253c80757ee3bdfb718d052fea4eabd41d0df1c7",
+  "schema_version": 1,
+  "selected_direction": "STRICT_SEMANTIC_LAYER",
+  "selected_profile": "maximal-python-profile-plus-meldra-semantics",
+  "strict_python_equivalence": {
+    "locality_delta_points": 0.0,
+    "policy_recall_delta_points": 0.0,
+    "reason": "Measured generated locality and policy axes are equal, but the mandatory agent axis and primary external runtime axis are unmeasured.",
+    "status": "INDETERMINATE",
+    "task_success_delta_points": null
+  }
+}

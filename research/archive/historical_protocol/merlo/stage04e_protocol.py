@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
-from research.archive.historical_protocol.merlo.stage04e_freeze import assert_stage04_frozen
+from .stage04e_freeze import assert_stage04_frozen
 
 
 STAGE04E_PROTOCOL_SCHEMA_VERSION = 2
@@ -78,7 +78,7 @@ def _load_object(path: Path) -> dict[str, Any]:
 def load_stage04e_protocol(root: str | Path = ".") -> dict[str, Any]:
     root_path = Path(root).resolve()
     protocol = _load_object(
-        root_path / "tools" / "benchmarks" / "merlo" / "benchmarks" / STAGE04E_PROTOCOL_FILENAME
+        root_path / "benchmarks" / STAGE04E_PROTOCOL_FILENAME
     )
     if protocol.get("schema_version") != STAGE04E_PROTOCOL_SCHEMA_VERSION:
         raise ValueError("unsupported Stage 0.4E protocol schema version")
@@ -110,10 +110,10 @@ def load_stage04e_protocol_version(
 def verify_stage04e_protocol(root: str | Path = ".") -> ProtocolVerification:
     root_path = Path(root).resolve()
     frozen = assert_stage04_frozen(root_path)
-    protocol_path = root_path / "tools" / "benchmarks" / "merlo" / "benchmarks" / STAGE04E_PROTOCOL_FILENAME
+    protocol_path = root_path / "benchmarks" / STAGE04E_PROTOCOL_FILENAME
     protocol = load_stage04e_protocol(root_path)
     lock = _load_object(
-        root_path / "tools" / "benchmarks" / "merlo" / "benchmarks" / STAGE04E_PROTOCOL_LOCK_FILENAME
+        root_path / "benchmarks" / STAGE04E_PROTOCOL_LOCK_FILENAME
     )
     observed_sha256 = hashlib.sha256(protocol_path.read_bytes()).hexdigest()
     mismatches: list[ProtocolMismatch] = []
@@ -138,9 +138,9 @@ def verify_stage04e_protocol(root: str | Path = ".") -> ProtocolVerification:
     )
     expect("lock.protocol_id", protocol.get("protocol_id"), lock.get("protocol_id"))
 
-    v1_path = root_path / "tools" / "benchmarks" / "merlo" / "benchmarks" / STAGE04E_PROTOCOL_V1_FILENAME
+    v1_path = root_path / "benchmarks" / STAGE04E_PROTOCOL_V1_FILENAME
     v1_lock = _load_object(
-        root_path / "tools" / "benchmarks" / "merlo" / "benchmarks" / STAGE04E_PROTOCOL_V1_LOCK_FILENAME
+        root_path / "benchmarks" / STAGE04E_PROTOCOL_V1_LOCK_FILENAME
     )
     v1_sha256 = hashlib.sha256(v1_path.read_bytes()).hexdigest()
     expect("v1.lock.protocol_sha256", v1_lock.get("protocol_sha256"), v1_sha256)
@@ -149,9 +149,9 @@ def verify_stage04e_protocol(root: str | Path = ".") -> ProtocolVerification:
         "meldra-stage04e-external-semantic-differential-v1",
         v1_lock.get("protocol_id"),
     )
-    v2_path = root_path / "tools" / "benchmarks" / "merlo" / "benchmarks" / STAGE04E_PROTOCOL_V2_FILENAME
+    v2_path = root_path / "benchmarks" / STAGE04E_PROTOCOL_V2_FILENAME
     v2_lock = _load_object(
-        root_path / "tools" / "benchmarks" / "merlo" / "benchmarks" / STAGE04E_PROTOCOL_V2_LOCK_FILENAME
+        root_path / "benchmarks" / STAGE04E_PROTOCOL_V2_LOCK_FILENAME
     )
     v2_sha256 = hashlib.sha256(v2_path.read_bytes()).hexdigest()
     expect("v2.copy.sha256", observed_sha256, v2_sha256)

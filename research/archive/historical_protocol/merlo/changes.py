@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable
 
-from research.archive.historical_protocol.merlo.model import ChangeSignature, MoveSymbol, RenameSymbol, SemanticChange
+from .model import ChangeSignature, MoveSymbol, RenameSymbol, SemanticChange
 
 
 @dataclass(frozen=True)

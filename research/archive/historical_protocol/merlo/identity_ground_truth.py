@@ -5,7 +5,7 @@ import json
 from dataclasses import dataclass, replace
 from typing import Any, Iterable, Mapping
 
-from research.archive.historical_protocol.merlo.model import IdentityHint, IdentityRelation, IdentityStatus
+from .model import IdentityHint, IdentityRelation, IdentityStatus
 
 
 SCHEMA_VERSION = 1

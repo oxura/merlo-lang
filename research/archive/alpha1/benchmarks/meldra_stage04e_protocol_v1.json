@@ -1,0 +1,368 @@
+{
+  "schema_version": 1,
+  "protocol_id": "meldra-stage04e-external-semantic-differential-v1",
+  "status": "PREREGISTERED_BEFORE_EXTERNAL_EXECUTION",
+  "date": "2026-08-10",
+  "parent_freeze_id": "stage04_cdabcc45ff1c8d377517c8861967f577aba61a08c5491d5f228cde745c0066e1",
+  "research_question": "Does enforceable Meldra semantics improve runtime soundness, policy safety, interface locality, or AI development efficiency beyond a maximal strict Python profile?",
+  "hypotheses": [
+    {
+      "id": "H-RUNTIME-SOUNDNESS",
+      "claim": "An Exact Meldra binding remains the runtime target, while unrestricted Python retains measurable unsound Exact risk.",
+      "primary_metric": "unsound_exact_rate"
+    },
+    {
+      "id": "H-STRICT-BASELINE",
+      "claim": "Meldra provides guarantees that a maximal practical strict Python profile cannot match at comparable burden.",
+      "primary_metric": "three_arm_semantic_equivalence"
+    },
+    {
+      "id": "H-INTERFACE-LOCALITY",
+      "claim": "Separate interface and implementation revisions produce precise dependency, evidence, and context invalidation.",
+      "primary_metric": "invalidation_precision_recall"
+    },
+    {
+      "id": "H-EFFECT-CONTEXT",
+      "claim": "Typed effects reduce verified-change context cost without reducing task success.",
+      "primary_metric": "verified_changes_per_1000_context_tokens"
+    },
+    {
+      "id": "H-CAPABILITY-SAFETY",
+      "claim": "Scoped capabilities prevent held-out policy escalation before materialization with acceptable false-block rate.",
+      "primary_metric": "violation_detection_recall"
+    },
+    {
+      "id": "H-AGENT-VALUE",
+      "claim": "Under a paired same-model design, Meldra improves accepted task outcomes, cost, or long-horizon regression rate.",
+      "primary_metric": "paired_agent_task_success"
+    },
+    {
+      "id": "H-EXPRESSIVENESS",
+      "claim": "Safety is not purchased through pervasive foreign or dynamic escape hatches.",
+      "primary_metric": "fully_expressible_program_rate"
+    }
+  ],
+  "arms": [
+    {
+      "id": "python-unrestricted",
+      "binding": "strong structural type-aware binder",
+      "runtime": "ordinary CPython semantics",
+      "policy": "tests only"
+    },
+    {
+      "id": "python-strict",
+      "binding": "strong structural type-aware binder",
+      "runtime": "CPython plus frozen semantic profile enforcement",
+      "policy": "explicit effects, injected capabilities, export manifests, forbidden ambient imports, identity and interface sidecar"
+    },
+    {
+      "id": "meldra-closed",
+      "binding": "frozen Stage 0.4 closed binder",
+      "runtime": "frozen reference semantics",
+      "policy": "typed effects and scoped capabilities"
+    }
+  ],
+  "support_profiles": {
+    "python-unrestricted": {
+      "included": [
+        "module instance and class mutation",
+        "decorators descriptors and properties",
+        "getattr getattribute and metaclass dispatch",
+        "import hooks and dynamic re-exports",
+        "subclass override dependency injection partial and singledispatch"
+      ],
+      "out_of_profile": "none for the registered runtime-soundness categories"
+    },
+    "python-strict": {
+      "included": [
+        "typed module-level declarations",
+        "explicit export manifests",
+        "declared effects and injected capabilities",
+        "closed dependencies and sidecar identities"
+      ],
+      "forbidden": [
+        "monkey patching",
+        "replacement decorators",
+        "dynamic attribute synthesis",
+        "metaclass member injection",
+        "import hooks",
+        "ambient network filesystem subprocess secrets and database imports"
+      ],
+      "out_of_profile": "reported as profile rejection, never as a runtime success"
+    },
+    "meldra-closed": {
+      "included": [
+        "frozen Stage 0.4 grammar and CoreIR",
+        "nominal values functions tasks effects capabilities and package interfaces"
+      ],
+      "forbidden": [
+        "unregistered dynamic dispatch",
+        "ambient authority",
+        "silent identity inheritance"
+      ],
+      "out_of_profile": "reported as expressiveness escape or unsupported, never omitted"
+    }
+  },
+  "corpus": {
+    "selection": {
+      "program_count_min": 30,
+      "program_count_max": 50,
+      "paired_change_count_min": 200,
+      "adversarial_negative_count_min": 300,
+      "runtime_observation_count_min": 300,
+      "interface_change_count_min": 100,
+      "capability_attack_count_min": 100,
+      "external_safe_trials_each_operation_min": 30
+    },
+    "domains": [
+      "cli application",
+      "pricing engine",
+      "authorization",
+      "inventory",
+      "small workflow",
+      "data transformation",
+      "event processing",
+      "plugin-like dispatch",
+      "configuration validation",
+      "notification service"
+    ],
+    "independence": [
+      "language-neutral specifications precede implementations",
+      "acceptance tests are frozen before either implementation",
+      "Python and Meldra implementations are produced independently",
+      "behavioral changes do not name source-level operations",
+      "compiler maintainers cannot inspect the hidden set before freeze release",
+      "external author and project provenance is retained"
+    ],
+    "exclusions": [
+      "UI GPU mobile and web frameworks",
+      "generated translations of Stage 0.4 fixtures",
+      "posthoc support-profile changes",
+      "reference-level repetition presented as independent evidence"
+    ]
+  },
+  "runtime_binding_categories": [
+    "module_monkey_patch",
+    "instance_monkey_patch",
+    "class_monkey_patch",
+    "decorator_replacement",
+    "descriptor",
+    "property",
+    "getattr",
+    "getattribute",
+    "metaclass_injection",
+    "import_hook",
+    "dynamic_reexport",
+    "open_world_subclass_override",
+    "dependency_injection",
+    "functools_partial",
+    "singledispatch"
+  ],
+  "interface_change_categories": [
+    "private_body_edit",
+    "private_rename",
+    "private_type_replacement",
+    "private_dependency_replacement",
+    "public_signature_change",
+    "public_return_type_change",
+    "public_effect_widening",
+    "public_capability_widening",
+    "public_enum_variant_addition"
+  ],
+  "capability_attack_categories": [
+    "forbidden_database_scope",
+    "forbidden_network_escalation",
+    "arbitrary_network_host",
+    "secret_to_ai_information_flow",
+    "effect_in_pure_function"
+  ],
+  "metrics": {
+    "runtime_binding": [
+      "static_exact",
+      "runtime_observed_targets",
+      "static_target_was_observed",
+      "unexpected_runtime_target",
+      "unsound_exact",
+      "unsound_exact_rate"
+    ],
+    "interface_locality": [
+      "invalidation_precision",
+      "invalidation_recall",
+      "unnecessary_invalidations",
+      "missed_invalidations",
+      "context_closure_size",
+      "evidence_recalculation_size"
+    ],
+    "effect_context": [
+      "context_symbols",
+      "context_tokens",
+      "agent_task_success",
+      "first_pass_success",
+      "missing_context_requests",
+      "unnecessary_context_ratio",
+      "verified_changes_per_1000_context_tokens"
+    ],
+    "capabilities": [
+      "violation_detection_recall",
+      "false_safe",
+      "false_block",
+      "time_to_detection",
+      "detection_before_materialization",
+      "runtime_escapes"
+    ],
+    "agent": [
+      "task_success",
+      "first_pass_success",
+      "input_tokens",
+      "output_tokens",
+      "tool_calls",
+      "iterations",
+      "wall_time",
+      "unintended_changes",
+      "policy_violations",
+      "human_interventions",
+      "long_horizon_regressions"
+    ],
+    "expressiveness": [
+      "fully_expressible_programs",
+      "features_requiring_ffi",
+      "dynamic_boundaries",
+      "annotation_burden",
+      "source_size",
+      "boilerplate",
+      "implementation_time",
+      "explicit_adapters"
+    ]
+  },
+  "statistical_policy": {
+    "primary_units": {
+      "runtime_binding": "runtime callsite scenario",
+      "interface_locality": "semantic change",
+      "capability_safety": "held-out attack task",
+      "agent_value": "paired behavior task",
+      "expressiveness": "program"
+    },
+    "clusters": [
+      "program",
+      "construct_family",
+      "template",
+      "external_author",
+      "external_project"
+    ],
+    "reference_level_results": "descriptive only",
+    "confidence_level": 0.95,
+    "confidence_method": "deterministic cluster bootstrap percentile interval",
+    "bootstrap_replicates": 10000,
+    "bootstrap_seed": 20260810,
+    "zero_failure_upper_bound": "exact one-sided Clopper-Pearson",
+    "infrastructure": "retained in a separate denominator and never silently dropped"
+  },
+  "failure_taxonomy": [
+    "unsound_exact",
+    "runtime_escape",
+    "false_safe",
+    "false_block",
+    "missed_invalidation",
+    "unnecessary_invalidation",
+    "acceptance_failure",
+    "test_collection_regression",
+    "public_api_regression",
+    "source_restoration_failure",
+    "unsupported_in_profile",
+    "out_of_profile",
+    "infrastructure_failure",
+    "hidden_set_contamination",
+    "agent_provider_unavailable"
+  ],
+  "hardening_gates": {
+    "differential_semantics": "all values and complete effect traces equal",
+    "metamorphic_invariants": "all frozen revision and identity relations hold",
+    "parser_fuzz_cases_min": 10000,
+    "parser_crashes_allowed": 0,
+    "mutation_score_min": 0.90,
+    "determinism": "byte-identical across processes, PYTHONHASHSEED values, and file orders"
+  },
+  "language_alpha_go": {
+    "all_required": true,
+    "runtime_soundness": {
+      "meldra_unsound_exact": 0,
+      "minimum_runtime_observations": 300,
+      "one_sided_95_upper_bound_max": 0.01,
+      "strict_python_residual_risk_or_material_burden_required": true
+    },
+    "capability_safety": {
+      "minimum_attacks": 100,
+      "detection_recall_min": 0.99,
+      "false_safe_max": 0,
+      "false_block_rate_max": 0.03,
+      "pre_materialization_rate_min": 1.0,
+      "runtime_escapes_max": 0
+    },
+    "interface_locality": {
+      "minimum_changes": 100,
+      "precision_min": 0.99,
+      "recall_min": 0.99,
+      "missed_invalidations_max": 0,
+      "median_context_closure_reduction_min": 0.30
+    },
+    "agent_value": {
+      "same_model_required": true,
+      "success_gain_points_min": 10.0,
+      "or_success_noninferiority_points": 2.0,
+      "with_token_or_iteration_reduction_min": 0.30,
+      "or_long_horizon_regression_reduction_min": 0.30
+    },
+    "expressiveness": {
+      "fully_expressible_rate_min": 0.90,
+      "foreign_escape_rate_max": 0.10,
+      "median_source_overhead_max": 0.25
+    },
+    "engineering_integrity": {
+      "external_acceptance_required": true,
+      "fuzz_required": true,
+      "mutation_required": true,
+      "determinism_required": true
+    }
+  },
+  "language_alpha_no_go": {
+    "strict_python_equivalence": {
+      "maximum_task_success_delta_points": 2.0,
+      "maximum_policy_recall_delta_points": 2.0,
+      "maximum_locality_delta_points": 2.0,
+      "maximum_relative_burden_advantage_for_meldra": 0.25
+    },
+    "rule": "If maximal strict Python is equivalent within all frozen deltas, the new language is NO-GO and Meldra becomes a strict semantic platform or cross-language semantic layer."
+  },
+  "stop_conditions": [
+    "any frozen Stage 0.4 digest changes after hidden-set access",
+    "acceptance tests change after arm outputs are observed",
+    "different logical denominators are used across arms",
+    "infrastructure failures are removed from published denominators",
+    "generated repeats are reported as independent samples",
+    "same-model or equal-budget constraints are violated",
+    "any mandatory GO metric remains unmeasured"
+  ],
+  "ablation_arms": [
+    "meldra_without_task_capsule",
+    "meldra_without_effects",
+    "meldra_without_changeir",
+    "meldra_without_capability_restrictions"
+  ],
+  "feature_freeze": {
+    "forbidden_during_stage04e": [
+      "new syntax",
+      "flow",
+      "machine",
+      "advanced generics",
+      "traits",
+      "macros",
+      "async runtime",
+      "scheduler",
+      "package registry",
+      "WASM or LLVM backend",
+      "UI GPU mobile",
+      "custom model"
+    ],
+    "posthoc_gate_changes": "forbidden"
+  }
+}

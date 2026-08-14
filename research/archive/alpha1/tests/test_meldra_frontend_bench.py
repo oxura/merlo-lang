@@ -13,7 +13,7 @@ from research.archive.alpha1.merlo.frontend_bench import (
 )
 
 
-ROOT = Path(__file__).parents[4]
+ROOT = Path(__file__).parents[1]
 
 
 def test_paired_corpus_has_30_programs_and_thousands_of_equal_logical_links():

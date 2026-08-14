@@ -13,7 +13,7 @@ from research.archive.historical_protocol.merlo.identity_ground_truth import (
 )
 
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_python_and_changeir_identity_claims_are_separate():

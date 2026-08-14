@@ -4,7 +4,7 @@ import hashlib
 from dataclasses import replace
 from typing import Iterable
 
-from research.archive.historical_protocol.merlo.model import (
+from .model import (
     IdentityStatus,
     Obligation,
     ObligationGraph,

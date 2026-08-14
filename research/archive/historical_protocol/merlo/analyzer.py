@@ -12,8 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, Mapping
 
-from research.archive.historical_protocol.merlo.identity import IdentityResolver, IdentitySnapshot
-from research.archive.historical_protocol.merlo.model import (
+from .identity import IdentityResolver, IdentitySnapshot
+from .model import (
     CallArgument,
     CallEdge,
     Entity,
