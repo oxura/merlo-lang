@@ -272,7 +272,12 @@ def _build_record(
     source_path = getattr(native, "source_path", None)
     record: dict[str, object] = {
         "status": getattr(native, "status", "FAILED"),
-        "source": [str(path.relative_to(base)) for path in source_paths],
+        "source": [
+            str(path.relative_to(base))
+            if path.resolve().is_relative_to(base)
+            else str(path.resolve())
+            for path in source_paths
+        ],
         "source_sha256": _source_digest(source_paths),
         "binary": str(binary_path) if binary_path is not None else None,
         "binary_sha256": getattr(native, "binary_sha256", None),
@@ -498,19 +503,24 @@ def build_productive_runner_registry(
             if arm == "concise_merlo":
                 concise_build = built
                 canonical_source = getattr(getattr(built, "elaborated"), "canonical_source")
+            record_source_paths = (
+                (canonical_entry,)
+                if canonical_entry is not None
+                else tuple(source_paths)
+            )
             builds[key] = _build_record(
                 base,
-                source_paths,
+                record_source_paths,
                 built,
                 adapter=adapter,
             )
-            if canonical_entry is not None and canonical_source is not None:
+            if canonical_entry is not None:
                 builds[key]["adapter_source"] = [
-                    str(canonical_entry.relative_to(build_root))
+                    str(canonical_entry.resolve())
                 ]
-                builds[key]["canonical_source_sha256"] = hashlib.sha256(
-                    canonical_source.encode("utf-8")
-                ).hexdigest()
+                builds[key]["canonical_source_sha256"] = _source_digest(
+                    (canonical_entry,)
+                )
             binary_path = getattr(getattr(built, "native", built), "binary_path", None)
             if (
                 getattr(getattr(built, "native", built), "status", None) == "MEASURED"
