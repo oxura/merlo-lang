@@ -1,10 +1,10 @@
 # Changelog
 
-## 0.1.0-alpha.2 — release candidate
+## 0.1.0-alpha.2 — 2026-08-14
 
-This release candidate updates the packaged product boundary while retaining
-the `alpha.1` language edition and the `0.2` language contract. No PyPI or
-other public artifact publication is claimed here.
+This GitHub prerelease updates the packaged product boundary while retaining
+the `alpha.1` language edition and the `0.2` language contract. No PyPI
+availability is claimed.
 
 - Packages the production compiler from `src/` and separates production code
   from archive, benchmark, and release-tool namespaces.
@@ -24,7 +24,7 @@ development began on 2026-03-19.
 > **Known release defects:** the alpha.1 public source archive omitted
 > `stdlib/std/core.mlo`; its wheel predates later Python and Clang portability
 > repairs. Both packages remain historical evidence and are not the recommended
-> installation path for the alpha.2 release candidate.
+> installation path for the alpha.2 prerelease.
 
 - Adds a Python 3.11+ bootstrap package and the `merlo` console script.
 - Publishes project creation, checking, native build/run, tests, formatting,

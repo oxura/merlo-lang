@@ -1,6 +1,6 @@
 # Security policy
 
-Merlo `0.1.0-alpha.2` is an early compiler and tooling release candidate. Treat generated
+Merlo `0.1.0-alpha.2` is the current prerelease compiler and tooling release. Treat generated
 native binaries, FFI declarations, project dependencies, and capability
 manifests as code that requires review. The capability checks narrow the
 operations declared by a task; they are not a substitute for host OS isolation,

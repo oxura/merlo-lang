@@ -1,7 +1,7 @@
 # Merlo documentation
 
-Merlo `0.1.0-alpha.2` is a Linux x86-64 release candidate with a Python 3.11+
-bootstrap package, a C11 Clang/GCC native path, and synchronous I/O.
+Merlo `0.1.0-alpha.2` is the current Linux x86-64 prerelease with a Python
+3.11+ bootstrap package, a C11 Clang/GCC native path, and synchronous I/O.
 
 - [Architecture](architecture.md) and [project history](project-history.md)
 - [Compiler contracts](compiler/index.md) — frontend through C11 and source maps

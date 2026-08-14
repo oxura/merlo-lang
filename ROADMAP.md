@@ -1,8 +1,8 @@
 # Merlo roadmap
 
-## 0.1.0-alpha.2 — release candidate
+## 0.1.0-alpha.2 — current prerelease
 
-The release candidate packages the Python 3.11+ bootstrap compiler and `merlo`
+The current prerelease packages the Python 3.11+ bootstrap compiler and `merlo`
 CLI after the production `src/` compiler, archive, benchmark, and release-tool
 boundaries were made explicit. The checked release surface includes:
 
