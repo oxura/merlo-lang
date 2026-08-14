@@ -482,7 +482,15 @@ def _preprocess(source: str) -> _Preprocessed:
             line = re.sub(r"^(\s*)(?:let|var)\s+", r"\1", line)
         if re.fullmatch(r"\s*uses\s+.+", line):
             line = ""
-        line = re.sub(r"\bOption\.None\b", "Option.NoneValue", line)
+        if (
+            "(" in line
+            and not re.match(r"^\s*(?:export\s+)?(?:fn|task)\b", line)
+        ):
+            line = re.sub(
+                r"(?:(?<=\()|(?<=,))\s*([A-Za-z_]\w*)\s*:",
+                r" \1=",
+                line,
+            )
         line = _rewrite_postfix_try(line)
         line = re.sub(r"\btrue\b", "True", line)
         line = re.sub(r"\bfalse\b", "False", line)
@@ -2057,6 +2065,67 @@ def _parse_type_declarations(
     return result
 
 
+def _normalize_named_arguments(
+    module: ast.Module,
+    functions: dict[str, ast.FunctionDef],
+    types: dict[str, HIRTypeDecl],
+    path: str,
+) -> None:
+    signatures: dict[str, tuple[str, ...]] = {
+        name: tuple(parameter.arg for parameter in function.args.args)
+        for name, function in functions.items()
+    }
+    signatures.update(
+        {
+            name: tuple(field.name for field in declaration.fields)
+            for name, declaration in types.items()
+            if declaration.kind == "record"
+        }
+    )
+    for call in (
+        node for node in ast.walk(module) if isinstance(node, ast.Call) and node.keywords
+    ):
+        if not isinstance(call.func, ast.Name):
+            continue
+        parameters = signatures.get(call.func.id)
+        if parameters is None:
+            continue
+        assigned: dict[str, ast.AST] = {}
+        for index, argument in enumerate(call.args):
+            if index >= len(parameters):
+                raise StructuredHIRCompileError(
+                    f"{path}:{call.lineno}: ArityMismatch: {call.func.id}"
+                )
+            parameter_name = parameters[index]
+            if parameter_name in assigned:
+                raise StructuredHIRCompileError(
+                    f"{path}:{call.lineno}: DuplicateArgument: "
+                    f"{call.func.id}.{parameter_name}"
+                )
+            assigned[parameter_name] = argument
+        for keyword in call.keywords:
+            if keyword.arg is None or keyword.arg not in parameters:
+                argument_name = keyword.arg or "**"
+                raise StructuredHIRCompileError(
+                    f"{path}:{call.lineno}: UnknownArgument: "
+                    f"{call.func.id}.{argument_name}"
+                )
+            if keyword.arg in assigned:
+                raise StructuredHIRCompileError(
+                    f"{path}:{call.lineno}: DuplicateArgument: "
+                    f"{call.func.id}.{keyword.arg}"
+                )
+            assigned[keyword.arg] = keyword.value
+        missing = tuple(name for name in parameters if name not in assigned)
+        if missing:
+            raise StructuredHIRCompileError(
+                f"{path}:{call.lineno}: MissingArgument: "
+                f"{call.func.id}: {', '.join(missing)}"
+            )
+        call.args = [assigned[name] for name in parameters]
+        call.keywords = []
+
+
 def compile_structured_hir(
     source: str,
     *,
@@ -2079,6 +2148,7 @@ def compile_structured_hir(
     function_nodes = {
         item.name: item for item in module.body if isinstance(item, ast.FunctionDef)
     }
+    _normalize_named_arguments(module, function_nodes, types, path)
     unsupported = [
         type(item).__name__
         for item in module.body
@@ -2096,8 +2166,8 @@ def compile_structured_hir(
         path,
         hashlib.sha256(source.encode()).hexdigest(),
         tuple(types.values()),
-        functions,
         entry_function,
+        native_module=module,
     )
 
 

@@ -2027,6 +2027,8 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             self.indent -= 1
             lines.append(f"{pad}}}")
             return lines
+        if isinstance(node, ast.Break):
+            return [f"{pad}break;"]
         if isinstance(node, ast.Continue):
             return [f"{pad}continue;"]
         if isinstance(node, ast.Pass):

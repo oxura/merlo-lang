@@ -176,3 +176,35 @@ def test_unit_tail_expression_runs_before_native_return(
 
     assert completed.returncode == 0
     assert completed.stdout == "tail\n"
+
+
+
+def test_surface_control_and_named_calls_reach_hir_and_c_lowering() -> None:
+    from merlo.representation_c_backend import emit_general_c
+    from merlo.representation_ir import lower_structured_hir_to_rir
+    from merlo.representation_mir import lower_rir_to_performance_mir
+    from merlo.structured_hir_v2 import compile_structured_hir
+
+    result = elaborate(
+        "subtract(left: Int64, right: Int64) = left - right\n\n"
+        "main():\n"
+        "    value = 0\n"
+        "    while value < 4:\n"
+        "        value += 1\n"
+        "        if value == 2:\n"
+        "            continue\n"
+        "        if value == 3:\n"
+        "            break\n"
+        "    subtract(right: value, left: 10)\n"
+    )
+    canonical_source = result.canonical.to_source()
+    hir = compile_structured_hir(canonical_source, path="surface.mlo")
+    kinds = {node.kind for node in hir.function("main").walk()}
+    assert {"Break", "Continue"} <= kinds
+
+    representation = lower_structured_hir_to_rir(hir)
+    mir = lower_rir_to_performance_mir(hir, representation)
+    generated = emit_general_c(hir, representation, mir)
+    assert "continue;" in generated.source
+    assert "break;" in generated.source
+    assert "merlo_fn_subtract(10, value)" in generated.source
