@@ -8,7 +8,8 @@ export enum TimeError:
     InvalidRange
 
 export time_now() -> Instant:
-    Instant(clock.seconds(), clock.nanoseconds())
+    stamp = clock.now()
+    Instant(Int64(stamp), 0)
 
 export time_seconds(value: Instant) -> Int64:
     value.seconds

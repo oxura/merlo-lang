@@ -10,9 +10,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 from .structured_hir_v2 import _rewrite_postfix_try
+from .intrinsics import (
+    INTRINSIC_SIGNATURES,
+    contextual_result_type,
+    format_intrinsic_arity,
+    intrinsic_signature,
+)
+from .modules import STDLIB_MODULES, _declaration
 from .version import VERSIONS
 from .runtime_contract import ALPHA_EFFECTS, CLOSED_EFFECTS
-from .modules import STDLIB_MODULES, _declaration
 from .canonical_ast import (
     CanonicalBinding,
     CanonicalEnum,
@@ -654,21 +660,12 @@ def _load_modules(entry: Path) -> tuple[_Module, ...]:
     visit(entry_module.name, entry.resolve())
     return tuple(ordered)
 
-_EFFECT_CALL_PATTERNS: dict[str, tuple[str, ...]] = {
-    "console.read": (r"\bconsole\.read\s*\(", r"\bconsole\.input\s*\("),
-    "console.write": (r"\bconsole\.write\s*\(",),
-    "fs.read": (r"\bfs\.(?:read|read_text|read_chunk|open_read)\s*\(",),
-    "fs.write": (r"\bfs\.(?:write|write_text|write_chunk|open_write)\s*\(",),
-    "env.read": (r"\benv\.(?:read|get)\s*\(",),
-    "clock.now": (r"\bclock\.now\s*\(",),
-    "random.read": (r"\brandom\.read\s*\(",),
-    "network.tcp": (
-        r"\b(?:network|tcp)\.(?:tcp|connect|send|receive|close)\b|"
-        r"\bnetwork\.tcp_(?:connect|send|receive|close)\s*\(",
-    ),
-    "network.http": (r"\b(?:network|http)\.(?:http|request|get|post)\s*\(",),
-    "process.args": (r"\bprocess\.(?:args|get_args)\s*\(",),
-}
+_EFFECT_CALL_PATTERNS: dict[str, tuple[str, ...]] = {}
+for _intrinsic in INTRINSIC_SIGNATURES.values():
+    _EFFECT_CALL_PATTERNS.setdefault(_intrinsic.effect, ())
+    _EFFECT_CALL_PATTERNS[_intrinsic.effect] += (
+        rf"\b{re.escape(_intrinsic.name)}\s*\(",
+    )
 
 
 def _direct_effects(source: str) -> set[str]:
@@ -1283,6 +1280,14 @@ class _Inference:
             name: _direct_effects(ast.unparse(state.node))
             for name, state in self.functions.items()
         }
+        main = self.functions.get("main")
+        if (
+            main is not None
+            and self.declared_function_kinds.get("main") == "task"
+            and tuple(main.parameters.values()) == ("Text",)
+            and main.return_type == "Text"
+        ):
+            direct["main"].update(("console.read", "console.write"))
         calls = {
             name: {
                 call.func.id
@@ -1498,6 +1503,8 @@ class _Inference:
                     and isinstance(node.value, int)
                 ):
                     return expected
+                if (actual, expected) in {("Text", "TextView"), ("Bytes", "BytesView")}:
+                    return expected
                 raise ConciseApplicationError(
                     f"{self.path}:{node.lineno}: TypeConflict literal {actual} vs {expected}"
                 )
@@ -1670,44 +1677,43 @@ class _Inference:
             method = node.func.attr
             receiver_text = ast.unparse(node.func.value)
             callee = ast.unparse(node.func)
-            if callee == "fs.read":
-                if node.args:
-                    self._expression(node.args[0], state, "Path")
-                return "Result[Bytes,AppError]"
-            if callee == "console.write":
-                if node.args:
-                    self._expression(node.args[0], state, "Text")
-                return "Unit"
-            if receiver_text == "network" and method == "tcp_connect":
-                if len(node.args) >= 2:
-                    self._expression(node.args[0], state, "Text")
-                    self._expression(node.args[1], state, "UInt64")
-                return expected or "Result[UInt64,AppError]"
-            if receiver_text == "network" and method == "tcp_send":
-                if len(node.args) >= 2:
-                    self._expression(node.args[0], state, "UInt64")
-                    self._expression(node.args[1], state, "BytesView")
-                return expected or "Result[UInt64,AppError]"
-            if receiver_text == "network" and method == "tcp_receive":
-                if len(node.args) >= 2:
-                    self._expression(node.args[0], state, "UInt64")
-                    self._expression(node.args[1], state, "UInt64")
-                return expected or "Result[Bytes,AppError]"
-            if receiver_text == "network" and method == "tcp_close":
-                if node.args:
-                    self._expression(node.args[0], state, "UInt64")
-                return expected or "Result[Unit,AppError]"
-            if receiver_text == "fs" and method in {
-                "read_text", "write_text", "read_chunk", "write_chunk", "close",
-                "open_write",
+            signature = intrinsic_signature(callee)
+            if signature is not None:
+                if len(node.args) != signature.arity:
+                    raise ConciseApplicationError(
+                        f"{self.path}:{node.lineno}: {format_intrinsic_arity(signature, len(node.args))}"
+                    )
+                for argument, parameter_type in zip(
+                    node.args,
+                    signature.parameters,
+                    strict=True,
+                ):
+                    self._expression(argument, state, parameter_type)
+                contextual_expected = (
+                    expected
+                    or (
+                        state.return_type
+                        if state.return_type.startswith("Result[")
+                        else None
+                    )
+                )
+                if (
+                    callee == "network.tcp_connect"
+                    and contextual_expected
+                    and contextual_expected.startswith("Result[TcpStream,")
+                ):
+                    return contextual_expected
+                return contextual_result_type(
+                    signature.result_type,
+                    contextual_expected,
+                )
+            if receiver_text in {
+                "console", "fs", "env", "clock", "random", "network", "tcp",
+                "process",
             }:
-                for argument in node.args:
-                    self._expression(argument, state)
-                return expected or "Result[Unit,AppError]"
-            if receiver_text == "fs" and method == "open_read":
-                if node.args:
-                    self._expression(node.args[0], state, "Path")
-                return expected or "Result[FileReader,AppError]"
+                raise ConciseApplicationError(
+                    f"{self.path}:{node.lineno}: UnknownIntrinsic: {callee}"
+                )
             if receiver_text == "Text" and method == "from_bytes":
                 return "Text"
             if receiver_text == "TextBuilder" and method == "new":
@@ -3118,9 +3124,9 @@ def _assemble_core(
         )
         if name == "main" and tuple(
             type_name for _, type_name in parameters
-        ) != ("Path",):
+        ) not in {("Path",), ("Text",)}:
             raise ConciseApplicationError(
-                f"{path}:{line}: CLI main requires exactly one Path parameter"
+                f"{path}:{line}: CLI main requires exactly one Path or Text parameter"
             )
         tasks.append(
             TaskBoundary(

@@ -1,5 +1,8 @@
 from __future__ import annotations
+import os
+import socket
 import subprocess
+import threading
 from pathlib import Path
 
 from merlo.concise_application import ConciseApplicationError, elaborate_concise_core
@@ -52,7 +55,7 @@ enum AppError:
     FileWrite
 
 fn main(path: Path) -> Result[Text, AppError]:
-    let file: FileReader = fs.open_write(path)
+    let file: FileReader = fs.open_write(path)?
     return Ok("ok")
 """
 
@@ -312,3 +315,210 @@ def test_ordinary_merlo_does_not_spell_manual_close() -> None:
     assert "fclose" not in STREAM_SOURCE
     assert "malloc" not in STREAM_SOURCE
     assert "free" not in STREAM_SOURCE
+
+
+def _build_effect_program(
+    source: str,
+    tmp_path: Path,
+    stem: str,
+) -> Path:
+    hir = compile_structured_hir(
+        source,
+        path=f"{stem}.mlo",
+        entry_function="main",
+    )
+    rir = lower_structured_hir_to_rir(hir)
+    mir = lower_rir_to_performance_mir(hir, rir)
+    generated = emit_general_c(hir, rir, mir)
+    build = compile_c_source(
+        generated.source,
+        output_dir=tmp_path,
+        stem=stem,
+    )
+    assert build.status == "MEASURED", build
+    assert build.binary_path is not None
+    return build.binary_path
+
+
+def test_text_entry_reads_stdin_and_writes_exact_text(
+    tmp_path: Path,
+) -> None:
+    binary = _build_effect_program(
+        "task main(input: Text) -> Text:\n"
+        "    return input\n",
+        tmp_path,
+        "text-entry",
+    )
+    completed = subprocess.run(
+        [binary],
+        input=b"hello\nworld",
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    assert (completed.returncode, completed.stdout, completed.stderr) == (
+        0,
+        b"hello\nworld",
+        b"",
+    )
+    invalid = subprocess.run(
+        [binary],
+        input=b"\xff",
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    assert (invalid.returncode, invalid.stdout, invalid.stderr) == (
+        74,
+        b"",
+        b"InvalidUtf8\n",
+    )
+
+
+def test_direct_host_result_evaluates_before_error_projection(
+    tmp_path: Path,
+) -> None:
+    source = """
+enum AppError:
+    NotFound
+    ReadFailure
+    InvalidUtf8
+    PermissionDenied
+    Closed
+
+task main(path: Path) -> Result[Text,AppError]:
+    uses fs.read
+    return fs.read_text(path)
+"""
+    binary = _build_effect_program(source, tmp_path, "direct-result")
+    missing = tmp_path / "missing.txt"
+    completed = subprocess.run(
+        [binary, str(missing)],
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    assert completed.returncode == 74
+    assert completed.stdout == b""
+    assert completed.stderr == f"AppError.NotFound:{missing}\n".encode()
+
+
+def test_console_read_line_and_all_are_distinct_in_native_runtime(
+    tmp_path: Path,
+) -> None:
+    line_source = """
+enum AppError:
+    System
+
+task main(path: Path) -> Result[Text,AppError]:
+    uses console.read
+    return Ok(console.read_line())
+"""
+    all_source = line_source.replace("read_line", "read_all")
+    line = _build_effect_program(line_source, tmp_path, "read-line")
+    read_all = _build_effect_program(all_source, tmp_path, "read-all")
+    payload = b"first\nsecond"
+    line_result = subprocess.run(
+        [line, "unused"],
+        input=payload,
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    all_result = subprocess.run(
+        [read_all, "unused"],
+        input=payload,
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    assert (line_result.returncode, line_result.stdout) == (0, b"first\n")
+    invalid_result = subprocess.run(
+        [read_all, "unused"],
+        input=b"\xff",
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    assert invalid_result.returncode != 0
+    assert invalid_result.stderr == b"InvalidUtf8\n"
+    assert (all_result.returncode, all_result.stdout) == (
+        0,
+        b"first\nsecond\n",
+    )
+
+
+def test_process_argument_lookup_reaches_native_program(
+    tmp_path: Path,
+) -> None:
+    source = """
+enum AppError:
+    System
+
+task main(path: Path) -> Result[Text,AppError]:
+    uses process.args
+    return Ok(process.arg(0))
+"""
+    binary = _build_effect_program(source, tmp_path, "process-arg")
+    completed = subprocess.run(
+        [binary, "argument-value"],
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    assert (completed.returncode, completed.stdout, completed.stderr) == (
+        0,
+        b"argument-value\n",
+        b"",
+    )
+
+
+def test_http_intrinsic_returns_actual_response_body(
+    tmp_path: Path,
+) -> None:
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+    port = listener.getsockname()[1]
+
+    def serve() -> None:
+        connection, _ = listener.accept()
+        with connection:
+            request = b""
+            while b"\r\n\r\n" not in request:
+                request += connection.recv(4096)
+            assert request.startswith(b"GET /body HTTP/1.0\r\n")
+            connection.sendall(
+                b"HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nhello"
+            )
+        listener.close()
+
+    server = threading.Thread(target=serve, daemon=True)
+    source = """
+enum AppError:
+    ConnectionRefused
+    System
+
+task main(path: Path) -> Result[Text,AppError]:
+    uses network.http
+    let bytes: Bytes = network.http_request(path.to_text())?
+    return Ok(Text.from_bytes(bytes, 0, bytes.len()))
+"""
+    binary = _build_effect_program(source, tmp_path, "http-request")
+    server.start()
+    environment = dict(os.environ)
+    environment["MERLO_NETWORK_HOST"] = "127.0.0.1"
+    completed = subprocess.run(
+        [binary, f"http://127.0.0.1:{port}/body"],
+        capture_output=True,
+        check=False,
+        env=environment,
+        timeout=10,
+    )
+    server.join(timeout=10)
+    assert not server.is_alive()
+    assert (completed.returncode, completed.stdout, completed.stderr) == (
+        0,
+        b"hello\n",
+        b"",
+    )

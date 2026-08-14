@@ -48,17 +48,14 @@ from .surface_ast import (
     SurfaceWhile,
 )
 from .type_parser import generic_parts, parse_type
+from .intrinsics import INTRINSIC_SIGNATURES, contextual_result_type
 
 class SurfaceElaborationError(ValueError):
     pass
 
 _HOST_CALLS = {
-    "console.read": ((), "Text", "console.read", "console.read"),
-    "console.write": (("Text",), "Unit", "console.write", "console.write"),
-    "fs.open_read": (("Path",), "Result[Bytes,FileError]", "fs.read", "fs.read"),
-    "fs.read": (("Path",), "Result[Bytes,FileError]", "fs.read", "fs.read"),
-    "fs.read_text": (("Path",), "Result[Text,FileError]", "fs.read", "fs.read"),
-    "fs.write_text": (("Path", "Text"), "Result[Unit,FileError]", "fs.write", "fs.write"),
+    name: (signature.parameters, signature.result_type, signature.effect, signature.capability)
+    for name, signature in INTRINSIC_SIGNATURES.items()
 }
 
 
@@ -901,7 +898,15 @@ class _Elaborator:
                         )
                     function.effects.add(effect)
                     function.capabilities.add(capability)
-                    term = self.types.typed(return_type)
+                    term = self.types.typed(
+                        expected
+                        if (
+                            name == "network.tcp_connect"
+                            and expected
+                            and expected.startswith("Result[TcpStream,")
+                        )
+                        else contextual_result_type(return_type, expected)
+                    )
             else:
                 raise SurfaceElaborationError("UnsupportedCall")
         elif isinstance(expression, SurfaceIndex):
@@ -962,7 +967,14 @@ class _Elaborator:
         else:
             raise SurfaceElaborationError(f"UnsupportedExpression: {type(expression).__name__}")
         if expected:
-            self.types.unify(term, self.types.typed(expected), context="expected expression type")
+            expected_term = self.types.typed(expected)
+            actual_type = self.types.concrete.get(self.types.find(term))
+            if (actual_type, expected) in {
+                ("Text", "TextView"),
+                ("Bytes", "BytesView"),
+            }:
+                return expected_term
+            self.types.unify(term, expected_term, context="expected expression type")
         return term
     def _statements(
         self,

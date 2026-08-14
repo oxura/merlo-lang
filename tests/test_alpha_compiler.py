@@ -110,6 +110,42 @@ def test_compile_project_emits_a_standalone_native_binary(tmp_path: Path) -> Non
     assert output.is_file()
 
 
+def test_concise_text_entry_reads_stdin_and_writes_returned_text(tmp_path: Path) -> None:
+    from merlo.compiler import compile_project
+
+    entry = tmp_path / "app" / "main.mlo"
+    entry.parent.mkdir()
+    entry.write_text(
+        "module app.main\n\n"
+        "fn echo(input: TextView) -> Text:\n"
+        "    input.to_text()\n\n"
+        "export task main(input: Text) -> Text:\n"
+        "    uses console.read, console.write\n"
+        "    return echo(input.view())\n",
+        encoding="utf-8",
+    )
+    compilation = compile_project(
+        entry,
+        emit_native=True,
+        output=tmp_path / "text-entry",
+        require_interface_lock=False,
+    )
+
+    assert compilation.native is not None
+    completed = subprocess.run(
+        [compilation.native.binary_path],
+        input="hello\nworld",
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert (completed.returncode, completed.stdout, completed.stderr) == (
+        0,
+        "hello\nworld",
+        "",
+    )
+
+
 def test_native_compile_rejects_non_unit_fallthrough_before_c_lowering(
     tmp_path: Path,
 ) -> None:
