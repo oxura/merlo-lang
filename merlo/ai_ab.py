@@ -25,6 +25,7 @@ class ProtocolError(ValueError):
     """Raised when a locked protocol or task artifact is invalid."""
 LOCKED_PROTOCOL_SHA256 = "a4d8468f8e7b42f1b8849c9da10a868597d2c848481717604d5f977b2ffbea21"
 LOCKED_TASKS_SHA256 = "e996fd273644ef8f369b6e7c5f45f5656b281f01a9569704d512bcb90a211e79"
+PREREGISTRATION_ROOT_SHA256 = "f051064cd214e4447658ee86d904c3a7fb04079818302c69017b8194ff2272d1"
 
 @dataclass(frozen=True)
 class Validation:
@@ -108,8 +109,13 @@ def _documents_match_preregistration_root(
     tasks: Mapping[str, Any],
 ) -> bool:
     schedule = tasks.get("schedule")
+    component_root = sha256_bytes(canonical_json({
+        "protocol_sha256": protocol.get("protocol_sha256"),
+        "tasks_sha256": tasks.get("tasks_sha256"),
+    }))
     return (
-        protocol.get("protocol_sha256") == LOCKED_PROTOCOL_SHA256
+        component_root == PREREGISTRATION_ROOT_SHA256
+        and protocol.get("protocol_sha256") == LOCKED_PROTOCOL_SHA256
         and tasks.get("tasks_sha256") == LOCKED_TASKS_SHA256
         and protocol.get("protocol_sha256") == _protocol_contract(protocol)
         and tasks.get("tasks_sha256")
@@ -453,9 +459,13 @@ def provider_identity_complete(provider: Mapping[str, Any] | None) -> bool:
 
 
 def unmeasured_report(reason: str = PROVIDER_IDENTITY_INCOMPLETE) -> dict[str, Any]:
-    return {"schema_version": SCHEMA_VERSION, "status": "UNMEASURED", "terminal_reason": reason,
-            "passed": False, "metrics": None, "denominators": {"pairs": 0, "measured_pairs": 0, "arm_attempts": 0},
-            "claim_eligible": False}
+    return {
+        "schema_version": SCHEMA_VERSION, "status": "UNMEASURED",
+        "terminal_reason": reason, "passed": False, "metrics": None,
+        "preregistration_root_sha256": PREREGISTRATION_ROOT_SHA256,
+        "denominators": {"pairs": 0, "measured_pairs": 0, "arm_attempts": 0},
+        "claim_eligible": False,
+    }
 
 def paired_bootstrap(
     successes: Mapping[str, Iterable[float] | tuple[float, float]],
@@ -701,6 +711,7 @@ def report_from_attempts(
         "schema_version": SCHEMA_VERSION, "status": "MEASURED",
         "terminal_reason": "completed", "passed": bool(gate),
         "claim_eligible": bool(gate), "decision": decision,
+        "preregistration_root_sha256": PREREGISTRATION_ROOT_SHA256,
         "provider_attestation": next(iter(provider_attestations.values())),
         "metrics": {
             "success_difference": success_ci,

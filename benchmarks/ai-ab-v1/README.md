@@ -23,6 +23,19 @@ black-box oracles. No provider request has been made and no result is implied.
 
 The fixture and oracle SHA-256 values are fully materialized in the manifest.
 
+The preregistration root is:
+
+```text
+protocol_sha256 = a4d8468f8e7b42f1b8849c9da10a868597d2c848481717604d5f977b2ffbea21
+tasks_sha256    = e996fd273644ef8f369b6e7c5f45f5656b281f01a9569704d512bcb90a211e79
+combined_root   = f051064cd214e4447658ee86d904c3a7fb04079818302c69017b8194ff2272d1
+```
+
+`combined_root` is the SHA-256 of canonical JSON containing the two named
+hashes. The validator pins both component hashes independently; the public Git
+merge commit is the external publication anchor. Changing either document and
+recomputing its self-hash therefore remains a protocol deviation.
+
 The runner validates `protocol.json`, `tasks.json`, every fixture, every oracle,
 the schedule, and all denominators before any provider call. A missing locked
 provider revision or key fingerprint is always

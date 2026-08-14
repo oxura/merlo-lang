@@ -10,6 +10,7 @@ import pytest
 
 from merlo.ai_ab import (
     PROVIDER_IDENTITY_INCOMPLETE,
+    PREREGISTRATION_ROOT_SHA256,
     ProtocolError,
     canonical_json,
     paired_bootstrap,
@@ -58,6 +59,7 @@ def test_provider_identity_is_never_inferred() -> None:
     assert report["status"] == "UNMEASURED"
     assert report["terminal_reason"] == PROVIDER_IDENTITY_INCOMPLETE
     assert report["metrics"] is None
+    assert report["preregistration_root_sha256"] == PREREGISTRATION_ROOT_SHA256
 
 
 def test_paired_bootstrap_is_seeded_and_keeps_task_pairs() -> None:
@@ -274,6 +276,7 @@ def test_complete_attempt_denominator_produces_registered_decision() -> None:
     }
     assert report["provider_attestation"]["revision"] == "immutable-revision"
 
+    assert report["preregistration_root_sha256"] == PREREGISTRATION_ROOT_SHA256
 
 def test_report_rejects_rehashed_protocol_deviation() -> None:
     protocol = json.loads((ROOT / "benchmarks/ai-ab-v1/protocol.json").read_text())
