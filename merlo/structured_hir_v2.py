@@ -13,8 +13,9 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from .ffi import FFICompileError, FFIProgram, parse_ffi_declarations, validate_ffi
 from .canonical_ast import CanonicalProgram
+from .ffi import FFICompileError, FFIProgram, parse_ffi_declarations, validate_ffi
+from .intrinsics import contextual_result_type, format_intrinsic_arity, intrinsic_signature
 from .type_parser import generic_parts, parse_type, validate_type_expr
 
 
@@ -300,10 +301,50 @@ def _span(path: str, node: ast.AST) -> SourceSpan:
     )
 
 
+def _ast_qualified_name(node: ast.AST) -> str:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        owner = _ast_qualified_name(node.value)
+        return f"{owner}.{node.attr}" if owner else node.attr
+    return ""
+def _ast_pattern_name(pattern: ast.pattern) -> str:
+    if isinstance(pattern, ast.MatchValue):
+        return _ast_qualified_name(pattern.value)
+    if isinstance(pattern, ast.MatchClass):
+        return _ast_qualified_name(pattern.cls)
+    if isinstance(pattern, ast.MatchAs):
+        return pattern.name or "_"
+    if isinstance(pattern, ast.MatchSingleton):
+        return "None" if pattern.value is None else str(pattern.value)
+    return ""
 def _type_name(node: ast.AST | None) -> str:
     if node is None:
         return "Unit"
-    type_name = ast.unparse(node).replace(" ", "")
+
+    def render(item: ast.AST) -> str:
+        if isinstance(item, ast.Name):
+            return item.id
+        if isinstance(item, ast.Attribute):
+            owner = render(item.value)
+            return f"{owner}.{item.attr}"
+        if isinstance(item, ast.Constant) and isinstance(item.value, int):
+            return str(item.value)
+        if isinstance(item, ast.Subscript):
+            parts = (
+                item.slice.elts
+                if isinstance(item.slice, ast.Tuple)
+                else (item.slice,)
+            )
+            return (
+                f"{render(item.value)}["
+                f"{','.join(render(part) for part in parts)}]"
+            )
+        raise StructuredHIRCompileError(
+            f"MalformedType: unsupported AST node {type(item).__name__}"
+        )
+
+    type_name = render(node)
     for alias, canonical in _TYPE_ALIASES.items():
         type_name = re.sub(rf"\b{alias}\b", canonical, type_name)
     try:
@@ -621,7 +662,7 @@ class _OwnershipChecker:
             if isinstance(node.func, ast.Attribute):
                 receiver = self._expr_type(node.func.value)
                 method = node.func.attr
-                receiver_text = ast.unparse(node.func.value)
+                receiver_text = _ast_qualified_name(node.func.value)
                 if receiver_text == "Text" and method == "from_bytes":
                     return "Text"
                 if receiver_text == "TextBuilder" and method == "new":
@@ -719,7 +760,11 @@ class _OwnershipChecker:
             self._check_expr(node.slice, state)
             return self._expr_type(node, expected)
         if isinstance(node, ast.Call):
-            name = node.func.id if isinstance(node.func, ast.Name) else ast.unparse(node.func)
+            name = (
+                node.func.id
+                if isinstance(node.func, ast.Name)
+                else _ast_qualified_name(node.func)
+            )
             if isinstance(node.func, ast.Name) and node.func.id == "drop":
                 if len(node.args) != 1 or not isinstance(node.args[0], ast.Name):
                     self._error("InvalidDrop")
@@ -748,9 +793,23 @@ class _OwnershipChecker:
             if receiver is not None:
                 self._check_expr(receiver, state)
             argument_types = [
-                self._check_expr(argument, state)
+                "value"
+                if getattr(argument, "_merlo_implicit_callable", None) is not None
+                else self._check_expr(argument, state)
                 for argument in node.args
             ]
+            signature = intrinsic_signature(name)
+            if signature is not None:
+                for argument, parameter_ownership in zip(
+                    node.args, signature.parameter_ownership, strict=True
+                ):
+                    root = self._root_name(argument)
+                    if root is None:
+                        continue
+                    if parameter_ownership == "borrow_mut":
+                        self._check_mutation(root, state)
+                    elif parameter_ownership in {"owned", "consuming"}:
+                        self._consume(root, state)
             if isinstance(node.func, ast.Name) and node.func.id in self.functions:
                 callee = self.functions[node.func.id]
                 for argument, parameter in zip(node.args, callee.args.args):
@@ -769,9 +828,7 @@ class _OwnershipChecker:
                 element = vec_parts[0] if vec_parts is not None else None
                 if self._owner(element) and isinstance(node.args[0], ast.Name):
                     self._consume(node.args[0].id, state)
-            elif receiver_text := (
-                ast.unparse(receiver) if receiver is not None else ""
-            ):
+            elif (receiver_text := _ast_qualified_name(receiver)) :
                 if receiver_text == "Box" and method == "new" and node.args:
                     argument = node.args[0]
                     if isinstance(argument, ast.Name) and self._owner(self._expr_type(argument)):
@@ -785,7 +842,7 @@ class _OwnershipChecker:
             return _OwnershipState(dict(before.statuses), dict(before.borrows), True)
         for name in sorted(before.statuses):
             statuses = {
-                branch.statuses.get(name, before.statuses.get(name))
+                branch.statuses.get(name, "absent")
                 for branch in live
             }
             if len(statuses) > 1:
@@ -1090,7 +1147,42 @@ class _HIRBuilder:
                 children=(owner,),
             )
         if isinstance(node, ast.Call):
-            arguments = tuple(self.expression(item) for item in node.args)
+            if (
+                isinstance(node.func, ast.Name)
+                and node.func.id == "__merlo_try__"
+                and len(node.args) == 1
+                and isinstance(node.args[0], ast.Call)
+            ):
+                inner_call = node.args[0]
+                signature = intrinsic_signature(ast.unparse(inner_call.func))
+                inner_expected = None
+                if signature is not None and signature.result_type.startswith("Result["):
+                    function_return = _type_name(
+                        self.functions[self.current_function].returns
+                    )
+                    function_parts = self._result_parts(function_return)
+                    signature_parts = self._result_parts(signature.result_type)
+                    if function_parts is not None and signature_parts is not None:
+                        inner_expected = (
+                            function_return
+                            if (
+                                signature.name == "network.tcp_connect"
+                                and function_parts[0] == "TcpStream"
+                            )
+                            else (
+                                f"Result[{signature_parts[0]},"
+                                f"{function_parts[1]}]"
+                            )
+                        )
+                arguments = (
+                    self.expression(inner_call, expected=inner_expected),
+                )
+            else:
+                arguments = tuple(
+                    self.expression(item)
+                    for item in node.args
+                    if getattr(item, "_merlo_implicit_callable", None) is None
+                )
             return self._call(node, arguments, expected=expected)
         if isinstance(node, ast.BinOp):
             children = (self.expression(node.left), self.expression(node.right))
@@ -1223,7 +1315,7 @@ class _HIRBuilder:
         *,
         expected: str | None = None,
     ) -> HIRNode:
-        name = ast.unparse(node.func)
+        name = _ast_qualified_name(node.func)
         if isinstance(node.func, ast.Name) and node.func.id == "__merlo_try__":
             if len(arguments) != 1:
                 raise StructuredHIRCompileError(
@@ -1422,97 +1514,142 @@ class _HIRBuilder:
             ):
                 raise StructuredHIRCompileError(f"UnresolvedName: {name}")
         if isinstance(node.func, ast.Attribute):
-            receiver_text = ast.unparse(node.func.value)
+            receiver_text = _ast_qualified_name(node.func.value)
             receiver_type = self.local_types.get(receiver_text)
             method = node.func.attr
-            if receiver_text == "fs" and method in {
-                "open_read", "read", "read_text", "read_chunk", "open_write",
-                "write_text", "write_chunk", "close",
-            }:
-                if method == "open_read":
-                    kind = "FileOpen"
-                is_write = method in {"open_write", "write_text", "write_chunk"}
-                contextual_return = _type_name(
-                    self.functions[self.current_function].returns
+            callee = f"{receiver_text}.{method}"
+            signature = intrinsic_signature(callee)
+            if method in {"where", "map", "count"}:
+                receiver = self.expression(node.func.value)
+                receiver_type = receiver.type_name or receiver_type
+                parts = generic_parts(receiver_type, "Vec", arity=1)
+                metadata = (
+                    getattr(node.args[0], "_merlo_implicit_callable", None)
+                    if len(node.args) == 1
+                    else None
                 )
-                contextual_parts = self._result_parts(contextual_return)
-                contextual_error = (
-                    contextual_parts[1] if contextual_parts is not None else "AppError"
+                if parts is None or metadata is None:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: typed collection callable metadata required"
+                    )
+                callable_id, parameter, parameter_type, return_type, expression_text = metadata
+                expected_return = "Bool" if method in {"where", "count"} else return_type
+                if method in {"where", "count"} and return_type != "Bool":
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: {method} callable must return Bool"
+                    )
+                callback = self._new_node(
+                    node.args[0],
+                    "ImplicitCallable",
+                    type_name=expected_return,
+                    attributes={
+                        "callable_id": callable_id,
+                        "callable_parameter": parameter,
+                        "parameter_type": parameter_type,
+                        "expression": expression_text,
+                    },
                 )
-                ok_type = (
-                    "FileReader" if method in {"open_read", "open_write"}
-                    else "Bytes" if method in {"read", "read_text", "read_chunk"}
-                    else "Unit"
+                kind = "VecOperation"
+                type_name = (
+                    "UInt64"
+                    if method == "count"
+                    else receiver_type
+                    if method == "where"
+                    else f"Vec[{return_type}]"
                 )
-                fallback = f"Result[{ok_type},{contextual_error}]"
-                type_name = fallback
+                operation_children = (receiver, callback)
+                call_attributes.update(
+                    {
+                        "vec_operation": method,
+                        "element_type": parts[0],
+                        "callable_parameter": parameter,
+                    }
+                )
+            elif signature is not None:
+                if len(arguments) != signature.arity:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: {format_intrinsic_arity(signature, len(arguments))}"
+                    )
+                for index, (argument, parameter_type) in enumerate(
+                    zip(arguments, signature.parameters, strict=True), 1
+                ):
+                    actual = argument.type_name
+                    if actual != parameter_type and not (
+                        (actual, parameter_type) in {("Text", "TextView"), ("Bytes", "BytesView")}
+                    ):
+                        raise StructuredHIRCompileError(
+                            f"{self.path}:{node.lineno}: IntrinsicTypeMismatch: {callee} "
+                            f"argument {index} expects {parameter_type}, got {actual}"
+                        )
+                kind = "FileOpen" if callee in {"fs.open_read", "fs.open_write"} else "DirectCall"
+                signature_parts = self._result_parts(signature.result_type)
+                if (
+                    callee == "network.tcp_connect"
+                    and expected
+                    and expected.startswith("Result[TcpStream,")
+                ):
+                    type_name = expected
+                elif (
+                    signature_parts is not None
+                    and expected == signature_parts[0]
+                ):
+                    function_return = _type_name(
+                        self.functions[self.current_function].returns
+                    )
+                    function_parts = self._result_parts(function_return)
+                    type_name = (
+                        f"Result[{signature_parts[0]},{function_parts[1]}]"
+                        if function_parts is not None
+                        else signature.result_type
+                    )
+                else:
+                    type_name = contextual_result_type(
+                        signature.result_type,
+                        expected,
+                    )
                 if expected and expected.startswith("Result["):
                     expected_parts = self._result_parts(expected)
-                    if expected_parts is None or expected_parts[0] != ok_type:
-                        raise StructuredHIRCompileError(
-                            f"{self.path}:{node.lineno}: {receiver_text}.{method} "
-                            f"returns {ok_type}, not {expected_parts[0] if expected_parts else expected}"
+                    result_parts = self._result_parts(signature.result_type)
+                    if (
+                        expected_parts is None
+                        or result_parts is None
+                        or (
+                            expected_parts[0] != result_parts[0]
+                            and not (
+                                callee == "network.tcp_connect"
+                                and expected_parts[0] == "TcpStream"
+                                and result_parts[0] == "UInt64"
+                            )
                         )
-                    type_name = f"Result[{ok_type},{expected_parts[1]}]"
-                effects.update(("fs.write", "may_fail") if is_write else ("fs.read", "may_fail"))
+                    ):
+                        raise StructuredHIRCompileError(
+                            f"{self.path}:{node.lineno}: {callee} returns "
+                            f"{result_parts[0] if result_parts else signature.result_type}, "
+                            f"not {expected_parts[0] if expected_parts else expected}"
+                        )
+                ownership = signature.result_ownership
+                effects.add(signature.effect)
+                if signature.result_type.startswith("Result["):
+                    effects.add("may_fail")
                 operation_children = arguments
-                result_parts = self._result_parts(type_name)
-                error_type = result_parts[1] if result_parts is not None else "AppError"
-                call_attributes.update({"resource": "FileReader" if method in {"open_read", "open_write"} else "Bytes", "host_operation": method, "error_type": error_type})
-            elif receiver_text == "network" and method in {
-                "tcp_connect", "tcp_send", "tcp_receive", "tcp_close",
+                call_attributes["host_operation"] = method
+                if type_name.startswith("Result["):
+                    call_attributes["error_type"] = type_name.split(",", 1)[1].rstrip("]")
+                if callee.startswith("fs."):
+                    call_attributes["resource"] = (
+                        "FileReader"
+                        if method in {"open_read", "open_write"}
+                        else "Text"
+                        if method == "read_text"
+                        else "Bytes"
+                    )
+            elif receiver_text in {
+                "console", "fs", "env", "clock", "random", "network", "tcp",
+                "process",
             }:
-                kind = "DirectCall"
-                contextual_return = _type_name(
-                    self.functions[self.current_function].returns
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: UnknownIntrinsic: {callee}"
                 )
-                contextual_parts = self._result_parts(contextual_return)
-                contextual_error = (
-                    contextual_parts[1] if contextual_parts is not None else "AppError"
-                )
-                ok_type = (
-                    "UInt64" if method in {"tcp_connect", "tcp_send"}
-                    else "Bytes" if method == "tcp_receive"
-                    else "Unit"
-                )
-                fallback = f"Result[{ok_type},{contextual_error}]"
-                type_name = fallback
-                if expected and expected.startswith("Result["):
-                    expected_parts = self._result_parts(expected)
-                    if expected_parts is None or expected_parts[0] != ok_type:
-                        raise StructuredHIRCompileError(
-                            f"{self.path}:{node.lineno}: {receiver_text}.{method} "
-                            f"returns {ok_type}, not {expected_parts[0] if expected_parts else expected}"
-                        )
-                    type_name = f"Result[{ok_type},{expected_parts[1]}]"
-                operation_children = arguments
-                result_parts = self._result_parts(type_name)
-                error_type = result_parts[1] if result_parts is not None else "AppError"
-                call_attributes.update({"host_operation": method, "error_type": error_type})
-            elif receiver_text == "console" and method in {"read", "write"}:
-                kind = "DirectCall"
-                type_name = "Unit" if method == "write" else "Bytes"
-                effects.add(f"console.{method}")
-                operation_children = arguments
-                call_attributes.update({"host_operation": f"console.{method}"})
-            elif receiver_text in {"env", "clock", "random", "process"}:
-                kind = "DirectCall"
-                effect = {
-                    "env": "env.read",
-                    "clock": "clock.now",
-                    "random": "random.read",
-                    "process": "process.args",
-                }[receiver_text]
-                type_name = "Text" if receiver_text == "env" else "Bytes" if receiver_text == "random" else "UInt64"
-                effects.add(effect)
-                operation_children = arguments
-                call_attributes.update({"host_operation": f"{receiver_text}.{method}"})
-            elif receiver_text == "network" and method in {"http_request", "http", "request"}:
-                kind = "DirectCall"
-                type_name = expected or "Result[Bytes,AppError]"
-                effects.update(("network.http", "may_fail"))
-                operation_children = arguments
-                call_attributes.update({"host_operation": "network.http"})
             elif receiver_type == "FileReader" and method == "lines":
                 kind = "FileLines"
                 type_name = "FileLines"
@@ -1600,6 +1737,11 @@ class _HIRBuilder:
                     box_parts = generic_parts(receiver_type, "Box", arity=1)
                     if box_parts is not None:
                         type_name = box_parts[0]
+            elif receiver_type == "Path" and method == "to_text":
+                kind = "BytesTextOperation"
+                type_name = "Text"
+                ownership = "owned"
+                effects.update(("allocate", "copy", "may_fail"))
             elif (
                 receiver_text in {"Text", "TextBuilder"}
                 or receiver_type in {
@@ -1623,7 +1765,7 @@ class _HIRBuilder:
                 elif receiver_type == "Bytes" and method == "view":
                     type_name = "BytesView"
                     ownership = "borrow"
-                elif receiver_type == "Text" and method == "as_view":
+                elif receiver_type == "Text" and method in {"as_view", "view"}:
                     type_name = "TextView"
                     ownership = "borrow"
                 elif receiver_type == "Text" and method == "clone":
@@ -1692,7 +1834,7 @@ class _HIRBuilder:
         for node in ast.walk(function):
             if not isinstance(node, ast.Call):
                 continue
-            name = ast.unparse(node.func)
+            name = _ast_qualified_name(node.func)
             if (
                 ".push" in name
                 or name in {"Vec.new", "TextBuilder.new", "Text.from_bytes", "Map.new"}
@@ -1700,29 +1842,11 @@ class _HIRBuilder:
                 or name.endswith(".increment")
             ):
                 effects.update(("allocate", "may_fail"))
-            if name in {"fs.open_read", "fs.read", "fs.read_text", "fs.read_chunk", "fs.close"}:
-                effects.update(("fs.read", "may_fail"))
-            elif name in {"fs.open_write", "fs.write_text", "fs.write_chunk"}:
-                effects.update(("fs.write", "may_fail"))
-            elif name in {"console.read", "console.write"}:
-                effects.add(name)
-            elif name.startswith("env."):
-                effects.add("env.read")
-            elif name.startswith("clock."):
-                effects.add("clock.now")
-            elif name.startswith("random."):
-                effects.add("random.read")
-            elif name.startswith("process."):
-                effects.add("process.args")
-            elif (
-                name in {"network.tcp", "tcp.connect"}
-                or name.startswith(("network.tcp_", "tcp."))
-            ):
-                effects.update(("network.tcp", "may_fail"))
-            elif name.startswith("network.") and any(
-                operation in name for operation in ("http", "request")
-            ):
-                effects.update(("network.http", "may_fail"))
+            signature = intrinsic_signature(name)
+            if signature is not None:
+                effects.add(signature.effect)
+                if signature.result_type.startswith("Result["):
+                    effects.add("may_fail")
             elif isinstance(node.func, ast.Name) and node.func.id in self.functions:
                 effects.update(
                     self._function_effect_hint(self.functions[node.func.id], visiting)
@@ -1741,6 +1865,13 @@ class _HIRBuilder:
                 if node.value is not None
                 else ()
             )
+            if isinstance(value, HIRNode) and value.type_name != type_name:
+                if self._result_parts(value.type_name) is not None:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: BindingTypeMismatch: "
+                        f"{node.target.id} expects {type_name}, got {value.type_name}; "
+                        "propagate or match the Result explicitly"
+                    )
             binding = self.preprocessed.binding_kinds.get(node.lineno, "let")
             return self._new_node(
                 node,
@@ -1760,7 +1891,7 @@ class _HIRBuilder:
                 node,
                 kind,
                 type_name=value.type_name,
-                attributes={"target": ast.unparse(target)},
+                attributes={"target": _ast_qualified_name(target)},
                 children=(value,),
                 scope_id=scope_id,
             )
@@ -1771,7 +1902,7 @@ class _HIRBuilder:
                 node,
                 "AugAssign",
                 type_name=target.type_name or value.type_name,
-                attributes={"target": ast.unparse(node.target), "operator": type(node.op).__name__},
+                attributes={"target": _ast_qualified_name(node.target), "operator": type(node.op).__name__},
                 children=(target, value),
                 scope_id=scope_id,
             )
@@ -1787,7 +1918,23 @@ class _HIRBuilder:
         if isinstance(node, ast.Break):
             return self._new_node(node, "Break", scope_id=scope_id)
         if isinstance(node, ast.Return):
-            child = self.expression(node.value) if node.value is not None else None
+            expected_return = _type_name(
+                self.functions[self.current_function].returns
+            )
+            child = (
+                self.expression(node.value, expected=expected_return)
+                if node.value is not None
+                else None
+            )
+            if (
+                child is not None
+                and self._result_parts(child.type_name) is not None
+                and self._result_parts(expected_return) is None
+            ):
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: ReturnTypeMismatch: "
+                    f"expected {expected_return}, got {child.type_name}"
+                )
             return_type = child.type_name if child else "Unit"
             ownership = (
                 "owned"
@@ -1871,7 +2018,7 @@ class _HIRBuilder:
         index: int,
         subject_type: str | None,
     ) -> HIRNode:
-        pattern_text = ast.unparse(case.pattern)
+        pattern_text = _ast_pattern_name(case.pattern)
         bindings: dict[str, str] = {}
         if isinstance(case.pattern, ast.MatchClass):
             variant_name = (
@@ -2120,8 +2267,8 @@ def compile_canonical_hir(
             program.to_source(),
             entry_function=entry_function,
         )
-    source = program.to_source()
-    path = next(
+    source = program.projection_source or ""
+    path = program.source_path or next(
         (
             function.span.path
             for function in program.functions
@@ -2130,6 +2277,10 @@ def compile_canonical_hir(
         "main.mlo",
     )
     module = copy.deepcopy(program.native_module)
+    try:
+        compile(module, path, "exec")
+    except (TypeError, ValueError, SyntaxError) as error:
+        raise StructuredHIRCompileError(f"{path}: invalid native AST: {error}") from error
     _validate_map_specializations(module, path)
     preprocessed = _Preprocessed(
         source,
@@ -2173,7 +2324,7 @@ def compile_canonical_hir(
     return StructuredHIRProgram(
         source,
         path,
-        program.semantic_hash,
+        hashlib.sha256(source.encode()).hexdigest(),
         tuple(types.values()),
         functions,
         entry_function,

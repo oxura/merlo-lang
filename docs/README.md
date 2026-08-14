@@ -16,6 +16,7 @@ package, a C11 Clang/GCC native path, and synchronous I/O.
   [AI protocol](ai-protocol.md)
 - [Public AI evaluation](ai-evaluation.md) — preregistered, currently
   `PREREGISTERED_UNRUN` Merlo/Python same-model A/B
+- [Public native benchmark v1](benchmark.md) — fixed three-workload reproduction and claim boundary
 - [CLI](tooling.md) and [LSP](lsp.md)
 - [Examples](examples.md)
 - [Limitations](limitations.md)

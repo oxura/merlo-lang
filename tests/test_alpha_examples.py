@@ -23,6 +23,7 @@ EXAMPLE_NAMES = (
     "grep",
     "network",
     "ffi",
+    "capacity-ledger",
     "packages",
 )
 
@@ -35,6 +36,7 @@ _INPUTS = {
     "network": "input.txt",
     "ffi": "input.txt",
     "packages": "input.txt",
+    "capacity-ledger": "input.txt",
 }
 
 
@@ -46,7 +48,7 @@ def _sources(project: Path) -> tuple[Path, ...]:
     return tuple(sorted(project.rglob("*.mlo")))
 
 
-def test_exactly_eight_independent_projects_have_complete_contract() -> None:
+def test_exactly_nine_independent_projects_have_complete_contract() -> None:
     names = tuple(sorted(path.name for path in EXAMPLES.iterdir() if path.is_dir()))
     assert names == tuple(sorted(EXAMPLE_NAMES))
     for name in EXAMPLE_NAMES:
@@ -154,3 +156,39 @@ def test_expected_outputs_and_python_free_native_rerun(tmp_path: Path) -> None:
         assert completed.returncode == 0, completed.stderr
         assert completed.stdout == expected
         assert completed.stderr == ""
+
+
+def test_capacity_ledger_rejects_invalid_records_natively(tmp_path: Path) -> None:
+    clean_entries = []
+    for item in os.environ.get("PATH", "").split(os.pathsep):
+        if not item:
+            continue
+        if any(shutil.which(candidate, path=item) for candidate in ("python", "python3", "python3.14")):
+            continue
+        clean_entries.append(item)
+    clean_path = os.pathsep.join(clean_entries)
+    project = Project.load(_project("capacity-ledger"))
+    build = compile_project(
+        project.root,
+        emit_native=True,
+        release=True,
+        output=tmp_path / "capacity-ledger",
+        require_interface_lock=False,
+    )
+    assert build.native is not None and build.native.binary_path is not None
+    fixtures = (
+        "malformed_record.txt",
+        "invalid_lane.txt",
+        "invalid_minutes.txt",
+        "total_overflow.txt",
+    )
+    for fixture in fixtures:
+        completed = subprocess.run(
+            [build.native.binary_path, str(project.root / "tests" / "fixtures" / fixture)],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={"PATH": clean_path},
+        )
+        assert completed.returncode == 74
+        assert completed.stdout == ""

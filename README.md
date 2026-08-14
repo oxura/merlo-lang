@@ -63,7 +63,7 @@ parses JSON, matches its root value, and builds typed output.
 - HIR, Representation IR, MIR, C11 lowering, and native executable generation
 - CLI commands for `new`, `check`, `fmt`, `test`, `build`, `run`, `map`, and
   `inspect`
-- an LSP server, editor grammar, FFI boundary, standard library, and eight
+- an LSP server, editor grammar, FFI boundary, standard library, and nine
   runnable example projects
 
 The supported alpha target is Linux x86-64 with a C11-capable Clang or GCC
@@ -82,6 +82,17 @@ same-model A/B is `PREREGISTERED_UNRUN` in
 [the AI evaluation protocol](docs/ai-evaluation.md); it has not contacted a
 provider. No general native-performance, simplicity, or AI-productivity
 superiority is claimed.
+
+The public native benchmark is a separate, narrow observation over the three
+checked-in Linux x86-64 workloads:
+
+```console
+python3 -m merlo benchmark --output ./merlo-benchmark-v1.json
+```
+
+Its exact claim and clean-clone reproduction are documented in
+[Public native benchmark v1](docs/benchmark.md). This does not claim general
+native performance, language ranking, Rust performance, or AI productivity.
 
 ## Compiler
 

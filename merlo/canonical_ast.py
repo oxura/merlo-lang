@@ -4,6 +4,7 @@ import ast
 import hashlib
 import json
 from dataclasses import dataclass, field
+from typing import Any
 
 from .surface_ast import SourceSpan
 
@@ -200,6 +201,16 @@ class CanonicalProgram:
         repr=False,
         compare=False,
     )
+    source_path: str | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+    )
+    source_sha256: str | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+    )
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -330,8 +341,6 @@ class CanonicalProgram:
         )
 
     def to_source(self) -> str:
-        if self.projection_source is not None:
-            return self.projection_source
         chunks: list[str] = []
         for record in self.records:
             prefix = "export " if record.exported else ""

@@ -83,6 +83,7 @@ merlo = ["stdlib/*.mlo"]
   "docs/tooling.md",
   "docs/lsp.md",
   "docs/examples.md",
+  "docs/benchmark.md",
   "docs/limitations.md",
 ]
 "spec" = [
@@ -141,6 +142,26 @@ merlo = ["stdlib/*.mlo"]
 "examples/ffi" = ["examples/ffi/merlo.toml", "examples/ffi/merlo.lock", "examples/ffi/input.txt", "examples/ffi/expected.txt"]
 "examples/ffi/src" = ["examples/ffi/src/main.mlo"]
 "examples/ffi/tests" = ["examples/ffi/tests/ffi.mlo"]
+"examples/capacity-ledger" = [
+  "examples/capacity-ledger/merlo.toml",
+  "examples/capacity-ledger/merlo.lock",
+  "examples/capacity-ledger/input.txt",
+  "examples/capacity-ledger/expected.txt",
+]
+"examples/capacity-ledger/src" = [
+  "examples/capacity-ledger/src/main.mlo",
+  "examples/capacity-ledger/src/decode.mlo",
+  "examples/capacity-ledger/src/ledger.mlo",
+]
+"examples/capacity-ledger/tests" = [
+  "examples/capacity-ledger/tests/capacity_ledger.mlo",
+]
+"examples/capacity-ledger/tests/fixtures" = [
+  "examples/capacity-ledger/tests/fixtures/malformed_record.txt",
+  "examples/capacity-ledger/tests/fixtures/invalid_lane.txt",
+  "examples/capacity-ledger/tests/fixtures/invalid_minutes.txt",
+  "examples/capacity-ledger/tests/fixtures/total_overflow.txt",
+]
 
 [tool.merlo]
 release = "0.1.0-alpha.1"
