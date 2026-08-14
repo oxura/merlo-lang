@@ -2573,6 +2573,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             return False
         if descriptor.kind in {"borrow", "slice", "file_lines"}:
             return True
+        next_seen = seen | {type_name}
         if descriptor.kind == "record":
             children = (field_type for _, field_type, _ in descriptor.fields)
         elif descriptor.kind == "enum":
