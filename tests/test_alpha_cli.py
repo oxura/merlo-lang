@@ -52,6 +52,26 @@ def test_new_json_is_deterministic_and_discovers_source_project(tmp_path: Path, 
     assert checked["ok"] is True
     assert checked["entry_path"] == str(source)
 
+def test_editing_application_source_keeps_lock_fresh_for_check_and_build(tmp_path: Path, capsys) -> None:
+    root = tmp_path / "demo"
+    assert main(["new", str(root), "--json"]) == EXIT_OK
+    capsys.readouterr()
+
+    source = root / "src" / "main.mlo"
+    source.write_text(
+        source.read_text(encoding="utf-8").replace('console.write("ok")', 'console.write("hello")'),
+        encoding="utf-8",
+    )
+
+    assert main(["check", str(source), "--json"]) == EXIT_OK
+    checked = json.loads(capsys.readouterr().out)
+    assert checked["ok"] is True
+
+    assert main(["build", str(root), "--json"]) == EXIT_OK
+    built = json.loads(capsys.readouterr().out)
+    assert built["ok"] is True
+
+
 
 def test_new_project_run_defaults_its_required_path_argument(tmp_path: Path, capfd) -> None:
     root = tmp_path / "demo"

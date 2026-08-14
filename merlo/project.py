@@ -249,7 +249,11 @@ def _toml_lock(raw: Mapping[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _resolve_package_graph(root: Path) -> tuple[tuple[Mapping[str, Any], ...], dict[str, tuple[str, ...]]]:
+def _resolve_package_graph(
+    root: Path,
+    *,
+    root_source_hash: str,
+) -> tuple[tuple[Mapping[str, Any], ...], dict[str, tuple[str, ...]]]:
     packages: dict[str, Package] = {}
     graph: dict[str, tuple[str, ...]] = {}
     visiting: set[str] = set()
@@ -293,7 +297,7 @@ def _resolve_package_graph(root: Path) -> tuple[tuple[Mapping[str, Any], ...], d
         dependencies=root_package.dependencies,
         source_kind="path",
         source={"kind": "path", "path": "."},
-        source_hash=root_package.source_hash,
+        source_hash=root_source_hash,
     )
     visit(root_package)
     records = tuple(
@@ -305,12 +309,15 @@ def _resolve_package_graph(root: Path) -> tuple[tuple[Mapping[str, Any], ...], d
 
 def resolve_dependencies(project: "Project | str | Path", *, write: bool = True) -> MerloLock:
     instance = project if isinstance(project, Project) else Project.load(project)
-    packages, graph = _resolve_package_graph(instance.root)
+    manifest_hash = instance.manifest.digest()
+    packages, graph = _resolve_package_graph(
+        instance.root,
+        root_source_hash=manifest_hash,
+    )
     lock = MerloLock(
         packages=packages,
         graph=graph,
-        manifest_hash=instance.manifest.digest(),
-        compatibility=VERSIONS.to_dict(),
+        manifest_hash=manifest_hash,
     )
     if write:
         lock.write(instance.lock_path)

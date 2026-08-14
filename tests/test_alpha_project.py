@@ -85,6 +85,22 @@ def test_lock_rejects_stale_manifest_and_incompatible_schema(tmp_path: Path) -> 
     with pytest.raises(LockfileError, match="LockCompatibilityMismatch"):
         MerloLock.read(app.lock_path)
 
+def test_lock_rejects_changed_path_dependency_manifest(tmp_path: Path) -> None:
+    library = Project.create(tmp_path / "library", name="library")
+    app = Project.create(tmp_path / "app", name="app")
+    app.add_path("library", "../library")
+
+    library.manifest_path.write_text(
+        library.manifest_path.read_text(encoding="utf-8").replace(
+            'version = "0.1.0"', 'version = "0.1.1"'
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(LockfileError, match="StaleLockfile"):
+        app.lock()
+
+
 
 def test_cache_keys_are_independent_and_targeted_invalidation_preserves_unrelated_entries(tmp_path: Path) -> None:
     cache = ContentCache(tmp_path / "cache")
