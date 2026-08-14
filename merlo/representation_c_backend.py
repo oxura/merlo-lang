@@ -1796,7 +1796,6 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             method == "get"
             and generic is not None
             and generic[0] in {"Vec", "Box"}
-            and _is_owner(self.descriptors[generic[1]])
             and self._is_owning_temporary(node.func.value, receiver_type)
         ):
             return False
@@ -3261,9 +3260,12 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     )
                 suffix = _identifier(receiver_type)
                 if method in {"len", "capacity"}:
-                    if isinstance(node.func.value, ast.Call):
-                        return f"({self._expression(node.func.value)}).length"
+                    return f"merlo_{suffix}_{method}({receiver})"
                 if method in {"get", "get_mut"}:
+                    if method == "get_mut" and temporary_receiver:
+                        raise RepresentationCBackendError(
+                            "borrowed result escapes owning temporary"
+                        )
                     pointer = f"merlo_{suffix}_get({receiver}, {self._expression(node.args[0])})"
                     element_type = generic[1]
                     if (

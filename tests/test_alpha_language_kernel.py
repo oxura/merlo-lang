@@ -697,3 +697,48 @@ def test_box_text_get_clones_payload_before_temporary_drop(tmp_path: Path) -> No
     assert completed.returncode == 0, completed.stderr.decode()
     assert b"OK result=3" in completed.stdout
     assert b"text_allocations=2 text_frees=2" in completed.stdout
+
+
+def test_vec_scalar_get_copies_before_temporary_drop(tmp_path: Path) -> None:
+    source = (
+        "fn make() -> Vec[UInt64]:\n"
+        "    let values: Vec[UInt64] = Vec.new()\n"
+        "    values.push(7)\n"
+        "    return values\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let value: UInt64 = make().get(0)\n"
+        "    return value\n"
+    )
+    binary = _native(source, tmp_path, "vec-scalar-get")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=7" in completed.stdout
+
+
+def test_vec_get_mut_rejects_temporary_owner_escape() -> None:
+    source = (
+        "fn make() -> Vec[UInt64]:\n"
+        "    return Vec.new()\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let value: UInt64 = make().get_mut(0)\n"
+        "    return value\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
+        emit_general_c(hir, rir, optimized)
+
+
+def test_vec_len_uses_named_and_temporary_receivers_once(tmp_path: Path) -> None:
+    source = (
+        "fn make() -> Vec[UInt64]:\n"
+        "    let values: Vec[UInt64] = Vec.new()\n"
+        "    values.push(1)\n"
+        "    return values\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let values: Vec[UInt64] = make()\n"
+        "    return values.len() + make().len()\n"
+    )
+    binary = _native(source, tmp_path, "vec-len")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=2" in completed.stdout
