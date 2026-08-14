@@ -23,6 +23,7 @@ from . import alpha_performance as alpha
 
 SCHEMA_VERSION = "merlo.public-benchmark.v1"
 CLAIM_ID = "public-native-three-workload-v1"
+LOCK_PATH = "benchmarks/alpha_performance/workloads.json"
 CONTROLLED_BUILD_ENVIRONMENT = {
     "LC_ALL": "C",
     "TZ": "UTC",
@@ -292,12 +293,32 @@ def _materialize_artifacts(root: Path, artifacts: Mapping[str, Any]) -> dict[str
                 record[key] = target.relative_to(root).as_posix()
             source_paths = record.get("source")
             if isinstance(source_paths, list):
-                record["source"] = [
-                    Path(value).resolve().relative_to(root).as_posix()
-                    if Path(value).is_absolute() and Path(value).resolve().is_relative_to(root)
-                    else str(value)
-                    for value in source_paths
-                ]
+                materialized_sources: list[str] = []
+                for index, value in enumerate(source_paths):
+                    source = Path(str(value))
+                    if not source.is_absolute():
+                        materialized_sources.append(source.as_posix())
+                        continue
+                    resolved = source.resolve()
+                    if resolved.is_relative_to(root):
+                        materialized_sources.append(
+                            resolved.relative_to(root).as_posix()
+                        )
+                        continue
+                    if not resolved.is_file():
+                        materialized_sources.append(str(value))
+                        continue
+                    target = (
+                        target_dir
+                        / "source"
+                        / f"{index}-{resolved.name}"
+                    )
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(resolved, target)
+                    materialized_sources.append(
+                        target.relative_to(root).as_posix()
+                    )
+                record["source"] = materialized_sources
     return materialized
 
 def _checked_artifact_path(root: Path, value: object) -> Path:

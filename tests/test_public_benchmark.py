@@ -23,21 +23,15 @@ from merlo.public_benchmark import (
 ROOT = Path(__file__).parents[1]
 
 
-def _artifacts(workloads: tuple[alpha.FrozenWorkload, ...]) -> dict[str, dict[str, dict[str, object]]]:
-    return {
-        workload.id: {
-            arm: {
-                "status": "MEASURED",
-                "source_sha256": workload.source_sha256[arm],
-                "optimized_artifact_sha256": "b" * 64,
-                "optimized_artifact_bytes": 4,
-                "binary_sha256": "b" * 64,
-                "generated_source_sha256": "c" * 64,
-            }
-            for arm in alpha.ARMS
-        }
-        for workload in workloads
-    }
+def _artifacts(
+    workloads: tuple[alpha.FrozenWorkload, ...],
+) -> dict[str, dict[str, dict[str, object]]]:
+    from merlo.productive_performance import (
+        build_productive_runner_registry,
+    )
+
+    _, builds = build_productive_runner_registry(ROOT)
+    return alpha._metadata_by_builds(workloads, builds)
 
 
 def _registry(workloads: tuple[alpha.FrozenWorkload, ...]) -> dict[tuple[str, str], object]:
@@ -74,8 +68,14 @@ def test_authoritative_lock_has_all_three_workloads_and_fixed_protocol() -> None
     assert len(lock["sha256"]) == 64
 
 
-def test_compiler_input_digest_is_stable() -> None:
-    assert compiler_input_tree_sha256(ROOT) == compiler_input_tree_sha256(ROOT)
+def test_compiler_input_digest_changes_with_source(tmp_path: Path) -> None:
+    package = tmp_path / "merlo"
+    package.mkdir()
+    source = package / "compiler.py"
+    source.write_text("VALUE = 1\n", encoding="utf-8")
+    before = compiler_input_tree_sha256(tmp_path)
+    source.write_text("VALUE = 2\n", encoding="utf-8")
+    assert compiler_input_tree_sha256(tmp_path) != before
 
 
 def test_controlled_runner_measures_all_denominators(tmp_path: Path) -> None:
@@ -85,6 +85,77 @@ def test_controlled_runner_measures_all_denominators(tmp_path: Path) -> None:
     assert len(report["raw_samples"]) == 3 * 4 * (alpha.DEFAULT_WARMUPS + alpha.DEFAULT_MEASURED_RUNS)
     assert all(len(sample["replicate_elapsed_ns"]) == alpha.DEFAULT_SAMPLE_REPLICATES for sample in report["raw_samples"] if sample["phase"] == "measured")
     validate_public_report(report)
+
+
+def test_validator_rejects_public_contract_tampering(tmp_path: Path) -> None:
+    report = _measured_report(tmp_path)
+
+    non_measured_pass = copy.deepcopy(report)
+    non_measured_pass["status"] = "UNMEASURED"
+    with pytest.raises(PublicBenchmarkError):
+        validate_public_report(non_measured_pass, root=ROOT)
+
+    affinity = copy.deepcopy(report)
+    affinity["affinity"]["applied"] = False
+    with pytest.raises(PublicBenchmarkError):
+        validate_public_report(affinity, root=ROOT)
+
+    schedule = copy.deepcopy(report)
+    schedule["randomized_schedule"]["rounds"][0]["arms"].reverse()
+    with pytest.raises(PublicBenchmarkError):
+        validate_public_report(schedule, root=ROOT)
+
+    toolchain = copy.deepcopy(report)
+    toolchain["toolchains"]["c"]["version_sha256"] = "0" * 64
+    with pytest.raises(PublicBenchmarkError):
+        validate_public_report(toolchain, root=ROOT)
+
+    first_workload = next(iter(report["artifacts"].values()))
+    first_measured = next(
+        record
+        for record in first_workload.values()
+        if record.get("binary")
+    )
+    (ROOT / first_measured["binary"]).unlink()
+    with pytest.raises(PublicBenchmarkError):
+        validate_public_report(report, root=ROOT)
+
+
+def test_lock_requires_complete_protocol(tmp_path: Path) -> None:
+    lock_path = (
+        tmp_path
+        / "benchmarks"
+        / "alpha_performance"
+        / "workloads.json"
+    )
+    lock_path.parent.mkdir(parents=True)
+    lock = json.loads(
+        (
+            ROOT
+            / "benchmarks"
+            / "alpha_performance"
+            / "workloads.json"
+        ).read_text()
+    )
+    del lock["protocol"]
+    lock_path.write_text(json.dumps(lock), encoding="utf-8")
+    with pytest.raises(PublicBenchmarkError):
+        load_authoritative_workload_lock(tmp_path)
+
+
+def test_release_adapter_rejects_mismatched_report_file(
+    tmp_path: Path,
+) -> None:
+    report = _measured_report(tmp_path)
+    report_path = tmp_path / "report.json"
+    report_path.write_text("{}\n", encoding="utf-8")
+    with pytest.raises(ReleaseValidationError, match="disagrees"):
+        public_benchmark_evidence(
+            report,
+            report_path,
+            root=tmp_path,
+            compiler_sha256=report["toolchains"]["c"]["binary_sha256"],
+        )
 
 
 def test_raw_sample_tamper_is_rejected(tmp_path: Path) -> None:
