@@ -29,10 +29,11 @@ an `EffectCycle`; it can stop after its iteration bound. Unknown effect names
 are rejected, and resolved tuples are sorted before being stored in
 `TaskBoundary`.
 
-RFC 0001 (planned) requires a fixed point over bound calls, transitive
-wrapper/alias propagation, a pure-function effect rejection, and a separate
-capability authority check. Runtime capabilities remain semantic guards, not
-host isolation.
+RFC 0001 (planned) requires a fixed point over bound calls with transitive
+wrapper/alias propagation that supports recursive call graphs. Diagnostics are
+for unsatisfied effect declarations or capability authority, not recursion
+itself; pure functions with inferred effects are rejected. Runtime capabilities
+remain semantic guards, not host isolation.
 
 ## Failure modes
 

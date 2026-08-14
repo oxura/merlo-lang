@@ -29,10 +29,11 @@ include their field/variant shape, so a public shape edit is not guaranteed to
 change the published interface revision.
 
 RFC 0001 (planned) makes these facts explicit in immutable `BoundProgram`,
-`BoundReference`, and `BoundCall` records and includes exported member/type
-shape in the interface contract. Missing and ambiguous names must fail before
-type or effect inference; aliases resolve to one target `SymbolId`, not a
-second host identity.
+`BoundReference`, and `BoundCall` records and requires deterministic public
+signatures. Including exported member/type shape in interface revisions is an
+additional stabilization requirement, not current behavior. Missing and
+ambiguous names must fail before type or effect inference; aliases resolve to
+one target `SymbolId`, not a second host identity.
 
 ## Failure modes
 

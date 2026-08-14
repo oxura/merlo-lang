@@ -38,10 +38,12 @@ when required. Backend predecessor mismatches fail before C emission.
 ## Identity and provenance
 
 `TypeDescriptor.source_type_identity` binds physical layout and cleanup to the
-source type identity. RIR operations preserve HIR symbol/revision IDs and emit
-`ownership_provenance`; MIR instructions derive new revision IDs while retaining
-that provenance and source span. Drop actions are selected from descriptors and
-plans, never from generated C names or incidental allocation order.
+source type identity. RIR operations preserve HIR symbol IDs and source spans
+where present, but derive each operation `revision_id` from the HIR revision,
+operation kind, and ownership provenance. MIR instructions derive further
+revision IDs while retaining that provenance and source span. Drop actions are
+selected from descriptors and plans, never from generated C names or incidental
+allocation order.
 
 ## Current-alpha limitations
 
