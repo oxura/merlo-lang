@@ -2229,10 +2229,19 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 self.owned_locals.pop(name, None)
         return lines
 
+    def _canonical_nominal(self, type_name: str) -> str:
+        if type_name in self.descriptors:
+            return type_name
+        matches = [
+            name for name in self.descriptors
+            if name.rsplit("__", 1)[-1].rsplit(".", 1)[-1] == type_name
+        ]
+        return matches[0] if len(matches) == 1 else type_name
+
     def _result_parts(self, type_name: str | None) -> tuple[str, str] | None:
         parts = _result_types(type_name)
         if parts is not None:
-            return parts
+            return tuple(self._canonical_nominal(item) for item in parts)
         descriptor = self.descriptors.get(type_name or "")
         if descriptor is None or descriptor.kind != "enum":
             return None

@@ -341,6 +341,9 @@ def _normalize_type(node: ast.AST | None) -> str | None:
         type_name = re.sub(rf"\b{alias}\b", canonical, type_name)
     return type_name
 
+def _type_leaf(type_name: str) -> str:
+    return type_name.rsplit("__", 1)[-1].rsplit(".", 1)[-1]
+
 
 def _contains_dynamic_any(source: str) -> bool:
     parsed = ast.parse(_preprocess_core(source))
@@ -1988,7 +1991,9 @@ class _Inference:
                 if (
                     callee == "network.tcp_connect"
                     and contextual_expected
-                    and contextual_expected.startswith("Result[TcpStream,")
+                    and contextual_expected.startswith("Result[")
+                    and _generic_arguments(contextual_expected)
+                    and _type_leaf(_generic_arguments(contextual_expected)[0]) == "TcpStream"
                 ):
                     return contextual_expected
                 return contextual_result_type(
