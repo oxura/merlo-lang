@@ -341,6 +341,18 @@ def _parse_expression(source: str, path: str, line: _Line) -> SurfaceExpression:
     try:
         parsed = ast.parse(_rewrite_expression(source), mode="eval").body
     except SyntaxError as exc:
+        if "positional argument follows keyword argument" in exc.msg:
+            raise SurfaceSyntaxError(
+                "PositionalAfterKeyword",
+                "positional argument follows keyword argument",
+                SourceSpan(
+                    path,
+                    line.number,
+                    line.indent + (exc.offset or 1),
+                    line.number,
+                    len(line.raw) + 1,
+                ),
+            ) from exc
         raise SurfaceSyntaxError(
             "InvalidExpression",
             exc.msg,

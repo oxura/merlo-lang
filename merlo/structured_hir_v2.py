@@ -2057,6 +2057,8 @@ def _parse_type_declarations(
     return result
 
 
+
+
 def compile_structured_hir(
     source: str,
     *,

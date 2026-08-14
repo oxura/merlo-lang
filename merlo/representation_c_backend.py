@@ -214,6 +214,8 @@ class GeneralCEmitter:
         self.owned_locals: dict[str, str] = {}
         self.return_ordinal = 0
         self.loop_ordinal = 0
+        self.loop_exit_labels: list[str] = []
+        self.match_depth = 0
         self.frozen_general_json = (
             hashlib.sha256(hir.source.encode()).hexdigest()
             == _FROZEN_GENERAL_JSON_SHA256
@@ -2020,13 +2022,22 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             lines.append(f"{pad}}}")
             return lines
         if isinstance(node, ast.While):
+            self.loop_ordinal += 1
+            loop_exit = f"__merlo_loop_exit_{self.loop_ordinal}"
             lines = [f"{pad}while ({self._expression(node.test, expected='Bool')}) {{"]
+            self.loop_exit_labels.append(loop_exit)
             self.indent += 1
             for statement in node.body:
                 lines.extend(self._statement(statement))
             self.indent -= 1
+            self.loop_exit_labels.pop()
             lines.append(f"{pad}}}")
+            lines.append(f"{pad}{loop_exit}:;")
             return lines
+        if isinstance(node, ast.Break):
+            if self.match_depth and self.loop_exit_labels:
+                return [f"{pad}goto {self.loop_exit_labels[-1]};"]
+            return [f"{pad}break;"]
         if isinstance(node, ast.Continue):
             return [f"{pad}continue;"]
         if isinstance(node, ast.Pass):
@@ -2099,6 +2110,8 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             ordinal = self.loop_ordinal
             view = f"__merlo_file_lines_{ordinal}"
             line = f"__merlo_file_line_{ordinal}"
+            loop_exit = f"__merlo_loop_exit_{ordinal}"
+            self.loop_exit_labels.append(loop_exit)
             target = node.target.id
             self.env_types[target] = "TextView"
             lines = [
@@ -2113,7 +2126,14 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 lines.extend(self._statement(statement))
             lines.extend(self._drop_new_iteration_locals(iteration_owned, f"{pad}        "))
             self.indent -= 2
-            lines.extend([f"{pad}    }}", f"{pad}}}"])
+            self.loop_exit_labels.pop()
+            lines.extend(
+                [
+                    f"{pad}    }}",
+                    f"{pad}    {loop_exit}:;",
+                    f"{pad}}}",
+                ]
+            )
             return lines
         if (
             isinstance(node.target, ast.Name)
@@ -2130,6 +2150,8 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 pad = self._pad()
                 self.loop_ordinal += 1
                 index = f"__merlo_vec_index_{self.loop_ordinal}"
+                loop_exit = f"__merlo_loop_exit_{self.loop_ordinal}"
+                self.loop_exit_labels.append(loop_exit)
                 target = node.target.id
                 receiver = self._address_expression(receiver_node)
                 self.env_types[target] = element_type
@@ -2144,7 +2166,13 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     lines.extend(self._statement(statement))
                 lines.extend(self._drop_new_iteration_locals(iteration_owned, f"{pad}    "))
                 self.indent -= 1
-                lines.append(f"{pad}}}")
+                self.loop_exit_labels.pop()
+                lines.extend(
+                    [
+                        f"{pad}}}",
+                        f"{pad}{loop_exit}:;",
+                    ]
+                )
                 return lines
         if (
             not isinstance(node.target, ast.Name)
@@ -2165,6 +2193,8 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             )
         self.loop_ordinal += 1
         ordinal = self.loop_ordinal
+        loop_exit = f"__merlo_loop_exit_{ordinal}"
+        self.loop_exit_labels.append(loop_exit)
         pad = self._pad()
         ctype = _c_name(receiver_type or "")
         suffix = _identifier(receiver_type or "")
@@ -2186,10 +2216,11 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         self.indent += 2
         for statement in node.body:
             lines.extend(self._statement(statement))
-        lines.extend(self._drop_new_iteration_locals(iteration_owned, f"{pad}        "))
         self.indent -= 2
+        self.loop_exit_labels.pop()
         lines.extend([
             f"{pad}    }}",
+            f"{pad}    {loop_exit}:;",
             f"{pad}    merlo_{suffix}_entries_close(&{view});",
             f"{pad}}}",
         ])
@@ -2252,6 +2283,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             and case.pattern.name is None
             for case in node.cases
         )
+        self.match_depth += 1
         for case in node.cases:
             pattern = case.pattern
             wildcard = isinstance(pattern, ast.MatchAs) and pattern.name is None
@@ -2323,6 +2355,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             self.indent -= 1
             if not self.frozen_general_json:
                 lines.append(f"{pad}}}")
+        self.match_depth -= 1
         if not has_wildcard:
             lines.append(f"{pad}default: abort();")
         lines.append(f"{pad}}}")
