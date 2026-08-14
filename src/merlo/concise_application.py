@@ -785,7 +785,6 @@ def _rewrite_module_symbols(
         tokenize.DEDENT, tokenize.COMMENT, tokenize.ENDMARKER,
     }
     significant = [index for index, item in enumerate(tokens) if item.type not in ignored]
-    position = {index: order for order, index in enumerate(significant)}
     at = _token_offset(source)
     replacements: list[tuple[int, int, str]] = []
     consumed: set[int] = set()
@@ -3394,9 +3393,6 @@ def _assemble_core(
         internal: (module, public_name, kind, exported)
         for module, declarations in symbols.items()
         for public_name, (kind, exported, internal) in declarations.items()
-    }
-    public_functions = {
-        name for _, name, kind in exports if kind in {"fn", "task"}
     }
     entry_module = modules[-1].name
     tasks: list[TaskBoundary] = []
