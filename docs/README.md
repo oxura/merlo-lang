@@ -4,6 +4,7 @@ Merlo `0.1.0-alpha.1` is a Linux x86-64 alpha with a Python 3.11+ bootstrap
 package, a C11 Clang/GCC native path, and synchronous I/O.
 
 - [Architecture](architecture.md) and [project history](project-history.md)
+- [Compiler contracts](compiler/index.md) — frontend through C11 and source maps
 - [Installation](installation.md) — package setup and clean project demo
 - [Tour](tour.md) — a small typed task
 - [Types](types.md) — scalars, values, records, enums, and containers
@@ -20,3 +21,5 @@ package, a C11 Clang/GCC native path, and synchronous I/O.
 
 The normative, intentionally smaller alpha contracts are in `spec/`.
 Historical artifacts remain readable, but they are not production CLI routes.
+The compiler pages distinguish current symbols from **planned (RFC 0001)**
+interfaces so transitional behavior is not mistaken for a stable API.
