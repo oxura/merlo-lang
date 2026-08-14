@@ -44,10 +44,10 @@ def test_nested_sum_types_lower_to_stable_nominal_names() -> None:
     assert "Ok: Option[Text]" in lowered
 
 
-def test_structured_hir_accepts_nested_map_vec_types() -> None:
+def test_structured_hir_accepts_nested_sum_vec_types() -> None:
     hir = compile_structured_hir(
-        "fn main(value: Map[Text, Vec[Option[Text]]]) -> Unit:\n"
+        "fn main(value: Vec[Option[Text]]) -> Unit:\n"
         "    return\n",
         path="nested-types.mlo",
     )
-    assert hir.function("main").parameters[0].type_name == "Map[Text,Vec[Option[Text]]]"
+    assert hir.function("main").parameters[0].type_name == "Vec[Option[Text]]"

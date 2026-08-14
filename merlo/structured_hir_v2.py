@@ -647,10 +647,11 @@ class _OwnershipChecker:
                     return "Text"
                 if method == "finish" and receiver == "TextBuilder":
                     return "Text"
-            if owner:
-                vec_parts = generic_parts(owner, "Vec", arity=1)
-                if vec_parts is not None:
-                    return vec_parts[0]
+        if isinstance(node, ast.Subscript):
+            owner = self._expr_type(node.value)
+            vec_parts = generic_parts(owner, "Vec", arity=1)
+            if vec_parts is not None:
+                return vec_parts[0]
         return expected
 
     @staticmethod
