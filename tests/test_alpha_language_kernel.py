@@ -875,3 +875,18 @@ def test_direct_owner_projection_from_borrow_is_cloned(tmp_path: Path) -> None:
     completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
     assert completed.returncode == 0, completed.stderr.decode()
     assert b"OK result=6" in completed.stdout
+
+
+def test_owner_array_subscript_from_borrow_is_cloned(tmp_path: Path) -> None:
+    source = (
+        "fn extract(values: Array[Text,1]) -> Text:\n"
+        "    return values[0]\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        '    let values: Array[Text,1] = ["abc"]\n'
+        "    let copied: Text = extract(values)\n"
+        "    return copied.len() + values[0].len()\n"
+    )
+    binary = _native(source, tmp_path, "borrowed-array-subscript")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=6" in completed.stdout

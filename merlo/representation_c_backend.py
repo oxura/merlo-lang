@@ -2855,11 +2855,15 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     else f"({owner}){operator}length"
                 )
                 access = f"({owner}){operator}data[{index}]"
-                checked = (
+                if want_pointer:
+                    return (
+                        f"(({index}) < ({length}) ? &({access}) : "
+                        f"(merlo_bounds_trap({index}, {length}), &({access})))"
+                    )
+                return (
                     f"(({index}) < ({length}) ? ({access}) : "
                     f"(merlo_bounds_trap({index}, {length}), ({access})))"
                 )
-                return f"&({checked})" if want_pointer else checked
             raise RepresentationCBackendError(
                 f"unsupported indexed type: {owner_type or 'unknown'}"
             )
@@ -3650,6 +3654,8 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         return isinstance(node, ast.Name) and node.id in self.pointer_values
 
     def _address_expression(self, node: ast.AST) -> str:
+        if isinstance(node, ast.Subscript):
+            return self._expression(node, want_pointer=True)
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             return f"&{self._borrowed_text_literal(node.value)}"
         expression = self._expression(node)
