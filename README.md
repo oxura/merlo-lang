@@ -29,21 +29,27 @@ display_name(user) = user.nickname or user.name
 active_names(users) = users.where(.active).map(display_name)
 ```
 
-The short form is the design target. A real program is deliberately more
-explicit about host failures and effects:
+The short form is the design target. Today `merlo new hello --name hello`
+creates this complete runnable program:
 
 ```merlo
+module main
+
+export enum AppError:
+    Failed
+
 export main(path: Path) -> Result[Text, AppError]:
-    data = fs.read(path)?
-    result = summarize(data)
-    console.write(result)
-    Ok(result)
+    console.write("ok")
+    Ok("ok")
 ```
 
 ```console
-$ merlo run examples/json-cli -- examples/json-cli/input.json
-json-bytes=33 root=object fields=2
+$ merlo run hello
+ok
 ```
+
+The larger [JSON CLI example](examples/json-cli/src/main.mlo) reads a file,
+parses JSON, matches its root value, and builds typed output.
 
 ## What is implemented
 
