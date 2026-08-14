@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from merlo.cache import ContentCache
-from merlo.package import DependencySpecificationError, GitDependencyError
+from merlo.package import DependencySpecificationError, GitDependencyError, package_from_root
 from merlo.project import LockfileError, MerloLock, Project, resolve_dependencies
 from merlo.version import VERSIONS
 from merlo.surface_ast import SurfaceExpressionStatement, SurfaceFunction
@@ -85,10 +85,15 @@ def test_lock_rejects_stale_manifest_and_incompatible_schema(tmp_path: Path) -> 
     with pytest.raises(LockfileError, match="LockCompatibilityMismatch"):
         MerloLock.read(app.lock_path)
 
+
 def test_lock_rejects_changed_path_dependency_manifest(tmp_path: Path) -> None:
     library = Project.create(tmp_path / "library", name="library")
     app = Project.create(tmp_path / "app", name="app")
     app.add_path("library", "../library")
+    raw = json.loads(app.lock_path.read_text(encoding="utf-8"))
+    root_record = next(record for record in raw["packages"] if record["name"] == "app")
+    root_record["source_hash"] = package_from_root(app.root).content_hash()
+    app.lock_path.write_text(json.dumps(raw), encoding="utf-8")
 
     library.manifest_path.write_text(
         library.manifest_path.read_text(encoding="utf-8").replace(
@@ -99,7 +104,6 @@ def test_lock_rejects_changed_path_dependency_manifest(tmp_path: Path) -> None:
 
     with pytest.raises(LockfileError, match="StaleLockfile"):
         app.lock()
-
 
 
 def test_cache_keys_are_independent_and_targeted_invalidation_preserves_unrelated_entries(tmp_path: Path) -> None:
