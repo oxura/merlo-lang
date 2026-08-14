@@ -98,11 +98,17 @@ elaboration that is being replaced under [RFC 0001](rfcs/0001-repository-and-fro
 
 ## Install and run
 
-Use Python 3.11 or newer on Linux x86-64. Until alpha.2 is published, install
-the verified alpha.1 wheel directly; do not use its incomplete source archive:
+Use Python 3.11 or newer on Linux x86-64. The alpha.1 artifacts are retained
+for historical evidence and are not the recommended install: the source
+archive is incomplete, and the wheel predates later compiler portability
+repairs. Until alpha.2 is published, install the repaired public source:
 
 ```console
-python -m pip install https://github.com/oxura/merlo-lang/releases/download/v0.1.0-alpha.1/merlo-0.1.0a1-py3-none-any.whl
+git clone https://github.com/oxura/merlo-lang.git
+cd merlo-lang
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install .
 merlo new hello --name hello
 merlo run hello
 ```

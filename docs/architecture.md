@@ -14,11 +14,13 @@ The production coordinator currently records this checked artifact chain:
 3. structured HIR;
 4. Representation IR;
 5. performance MIR and deterministic optimization;
-6. generated C11 and an optional native executable.
+6. generated C11, followed optionally by a native executable.
 
-Each artifact records a contract, schema version, digest, and parent digest.
-`compiler.py` coordinates the chain; the CLI, LSP, and SemanticWorld consume
-its results.
+The recorded intermediate artifacts through generated C11 carry a contract,
+schema version, digest, and parent digest. The optional native executable has
+separate compiler and binary metadata but is not part of that provenance
+chain. `compiler.py` coordinates compilation; the CLI, LSP, and SemanticWorld
+consume its results.
 
 The project frontend still contains transitional regex and text-rewrite logic.
 Merlo is therefore converging on, rather than already possessing, one clean

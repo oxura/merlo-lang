@@ -1,13 +1,16 @@
 # Installation and first project
 
-Merlo is distributed as a Python package for Python 3.11 or newer. The release
-target is Linux x86-64. Until alpha.2 is published, install the verified
-alpha.1 wheel rather than its incomplete source archive:
+Merlo requires Python 3.11 or newer. The supported release target is Linux
+x86-64. The alpha.1 source archive is incomplete, and its wheel predates later
+compiler portability repairs. Until alpha.2 is published, install the repaired
+public source rather than either historical alpha.1 package:
 
 ```console
+git clone https://github.com/oxura/merlo-lang.git
+cd merlo-lang
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install https://github.com/oxura/merlo-lang/releases/download/v0.1.0-alpha.1/merlo-0.1.0a1-py3-none-any.whl
+python -m pip install .
 merlo --help
 ```
 

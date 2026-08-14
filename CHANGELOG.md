@@ -14,10 +14,10 @@ No alpha.2 artifact has been published yet.
 This is the first public packaged Merlo alpha release. Private research and
 development began on 2026-03-19.
 
-> **Known release defect:** the alpha.1 public source archive omitted
-> `stdlib/std/core.mlo` and required post-release Python/Clang portability
-> repairs. The wheel and evidence bundle remain historical artifacts; use the
-> verified wheel rather than the alpha.1 source archive until alpha.2.
+> **Known release defects:** the alpha.1 public source archive omitted
+> `stdlib/std/core.mlo`; its wheel predates later Python and Clang portability
+> repairs. Both packages remain historical evidence and are not the recommended
+> installation path while alpha.2 is being prepared.
 
 - Adds a Python 3.11+ bootstrap package and the `merlo` console script.
 - Publishes project creation, checking, native build/run, tests, formatting,
