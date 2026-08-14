@@ -835,7 +835,21 @@ def public_benchmark_evidence(
 
     base = Path(root).resolve()
     candidate = Path(report_path)
-    resolved = candidate if candidate.is_absolute() else base / candidate
+    if "\x00" in str(candidate) or any(part in {".", ".."} for part in candidate.parts):
+        raise ReleaseValidationError("public benchmark report path is not normalized")
+    unresolved = candidate if candidate.is_absolute() else base / candidate
+    try:
+        relative_path = unresolved.relative_to(base)
+    except ValueError as exc:
+        raise ReleaseValidationError(
+            f"public benchmark report escapes release root: {report_path}"
+        ) from exc
+    cursor = base
+    for part in relative_path.parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            raise ReleaseValidationError("public benchmark report cannot be symlinked")
+    resolved = unresolved.resolve()
     if not resolved.is_file():
         raise ReleaseValidationError(f"missing public benchmark report: {report_path}")
     raw_bytes = resolved.read_bytes()
@@ -849,10 +863,7 @@ def public_benchmark_evidence(
         validate_public_report(parsed, root=base)
     except PublicBenchmarkError as exc:
         raise ReleaseValidationError(f"invalid public benchmark report: {exc}") from exc
-    try:
-        relative = resolved.resolve().relative_to(base).as_posix()
-    except ValueError as exc:
-        raise ReleaseValidationError(f"public benchmark report escapes release root: {report_path}") from exc
+    relative = resolved.relative_to(base).as_posix()
     provenance = parsed.get("compiler_provenance")
     lock = parsed.get("workload_lock")
     toolchains = parsed.get("toolchains")
@@ -866,14 +877,17 @@ def public_benchmark_evidence(
         "compiler_input_tree_sha256": str(provenance.get("source_tree_sha256")),
         "runner_sha256": str(provenance.get("runner_sha256")),
     })
-    selected_lock = lock_sha256 or str(lock.get("sha256"))
+    report_lock = str(lock.get("sha256"))
+    if lock_sha256 is not None and lock_sha256 != report_lock:
+        raise ReleaseValidationError("public benchmark lock override disagrees with report")
+    selected_lock = report_lock
     payload = {
         "schema_version": parsed.get("schema_version"),
         "claim_id": parsed.get("claim_id"),
         "status": parsed.get("status"),
         "passed": parsed.get("passed"),
         "report_sha256": report_hash,
-        "workload_lock_sha256": lock.get("sha256"),
+        "workload_lock_sha256": selected_lock,
         "compiler_tree_sha256": provenance.get("source_tree_sha256"),
         "runner_sha256": provenance.get("runner_sha256"),
     }

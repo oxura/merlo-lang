@@ -33,16 +33,14 @@ CONTROLLED_BUILD_ENVIRONMENT = {
 
 @contextlib.contextmanager
 def _controlled_environment() -> Any:
-    previous = {key: os.environ.get(key) for key in CONTROLLED_BUILD_ENVIRONMENT}
+    previous = dict(os.environ)
+    os.environ.clear()
     os.environ.update(CONTROLLED_BUILD_ENVIRONMENT)
     try:
         yield
     finally:
-        for key, value in previous.items():
-            if value is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = value
+        os.environ.clear()
+        os.environ.update(previous)
 
 PUBLIC_CORPUS_POLICY = "all_three_checked_in_workloads_required; no_filters_or_fallback_sources"
 PUBLIC_PROTOCOL = {
@@ -265,6 +263,44 @@ def _artifact_provenance(artifacts: Mapping[str, Any]) -> dict[str, Any]:
                 "binary_bytes": record.get("binary_bytes", record.get("optimized_artifact_bytes")),
             }
     return result
+def _retain_immutable_artifact(
+    source: Path,
+    destination_root: Path,
+    *,
+    label: str,
+) -> Path:
+    if source.is_symlink() or not source.is_file():
+        raise PublicBenchmarkError(f"{label} artifact is missing or symlinked")
+    payload = source.read_bytes()
+    digest = _sha256_bytes(payload)
+    target = destination_root / label / digest / source.name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        if target.is_symlink() or target.read_bytes() != payload:
+            raise PublicBenchmarkError(f"retained {label} artifact conflicts with its digest")
+        return target
+    fd, temporary = tempfile.mkstemp(prefix=f".{target.name}.", dir=str(target.parent))
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        Path(temporary).chmod(source.stat().st_mode & 0o777)
+        try:
+            os.link(temporary, target)
+        except FileExistsError:
+            if target.is_symlink() or target.read_bytes() != payload:
+                raise PublicBenchmarkError(
+                    f"retained {label} artifact conflicts with its digest"
+                )
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+    return target
+
+
 def _materialize_artifacts(root: Path, artifacts: Mapping[str, Any]) -> dict[str, Any]:
     destination_root = root / ".merlo" / "public-benchmark-v1" / "artifacts"
     materialized = json.loads(json.dumps(artifacts))
@@ -282,14 +318,11 @@ def _materialize_artifacts(root: Path, artifacts: Mapping[str, Any]) -> dict[str
                 source = Path(value)
                 if not source.is_file():
                     continue
-                try:
-                    record[key] = source.resolve().relative_to(root).as_posix()
-                    continue
-                except ValueError:
-                    pass
-                target_dir.mkdir(parents=True, exist_ok=True)
-                target = target_dir / source.name
-                shutil.copy2(source, target)
+                target = _retain_immutable_artifact(
+                    source,
+                    target_dir,
+                    label=key,
+                )
                 record[key] = target.relative_to(root).as_posix()
             source_paths = record.get("source")
             if isinstance(source_paths, list):
@@ -308,13 +341,11 @@ def _materialize_artifacts(root: Path, artifacts: Mapping[str, Any]) -> dict[str
                     if not resolved.is_file():
                         materialized_sources.append(str(value))
                         continue
-                    target = (
-                        target_dir
-                        / "source"
-                        / f"{index}-{resolved.name}"
+                    target = _retain_immutable_artifact(
+                        resolved,
+                        target_dir,
+                        label=f"source-{index}",
                     )
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(resolved, target)
                     materialized_sources.append(
                         target.relative_to(root).as_posix()
                     )
@@ -327,12 +358,18 @@ def _checked_artifact_path(root: Path, value: object) -> Path:
     candidate = Path(value)
     if candidate.is_absolute() or any(part in {".", ".."} for part in candidate.parts):
         raise PublicBenchmarkError("artifact path must be normalized relative")
-    resolved = (root / candidate).resolve()
+    unresolved = root / candidate
+    cursor = root
+    for part in candidate.parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            raise PublicBenchmarkError("artifact path is missing or symlinked")
+    resolved = unresolved.resolve()
     try:
         resolved.relative_to(root)
     except ValueError as exc:
         raise PublicBenchmarkError("artifact path escapes root") from exc
-    if candidate.is_symlink() or resolved.is_symlink() or not resolved.is_file():
+    if not resolved.is_file():
         raise PublicBenchmarkError("artifact path is missing or symlinked")
     return resolved
 
@@ -373,9 +410,14 @@ def canonical_report_bytes(report: Mapping[str, Any]) -> bytes:
     return _canonical(report) + b"\n"
 
 
-def write_public_report(report: Mapping[str, Any], path: str | Path) -> None:
+def write_public_report(
+    report: Mapping[str, Any],
+    path: str | Path,
+    *,
+    root: str | Path | None = None,
+) -> None:
     """Atomically create a report, refusing to replace differing evidence."""
-    validate_public_report(report)
+    validate_public_report(report, root=root)
     destination = Path(path)
     try:
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -471,7 +513,7 @@ def run_public_benchmark(
         report = _failure_report(base, status="INVALID", code="INVALID_LOCK", message=str(exc), lock=lock, lock_sha256=lock_sha256)
         validate_public_report(report)
     if output is not None:
-        write_public_report(report, output)
+        write_public_report(report, output, root=base)
     return report
 def _validate_failure(report: Mapping[str, Any]) -> None:
     status = report.get("status")
@@ -483,18 +525,19 @@ def _validate_failure(report: Mapping[str, Any]) -> None:
     environment = report.get("environment")
     if not isinstance(environment, Mapping):
         raise PublicBenchmarkError("failure environment missing")
-    uname = environment.get("uname")
-    system = uname.get("system") if isinstance(uname, Mapping) else environment.get("system")
-    machine = uname.get("machine") if isinstance(uname, Mapping) else environment.get("machine")
-    if "raw_samples" in report and report.get("raw_samples") != []:
-        raise PublicBenchmarkError("non-measured report cannot retain timing samples")
-    if system != "Linux" or str(machine).lower() not in {"x86_64", "amd64"}:
-        raise PublicBenchmarkError("public benchmark requires Linux x86-64")
+    if status in {"FAILED", "INVALID"} and report.get("raw_samples", []) != []:
+        raise PublicBenchmarkError("failed report cannot retain timing samples")
 
 
 def validate_public_report(report: Mapping[str, Any], *, root: str | Path | None = None) -> None:
     if not isinstance(report, Mapping) or report.get("schema_version") != SCHEMA_VERSION or report.get("claim_id") != CLAIM_ID:
         raise PublicBenchmarkError("unsupported public benchmark schema")
+    try:
+        _canonical(report)
+    except (TypeError, ValueError) as exc:
+        raise PublicBenchmarkError(
+            "public benchmark report is not finite canonical JSON"
+        ) from exc
     status = report.get("status")
     passed = report.get("passed")
     if status not in {"MEASURED", "UNMEASURED", "FAILED", "INVALID"} or type(passed) is not bool:
@@ -504,7 +547,7 @@ def validate_public_report(report: Mapping[str, Any], *, root: str | Path | None
     if status in {"FAILED", "INVALID"}:
         _validate_failure(report)
         return
-    if status == "UNMEASURED" and "failure" in report:
+    if status == "UNMEASURED":
         _validate_failure(report)
     required = ("workload_lock", "compiler_provenance", "toolchains", "protocol", "workloads", "artifacts", "randomized_schedule", "raw_samples", "gates", "material_gaps")
     if any(key not in report for key in required):
@@ -556,6 +599,13 @@ def validate_public_report(report: Mapping[str, Any], *, root: str | Path | None
     if status == "MEASURED":
         _validate_toolchain_record(toolchains["python"])
         _validate_toolchain_record(toolchains["c"])
+    elif status == "UNMEASURED":
+        _validate_toolchain_record(toolchains["python"])
+        if toolchains["c"].get("path") is None:
+            if dict(toolchains["c"]) != _version_record(None):
+                raise PublicBenchmarkError("unavailable C toolchain identity is malformed")
+        else:
+            _validate_toolchain_record(toolchains["c"])
     artifacts = report["artifacts"]
     if not isinstance(artifacts, Mapping) or set(artifacts) != {item.id for item in alpha.FROZEN_WORKLOADS}:
         raise PublicBenchmarkError("public artifact provenance is incomplete")
@@ -596,21 +646,34 @@ def validate_public_report(report: Mapping[str, Any], *, root: str | Path | None
             if not isinstance(source_paths, list) or not source_paths or any(not isinstance(item, str) for item in source_paths):
                 raise PublicBenchmarkError("public source artifact path missing")
             source_digest = hashlib.sha256()
+            checked_sources: list[Path] = []
             for source_path in source_paths:
                 checked = _checked_artifact_path(artifact_root, source_path)
                 source_digest.update(checked.read_bytes())
                 source_digest.update(b"\0")
+                checked_sources.append(checked)
             if source_digest.hexdigest() != record.get("source_sha256"):
                 raise PublicBenchmarkError("public source artifact hash mismatch")
-            if report.get("status") == "MEASURED" and arm != "python":
+            if arm != "python":
                 binary_path = _checked_artifact_path(artifact_root, record.get("binary"))
                 generated_path = _checked_artifact_path(artifact_root, record.get("generated_source"))
+                if not binary_path.stat().st_mode & (
+                    stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
+                ):
+                    raise PublicBenchmarkError("compiled binary is not executable")
+                if (
+                    generated_path.suffix != ".c"
+                    or binary_path == generated_path
+                    or binary_path in checked_sources
+                    or generated_path in checked_sources
+                ):
+                    raise PublicBenchmarkError("compiled artifact roles are invalid")
                 if _sha256_bytes(binary_path.read_bytes()) != record.get("binary_sha256"):
                     raise PublicBenchmarkError("compiled executable hash mismatch")
                 if _sha256_bytes(generated_path.read_bytes()) != record.get("generated_source_sha256"):
                     raise PublicBenchmarkError("generated C hash mismatch")
-    if report.get("status") == "MEASURED":
-        # Delegate the detailed raw sample, summary, schedule, lock, and gate checks.
+    if report.get("status") in {"MEASURED", "UNMEASURED"}:
+        # Delegate all raw sample, summary, schedule, lock, and gate checks.
         alpha_report = dict(report)
         alpha_report["schema_version"] = alpha.SCHEMA_VERSION
         alpha_report["workloads"] = {
@@ -624,6 +687,8 @@ def validate_public_report(report: Mapping[str, Any], *, root: str | Path | None
             raise PublicBenchmarkError(
                 f"invalid alpha performance evidence: {exc}"
             ) from exc
+        if report.get("status") != "MEASURED":
+            return
         if report.get("passed") and not all(report["gates"].values()):
             raise PublicBenchmarkError("public pass decision is not supported by gates")
         for app in report.get("applications", []):

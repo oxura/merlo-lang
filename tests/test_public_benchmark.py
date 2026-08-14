@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 from pathlib import Path
 
 import pytest
 
 from merlo import alpha_performance as alpha
+from merlo import public_benchmark as public
 from merlo.alpha_release import ReleaseValidationError, public_benchmark_evidence
 from merlo.public_benchmark import (
     CLAIM_ID,
@@ -245,3 +247,125 @@ def test_release_adapter_rejects_tampered_public_report(tmp_path: Path) -> None:
     tampered["passed"] = False
     with pytest.raises(ReleaseValidationError):
         public_benchmark_evidence(tampered, report_path, root=tmp_path)
+
+
+def test_controlled_environment_has_no_inherited_build_inputs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LD_PRELOAD", "/tmp/injected.so")
+    monkeypatch.setenv("CFLAGS", "-Dinjected")
+    with public._controlled_environment():
+        assert dict(os.environ) == public.CONTROLLED_BUILD_ENVIRONMENT
+
+
+def test_unmeasured_partial_samples_still_receive_alpha_validation(
+    tmp_path: Path,
+) -> None:
+    workloads, _ = load_authoritative_workload_lock(ROOT)
+    registry = _registry(workloads)
+    for workload in workloads:
+        del registry[(workload.id, "c")]
+    report = run_public_benchmark(
+        ROOT,
+        runner_registry=registry,
+        artifact_metadata=_artifacts(workloads),
+    )
+    report["raw_samples"][0]["elapsed_ns"] += 1
+    with pytest.raises(PublicBenchmarkError, match="alpha performance evidence"):
+        validate_public_report(report, root=ROOT)
+
+
+def test_native_artifacts_must_remain_executable(tmp_path: Path) -> None:
+    report = _measured_report(tmp_path)
+    record = next(
+        record
+        for arms in report["artifacts"].values()
+        for arm, record in arms.items()
+        if arm != "python" and record.get("binary")
+    )
+    binary = ROOT / record["binary"]
+    original_mode = binary.stat().st_mode
+    try:
+        binary.chmod(0o644)
+        with pytest.raises(PublicBenchmarkError, match="not executable"):
+            validate_public_report(report, root=ROOT)
+    finally:
+        binary.chmod(original_mode)
+
+
+def test_root_relative_artifact_symlink_is_rejected(tmp_path: Path) -> None:
+    report = _measured_report(tmp_path)
+    record = next(iter(next(iter(report["artifacts"].values())).values()))
+    original = ROOT / record["source"][0]
+    link = (
+        ROOT
+        / ".merlo"
+        / "public-benchmark-v1"
+        / "tests"
+        / tmp_path.name
+        / original.name
+    )
+    link.parent.mkdir(parents=True, exist_ok=True)
+    link.symlink_to(original)
+    record["source"][0] = link.relative_to(ROOT).as_posix()
+    try:
+        with pytest.raises(PublicBenchmarkError, match="symlinked"):
+            validate_public_report(report, root=ROOT)
+    finally:
+        link.unlink()
+
+
+def test_custom_root_is_preserved_when_writing_report(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    report = _measured_report(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    output = tmp_path / "written-from-other-cwd.json"
+    write_public_report(report, output, root=ROOT)
+    assert output.read_bytes() == public.canonical_report_bytes(report)
+
+
+def test_materialized_artifacts_are_content_addressed(tmp_path: Path) -> None:
+    source = tmp_path / "app"
+    source.write_bytes(b"first")
+    source.chmod(0o755)
+    first = public._retain_immutable_artifact(
+        source,
+        tmp_path / "retained",
+        label="binary",
+    )
+    source.write_bytes(b"second")
+    second = public._retain_immutable_artifact(
+        source,
+        tmp_path / "retained",
+        label="binary",
+    )
+    assert first != second
+    assert first.read_bytes() == b"first"
+    assert second.read_bytes() == b"second"
+
+
+def test_release_adapter_rejects_lock_override(tmp_path: Path) -> None:
+    report = _measured_report(tmp_path)
+    report_path = (
+        ROOT
+        / ".merlo"
+        / "public-benchmark-v1"
+        / "tests"
+        / tmp_path.name
+        / "report.json"
+    )
+    write_public_report(report, report_path, root=ROOT)
+    retained = json.loads(report_path.read_text())
+    try:
+        with pytest.raises(ReleaseValidationError, match="override disagrees"):
+            public_benchmark_evidence(
+                retained,
+                report_path,
+                root=ROOT,
+                compiler_sha256=retained["toolchains"]["c"]["binary_sha256"],
+                lock_sha256="0" * 64,
+            )
+    finally:
+        report_path.unlink()
