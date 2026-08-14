@@ -584,20 +584,25 @@ def _validate_manifest_shape(manifest: Mapping[str, Any]) -> None:
             raise ReleaseValidationError("manifest validation evidence malformed")
         _manifest_strings(item["raw_paths"], "evidence.raw_paths")
         evidence_ids.append(item["id"])
-    if len(set(evidence_ids)) != len(evidence_ids) or set(failed_evidence_ids) - set(evidence_ids):
+    evidence_gates = dict(zip(evidence_ids, (item["gate"] for item in evidence)))
+    if len(evidence_gates) != len(evidence_ids):
+        raise ReleaseValidationError("manifest validation evidence has duplicates")
+    if set(failed_evidence_ids) - set(evidence_gates):
         raise ReleaseValidationError("manifest validation evidence IDs mismatch")
     expected_failed = {name for name, passed in gates.items() if not passed}
     if set(failed_gates) != expected_failed:
         raise ReleaseValidationError("manifest gate failure set mismatch")
-    status = manifest["status"]
-    if status == ALPHA_RELEASE_SUPPORTED and (expected_failed or failed_evidence_ids):
-        raise ReleaseValidationError("supported manifest has failed gates or evidence")
-    if status == ALPHA_RELEASE_INCOMPLETE and (not expected_failed or not gates["sanitizers"]):
-        raise ReleaseValidationError("incomplete manifest status mismatch")
-    if status == ALPHA_RELEASE_REPRODUCIBILITY_DEFECT and expected_failed != {"reproducibility"}:
-        raise ReleaseValidationError("reproducibility defect gate mismatch")
-    if status == ALPHA_RELEASE_SAFETY_DEFECT and gates["sanitizers"]:
-        raise ReleaseValidationError("safety defect gate mismatch")
+    failed_evidence_gates = {evidence_gates[item] for item in failed_evidence_ids}
+    if failed_evidence_gates != expected_failed:
+        raise ReleaseValidationError("manifest failed evidence coverage mismatch")
+    derived_status = (
+        ALPHA_RELEASE_SAFETY_DEFECT if not gates["sanitizers"]
+        else ALPHA_RELEASE_REPRODUCIBILITY_DEFECT if not gates["reproducibility"]
+        else ALPHA_RELEASE_INCOMPLETE if expected_failed
+        else ALPHA_RELEASE_SUPPORTED
+    )
+    if manifest["status"] != derived_status:
+        raise ReleaseValidationError("manifest status derivation mismatch")
     provenance = manifest["provenance"]
     provenance_keys = {
         "source_commit", "tag", "versions", "platform", "architecture", "python",

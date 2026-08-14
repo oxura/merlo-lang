@@ -241,6 +241,38 @@ def test_rehashed_manifest_cannot_forge_cross_field_integrity(tmp_path: Path) ->
         verify_manifest(invalid)
 
 
+def test_manifest_status_derivation_and_failed_evidence_coverage(tmp_path: Path) -> None:
+    result = assemble_release(_fixture(tmp_path), tmp_path / "dist" / "merlo-0.1.0-alpha.1")
+    manifest = json.loads((result.path / "manifest.json").read_text(encoding="utf-8"))
+    repro = dict(manifest)
+    repro["gates"] = dict(manifest["gates"])
+    repro["gates"]["full_tests"] = False
+    repro["gates"]["reproducibility"] = False
+    repro["failed_gates"] = ["full_tests", "reproducibility"]
+    repro["failed_evidence_ids"] = ["full_tests", "reproducibility"]
+    repro["status"] = "MERLO_ALPHA_RELEASE_REPRODUCIBILITY_DEFECT"
+    repro["payload_sha256"] = manifest_payload_sha256(repro)
+    repro["manifest_sha256"] = manifest_sha256(repro)
+    verify_manifest(repro)
+    incomplete = dict(repro)
+    incomplete["gates"] = dict(manifest["gates"])
+    incomplete["gates"]["full_tests"] = False
+    incomplete["gates"]["reproducibility"] = True
+    incomplete["failed_gates"] = ["full_tests"]
+    incomplete["failed_evidence_ids"] = []
+    incomplete["status"] = "MERLO_ALPHA_RELEASE_INCOMPLETE"
+    incomplete["payload_sha256"] = manifest_payload_sha256(incomplete)
+    incomplete["manifest_sha256"] = manifest_sha256(incomplete)
+    with pytest.raises(ReleaseValidationError, match="evidence coverage"):
+        verify_manifest(incomplete)
+    passing = dict(manifest)
+    passing["failed_evidence_ids"] = ["clean_demo"]
+    passing["payload_sha256"] = manifest_payload_sha256(passing)
+    passing["manifest_sha256"] = manifest_sha256(passing)
+    with pytest.raises(ReleaseValidationError, match="evidence coverage"):
+        verify_manifest(passing)
+
+
 def test_asset_roles_are_distinct_and_asset_keys_canonical(tmp_path: Path) -> None:
     inputs = _fixture(tmp_path)
     overlap = inputs.root / "merlo-0.1.0a1-evidence.whl"
