@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=77.0.3", "wheel"]
+requires = ["setuptools==77.0.3", "wheel==0.45.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -30,7 +30,9 @@ Issues = "https://github.com/oxura/merlo-lang/issues"
 Repository = "https://github.com/oxura/merlo-lang"
 
 [project.optional-dependencies]
-test = ["pytest", "build"]
+test = ["pytest==8.4.1"]
+lint = ["pyflakes==3.4.0"]
+build = ["build==1.2.2.post1", "packaging==24.2", "setuptools==77.0.3", "wheel==0.45.1"]
 
 [project.scripts]
 merlo = "merlo.cli:main"

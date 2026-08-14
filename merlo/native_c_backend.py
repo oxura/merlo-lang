@@ -1346,18 +1346,35 @@ class NativeBuildResult:
 
 
 def find_c_compiler(preferred: str | None = None) -> str | None:
-    candidates = (preferred,) if preferred else ("clang", "gcc", "cc")
+    """Resolve an executable compiler, honoring ``MERLO_C_COMPILER``."""
+    override = os.environ.get("MERLO_C_COMPILER")
+    candidates = (preferred,) if preferred else (
+        (override,) if override else ("clang", "gcc", "cc")
+    )
     for candidate in candidates:
-        if candidate and shutil.which(candidate):
-            return str(shutil.which(candidate))
+        if candidate:
+            resolved = shutil.which(candidate)
+            if resolved:
+                return str(resolved)
     return None
 
 
 def compiler_version(compiler: str) -> str:
-    completed = subprocess.run(
-        (compiler, "--version"), capture_output=True, text=True, check=False, timeout=10
-    )
-    return (completed.stdout or completed.stderr).splitlines()[0]
+    """Return the first exact version-output line without masking failures."""
+    try:
+        completed = subprocess.run(
+            (compiler, "--version"),
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return f"{type(exc).__name__}: {exc}"
+    output = completed.stdout.splitlines() or completed.stderr.splitlines()
+    if output:
+        return output[0]
+    return f"compiler --version exited with status {completed.returncode}"
 
 
 def compile_c_source(

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
@@ -13,7 +12,7 @@ from .concise_application import (
     elaborate_concise_application,
 )
 from .modules import ModuleError, ModuleGraph
-from .native_c_backend import NativeBuildResult, compile_c_source
+from .native_c_backend import NativeBuildResult, compile_c_source, find_c_compiler
 from .project import Project
 from .representation_c_backend import GeneratedC, emit_general_c
 from .representation_ir import RepresentationProgram, lower_structured_hir_to_rir
@@ -292,7 +291,7 @@ def compile_project(
             if output is not None
             else Path(".merlo/build").resolve() / c_artifact.digest[:16] / "app"
         )
-        compiler = shutil.which("clang") or shutil.which("gcc")
+        compiler = find_c_compiler()
         native = compile_c_source(
             generated_c,
             output_dir=destination.parent,

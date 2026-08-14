@@ -10,45 +10,134 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Python ${{ matrix.python }}
+  pyflakes:
+    name: Pyflakes lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install declared lint dependencies
+        run: python -m pip install '.[lint]'
+      - name: Run pyflakes
+        run: python -m pyflakes merlo tests
+
+  python-tests:
+    name: Python ${{ matrix.python }} tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.11", "3.14"]
+        python: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
           cache: pip
-      - name: Install
+      - name: Install declared test dependencies
         run: python -m pip install -e '.[test]'
-      - name: Test
+      - name: Run Python test suite
         run: python -m pytest tests/ -q
 
-  smoke:
-    name: CLI and native smoke
+  native-smoke:
+    name: Native smoke (${{ matrix.compiler }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [clang, gcc]
+    env:
+      MERLO_C_COMPILER: ${{ matrix.compiler }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.14"
-          cache: pip
-      - name: Install
-        run: python -m pip install -e '.[test]'
-      - name: Exercise production CLI
+      - name: Install selected C compiler
         run: |
+          set -eux
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes clang gcc
+          command -v "$MERLO_C_COMPILER"
+          "$MERLO_C_COMPILER" --version
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Exercise native compiler and CLI
+        run: |
+          set -eux
           merlo --help
-          merlo check examples/automation --json
-          merlo test examples/automation --json
-          merlo build examples/automation --json
-          merlo run examples/automation --json
+          tmp="$(mktemp -d)"
+          merlo new "$tmp/project" --name ci_smoke --json
+          merlo check "$tmp/project" --json
+          merlo build "$tmp/project" --json
+          merlo run "$tmp/project" --json
 
-  package:
-    name: Build wheel
+  sanitizers:
+    name: ${{ matrix.sanitizer }} sanitizer
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [asan, ubsan, lsan]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Clang
+        run: |
+          set -eux
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes clang
+          command -v clang
+          clang --version
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Compile and run selected sanitizer
+        env:
+          SANITIZER: ${{ matrix.sanitizer }}
+        run: |
+          set -eux
+          case "$SANITIZER" in
+            asan)
+              flag="-fsanitize=address"
+              export ASAN_OPTIONS="halt_on_error=1:detect_leaks=1"
+              ;;
+            ubsan)
+              flag="-fsanitize=undefined"
+              export UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1"
+              ;;
+            lsan)
+              flag="-fsanitize=leak"
+              export LSAN_OPTIONS="halt_on_error=1:detect_leaks=1"
+              ;;
+            *)
+              echo "unknown sanitizer: $SANITIZER" >&2
+              exit 2
+              ;;
+          esac
+          python - <<'PY'
+          from pathlib import Path
+          from merlo.compiler import compile_project
+
+          compilation = compile_project(
+              "examples/automation",
+              emit_native=False,
+              require_interface_lock=False,
+          )
+          Path("sanitizer.c").write_text(compilation.generated_c, encoding="utf-8")
+          PY
+          clang -std=c11 -O1 -g -fno-omit-frame-pointer "$flag" sanitizer.c -o sanitizer
+          ./sanitizer examples/automation/input.txt > sanitizer.out
+          cmp -- examples/automation/expected.txt sanitizer.out
+
+  package-smoke:
+    name: Clean wheel install and CLI smoke
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,5 +145,242 @@ jobs:
         with:
           python-version: "3.14"
           cache: pip
-      - run: python -m pip install build
-      - run: python -m build --wheel
+      - name: Install pinned build tools
+        run: python -m pip install '.[build]'
+      - name: Build clean wheel
+        run: |
+          set -eux
+          rm -rf build dist wheel-smoke
+          python -m build --wheel --no-isolation --outdir dist
+          python -m build --version
+      - name: Install and exercise wheel only
+        run: |
+          set -eux
+          python -m venv wheel-smoke
+          wheel-smoke/bin/python -m pip install --no-index --no-deps dist/*.whl
+          wheel-smoke/bin/python - <<'PY'
+          from importlib.resources import files
+
+          installed_stdlib = files("merlo") / "stdlib" / "json.mlo"
+          if not installed_stdlib.is_file():
+              raise SystemExit(f"installed package data is missing: {installed_stdlib}")
+          print(installed_stdlib)
+          PY
+          tmp="$(mktemp -d)"
+          (
+            cd "$tmp"
+            "$GITHUB_WORKSPACE/wheel-smoke/bin/merlo" --help
+            "$GITHUB_WORKSPACE/wheel-smoke/bin/merlo" new project --name wheel_smoke --json
+            cat > project/src/main.mlo <<'EOF'
+          module main
+          use app.json
+
+          export enum AppError:
+              Failed
+
+          export main(path: Path) -> Result[Text, AppError]:
+              console.write("ok")
+              Ok("ok")
+          EOF
+            "$GITHUB_WORKSPACE/wheel-smoke/bin/merlo" check project --json
+            "$GITHUB_WORKSPACE/wheel-smoke/bin/merlo" build project --json
+            "$GITHUB_WORKSPACE/wheel-smoke/bin/merlo" run project --json
+          )
+
+  compiler-stage-determinism:
+    name: Deterministic compiler-stage hashes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Compare compiler-stage hashes in independent processes
+        run: |
+          set -eux
+          cat > stage_snapshot.py <<'PY'
+          import json
+          from merlo.compiler import compile_project
+
+          compilation = compile_project(
+              "examples/automation",
+              emit_native=False,
+              require_interface_lock=False,
+          )
+          snapshot = {
+              "generated_c_sha256": compilation.generated_c_sha256,
+              "stages": {
+                  name: artifact.digest
+                  for name, artifact in sorted(compilation.artifacts.items())
+              },
+          }
+          print(json.dumps(snapshot, sort_keys=True))
+          PY
+          python stage_snapshot.py > stage-a.json
+          python stage_snapshot.py > stage-b.json
+          cmp -- stage-a.json stage-b.json
+
+  reproducible-package:
+    name: Reproducible source archive and wheel
+    runs-on: ubuntu-latest
+    env:
+      SOURCE_DATE_EPOCH: "1700000000"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install pinned build tools
+        run: |
+          set -eux
+          python -m pip install '.[build]'
+          python -m build --version
+          python -c 'import packaging, setuptools, wheel; print(f"packaging={packaging.__version__} setuptools={setuptools.__version__} wheel={wheel.__version__}")'
+      - name: Derive PEP 440 version
+        run: |
+          version="$(python - <<'PY'
+          from pathlib import Path
+          import tomllib
+          from packaging.version import Version
+
+          raw = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+          print(Version(raw))
+          PY
+          )"
+          echo "PEP440_VERSION=$version" >> "$GITHUB_ENV"
+      - name: Build two clean source trees and deterministic git archives
+        run: |
+          set -eux
+          rm -rf source-a source-b dist-a dist-b
+          mkdir source-a source-b dist-a dist-b
+          git archive --format=tar HEAD | tar -x -C source-a
+          git archive --format=tar HEAD | tar -x -C source-b
+          (
+            cd source-a
+            python -m build --wheel --no-isolation --outdir "$GITHUB_WORKSPACE/dist-a"
+          )
+          (
+            cd source-b
+            python -m build --wheel --no-isolation --outdir "$GITHUB_WORKSPACE/dist-b"
+          )
+          git archive --format=tar --prefix="merlo-${PEP440_VERSION}/" HEAD | gzip -n > "dist-a/merlo-${PEP440_VERSION}.tar.gz"
+          git archive --format=tar --prefix="merlo-${PEP440_VERSION}/" HEAD | gzip -n > "dist-b/merlo-${PEP440_VERSION}.tar.gz"
+      - name: Compare package bytes and member inventories
+        run: |
+          set -eux
+          python - <<'PY'
+          from pathlib import Path
+          import tarfile
+          import zipfile
+
+          first = {path.name: path.read_bytes() for path in Path("dist-a").iterdir() if path.is_file()}
+          second = {path.name: path.read_bytes() for path in Path("dist-b").iterdir() if path.is_file()}
+          if set(first) != set(second):
+              raise SystemExit(f"package file inventory differs: {sorted(first)} != {sorted(second)}")
+          if not any(name.endswith(".whl") for name in first):
+              raise SystemExit("wheel build produced no wheel")
+          archive_names = sorted(name for name in first if name.endswith(".tar.gz"))
+          if len(archive_names) != 1:
+              raise SystemExit(f"expected one deterministic git source archive, found {archive_names}")
+          for name in sorted(first):
+              if first[name] != second[name]:
+                  raise SystemExit(f"package bytes differ: {name}")
+
+          def members(path: Path) -> list[str]:
+              if path.name.endswith(".whl"):
+                  with zipfile.ZipFile(path) as archive:
+                      return sorted(archive.namelist())
+              with tarfile.open(path, "r:gz") as archive:
+                  return sorted(item.name for item in archive.getmembers())
+
+          inventories = {
+              name: (members(Path("dist-a") / name), members(Path("dist-b") / name))
+              for name in sorted(first)
+          }
+          archive_root = "merlo-" + __import__("os").environ["PEP440_VERSION"] + "/"
+          source_members = set(inventories[archive_names[0]][0])
+          required_source_members = {
+              archive_root + "pyproject.toml",
+              archive_root + "LICENSE-MIT",
+              archive_root + "LICENSE-APACHE",
+              archive_root + "merlo/__init__.py",
+              archive_root + "examples/automation/src/main.mlo",
+          }
+          if not required_source_members <= source_members:
+              missing = sorted(required_source_members - source_members)
+              raise SystemExit(f"deterministic git source archive is missing: {missing}")
+          if any(left != right for left, right in inventories.values()):
+              raise SystemExit("package member inventory differs")
+          print(inventories)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reproducible-packages
+          path: |
+            dist-a/*
+            dist-b/*
+          if-no-files-found: error
+
+  release-inventory:
+    name: Release required-file inventory
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify complete release inventory
+        run: |
+          set -eux
+          python - <<'PY'
+          from pathlib import Path
+          import tomllib
+
+          metadata = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          required = {
+              "pyproject.toml",
+              "README.md",
+              "CHANGELOG.md",
+              "CITATION.cff",
+              "CODE_OF_CONDUCT.md",
+              "CONTRIBUTING.md",
+              "LICENSE-MIT",
+              "LICENSE-APACHE",
+              "ROADMAP.md",
+              "SECURITY.md",
+              "merlo/__init__.py",
+              "merlo/cli.py",
+              "merlo/compiler.py",
+              "merlo/native_c_backend.py",
+              "stdlib/README.md",
+              "stdlib/std/core.mlo",
+              "docs/README.md",
+              "spec/README.md",
+              "examples/README.md",
+          }
+          for root in ("merlo", "stdlib", "docs", "spec", "research", "rfcs", "examples"):
+              required.update(
+                  str(path)
+                  for path in Path(root).rglob("*")
+                  if path.is_file() and "__pycache__" not in path.parts
+              )
+
+          setuptools = metadata["tool"]["setuptools"]
+          for target, members in setuptools["data-files"].items():
+              for member in members:
+                  required.add(member)
+          for package, patterns in setuptools["package-data"].items():
+              package_root = Path(package.replace(".", "/"))
+              for pattern in patterns:
+                  matches = sorted(path for path in package_root.glob(pattern) if path.is_file())
+                  if not matches:
+                      required.add(f"package-data:{package}/{pattern}")
+                  else:
+                      required.update(str(path) for path in matches)
+
+          missing = sorted(path for path in required if not Path(path).is_file())
+          if missing:
+              raise SystemExit("missing required release files:\n" + "\n".join(missing))
+          print(f"verified complete release inventory ({len(required)} files)")
+          PY
