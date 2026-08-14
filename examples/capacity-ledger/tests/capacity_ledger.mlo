@@ -1,0 +1,19 @@
+module capacity_ledger
+
+export enum TestFailure:
+    Invariant
+
+export main(path: Path) -> Result[Unit, TestFailure]:
+    values: Vec[UInt64] = Vec.new()
+    values.push(3)
+    values.push(4)
+    totals: Map[Text, UInt64] = Map.new()
+    totals.insert("alpha", 7)
+    totals.insert("beta", 11)
+    if values.len() != 2:
+        return Err(TestFailure.Invariant)
+    if totals.get("alpha") != 7:
+        return Err(TestFailure.Invariant)
+    if totals.get("beta") != 11:
+        return Err(TestFailure.Invariant)
+    Ok(())

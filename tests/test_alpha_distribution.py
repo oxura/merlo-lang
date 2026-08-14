@@ -71,6 +71,10 @@ EXAMPLE_PATHS = (
     "examples/csv/tests/csv.mlo",
     "examples/ffi/merlo.toml", "examples/ffi/merlo.lock",
     "examples/ffi/src/main.mlo", "examples/ffi/tests/ffi.mlo",
+    "examples/capacity-ledger/merlo.toml", "examples/capacity-ledger/merlo.lock",
+    "examples/capacity-ledger/src/main.mlo", "examples/capacity-ledger/src/decode.mlo",
+    "examples/capacity-ledger/src/ledger.mlo",
+    "examples/capacity-ledger/tests/capacity_ledger.mlo",
 )
 
 
