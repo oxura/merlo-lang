@@ -183,7 +183,7 @@ def test_surface_control_and_named_calls_reach_hir_and_c_lowering() -> None:
     from merlo.representation_c_backend import emit_general_c
     from merlo.representation_ir import lower_structured_hir_to_rir
     from merlo.representation_mir import lower_rir_to_performance_mir
-    from merlo.structured_hir_v2 import compile_structured_hir
+    from merlo.structured_hir_v2 import compile_canonical_hir
 
     result = elaborate(
         "subtract(left: UInt64, right: UInt64) = left - right\n\n"
@@ -197,8 +197,7 @@ def test_surface_control_and_named_calls_reach_hir_and_c_lowering() -> None:
         "            break\n"
         "    subtract(right: value, left: 10)\n"
     )
-    canonical_source = result.canonical.to_source()
-    hir = compile_structured_hir(canonical_source, path="surface.mlo")
+    hir = compile_canonical_hir(result.canonical)
     kinds = {node.kind for node in hir.function("main").walk()}
     assert {"Break", "Continue"} <= kinds
 
