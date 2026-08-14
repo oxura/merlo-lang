@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
 
 
 class GenericTypeSyntaxError(ValueError):
@@ -47,6 +47,8 @@ class _Parser:
         if start == self.index:
             raise GenericTypeSyntaxError(f"expected type name at offset {self.index}")
         name = self.source[start:self.index]
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]*|\d+", name):
+            raise GenericTypeSyntaxError(f"invalid type atom {name!r}")
         self._skip_space()
         if self.index == len(self.source) or self.source[self.index] != "[":
             return TypeExpr(name)
@@ -101,6 +103,10 @@ def iter_type_expressions(
             if character == quote:
                 quote = None
             index += 1
+            continue
+        if character == "#":
+            newline = source.find("\n", index)
+            index = len(source) if newline < 0 else newline + 1
             continue
         if character in "\"'":
             quote = character

@@ -1337,6 +1337,7 @@ class _Inference:
             map_types = _map_types(type_name)
             if (
                 map_types is None
+                or map_types[0] != "Text"
                 or map_types[1] not in _SCALARS
             ):
                 raise ConciseApplicationError(
