@@ -203,6 +203,7 @@ class SurfaceWhile(SurfaceNode):
 class SurfaceCase(SurfaceNode):
     pattern: str
     body: tuple[SurfaceStatement, ...]
+    pattern_span: SourceSpan | None = None
 
 
 @dataclass(frozen=True)
@@ -285,6 +286,6 @@ class SurfaceProgram(SurfaceNode):
     declarations: tuple[SurfaceDeclaration, ...]
     module: str | None = None
     imports: tuple[str, ...] = ()
-
+    source: str = ""
 
 __all__ = [name for name in globals() if name.startswith("Source") or name.startswith("Surface")]

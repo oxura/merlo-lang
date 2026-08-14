@@ -205,14 +205,28 @@ def _operator(node: ast.AST) -> str:
         raise ValueError(type(node).__name__) from exc
 
 
-def _node_span(path: str, line: _Line, node: ast.AST) -> SourceSpan:
-    start = line.indent + int(getattr(node, "col_offset", 0)) + 1
-    end = line.indent + int(getattr(node, "end_col_offset", len(line.text))) + 1
+def _node_span(
+    path: str,
+    line: _Line,
+    node: ast.AST,
+    *,
+    base_column: int = 0,
+) -> SourceSpan:
+    start = line.indent + base_column + int(getattr(node, "col_offset", 0)) + 1
+    end = line.indent + base_column + int(
+        getattr(node, "end_col_offset", len(line.text))
+    ) + 1
     return SourceSpan(path, line.number, start, line.number, end)
 
 
-def _expression_node(node: ast.AST, path: str, line: _Line) -> SurfaceExpression:
-    span = _node_span(path, line, node)
+def _expression_node(
+    node: ast.AST,
+    path: str,
+    line: _Line,
+    *,
+    base_column: int = 0,
+) -> SurfaceExpression:
+    span = _node_span(path, line, node, base_column=base_column)
     if isinstance(node, ast.Name):
         return SurfaceName(node.id, span)
     if isinstance(node, ast.Constant):
@@ -231,61 +245,85 @@ def _expression_node(node: ast.AST, path: str, line: _Line) -> SurfaceExpression
         )
         return SurfaceLiteral(span, node.value, kind)
     if isinstance(node, ast.List):
-        return SurfaceList(span, tuple(_expression_node(item, path, line) for item in node.elts))
+        return SurfaceList(
+            span,
+            tuple(
+                _expression_node(item, path, line, base_column=base_column)
+                for item in node.elts
+            ),
+        )
     if isinstance(node, ast.Attribute):
         if isinstance(node.value, ast.Name) and node.value.id == "__implicit__":
             return SurfaceImplicitReceiver(span, node.attr)
-        return SurfaceMember(span, _expression_node(node.value, path, line), node.attr)
+        return SurfaceMember(
+            span,
+            _expression_node(node.value, path, line, base_column=base_column),
+            node.attr,
+        )
     if isinstance(node, ast.Subscript):
         return SurfaceIndex(
             span,
-            _expression_node(node.value, path, line),
-            _expression_node(node.slice, path, line),
+            _expression_node(node.value, path, line, base_column=base_column),
+            _expression_node(node.slice, path, line, base_column=base_column),
         )
     if isinstance(node, ast.Call):
         if isinstance(node.func, ast.Name) and node.func.id == "__try__" and len(node.args) == 1:
-            return SurfaceTry(span, _expression_node(node.args[0], path, line))
+            return SurfaceTry(
+                span,
+                _expression_node(node.args[0], path, line, base_column=base_column),
+            )
         arguments = [
             SurfaceCallArgument(
-                _node_span(path, line, item),
-                _expression_node(item, path, line),
+                _node_span(path, line, item, base_column=base_column),
+                _expression_node(item, path, line, base_column=base_column),
             )
             for item in node.args
         ]
         arguments.extend(
             SurfaceCallArgument(
-                _node_span(path, line, item.value),
-                _expression_node(item.value, path, line),
+                _node_span(path, line, item.value, base_column=base_column),
+                _expression_node(item.value, path, line, base_column=base_column),
                 item.arg,
             )
             for item in node.keywords
         )
         return SurfaceCall(
             span,
-            _expression_node(node.func, path, line),
+            _expression_node(node.func, path, line, base_column=base_column),
             tuple(arguments),
         )
     if isinstance(node, ast.UnaryOp):
-        return SurfaceUnary(span, _operator(node.op), _expression_node(node.operand, path, line))
+        return SurfaceUnary(
+            span,
+            _operator(node.op),
+            _expression_node(node.operand, path, line, base_column=base_column),
+        )
     if isinstance(node, ast.BinOp):
         return SurfaceBinary(
             _operator(node.op),
-            _expression_node(node.left, path, line),
-            _expression_node(node.right, path, line),
+            _expression_node(node.left, path, line, base_column=base_column),
+            _expression_node(node.right, path, line, base_column=base_column),
             span,
         )
     if isinstance(node, ast.BoolOp):
-        values = [_expression_node(item, path, line) for item in node.values]
+        values = [
+            _expression_node(item, path, line, base_column=base_column)
+            for item in node.values
+        ]
         result = values[0]
         for value in values[1:]:
             result = SurfaceBinary(_operator(node.op), result, value, span)
         return result
     if isinstance(node, ast.Compare):
-        left = _expression_node(node.left, path, line)
+        left = _expression_node(node.left, path, line, base_column=base_column)
         comparisons = []
         for operation, comparator in zip(node.ops, node.comparators, strict=True):
-            right = _expression_node(comparator, path, line)
-            comparisons.append(SurfaceBinary(_operator(operation), left, right, span))
+            right = _expression_node(
+                comparator, path, line, base_column=base_column
+            )
+            comparisons.append(
+                SurfaceBinary(_operator(operation), left, right, span)
+            )
             left = right
         result = comparisons[0]
         for comparison in comparisons[1:]:
@@ -337,7 +375,13 @@ def _validate_implicit(expression: SurfaceExpression, path: str, line: _Line) ->
         )
 
 
-def _parse_expression(source: str, path: str, line: _Line) -> SurfaceExpression:
+def _parse_expression(
+    source: str,
+    path: str,
+    line: _Line,
+    *,
+    base_column: int = 0,
+) -> SurfaceExpression:
     try:
         parsed = ast.parse(_rewrite_expression(source), mode="eval").body
     except SyntaxError as exc:
@@ -348,7 +392,7 @@ def _parse_expression(source: str, path: str, line: _Line) -> SurfaceExpression:
                 SourceSpan(
                     path,
                     line.number,
-                    line.indent + (exc.offset or 1),
+                    line.indent + base_column + (exc.offset or 1),
                     line.number,
                     len(line.raw) + 1,
                 ),
@@ -356,9 +400,20 @@ def _parse_expression(source: str, path: str, line: _Line) -> SurfaceExpression:
         raise SurfaceSyntaxError(
             "InvalidExpression",
             exc.msg,
-            SourceSpan(path, line.number, line.indent + (exc.offset or 1), line.number, len(line.raw) + 1),
+            SourceSpan(
+                path,
+                line.number,
+                line.indent + base_column + (exc.offset or 1),
+                line.number,
+                len(line.raw) + 1,
+            ),
         ) from exc
-    expression = _expression_node(parsed, path, line)
+    expression = _expression_node(
+        parsed,
+        path,
+        line,
+        base_column=base_column,
+    )
     _validate_implicit(expression, path, line)
     return expression
 
@@ -418,6 +473,7 @@ class _Parser:
             tuple(declarations),
             module,
             tuple(imports),
+            self.source,
         )
 
     def _declaration(self) -> SurfaceDeclaration:
@@ -479,15 +535,41 @@ class _Parser:
             self.index += 1
         return SurfaceEnum(_span(self.path, start, end_line=self.lines[self.index - 1]), name, tuple(variants), exported)
 
-    def _parameters(self, source: str, line: _Line) -> tuple[SurfaceParameter, ...]:
+    def _parameters(
+        self,
+        source: str,
+        line: _Line,
+        *,
+        base_column: int = 0,
+    ) -> tuple[SurfaceParameter, ...]:
         if not source.strip():
             return ()
         parameters = []
+        cursor = 0
         for part in _split_top_level_commas(source):
+            start = source.find(part, cursor)
+            cursor = start + len(part)
+            left = len(part) - len(part.lstrip())
+            right = len(part.rstrip())
+            lexical_start = base_column + start + left
+            lexical_end = base_column + start + right
             name, separator, type_name = part.strip().partition(":")
             if not re.fullmatch(r"[A-Za-z_]\w*", name):
                 raise SurfaceSyntaxError("InvalidParameter", part, _span(self.path, line))
-            parameters.append(SurfaceParameter(_span(self.path, line), name, _type_name(type_name) if separator else None))
+            parameter_span = SourceSpan(
+                self.path,
+                line.number,
+                line.indent + lexical_start + 1,
+                line.number,
+                line.indent + lexical_end + 1,
+            )
+            parameters.append(
+                SurfaceParameter(
+                    parameter_span,
+                    name,
+                    _type_name(type_name) if separator else None,
+                )
+            )
         if len({item.name for item in parameters}) != len(parameters):
             raise SurfaceSyntaxError("DuplicateParameter", "parameter names must be unique", _span(self.path, line))
         return tuple(parameters)
@@ -495,25 +577,71 @@ class _Parser:
     def _function(self, match: re.Match[str], exported: bool) -> SurfaceFunction:
         start = self.lines[self.index]
         kind, name, raw_parameters, raw_return, delimiter, inline = match.groups()
-        parameters = self._parameters(raw_parameters, start)
+        parameters = self._parameters(
+            raw_parameters,
+            start,
+            base_column=match.start(3),
+        )
         return_type = _type_name(raw_return) if raw_return else None
         self.index += 1
         if delimiter == "=" and inline.strip():
-            expression = _parse_expression(inline.strip(), self.path, start)
-            return SurfaceFunction(name, parameters, expression, "expression", exported, _span(self.path, start), kind, return_type)
+            leading = len(inline) - len(inline.lstrip())
+            expression = _parse_expression(
+                inline.strip(),
+                self.path,
+                start,
+                base_column=match.start(6) + leading,
+            )
+            return SurfaceFunction(
+                name, parameters, expression, "expression", exported,
+                _span(self.path, start), kind, return_type,
+            )
         if delimiter == "=":
             self._skip_blank()
-            if self.index >= len(self.lines) or self.lines[self.index].indent != start.indent + 4:
-                raise SurfaceSyntaxError("ExpectedExpressionBody", name, _span(self.path, start))
+            if (
+                self.index >= len(self.lines)
+                or self.lines[self.index].indent != start.indent + 4
+            ):
+                raise SurfaceSyntaxError(
+                    "ExpectedExpressionBody",
+                    name,
+                    _span(self.path, start),
+                )
             expression_line = self.lines[self.index]
-            expression = _parse_expression(expression_line.text, self.path, expression_line)
+            expression = _parse_expression(
+                expression_line.text,
+                self.path,
+                expression_line,
+            )
             self.index += 1
-            return SurfaceFunction(name, parameters, expression, "expression", exported, _span(self.path, start, end_line=expression_line), kind, return_type)
+            return SurfaceFunction(
+                name,
+                parameters,
+                expression,
+                "expression",
+                exported,
+                _span(self.path, start, end_line=expression_line),
+                kind,
+                return_type,
+            )
         statements = self._block(start.indent + 4)
         if not statements:
-            raise SurfaceSyntaxError("EmptyFunction", name, _span(self.path, start))
+            raise SurfaceSyntaxError(
+                "EmptyFunction",
+                name,
+                _span(self.path, start),
+            )
         end_line = self.lines[self.index - 1]
-        return SurfaceFunction(name, parameters, statements, "block", exported, _span(self.path, start, end_line=end_line), kind, return_type)
+        return SurfaceFunction(
+            name,
+            parameters,
+            statements,
+            "block",
+            exported,
+            _span(self.path, start, end_line=end_line),
+            kind,
+            return_type,
+        )
 
     def _block(self, indent: int) -> tuple[SurfaceStatement, ...]:
         statements = []
@@ -525,7 +653,11 @@ class _Parser:
             if line.indent < indent:
                 break
             if line.indent != indent:
-                raise SurfaceSyntaxError("InvalidIndentation", "statement indentation mismatch", _span(self.path, line))
+                raise SurfaceSyntaxError(
+                    "InvalidIndentation",
+                    "statement indentation mismatch",
+                    _span(self.path, line),
+                )
             statements.append(self._statement())
         return tuple(statements)
 
@@ -535,7 +667,17 @@ class _Parser:
             self.index += 1
             body = self._block(line.indent + 4)
             end = self.lines[self.index - 1]
-            return SurfaceFor(_span(self.path, line, end_line=end), match.group(1), _parse_expression(match.group(2), self.path, line), body)
+            return SurfaceFor(
+                _span(self.path, line, end_line=end),
+                match.group(1),
+                _parse_expression(
+                    match.group(2),
+                    self.path,
+                    line,
+                    base_column=match.start(2),
+                ),
+                body,
+            )
         if match := re.fullmatch(r"if\s+(.+)\s*:", line.text):
             self.index += 1
             body = self._block(line.indent + 4)
@@ -544,11 +686,30 @@ class _Parser:
                 self.index += 1
                 otherwise = self._block(line.indent + 4)
             end = self.lines[self.index - 1]
-            return SurfaceIf(_span(self.path, line, end_line=end), _parse_expression(match.group(1), self.path, line), body, otherwise)
+            return SurfaceIf(
+                _span(self.path, line, end_line=end),
+                _parse_expression(
+                    match.group(1),
+                    self.path,
+                    line,
+                    base_column=match.start(1),
+                ),
+                body,
+                otherwise,
+            )
         if match := re.fullmatch(r"while\s+(.+)\s*:", line.text):
             self.index += 1
             body = self._block(line.indent + 4)
-            return SurfaceWhile(_span(self.path, line, end_line=self.lines[self.index - 1]), _parse_expression(match.group(1), self.path, line), body)
+            return SurfaceWhile(
+                _span(self.path, line, end_line=self.lines[self.index - 1]),
+                _parse_expression(
+                    match.group(1),
+                    self.path,
+                    line,
+                    base_column=match.start(1),
+                ),
+                body,
+            )
         if match := re.fullmatch(r"match\s+(.+)\s*:", line.text):
             self.index += 1
             cases: list[SurfaceCase] = []
@@ -580,6 +741,17 @@ class _Parser:
                         case_match.group(1),
                         _span(self.path, case_line),
                     )
+                pattern = case_match.group(1).strip()
+                pattern_start = case_match.start(1) + (
+                    len(case_match.group(1)) - len(case_match.group(1).lstrip())
+                )
+                pattern_span = SourceSpan(
+                    self.path,
+                    case_line.number,
+                    case_line.indent + pattern_start + 1,
+                    case_line.number,
+                    case_line.indent + pattern_start + len(pattern) + 1,
+                )
                 cases.append(
                     SurfaceCase(
                         _span(
@@ -587,8 +759,9 @@ class _Parser:
                             case_line,
                             end_line=self.lines[self.index - 1],
                         ),
-                        case_match.group(1).strip(),
+                        pattern,
                         body,
+                        pattern_span,
                     )
                 )
             if not cases:
@@ -603,12 +776,25 @@ class _Parser:
                     line,
                     end_line=self.lines[self.index - 1],
                 ),
-                _parse_expression(match.group(1), self.path, line),
+                _parse_expression(
+                    match.group(1),
+                    self.path,
+                    line,
+                    base_column=match.start(1),
+                ),
                 tuple(cases),
             )
         if match := re.fullmatch(r"print\s+(.+)", line.text):
             self.index += 1
-            return SurfacePrint(_span(self.path, line), _parse_expression(match.group(1), self.path, line))
+            return SurfacePrint(
+                _span(self.path, line),
+                _parse_expression(
+                    match.group(1),
+                    self.path,
+                    line,
+                    base_column=match.start(1),
+                ),
+            )
         if line.text == "continue":
             self.index += 1
             return SurfaceContinue(_span(self.path, line))
@@ -620,7 +806,17 @@ class _Parser:
             return SurfacePass(_span(self.path, line))
         if match := re.fullmatch(r"return(?:\s+(.+))?", line.text):
             self.index += 1
-            return SurfaceReturn(_span(self.path, line), _parse_expression(match.group(1), self.path, line) if match.group(1) else None)
+            return SurfaceReturn(
+                _span(self.path, line),
+                _parse_expression(
+                    match.group(1),
+                    self.path,
+                    line,
+                    base_column=match.start(1),
+                )
+                if match.group(1)
+                else None,
+            )
         if match := re.fullmatch(
             r"(?:(let|var)\s+)?([A-Za-z_]\w*)"
             r"(?:\s*:\s*([^=]+))?\s*"
@@ -629,7 +825,12 @@ class _Parser:
         ):
             self.index += 1
             kind, name, type_name, operator, value = match.groups()
-            expression = _parse_expression(value, self.path, line)
+            expression = _parse_expression(
+                value,
+                self.path,
+                line,
+                base_column=match.start(5),
+            )
             if operator == "=":
                 return SurfaceBinding(
                     _span(self.path, line),
@@ -654,8 +855,18 @@ class _Parser:
             self.index += 1
             return SurfaceAssignment(
                 _span(self.path, line),
-                _parse_expression(target, self.path, line),
-                _parse_expression(value, self.path, line),
+                _parse_expression(
+                    target,
+                    self.path,
+                    line,
+                    base_column=match.start(1),
+                ),
+                _parse_expression(
+                    value,
+                    self.path,
+                    line,
+                    base_column=match.start(3),
+                ),
                 operator,
             )
         self.index += 1
@@ -664,7 +875,11 @@ class _Parser:
 
 def parse_surface(source: str, *, path: str = "main.mlo") -> SurfaceProgram:
     if not source.strip():
-        raise SurfaceSyntaxError("EmptySource", "source is empty", SourceSpan(path, 1, 1, 1, 1))
+        raise SurfaceSyntaxError(
+            "EmptySource",
+            "source is empty",
+            SourceSpan(path, 1, 1, 1, 1),
+        )
     return _Parser(source, path).parse()
 
 

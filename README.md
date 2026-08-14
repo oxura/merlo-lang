@@ -80,6 +80,17 @@ Merlo is designed around structured semantics for coding agents. The
 productivity advantage has not yet been independently validated. No general
 native-performance, simplicity, or AI-productivity superiority is claimed.
 
+The public native benchmark is a separate, narrow observation over the three
+checked-in Linux x86-64 workloads:
+
+```console
+python3 -m merlo benchmark --output ./merlo-benchmark-v1.json
+```
+
+Its exact claim and clean-clone reproduction are documented in
+[Public native benchmark v1](docs/benchmark.md). This does not claim general
+native performance, language ranking, Rust performance, or AI productivity.
+
 ## Compiler
 
 ```text
