@@ -2131,6 +2131,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     f"{pad}}}",
                 ]
             )
+            return lines
         if (
             isinstance(node.target, ast.Name)
             and isinstance(node.iter, ast.Call)
@@ -2169,6 +2170,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                         f"{pad}{loop_exit}:;",
                     ]
                 )
+                return lines
         if (
             not isinstance(node.target, ast.Name)
             or not isinstance(node.iter, ast.Call)
@@ -2211,6 +2213,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         self.indent += 2
         for statement in node.body:
             lines.extend(self._statement(statement))
+        self.indent -= 2
         self.loop_exit_labels.pop()
         lines.extend([
             f"{pad}    }}",
