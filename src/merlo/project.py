@@ -11,14 +11,13 @@ from typing import Any, Mapping
 
 from merlo.package import (
     Dependency,
-    GitDependencyError,
     LockfileError,
     Package,
     PackageError,
     package_from_root,
     resolve_git_package,
 )
-from merlo.version import VERSIONS, CompilerVersions
+from merlo.version import VERSIONS
 
 MANIFEST_SCHEMA_VERSION = 1
 LOCKFILE_SCHEMA_VERSION = 1

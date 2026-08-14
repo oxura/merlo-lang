@@ -43,7 +43,7 @@ def test_stage04e_and_python_sidecar_are_frozen() -> None:
     assert verification.mismatches == ()
     assert assert_stage05p_frozen(ROOT) == verification
     payload = json.loads(
-        (ROOT / "benchmarks" / "meldra_stage05p_freeze.json").read_text(
+        (ROOT / "tools" / "benchmarks" / "merlo" / "benchmarks" / "meldra_stage05p_freeze.json").read_text(
             encoding="utf-8"
         )
     )

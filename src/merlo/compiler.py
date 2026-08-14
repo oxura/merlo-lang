@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,7 +24,6 @@ from merlo.representation_mir import (
 from merlo.structured_hir_v2 import (
     StructuredHIRProgram,
     compile_canonical_hir,
-    compile_structured_hir,
 )
 from merlo.version import VERSIONS, CompilerVersions
 

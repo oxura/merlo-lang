@@ -7,10 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from merlo import alpha_performance as alpha
-from merlo import public_benchmark as public
-from merlo.alpha_release import ReleaseValidationError, public_benchmark_evidence
-from merlo.public_benchmark import (
+from tools.benchmarks.merlo import alpha_performance as alpha
+from tools.benchmarks.merlo import public_benchmark as public
+from tools.release.merlo.alpha_release import ReleaseValidationError, public_benchmark_evidence
+from tools.benchmarks.merlo.public_benchmark import (
     CLAIM_ID,
     PublicBenchmarkError,
     PublicBenchmarkOutputError,
@@ -22,13 +22,13 @@ from merlo.public_benchmark import (
 )
 
 
-ROOT = Path(__file__).parents[1]
+ROOT = Path(__file__).parents[4]
 
 
 def _artifacts(
     workloads: tuple[alpha.FrozenWorkload, ...],
 ) -> dict[str, dict[str, dict[str, object]]]:
-    from merlo.productive_performance import (
+    from tools.benchmarks.merlo.productive_performance import (
         build_productive_runner_registry,
     )
 
@@ -66,7 +66,7 @@ def test_authoritative_lock_has_all_three_workloads_and_fixed_protocol() -> None
         "text_bytes_collections",
         "cli_ndjson_report",
     ]
-    assert lock["path"] == "benchmarks/alpha_performance/workloads.json"
+    assert lock["path"] == "tools/benchmarks/merlo/benchmarks/alpha_performance/workloads.json"
     assert len(lock["sha256"]) == 64
 
 

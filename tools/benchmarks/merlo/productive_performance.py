@@ -410,7 +410,7 @@ def build_productive_runner_registry(
         }
 
         native_source_path = (
-            base / "benchmarks" / "productive_simplicity" / application / "reference.c"
+            base / "tools" / "benchmarks" / "merlo" / "benchmarks" / "productive_simplicity" / application / "reference.c"
         )
         native_source = native_source_path.read_text(encoding="utf-8")
         native_source_sha256 = hashlib.sha256(native_source.encode("utf-8")).hexdigest()

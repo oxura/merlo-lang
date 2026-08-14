@@ -5,9 +5,7 @@ from pathlib import Path
 
 from merlo.cli import EXIT_DIAGNOSTIC, EXIT_OK, build_parser, main
 from merlo.package import package_from_root
-from merlo.compiler import compile_project
 from merlo.project import Project
-from merlo.semantic_world import SemanticWorld
 from merlo.test_runner import run_project_tests
 
 

@@ -12,6 +12,7 @@ from merlo.compiler import compile_project
 from merlo.formatter import format_application_source
 from merlo.project import Project
 from merlo.semantic_world import SemanticWorld
+from merlo.docgen import generate_documentation, write_documentation
 from merlo.test_runner import run_project_tests
 
 EXIT_OK = 0
@@ -20,7 +21,7 @@ EXIT_USAGE = 2
 
 
 _PRODUCTION_COMMANDS = (
-    "new", "benchmark", "check", "build", "run", "test", "fmt", "expand", "explain",
+    "new", "check", "build", "run", "test", "fmt", "expand", "explain",
     "doc", "map", "inspect", "refs", "callers", "callees", "deps", "impact",
     "why", "context", "refactor", "add",
 )
@@ -35,8 +36,6 @@ def build_parser() -> argparse.ArgumentParser:
     new.add_argument("--name")
     new.add_argument("--version", default="0.1.0")
     _json_flag(new)
-    benchmark = commands.add_parser("benchmark", help="run the locked public native benchmark")
-    benchmark.add_argument("--output", required=True, metavar="PATH")
 
     for name in ("check", "build", "run", "test", "fmt", "expand", "explain", "doc", "map"):
         command = commands.add_parser(name, help=f"{name} a Merlo project")
@@ -162,13 +161,6 @@ def _error_payload(exc: Exception) -> dict[str, Any]:
 
 def _main_production(args: argparse.Namespace) -> int:
     name = args.command
-    if name == "benchmark":
-        try:
-            report = run_public_benchmark(Path.cwd(), output=args.output)
-        except PublicBenchmarkOutputError as exc:
-            print(f"merlo: benchmark output error: {exc}", file=sys.stderr)
-            return EXIT_USAGE
-        return EXIT_OK if report.get("status") == "MEASURED" and report.get("passed") is True else EXIT_DIAGNOSTIC
 
     if name == "new":
         project = Project.create(args.path, name=args.name, version=args.version)

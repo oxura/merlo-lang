@@ -17,7 +17,7 @@ from merlo.intrinsics import (
     intrinsic_signature,
 )
 from merlo.version import VERSIONS
-from merlo.runtime_contract import ALPHA_EFFECTS, CLOSED_EFFECTS
+from merlo.runtime_contract import ALPHA_EFFECTS
 from merlo.modules import STDLIB_MODULES, _declaration
 from merlo.canonical_ast import (
     CanonicalBinding,
@@ -1059,7 +1059,6 @@ def _preprocess_core(source: str) -> str:
     for original, protected in _protected_line_views(source):
         indent = original[: len(original) - len(original.lstrip())]
         line = re.sub(r"^(\s*)export\s+", r"\1", original)
-        stripped = line.strip()
         if not indent:
             line = re.sub(r"^(record|enum)\s+", "class ", line)
             if re.fullmatch(r"[A-Z][A-Za-z0-9_]*\s*:", line):

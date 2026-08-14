@@ -35,7 +35,6 @@ def _identifier_edit(path: Path, span: dict[str, Any], old: str, new: str, symbo
     offsets = _line_offsets(source)
     line = int(span.get("line", 1))
     start_line = max(0, line - 1)
-    line_end = offsets[start_line + 1] if start_line + 1 < len(offsets) else len(source)
     column = int(span.get("column", 0))
     start = offsets[start_line] + column
     end_line = int(span.get("end_line", line))

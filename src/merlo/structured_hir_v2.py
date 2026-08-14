@@ -13,7 +13,8 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from merlo.ffi import FFICompileError, FFIProgram, parse_ffi_declarations, validate_ffi
+from typing import Any, Iterable
+from merlo.ffi import FFICompileError, FFIProgram, validate_ffi
 from merlo.canonical_ast import CanonicalProgram
 from merlo.type_parser import generic_parts, parse_type, validate_type_expr
 from merlo.intrinsics import contextual_result_type, format_intrinsic_arity, intrinsic_signature
@@ -792,12 +793,9 @@ class _OwnershipChecker:
                 self._check_name(receiver_root, state)
             if receiver is not None:
                 self._check_expr(receiver, state)
-            argument_types = [
-                "value"
-                if getattr(argument, "_merlo_implicit_callable", None) is not None
-                else self._check_expr(argument, state)
-                for argument in node.args
-            ]
+            for argument in node.args:
+                if getattr(argument, "_merlo_implicit_callable", None) is None:
+                    self._check_expr(argument, state)
             signature = intrinsic_signature(name)
             if signature is not None:
                 for argument, parameter_ownership in zip(
@@ -1289,9 +1287,9 @@ class _HIRBuilder:
         if owner in self.types:
             declaration = self.types[owner]
             if declaration.kind == "record":
-                for field in declaration.fields:
-                    if field.name == field_name:
-                        return field.type_name
+                for member in declaration.fields:
+                    if member.name == field_name:
+                        return member.type_name
         return None
 
     def _result_parts(self, type_name: str) -> tuple[str, str] | None:

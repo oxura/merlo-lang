@@ -23,7 +23,7 @@ from . import alpha_performance as alpha
 
 SCHEMA_VERSION = "merlo.public-benchmark.v1"
 CLAIM_ID = "public-native-three-workload-v1"
-LOCK_PATH = "benchmarks/alpha_performance/workloads.json"
+LOCK_PATH = "tools/benchmarks/merlo/benchmarks/alpha_performance/workloads.json"
 CONTROLLED_BUILD_ENVIRONMENT = {
     "LC_ALL": "C",
     "TZ": "UTC",
