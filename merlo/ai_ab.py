@@ -310,10 +310,14 @@ def validate_attempt_record(
         for field, limit in limits.items()
     ):
         raise ProtocolError("attempt budget exceeded")
+    if record["total_tokens"] == 0 or record["wall_time_ms"] == 0:
+        raise ProtocolError("ratio denominator is not measured")
     if not isinstance(record["task_success"], bool):
         raise ProtocolError("task_success must be boolean")
     if not isinstance(record["oracle"], Mapping):
         raise ProtocolError("oracle result must be an object")
+    if record["oracle"].get("passed") is not record["task_success"]:
+        raise ProtocolError("task_success does not match oracle result")
     if not all(isinstance(record[key], str) for key in ("pre_digest", "post_digest", "stdout", "stderr")):
         raise ProtocolError("invalid raw attempt artifact")
     if not all(isinstance(record[key], Mapping) for key in ("pre_digest_map", "post_digest_map")):
@@ -487,14 +491,12 @@ def report_from_attempts(
         success_groups.setdefault(task_id, []).append(
             float(merlo["task_success"]) - float(python["task_success"])
         )
-        if python["total_tokens"] > 0:
-            token_groups.setdefault(task_id, []).append(
-                merlo["total_tokens"] / python["total_tokens"]
-            )
-        if python["wall_time_ms"] > 0:
-            wall_groups.setdefault(task_id, []).append(
-                merlo["wall_time_ms"] / python["wall_time_ms"]
-            )
+        token_groups.setdefault(task_id, []).append(
+            merlo["total_tokens"] / python["total_tokens"]
+        )
+        wall_groups.setdefault(task_id, []).append(
+            merlo["wall_time_ms"] / python["wall_time_ms"]
+        )
         regressions += merlo["regression_count"] + python["regression_count"]
         out_of_scope += (
             merlo["irrelevant_edit_count"] + python["irrelevant_edit_count"]
@@ -503,9 +505,37 @@ def report_from_attempts(
         task_id: str(task["stratum"])
         for task_id, task in task_by_id.items()
     }
-    success_ci = paired_bootstrap(success_groups, strata=strata)
-    token_ci = _ratio_bootstrap(token_groups, strata=strata)
-    wall_ci = _ratio_bootstrap(wall_groups, strata=strata, seed=20260814)
+    bootstrap = protocol.get("metrics", {})
+    bootstrap_seed = bootstrap.get("bootstrap_seed")
+    bootstrap_replicates = bootstrap.get("bootstrap_replicates")
+    if (
+        not isinstance(bootstrap_seed, int)
+        or not isinstance(bootstrap_replicates, int)
+        or bootstrap_replicates <= 0
+    ):
+        return {
+            "schema_version": SCHEMA_VERSION, "status": "INVALID",
+            "terminal_reason": "INVALID_BOOTSTRAP_CONFIG", "passed": False,
+            "metrics": None, "claim_eligible": False,
+        }
+    success_ci = paired_bootstrap(
+        success_groups,
+        strata=strata,
+        seed=bootstrap_seed,
+        replicates=bootstrap_replicates,
+    )
+    token_ci = _ratio_bootstrap(
+        token_groups,
+        strata=strata,
+        seed=bootstrap_seed,
+        replicates=bootstrap_replicates,
+    )
+    wall_ci = _ratio_bootstrap(
+        wall_groups,
+        strata=strata,
+        seed=bootstrap_seed,
+        replicates=bootstrap_replicates,
+    )
     thresholds = protocol.get("eligibility_gate", {})
     required_thresholds = (
         "success_difference_pp_at_least", "success_lower95_pp_gt",

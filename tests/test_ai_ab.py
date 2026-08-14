@@ -92,6 +92,12 @@ def test_attempt_transcript_hash_and_absence_are_enforced() -> None:
         "provider_attestation": attestation, "contamination_attestation": protocol["contamination_policy"],
     }
     validate_attempt_record(record, protocol, task, schedule_entry)
+    oracle_mismatch = dict(record, oracle={"passed": False})
+    with pytest.raises(ProtocolError, match="does not match oracle"):
+        validate_attempt_record(oracle_mismatch, protocol, task, schedule_entry)
+    missing_ratio = dict(record, wall_time_ms=0)
+    with pytest.raises(ProtocolError, match="ratio denominator"):
+        validate_attempt_record(missing_ratio, protocol, task, schedule_entry)
     record.pop("transcript")
     with pytest.raises(ProtocolError, match="absent transcript"):
         validate_attempt_record(record, protocol, task)
