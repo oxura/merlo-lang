@@ -1,0 +1,38 @@
+module decode
+
+use std.text
+
+export enum Lane:
+    Alpha
+    Beta
+
+export WorkItem:
+    lane: Lane
+    minutes: UInt64
+
+export enum AppError:
+    MissingArgument
+    InvalidPath: Text
+    ReadFailure: Text
+    InvalidUtf8: UInt64
+    InvalidRecord
+    InvalidLane: UInt64
+    InvalidMinutes
+    TotalOverflow
+
+export decode(line: TextView) -> Result[WorkItem, AppError]:
+    if line.len() < 3:
+        return Err(AppError.InvalidRecord)
+    if line.byte(1) != 44:
+        return Err(AppError.InvalidRecord)
+    lane_byte = line.byte(0)
+    if lane_byte != 65 and lane_byte != 66:
+        return Err(AppError.InvalidLane(lane_byte))
+    parsed = text.parse_uint(line.slice_bytes(2, line.len() - 2))
+    match parsed:
+        case Result.Ok(minutes):
+            if lane_byte == 65:
+                return Ok(WorkItem(Lane.Alpha, minutes))
+            return Ok(WorkItem(Lane.Beta, minutes))
+        case Result.Err(_):
+            return Err(AppError.InvalidMinutes)

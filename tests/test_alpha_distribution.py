@@ -71,6 +71,10 @@ EXAMPLE_PATHS = (
     "examples/csv/tests/csv.mlo",
     "examples/ffi/merlo.toml", "examples/ffi/merlo.lock",
     "examples/ffi/src/main.mlo", "examples/ffi/tests/ffi.mlo",
+    "examples/capacity-ledger/merlo.toml", "examples/capacity-ledger/merlo.lock",
+    "examples/capacity-ledger/src/main.mlo", "examples/capacity-ledger/src/decode.mlo",
+    "examples/capacity-ledger/src/ledger.mlo",
+    "examples/capacity-ledger/tests/capacity_ledger.mlo",
 )
 
 
@@ -146,7 +150,7 @@ def test_shipped_human_sources_use_and_parse_as_surface_0_2() -> None:
         flags=re.MULTILINE,
     )
     sources = _human_surface_paths()
-    assert len(sources) == 47
+    assert len(sources) == 51
     for path in sources:
         source = path.read_text(encoding="utf-8")
         assert canonical_only.search(source) is None, path

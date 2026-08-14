@@ -63,7 +63,7 @@ parses JSON, matches its root value, and builds typed output.
 - HIR, Representation IR, MIR, C11 lowering, and native executable generation
 - CLI commands for `new`, `check`, `fmt`, `test`, `build`, `run`, `map`, and
   `inspect`
-- an LSP server, editor grammar, FFI boundary, standard library, and eight
+- an LSP server, editor grammar, FFI boundary, standard library, and nine
   runnable example projects
 
 The supported alpha target is Linux x86-64 with a C11-capable Clang or GCC

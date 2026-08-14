@@ -1,0 +1,4 @@
+capacity-ledger
+entries=4
+alpha_minutes=40
+beta_minutes=50
