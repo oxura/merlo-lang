@@ -240,7 +240,7 @@ def test_break_in_match_inside_loop_targets_loop_exit_in_c() -> None:
         "enum Signal:\n"
         "    Stop\n"
         "    Keep\n\n"
-        "fn main() -> UInt64:\n"
+        "fn main(input: BytesView) -> UInt64:\n"
         "    value = 0\n"
         "    signal: Signal = Signal.Stop\n"
         "    while value < 4:\n"

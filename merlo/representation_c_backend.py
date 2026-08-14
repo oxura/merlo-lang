@@ -2020,6 +2020,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     lines.extend(self._statement(statement))
                 self.indent -= 1
             lines.append(f"{pad}}}")
+            return lines
         if isinstance(node, ast.While):
             self.loop_ordinal += 1
             loop_exit = f"__merlo_loop_exit_{self.loop_ordinal}"
