@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import json
 import shutil
 import subprocess
@@ -300,40 +301,41 @@ def test_concise_json_cli_returns_typed_host_errors(tmp_path: Path):
     assert unreadable.stderr.startswith("AppError.ReadFailure:")
 
 
-def test_cli_check_expand_explain_build_and_run(tmp_path: Path):
     payload = tmp_path / "input.json"
     payload.write_text("[1,2,3]", encoding="utf-8")
     output = tmp_path / "application"
+    environment = dict(os.environ)
+    environment["PYTHONPATH"] = str(Path.cwd() / "src") + os.pathsep + environment.get("PYTHONPATH", "")
 
     check = subprocess.run(
         ["python3", "-m", "merlo", "check", str(ENTRY)],
         capture_output=True,
         text=True,
-        check=False,
+        env=environment,
     )
     expand = subprocess.run(
         ["python3", "-m", "merlo", "expand", str(ENTRY)],
         capture_output=True,
         text=True,
-        check=False,
+        env=environment,
     )
     explain = subprocess.run(
         ["python3", "-m", "merlo", "explain", str(ENTRY)],
         capture_output=True,
         text=True,
-        check=False,
+        env=environment,
     )
     build = subprocess.run(
         ["python3", "-m", "merlo", "build", str(ENTRY), "-o", str(output)],
         capture_output=True,
         text=True,
-        check=False,
+        env=environment,
     )
     run = subprocess.run(
         ["python3", "-m", "merlo", "run", str(ENTRY), "--", str(payload)],
         capture_output=True,
         text=True,
-        check=False,
+        env=environment,
     )
 
     assert check.returncode == 0 and check.stdout.startswith("ok ")
