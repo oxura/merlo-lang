@@ -2108,6 +2108,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             pad = self._pad()
             self.loop_ordinal += 1
             ordinal = self.loop_ordinal
+            view = f"__merlo_file_lines_{ordinal}"
             line = f"__merlo_file_line_{ordinal}"
             loop_exit = f"__merlo_loop_exit_{ordinal}"
             self.loop_exit_labels.append(loop_exit)
