@@ -23,8 +23,8 @@ from research.archive.alpha1.merlo.bytes_reborrow_experiment import (
 )
 from research.archive.alpha1.merlo.native_differential import HIREvaluator, MIRInterpreter
 from research.archive.alpha1.merlo.native_hir import compile_native_hir
-from tools.benchmarks.merlo.performance_frontend import PerformanceCompileError, compile_performance_source
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from research.archive.alpha1.merlo.performance_frontend import PerformanceCompileError, compile_performance_source
+from research.archive.alpha1.merlo.performance_opt import optimize_mir
 
 
 CHAIN_SOURCE = """fn leaf(data: BytesView, state: UInt64) -> UInt64:

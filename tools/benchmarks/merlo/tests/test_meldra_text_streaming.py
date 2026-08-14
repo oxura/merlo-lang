@@ -10,10 +10,10 @@ from tools.benchmarks.merlo.json_streaming import (
     json_streaming_mir_manifest,
     tokenize_json,
 )
-from merlo.native_c_backend import find_c_compiler
+from research.archive.alpha1.merlo.native_c_backend import find_c_compiler
 from research.archive.alpha1.merlo.native_differential import run_differential
 from research.archive.alpha1.merlo.native_hir import compile_native_hir, lower_native_hir_to_performance
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from research.archive.alpha1.merlo.performance_opt import optimize_mir
 
 
 SOURCE = """fn main(data: BytesView) -> UInt64:

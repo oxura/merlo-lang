@@ -20,11 +20,11 @@ from research.archive.alpha1.merlo.bytes_call_boundary_experiment import (
 )
 from research.archive.alpha1.merlo.native_differential import MIRInterpreter, evaluate_hir
 from research.archive.alpha1.merlo.native_hir import compile_native_hir
-from tools.benchmarks.merlo.performance_frontend import (
+from research.archive.alpha1.merlo.performance_frontend import (
     PerformanceCompileError,
     compile_performance_source,
 )
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from research.archive.alpha1.merlo.performance_opt import optimize_mir
 
 
 CALL_SOURCE = """fn checksum(data: BytesView) -> UInt64:

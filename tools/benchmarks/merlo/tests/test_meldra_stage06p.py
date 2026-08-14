@@ -24,11 +24,11 @@ from research.archive.alpha1.merlo.native_differential import evaluate_mir, run_
 from research.archive.alpha1.merlo.optimizer_evidence import run_optimizer_evidence
 from research.archive.alpha1.merlo.native_hir import compile_native_hir
 from research.archive.alpha1.merlo.stage06p_overlap import compare_stage04_overlap
-from tools.benchmarks.merlo.performance_frontend import (
+from research.archive.alpha1.merlo.performance_frontend import (
     PerformanceCompileError,
     compile_performance_source,
 )
-from tools.benchmarks.merlo.performance_opt import optimize_mir, region_ownership_lowering
+from research.archive.alpha1.merlo.performance_opt import optimize_mir, region_ownership_lowering
 
 
 def test_mutable_array_uses_descriptor_local_not_second_payload_allocation(tmp_path):

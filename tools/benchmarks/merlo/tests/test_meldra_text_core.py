@@ -5,14 +5,14 @@ import subprocess
 
 import pytest
 
-from merlo.native_c_backend import CEmitter, compile_c_source
+from research.archive.alpha1.merlo.native_c_backend import CEmitter, compile_c_source
 from research.archive.alpha1.merlo.native_differential import evaluate_hir, evaluate_mir
 from research.archive.alpha1.merlo.native_hir import compile_native_hir
-from tools.benchmarks.merlo.performance_frontend import (
+from research.archive.alpha1.merlo.performance_frontend import (
     PerformanceCompileError,
     compile_performance_source,
 )
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from research.archive.alpha1.merlo.performance_opt import optimize_mir
 from research.archive.alpha1.merlo.text_core import (
     text_abi_manifest,
     text_hir_manifest,

@@ -10,11 +10,11 @@ from research.archive.alpha1.merlo.bytes_contract import (
     bytes_hir_manifest,
     bytes_mir_manifest,
 )
-from merlo.native_c_backend import CEmitter, compile_c_source
+from research.archive.alpha1.merlo.native_c_backend import CEmitter, compile_c_source
 from research.archive.alpha1.merlo.native_differential import MIRInterpreter
 from research.archive.alpha1.merlo.native_hir import compile_native_hir
-from tools.benchmarks.merlo.performance_frontend import PerformanceCompileError, compile_performance_source
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from research.archive.alpha1.merlo.performance_frontend import PerformanceCompileError, compile_performance_source
+from research.archive.alpha1.merlo.performance_opt import optimize_mir
 
 
 NLL_SOURCE = """fn main(n: UInt64) -> UInt64:

@@ -9,14 +9,14 @@ from research.archive.alpha1.merlo.bytes_builder import (
     bytes_builder_hir_manifest,
     bytes_builder_mir_manifest,
 )
-from merlo.native_c_backend import CEmitter
+from research.archive.alpha1.merlo.native_c_backend import CEmitter
 from research.archive.alpha1.merlo.native_differential import MIRInterpreter, evaluate_hir
 from research.archive.alpha1.merlo.native_hir import compile_native_hir
-from tools.benchmarks.merlo.performance_frontend import (
+from research.archive.alpha1.merlo.performance_frontend import (
     PerformanceCompileError,
     compile_performance_source,
 )
-from tools.benchmarks.merlo.performance_opt import optimize_mir
+from research.archive.alpha1.merlo.performance_opt import optimize_mir
 
 
 BASIC_SOURCE = """fn main(n: UInt64) -> UInt64:
