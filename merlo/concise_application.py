@@ -28,6 +28,7 @@ from .type_parser import (
     iter_type_expressions,
     parse_type,
     split_structural_commas,
+    validate_type_expr,
 )
 
 CONCISE_APPLICATION_SCHEMA_VERSION = VERSIONS.frontend
@@ -444,6 +445,7 @@ def _map_types(type_name: str | None) -> tuple[str, str] | None:
     try:
         parsed = parse_type(type_name)
     except GenericTypeSyntaxError as error:
+
         if type_name.startswith("Map"):
             raise ConciseApplicationError(
                 f"malformed generic type {type_name!r}: {error}"
@@ -452,6 +454,13 @@ def _map_types(type_name: str | None) -> tuple[str, str] | None:
     if parsed.name != "Map" or len(parsed.args) != 2:
         return None
     return parsed.args[0].canonical, parsed.args[1].canonical
+def _split_parameters(payload: str, context: str) -> tuple[str, ...]:
+    try:
+        return split_structural_commas(payload)
+    except GenericTypeSyntaxError as error:
+        raise ConciseApplicationError(
+            f"{context}: malformed generic type: {error}"
+        ) from error
 
 
 def _sum_nominal_name(type_name: str) -> str:
@@ -487,10 +496,14 @@ def lower_concise_sum_types(source: str) -> str:
         ),
     )
     declarations = []
-    mapping = {
-        type_name: _sum_nominal_name(type_name)
-        for type_name in sum_types
-    }
+    mapping: dict[str, str] = {}
+    used_nominals: dict[str, str] = {}
+    for type_name in sum_types:
+        nominal = _sum_nominal_name(type_name)
+        if nominal in used_nominals and used_nominals[nominal] != type_name:
+            nominal = f"{nominal}_{hashlib.sha256(type_name.encode()).hexdigest()[:8]}"
+        mapping[type_name] = nominal
+        used_nominals[nominal] = type_name
     for type_name in sum_types:
         nominal = mapping[type_name]
         arguments = _generic_arguments(type_name)
@@ -534,8 +547,8 @@ def lower_concise_sum_types(source: str) -> str:
             current_return = (
                 function.group(2).strip().replace(" ", "")
             )
-            for parameter in split_structural_commas(
-                function.group(1)
+            for parameter in _split_parameters(
+                function.group(1), "concise function parameters"
             ):
                 if ":" in parameter:
                     name, type_name = parameter.split(":", 1)
@@ -1347,7 +1360,7 @@ class _Inference:
         for state in self.functions.values():
             for type_name in (*state.parameters.values(), state.return_type):
                 try:
-                    parsed_type = parse_type(type_name)
+                    parsed_type = validate_type_expr(parse_type(type_name))
                 except GenericTypeSyntaxError as error:
                     raise ConciseApplicationError(
                         f"{self.path}:{state.node.lineno}: malformed generic type "

@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from .ffi import FFICompileError, FFIProgram, parse_ffi_declarations, validate_ffi
 from .canonical_ast import CanonicalProgram
-from .type_parser import generic_parts
+from .type_parser import generic_parts, parse_type, validate_type_expr
 
 
 STRUCTURED_HIR_SCHEMA_VERSION = 2
@@ -306,7 +306,10 @@ def _type_name(node: ast.AST | None) -> str:
     type_name = ast.unparse(node).replace(" ", "")
     for alias, canonical in _TYPE_ALIASES.items():
         type_name = re.sub(rf"\b{alias}\b", canonical, type_name)
-    return type_name
+    try:
+        return validate_type_expr(parse_type(type_name)).canonical
+    except ValueError as error:
+        raise StructuredHIRCompileError(f"MalformedType: {type_name}") from error
 
 _DEFAULT_MAP = "Map[Text,UInt64]"
 

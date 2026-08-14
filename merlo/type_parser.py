@@ -161,9 +161,25 @@ def split_structural_commas(payload: str) -> tuple[str, ...]:
         raise GenericTypeSyntaxError("unclosed generic brackets")
     item = payload[start:].strip()
     if not item:
+
+
         raise GenericTypeSyntaxError("missing final argument")
     parts.append(item)
     return tuple(parts)
+def validate_type_expr(expression: TypeExpr) -> TypeExpr:
+    """Validate fixed constructor arities recursively."""
+
+    arities = {"Option": 1, "Result": 2, "Vec": 1, "Box": 1, "Map": 2}
+    expected = arities.get(expression.name)
+    if expected is not None and len(expression.args) != expected:
+        raise GenericTypeSyntaxError(
+            f"{expression.name} expects {expected} arguments, got {len(expression.args)}"
+        )
+    if expression.name == "Fn" and len(expression.args) < 2:
+        raise GenericTypeSyntaxError("Fn expects at least one parameter and a return type")
+    for argument in expression.args:
+        validate_type_expr(argument)
+    return expression
 
 
 def parse_type(type_name: str) -> TypeExpr:
@@ -195,5 +211,6 @@ def generic_parts(type_name: str | None, constructor: str, *, arity: int | None 
 
 __all__ = [
     "GenericTypeSyntaxError", "TypeExpr", "generic_arguments", "generic_parts",
-    "iter_type_expressions", "parse_type", "parse_type_prefix", "split_structural_commas",
+    "iter_type_expressions", "parse_type", "parse_type_prefix",
+    "split_structural_commas", "validate_type_expr",
 ]
