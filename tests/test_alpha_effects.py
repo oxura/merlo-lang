@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import io
+import sys
 from pathlib import Path
 
 import pytest
@@ -136,3 +138,61 @@ def test_runtime_random_uses_requested_length() -> None:
     data = GuardedHostRuntime(CapabilityManifest(("random.read",))).random_read(32)
     assert len(data) == 32
 
+
+
+def test_runtime_preserves_line_all_and_argument_semantics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stream = io.TextIOWrapper(io.BytesIO(b"first\nsecond"))
+    monkeypatch.setattr(sys, "stdin", stream)
+    console = GuardedHostRuntime(CapabilityManifest(("console.read",)))
+    assert console.console_read_line() == "first\n"
+    assert console.console_read_all() == "second"
+    invalid = io.TextIOWrapper(io.BytesIO(b"\xff"))
+    monkeypatch.setattr(sys, "stdin", invalid)
+    with pytest.raises(UnicodeDecodeError):
+        console.console_read_all()
+
+    process = GuardedHostRuntime(
+        CapabilityManifest(("process.args",), process_arguments=True),
+        argv=("app", "--name", "Merlo"),
+    )
+    assert process.process_args() == 2
+    assert process.process_arg(0) == "--name"
+    assert process.process_arg(1) == "Merlo"
+    assert process.process_arg(2) == ""
+
+
+def test_tcp_handle_is_owned_and_shared_with_narrowed_scope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    closed: list[bool] = []
+
+    class Connection:
+        def fileno(self) -> int:
+            return 41
+
+        def send(self, data: bytes) -> int:
+            return len(data)
+
+        def recv(self, limit: int) -> bytes:
+            return b"ok"[:limit]
+
+        def close(self) -> None:
+            closed.append(True)
+
+    monkeypatch.setattr(
+        "merlo.runtime_contract.socket.create_connection",
+        lambda address, timeout=None: Connection(),
+    )
+    manifest = CapabilityManifest(
+        ("network.tcp",),
+        network_hosts=("localhost",),
+    )
+    runtime = GuardedHostRuntime(manifest)
+    narrowed = runtime.scope(manifest)
+    with ResourceScope() as resources:
+        handle = resources.own(runtime.tcp_connect("localhost", 80))
+        assert narrowed.tcp_send(handle, b"data") == 4
+        assert narrowed.tcp_receive(handle, 2) == b"ok"
+    assert closed == [True]

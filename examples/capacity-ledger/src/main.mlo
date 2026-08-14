@@ -1,0 +1,10 @@
+module main
+
+use ledger
+
+export main(path: Path) -> Result[Text, AppError]:
+    file = fs.open_read(path)?
+    summary = ledger.collect(file.lines())?
+    result = ledger.render(summary)
+    console.write(result)
+    Ok(result)

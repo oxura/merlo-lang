@@ -23,12 +23,4 @@ export io_read_line() -> Result[Text,IoError]:
     Ok(console.read_line())
 
 export io_read_all() -> Result[Text,IoError]:
-    builder = TextBuilder.new()
-    done: Bool = false
-    while not done:
-        chunk = console.read_line()
-        if chunk.len() == 0:
-            done = true
-        else:
-            builder.append_text(chunk)
-    Ok(builder.finish())
+    Ok(console.read_all())

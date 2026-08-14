@@ -5,13 +5,11 @@ export enum RandomError:
     InvalidRange
 
 export random_bytes(length: UInt64) -> Result[Bytes,RandomError]:
-    random.read(length)
+    Ok(random.read(length))
 
 export random_u64() -> Result[UInt64,RandomError]:
     bytes = random.read(8)
-    if bytes.is_err():
-        return Err(RandomError.Unavailable)
-    Ok(random_decode_u64(bytes.unwrap()))
+    Ok(random_decode_u64(bytes))
 
 export random_below(bound: UInt64) -> Result[UInt64,RandomError]:
     if bound == 0:

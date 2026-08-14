@@ -1,0 +1,60 @@
+module ledger
+
+use decode
+
+export Summary:
+    entries: UInt64
+    alpha_minutes: UInt64
+    beta_minutes: UInt64
+
+checked_add(total: UInt64, amount: UInt64) -> Result[UInt64, AppError]:
+    if total > 18446744073709551615 - amount:
+        return Err(AppError.TotalOverflow)
+    Ok(total + amount)
+
+export collect(lines: FileLines) -> Result[Summary, AppError]:
+    values: Vec[UInt64] = Vec.new()
+    totals: Map[Text, UInt64] = Map.new()
+    totals.insert("alpha", 0)
+    totals.insert("beta", 0)
+    for line in lines:
+        parsed = decode(line)
+        match parsed:
+            case Result.Err(error):
+                return Err(error)
+            case Result.Ok(item):
+                match item.lane:
+                    case Lane.Alpha:
+                        current = totals.get("alpha")
+                        next = checked_add(current, item.minutes)
+                        match next:
+                            case Result.Err(error):
+                                return Err(error)
+                            case Result.Ok(value):
+                                totals.insert("alpha", value)
+                                values.push(item.minutes)
+                    case Lane.Beta:
+                        current = totals.get("beta")
+                        next = checked_add(current, item.minutes)
+                        match next:
+                            case Result.Err(error):
+                                return Err(error)
+                            case Result.Ok(value):
+                                totals.insert("beta", value)
+                                values.push(item.minutes)
+    Ok(Summary(values.len(), totals.get("alpha"), totals.get("beta")))
+
+export render(summary: Summary) -> Text:
+    output = TextBuilder.new()
+    output.append_text("capacity-ledger")
+    output.append_byte(10)
+    output.append_text("entries=")
+    output.append_uint64(summary.entries)
+    output.append_byte(10)
+    output.append_text("alpha_minutes=")
+    output.append_uint64(summary.alpha_minutes)
+    output.append_byte(10)
+    output.append_text("beta_minutes=")
+    output.append_uint64(summary.beta_minutes)
+    output.append_byte(10)
+    output.finish()
