@@ -1,9 +1,23 @@
 # Changelog
 
+## 0.1.0-alpha.2 — unreleased
+
+This release is reserved for repository and frontend stabilization under
+[RFC 0001](rfcs/0001-repository-and-frontend-stabilization.md). It will separate
+production and research code, remove text-based semantic inference, strengthen
+CI and release manifests, and provide a clean wheel-first installation path.
+
+No alpha.2 artifact has been published yet.
+
 ## 0.1.0-alpha.1 — 2026-08-14
 
 This is the first public packaged Merlo alpha release. Private research and
 development began on 2026-03-19.
+
+> **Known release defects:** the alpha.1 public source archive omitted
+> `stdlib/std/core.mlo`; its wheel predates later Python and Clang portability
+> repairs. Both packages remain historical evidence and are not the recommended
+> installation path while alpha.2 is being prepared.
 
 - Adds a Python 3.11+ bootstrap package and the `merlo` console script.
 - Publishes project creation, checking, native build/run, tests, formatting,
