@@ -3096,7 +3096,10 @@ def _assemble_core(
     )
     _validate_declared_task_effects(modules, inference.function_effects)
     canonical_program = inference.canonical_program()
-    canonical = canonical_program.to_source()
+    canonical = (
+        canonical_program.projection_source
+        or canonical_program.to_source()
+    )
     public_functions = {
         name for _, name, kind in exports if kind in {"fn", "task"}
     }
