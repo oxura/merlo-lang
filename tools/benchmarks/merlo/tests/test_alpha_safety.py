@@ -65,6 +65,21 @@ def test_alpha_safety_rejects_output_digest_mismatch() -> None:
         validate_alpha_safety_report(forged)
 
 
+def test_sanitizer_runner_uses_system_temp_when_output_parent_is_absent(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setattr(alpha_safety, "_compiler", lambda: None)
+
+    report = alpha_safety.run_representative_alpha_safety(
+        ".",
+        include_productive=False,
+        output_dir=tmp_path / "absent" / "report",
+    )
+
+    assert report["status"] == "UNSUPPORTED"
+
+
 def test_sanitizer_runner_passes_entrypoint_arguments(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     commands: list[list[str]] = []
 

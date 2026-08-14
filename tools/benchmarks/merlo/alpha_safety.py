@@ -178,7 +178,10 @@ def run_alpha_safety(
     compiler = _compiler()
     records: list[dict[str, Any]] = []
     destination = Path(output_dir).resolve() if output_dir is not None else Path(root).resolve() / ".merlo" / "alpha-safety"
-    with tempfile.TemporaryDirectory(prefix="alpha-safety-", dir=str(destination.parent if destination.parent.exists() else None)) as temporary:
+    temporary_parent = destination.parent if destination.parent.exists() else None
+    with tempfile.TemporaryDirectory(
+        prefix="alpha-safety-", dir=temporary_parent
+    ) as temporary:
         work = Path(temporary)
         for sanitizer in SANITIZERS:
             for case in selected:
