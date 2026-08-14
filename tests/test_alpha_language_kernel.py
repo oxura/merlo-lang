@@ -742,3 +742,58 @@ def test_vec_len_uses_named_and_temporary_receivers_once(tmp_path: Path) -> None
     completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
     assert completed.returncode == 0, completed.stderr.decode()
     assert b"OK result=2" in completed.stdout
+
+
+def test_owner_callback_parameter_is_rejected_until_ownership_is_explicit() -> None:
+    source = (
+        "fn inspect(value: Text) -> UInt64:\n"
+        "    return value.len()\n"
+        "fn apply(callback: Fn[Text,UInt64], value: Text) -> UInt64:\n"
+        "    return callback(value)\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        '    return apply(inspect, "x")\n'
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(
+        RepresentationCBackendError,
+        match="owning callback parameters require explicit ownership",
+    ):
+        emit_general_c(hir, rir, optimized)
+
+
+def test_get_mut_forwards_original_nested_vec(tmp_path: Path) -> None:
+    source = (
+        "fn append(values: Vec[UInt64]) -> Unit:\n"
+        "    values.push(9)\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let nested: Vec[Vec[UInt64]] = Vec.new()\n"
+        "    let values: Vec[UInt64] = Vec.new()\n"
+        "    nested.push(values)\n"
+        "    append(nested.get_mut(0))\n"
+        "    return nested.get(0).len()\n"
+    )
+    binary = _native(source, tmp_path, "nested-get-mut")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=1" in completed.stdout
+
+
+def test_borrowed_match_payload_is_cloned_not_stolen(tmp_path: Path) -> None:
+    source = (
+        "enum Holder:\n"
+        "    Value: Text\n"
+        "fn extract(holder: Holder) -> Text:\n"
+        "    match holder:\n"
+        "        case Value(text):\n"
+        "            return text\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        '    let holder: Holder = Holder.Value("abc")\n'
+        "    let copied: Text = extract(holder)\n"
+        "    match holder:\n"
+        "        case Value(original):\n"
+        "            return copied.len() + original.len()\n"
+    )
+    binary = _native(source, tmp_path, "borrowed-match")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=6" in completed.stdout

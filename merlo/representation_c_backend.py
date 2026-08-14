@@ -568,6 +568,13 @@ typedef struct { MerloFileReader *owner; uint64_t generation; } MerloFileLines;"
                 callback = _callback_parts(descriptor.name)
                 assert callback is not None
                 parameter_types, return_type = callback
+                if any(
+                    _is_owner(self.descriptors[item])
+                    for item in parameter_types
+                ):
+                    raise RepresentationCBackendError(
+                        "owning callback parameters require explicit ownership"
+                    )
                 parameters = ", ".join(
                     _c_name(item) for item in parameter_types
                 )
@@ -1717,6 +1724,12 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             for item in function.parameters
             if self._parameter_is_pointer(item)
         }
+        self.borrowed_owner_bindings = {
+            item.name
+            for item in function.parameters
+            if item.ownership in {"borrow", "borrow_mut"}
+            and _is_owner(self.descriptors[item.type_name])
+        }
         self.owned_locals = {
             item.name: item.type_name
             for item in function.parameters
@@ -2116,7 +2129,8 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             )
             self.loop_ordinal += 1
             loop_exit = f"__merlo_loop_exit_{self.loop_ordinal}"
-            lines = [f"{pad}while ({test}) {{"]}
+            lines = [f"{pad}while ({test}) {{"]
+            self.loop_exit_labels.append(loop_exit)
             self.indent += 1
             for statement in node.body:
                 lines.extend(self._statement(statement))
@@ -2438,16 +2452,24 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 binding = bindings[0]
                 self.env_types[binding] = payload_type
                 base = subject
+                borrowed_payload = (
+                    isinstance(node.subject, ast.Name)
+                    and node.subject.id in self.borrowed_owner_bindings
+                )
                 access = f"({base})->payload.{variant_name}" if self._expression_is_pointer(node.subject) else f"({base}).payload.{variant_name}"
                 if self.descriptors[payload_type].kind == "scalar":
                     lines.append(f"{self._pad()}{_c_name(payload_type)} {binding} = {access};")
                 else:
                     self.pointer_values.add(binding)
                     lines.append(f"{self._pad()}{_c_name(payload_type)} *{binding} = &{access};")
+                    if borrowed_payload and _is_owner(self.descriptors[payload_type]):
+                        self.borrowed_owner_bindings.add(binding)
             for statement in case.body:
                 lines.extend(self._statement(statement))
             if not any(isinstance(item, ast.Return) for item in case.body):
                 lines.append(f"{self._pad()}break;")
+            for binding in bindings:
+                self.borrowed_owner_bindings.discard(binding)
             self.indent -= 1
             if not self.frozen_general_json:
                 lines.append(f"{pad}}}")
@@ -3022,6 +3044,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     if (
                         parameter.ownership in {"borrow", "borrow_mut"}
                         and actual_type is not None
+                        and not self._is_borrow_expression(argument)
                         and self._is_owning_temporary(argument, actual_type)
                     ):
                         temporary = self._materialize_owned_argument(
@@ -3040,6 +3063,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                         continue
                     if (
                         parameter.ownership in {"borrow", "borrow_mut"}
+                        and not self._is_borrow_expression(argument)
                         and self._is_owning_temporary(argument, parameter.type_name)
                     ):
                         temporary = self._materialize_owned_argument(
@@ -3415,15 +3439,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 f"((const {_c_name(type_name)} *){source})"
             )
         if isinstance(node, ast.Name):
-            parameter = next(
-                (
-                    item
-                    for item in self.current_function.parameters
-                    if item.name == node.id
-                ),
-                None,
-            ) if self.current_function is not None else None
-            if parameter is not None and parameter.ownership in {"borrow", "borrow_mut"}:
+            if node.id in self.borrowed_owner_bindings:
                 if not self._clone_is_deep(type_name):
                     raise RepresentationCBackendError(
                         f"cannot clone borrowed owner of type {type_name}"
