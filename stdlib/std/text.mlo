@@ -56,7 +56,7 @@ export parse_uint(value: TextView) -> Result[UInt64,ParseError]:
             return Err(ParseError.InvalidDigit)
         if result > 1844674407370955161 or (result == 1844674407370955161 and byte > 53):
             return Err(ParseError.Overflow)
-    result = result * 10 + (byte - 48)
+        result = result * 10 + (byte - 48)
         index = index + 1
     Ok(result)
 
