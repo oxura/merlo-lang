@@ -213,6 +213,7 @@ class GeneralCEmitter:
         self.pointer_values: set[str] = set()
         self.owned_locals: dict[str, str] = {}
         self.return_ordinal = 0
+        self.loop_ordinal = 0
         self.loop_exit_labels: list[str] = []
         self.match_depth = 0
         self.frozen_general_json = (
