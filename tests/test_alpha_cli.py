@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from merlo.cli import EXIT_DIAGNOSTIC, EXIT_OK, build_parser, main
+from merlo.package import package_from_root
 from merlo.compiler import compile_project
 from merlo.docgen import generate_documentation
 from merlo.project import Project
@@ -51,6 +52,48 @@ def test_new_json_is_deterministic_and_discovers_source_project(tmp_path: Path, 
     checked = json.loads(capsys.readouterr().out)
     assert checked["ok"] is True
     assert checked["entry_path"] == str(source)
+
+
+def test_editing_application_source_keeps_lock_fresh_for_check_and_build(tmp_path: Path, capsys) -> None:
+    root = tmp_path / "demo"
+    assert main(["new", str(root), "--json"]) == EXIT_OK
+    capsys.readouterr()
+
+    source = root / "src" / "main.mlo"
+    source.write_text(
+        source.read_text(encoding="utf-8").replace('console.write("ok")', 'console.write("hello")'),
+        encoding="utf-8",
+    )
+
+    assert main(["check", str(source), "--json"]) == EXIT_OK
+    checked = json.loads(capsys.readouterr().out)
+    assert checked["ok"] is True
+
+    assert main(["build", str(root), "--json"]) == EXIT_OK
+    built = json.loads(capsys.readouterr().out)
+    assert built["ok"] is True
+
+
+def test_legacy_root_content_hash_lock_allows_unchanged_and_edited_check(tmp_path: Path, capsys) -> None:
+    root = tmp_path / "legacy"
+    project = Project.create(root, name="legacy")
+    raw = json.loads(project.lock_path.read_text(encoding="utf-8"))
+    root_record = next(record for record in raw["packages"] if record["name"] == "legacy")
+    root_record["source_hash"] = package_from_root(root).content_hash()
+    project.lock_path.write_text(json.dumps(raw), encoding="utf-8")
+    source = root / "src" / "main.mlo"
+
+    assert main(["check", str(source), "--json"]) == EXIT_OK
+    unchanged = json.loads(capsys.readouterr().out)
+    assert unchanged["ok"] is True
+
+    source.write_text(
+        source.read_text(encoding="utf-8").replace('console.write("ok")', 'console.write("edited")'),
+        encoding="utf-8",
+    )
+    assert main(["check", str(source), "--json"]) == EXIT_OK
+    edited = json.loads(capsys.readouterr().out)
+    assert edited["ok"] is True
 
 
 def test_new_project_run_defaults_its_required_path_argument(tmp_path: Path, capfd) -> None:

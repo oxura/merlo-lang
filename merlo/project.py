@@ -249,7 +249,11 @@ def _toml_lock(raw: Mapping[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _resolve_package_graph(root: Path) -> tuple[tuple[Mapping[str, Any], ...], dict[str, tuple[str, ...]]]:
+def _resolve_package_graph(
+    root: Path,
+    *,
+    root_source_hash: str,
+) -> tuple[tuple[Mapping[str, Any], ...], dict[str, tuple[str, ...]]]:
     packages: dict[str, Package] = {}
     graph: dict[str, tuple[str, ...]] = {}
     visiting: set[str] = set()
@@ -293,7 +297,7 @@ def _resolve_package_graph(root: Path) -> tuple[tuple[Mapping[str, Any], ...], d
         dependencies=root_package.dependencies,
         source_kind="path",
         source={"kind": "path", "path": "."},
-        source_hash=root_package.source_hash,
+        source_hash=root_source_hash,
     )
     visit(root_package)
     records = tuple(
@@ -305,17 +309,36 @@ def _resolve_package_graph(root: Path) -> tuple[tuple[Mapping[str, Any], ...], d
 
 def resolve_dependencies(project: "Project | str | Path", *, write: bool = True) -> MerloLock:
     instance = project if isinstance(project, Project) else Project.load(project)
-    packages, graph = _resolve_package_graph(instance.root)
+    manifest_hash = instance.manifest.digest()
+    packages, graph = _resolve_package_graph(
+        instance.root,
+        root_source_hash=manifest_hash,
+    )
     lock = MerloLock(
         packages=packages,
         graph=graph,
-        manifest_hash=instance.manifest.digest(),
-        compatibility=VERSIONS.to_dict(),
+        manifest_hash=manifest_hash,
     )
     if write:
         lock.write(instance.lock_path)
     return lock
 
+def _lock_comparison_dict(
+    lock: MerloLock,
+    *,
+    root_name: str,
+    root_manifest_hash: str,
+) -> dict[str, Any]:
+    raw = lock.to_dict()
+    root_records = [
+        package
+        for package in raw["packages"]
+        if package.get("name") == root_name
+        and package.get("source") == {"kind": "path", "path": "."}
+    ]
+    if len(root_records) == 1:
+        root_records[0]["source_hash"] = root_manifest_hash
+    return raw
 
 @dataclass(frozen=True)
 class Project:
@@ -432,10 +455,25 @@ class Project:
             raise LockfileError(str(self.lock_path), code="LockfileMissing")
         lock = MerloLock.read(self.lock_path)
         if require_fresh:
-            if lock.manifest_hash != self.manifest.digest():
+            manifest_hash = self.manifest.digest()
+            if lock.manifest_hash != manifest_hash:
                 raise LockfileError(str(self.lock_path), code="StaleLockfile")
             expected = resolve_dependencies(self, write=False)
-            if expected.to_json() != lock.to_json():
+            expected_json = _canonical_json(
+                _lock_comparison_dict(
+                    expected,
+                    root_name=self.manifest.name,
+                    root_manifest_hash=manifest_hash,
+                )
+            )
+            actual_json = _canonical_json(
+                _lock_comparison_dict(
+                    lock,
+                    root_name=self.manifest.name,
+                    root_manifest_hash=manifest_hash,
+                )
+            )
+            if expected_json != actual_json:
                 raise LockfileError(str(self.lock_path), code="StaleLockfile")
         return lock
 
