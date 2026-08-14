@@ -12,11 +12,12 @@
 
 Merlo is an experimental language and compiler built around static types,
 ownership, inferred effects, capabilities, and stable semantic representations.
-The `0.1.0-alpha.1` toolchain now includes the experimental Surface 0.2
-frontend, a Python 3.11+ bootstrap compiler, a C11 native backend, project
-tooling, an LSP server, a standard library, and executable examples.
+The current public toolchain is `0.1.0-alpha.1`: a Python 3.11+ bootstrap
+compiler with a C11 native backend, project tooling, an LSP server, a standard
+library, and executable examples. Its source release is known to be incomplete;
+the repository is being stabilized for one clean `0.1.0-alpha.2`.
 Research and development began privately on 2026-03-19. The first public
-research alpha is released on 2026-08-14.
+research alpha was released on 2026-08-14.
 
 ```merlo
 User:
@@ -28,12 +29,28 @@ display_name(user) = user.nickname or user.name
 active_names(users) = users.where(.active).map(display_name)
 ```
 
+The short form is the design target. A real program is deliberately more
+explicit about host failures and effects:
+
+```merlo
+export main(path: Path) -> Result[Text, AppError]:
+    data = fs.read(path)?
+    result = summarize(data)
+    console.write(result)
+    Ok(result)
+```
+
+```console
+$ merlo run examples/json-cli -- examples/json-cli/input.json
+json-bytes=33 root=object fields=2
+```
+
 ## What is implemented
 
 - static inference with no `Any` escape hatch or truthiness coercion
 - records, payload enums, `Option`, `Result`, and strict option fallback
 - whole-function `let`/`var` inference and tail results
-- transitive effect, capability, and typed-error inference for private calls
+- experimental effect, capability, and typed-error inference
 - immutable values, ownership checks, borrowing, moves, and generated drop glue
 - modules, projects, lockfiles, packages, and deterministic semantic identities
 - `Text`, `Bytes`, `Vec`, `Map`, arrays, slices, boxes, and streaming file input
@@ -48,6 +65,14 @@ toolchain. I/O is synchronous. Capturing closures, `async`, a package registry,
 macros, traits, cycle collection, self-hosting, and production stability
 guarantees are outside this release. See
 [Known limitations](docs/limitations.md) for the exact boundary.
+
+> **Security note:** Merlo capabilities constrain checked program behavior, but
+> the current native runtime is not an operating-system security sandbox. Run
+> untrusted binaries inside normal host isolation.
+
+Merlo is designed around structured semantics for coding agents. The
+productivity advantage has not yet been independently validated. No general
+native-performance, simplicity, or AI-productivity superiority is claimed.
 
 ## Compiler
 
@@ -67,28 +92,34 @@ C11 source
 native executable
 ```
 
-The compiler keeps one semantic core. Human-facing source, canonical source,
-the LSP, semantic inspection, and native lowering are projections of that core
-rather than independent interpretations.
+Merlo is converging on one semantic core shared by compilation and tooling.
+The current project frontend still contains transitional text-oriented
+elaboration that is being replaced under [RFC 0001](rfcs/0001-repository-and-frontend-stabilization.md).
 
 ## Install and run
 
-Use Python 3.11 or newer on Linux x86-64:
+Use Python 3.11 or newer on Linux x86-64. Until alpha.2 is published, install
+the verified alpha.1 wheel directly; do not use its incomplete source archive:
 
 ```console
-python -m pip install -e '.[test]'
-merlo --help
+python -m pip install https://github.com/oxura/merlo-lang/releases/download/v0.1.0-alpha.1/merlo-0.1.0a1-py3-none-any.whl
+merlo new hello --name hello
+merlo run hello
 ```
 
-Create and exercise a project:
+The observed generated project output is:
+
+```text
+ok
+```
+
+For a full project check:
 
 ```console
-merlo new hello --name hello
 merlo check hello
 merlo fmt hello --check
 merlo test hello
 merlo build hello
-merlo run hello
 ```
 
 `new` writes `merlo.toml`, `merlo.lock`, and `src/main.mlo`. The other commands
@@ -124,8 +155,8 @@ commands with a machine-readable mode return deterministic JSON through
 - [CLI and LSP tooling](docs/tooling.md)
 - [Research index](research/README.md)
 
-Historical research commands remain available under `merlo historical ...`.
-They are not production routes.
+Historical research remains reproducible from repository sources. It is not
+part of the supported user workflow and will be removed from the production CLI.
 
 ## Contributing and license
 

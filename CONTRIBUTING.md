@@ -1,6 +1,6 @@
 # Contributing to Merlo
 
-Merlo alpha work should preserve the single semantic core and the explicit
+Merlo alpha work should move compilation and tooling toward the shared semantic
 contracts documented in `spec/`. Prefer a small change at the source of a
 problem over a compatibility alias or a second interpretation of the same
 program.
@@ -17,8 +17,9 @@ python -m venv .venv
 python -m pip install -e '.[test]'
 ```
 
-The package has no runtime Python dependency. The test extra is for development
-only. The project manifest and lockfile formats are described in
+The bootstrap compiler requires Python 3.11 or newer and has no third-party
+Python runtime dependencies. The test extra is for development only. The
+project manifest and lockfile formats are described in
 [docs/projects.md](docs/projects.md).
 
 ## Checks before a change is proposed
