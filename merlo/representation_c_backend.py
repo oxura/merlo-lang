@@ -3153,10 +3153,11 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             if receiver_text == "TextBuilder" and method == "new":
                 return "merlo_text_builder_new()"
             receiver_type = self._expression_type(node.func.value)
-            if (
+            temporary_receiver = (
                 receiver_type is not None
                 and self._is_owning_temporary(node.func.value, receiver_type)
-            ):
+            )
+            if temporary_receiver:
                 temporary = self._materialize_owned_argument(
                     node.func.value,
                     receiver_type,
@@ -3176,16 +3177,40 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     if method == "is_some":
                         return f"({receiver})->tag == MERLO_{suffix}_Some_TAG"
                     if method == "unwrap":
-                        return f"(({receiver})->payload.Some)"
+                        payload_type = variants["Some"]
+                        expression = f"(({receiver})->payload.Some)"
+                        if temporary_receiver and payload_type is not None and _is_owner(self.descriptors[payload_type]):
+                            if not self._clone_is_deep(payload_type):
+                                raise RepresentationCBackendError(
+                                    f"cannot clone temporary accessor {payload_type}"
+                                )
+                            return f"merlo_clone_{_identifier(payload_type)}(&{expression})"
+                        return expression
                 if "Ok" in variants and "Err" in variants:
                     if method == "is_err":
                         return f"({receiver})->tag == MERLO_{suffix}_Err_TAG"
                     if method == "is_ok":
                         return f"({receiver})->tag == MERLO_{suffix}_Ok_TAG"
                     if method == "unwrap":
-                        return f"(({receiver})->payload.Ok)"
+                        payload_type = variants["Ok"]
+                        expression = f"(({receiver})->payload.Ok)"
+                        if temporary_receiver and payload_type is not None and _is_owner(self.descriptors[payload_type]):
+                            if not self._clone_is_deep(payload_type):
+                                raise RepresentationCBackendError(
+                                    f"cannot clone temporary accessor {payload_type}"
+                                )
+                            return f"merlo_clone_{_identifier(payload_type)}(&{expression})"
+                        return expression
                     if method == "unwrap_err":
-                        return f"(({receiver})->payload.Err)"
+                        payload_type = variants["Err"]
+                        expression = f"(({receiver})->payload.Err)"
+                        if temporary_receiver and payload_type is not None and _is_owner(self.descriptors[payload_type]):
+                            if not self._clone_is_deep(payload_type):
+                                raise RepresentationCBackendError(
+                                    f"cannot clone temporary accessor {payload_type}"
+                                )
+                            return f"merlo_clone_{_identifier(payload_type)}(&{expression})"
+                        return expression
             if receiver_type == "FileReader" and method == "lines":
                 return f"merlo_file_lines({receiver})"
             generic = _generic(receiver_type or "")
@@ -3227,12 +3252,28 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 if method in {"len", "capacity"}:
                     if isinstance(node.func.value, ast.Call):
                         return f"({self._expression(node.func.value)}).length"
-                    return f"merlo_{suffix}_{method}({receiver})"
                 if method in {"get", "get_mut"}:
                     pointer = f"merlo_{suffix}_get({receiver}, {self._expression(node.args[0])})"
+                    element_type = generic[1]
+                    if (
+                        temporary_receiver
+                        and _is_owner(self.descriptors[element_type])
+                    ):
+                        if not self._clone_is_deep(element_type):
+                            raise RepresentationCBackendError(
+                                f"cannot clone temporary accessor {element_type}"
+                            )
+                        return f"merlo_clone_{_identifier(element_type)}({pointer})"
                     return pointer if want_pointer else f"(*{pointer})"
             if generic and generic[0] == "Box" and method == "get":
                 pointer = f"merlo_{_identifier(receiver_type)}_get({receiver})"
+                payload_type = generic[1]
+                if temporary_receiver and _is_owner(self.descriptors[payload_type]):
+                    if not self._clone_is_deep(payload_type):
+                        raise RepresentationCBackendError(
+                            f"cannot clone temporary accessor {payload_type}"
+                        )
+                    return f"merlo_clone_{_identifier(payload_type)}({pointer})"
                 return pointer if want_pointer else f"(*{pointer})"
             if receiver_type == "Bytes":
                 if method == "len":

@@ -665,3 +665,35 @@ def test_vec_view_of_owned_call_rejects_borrowed_escape() -> None:
     hir, rir, _mir, optimized = _layers(source)
     with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
         emit_general_c(hir, rir, optimized)
+
+
+def test_vec_text_get_clones_payload_before_temporary_drop(tmp_path: Path) -> None:
+    source = (
+        "fn make() -> Vec[Text]:\n"
+        "    let values: Vec[Text] = Vec.new()\n"
+        "    values.push(\"abc\")\n"
+        "    return values\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let value: Text = make().get(0)\n"
+        "    return value.len()\n"
+    )
+    binary = _native(source, tmp_path, "vec-text-get")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=3" in completed.stdout
+    assert b"text_allocations=2 text_frees=2" in completed.stdout
+
+
+def test_box_text_get_clones_payload_before_temporary_drop(tmp_path: Path) -> None:
+    source = (
+        "fn make() -> Box[Text]:\n"
+        "    return Box.new(\"abc\")\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let value: Text = make().get()\n"
+        "    return value.len()\n"
+    )
+    binary = _native(source, tmp_path, "box-text-get")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=3" in completed.stdout
+    assert b"text_allocations=2 text_frees=2" in completed.stdout
