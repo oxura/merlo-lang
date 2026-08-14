@@ -18,7 +18,10 @@ from .surface_ast import (
     SurfaceAssignment,
     SurfaceBinary,
     SurfaceBinding,
+    SurfaceBreak,
     SurfaceCall,
+    SurfaceCallArgument,
+    SurfaceContinue,
     SurfaceExpression,
     SurfaceExpressionStatement,
     SurfaceFor,
@@ -32,6 +35,7 @@ from .surface_ast import (
     SurfaceMatch,
     SurfaceName,
     SurfaceImplicitReceiver,
+    SurfacePass,
     SurfacePrint,
     SurfaceProgram,
     SurfaceRecord,
@@ -178,6 +182,45 @@ class _Function:
     implicit_callables: dict[str, CanonicalCallable] = field(default_factory=dict)
     option_fallbacks: dict[str, CanonicalOptionFallback] = field(default_factory=dict)
     read_counts: dict[str, int] = field(default_factory=dict)
+
+
+def _bind_call_arguments(
+    expression: SurfaceCall,
+    parameters: tuple[str, ...],
+    label: str,
+) -> tuple[tuple[str, SurfaceCallArgument], ...]:
+    parameter_names = set(parameters)
+    assigned: dict[str, SurfaceCallArgument] = {}
+    next_positional = 0
+    keyword_seen = False
+    for argument in expression.arguments:
+        if argument.name is None:
+            if keyword_seen:
+                raise SurfaceElaborationError(
+                    f"PositionalAfterKeyword: {label}"
+                )
+            if next_positional >= len(parameters):
+                raise SurfaceElaborationError(f"ArityMismatch: {label}")
+            parameter_name = parameters[next_positional]
+            next_positional += 1
+        else:
+            keyword_seen = True
+            parameter_name = argument.name
+            if parameter_name not in parameter_names:
+                raise SurfaceElaborationError(
+                    f"UnknownArgument: {label}.{parameter_name}"
+                )
+        if parameter_name in assigned:
+            raise SurfaceElaborationError(
+                f"DuplicateArgument: {label}.{parameter_name}"
+            )
+        assigned[parameter_name] = argument
+    missing = tuple(name for name in parameters if name not in assigned)
+    if missing:
+        raise SurfaceElaborationError(
+            f"MissingArgument: {label}: {', '.join(missing)}"
+        )
+    return tuple((name, assigned[name]) for name in parameters)
 
 
 class _Elaborator:
@@ -649,14 +692,20 @@ class _Elaborator:
                 elif name in self.records:
                     record = self.records[name]
                     field_types = {
-                        field.name: field.type_name for field in record.fields
+                        field.name: field.type_name
+                        for field in record.fields
                     }
-                    positional = iter(
-                        (field.name, field.type_name) for field in record.fields
+                    bound = _bind_call_arguments(
+                        expression,
+                        tuple(field_types),
+                        name,
                     )
-                    for argument in expression.arguments:
-                        field_type = field_types[argument.name] if argument.name else next(positional)[1]
-                        self._expression(argument.value, function, field_type)
+                    for field_name, argument in bound:
+                        self._expression(
+                            argument.value,
+                            function,
+                            field_types[field_name],
+                        )
                     term = self.types.typed(name)
                 elif name in {"Ok", "Err", "Some", "None"}:
                     constructor_type = expected
@@ -686,11 +735,14 @@ class _Elaborator:
                         raise SurfaceElaborationError(
                             f"ConstructorTypeMismatch: {name} for {constructor_type}"
                         )
-                    if len(expression.arguments) != (0 if name == "None" else 1):
-                        raise SurfaceElaborationError(f"ArityMismatch: {name}")
+                    bound = _bind_call_arguments(
+                        expression,
+                        () if name == "None" else ("value",),
+                        name,
+                    )
                     if argument_type is not None:
                         self._expression(
-                            expression.arguments[0].value,
+                            bound[0][1].value,
                             function,
                             argument_type,
                         )
@@ -698,13 +750,16 @@ class _Elaborator:
                 elif name in self.functions:
                     target = self.functions[name]
                     function.calls.add(name)
-                    if len(expression.arguments) != len(target.parameters):
-                        raise SurfaceElaborationError(f"ArityMismatch: {name}")
-                    for argument, parameter in zip(expression.arguments, target.parameters.values(), strict=True):
+                    bound = _bind_call_arguments(
+                        expression,
+                        tuple(target.parameters),
+                        name,
+                    )
+                    for parameter_name, argument in bound:
                         self.types.unify(
                             self._expression(argument.value, function),
-                            parameter,
-                            context=f"call {name}",
+                            target.parameters[parameter_name],
+                            context=f"call {name}.{parameter_name}",
                         )
                     term = target.return_term
                 else:
@@ -913,8 +968,13 @@ class _Elaborator:
         if expected:
             self.types.unify(term, self.types.typed(expected), context="expected expression type")
         return term
-
-    def _statements(self, statements: tuple[SurfaceStatement, ...], function: _Function) -> None:
+    def _statements(
+        self,
+        statements: tuple[SurfaceStatement, ...],
+        function: _Function,
+        *,
+        loop_depth: int = 0,
+    ) -> None:
         for index, statement in enumerate(statements):
             if isinstance(statement, SurfaceBinding):
                 if (
@@ -964,6 +1024,12 @@ class _Elaborator:
                     )
                 self.types.unify(function.return_term, actual, context=f"{function.source.name} return")
                 self._note(function, "$return", "explicit_return")
+            elif isinstance(statement, SurfaceBreak):
+                if loop_depth == 0:
+                    raise SurfaceElaborationError("BreakOutsideLoop")
+            elif isinstance(statement, SurfaceContinue):
+                if loop_depth == 0:
+                    raise SurfaceElaborationError("ContinueOutsideLoop")
             elif isinstance(statement, SurfaceExpressionStatement):
                 expected = (
                     self.types.concrete.get(self.types.find(function.return_term))
@@ -978,11 +1044,15 @@ class _Elaborator:
                     self._note(function, "$return", "tail_expression")
             elif isinstance(statement, SurfaceIf):
                 self._expression(statement.condition, function, "Bool")
-                self._statements(statement.body, function)
-                self._statements(statement.otherwise, function)
+                self._statements(statement.body, function, loop_depth=loop_depth)
+                self._statements(statement.otherwise, function, loop_depth=loop_depth)
             elif isinstance(statement, SurfaceWhile):
                 self._expression(statement.condition, function, "Bool")
-                self._statements(statement.body, function)
+                self._statements(
+                    statement.body,
+                    function,
+                    loop_depth=loop_depth + 1,
+                )
             elif isinstance(statement, SurfaceFor):
                 iterable = self._expression(statement.iterable, function)
                 iterable_type = self.types.concrete.get(self.types.find(iterable))
@@ -991,7 +1061,11 @@ class _Elaborator:
                 else:
                     item_type = "UInt64"
                 self.types.unify(self._local(function, statement.name), self.types.typed(item_type), context="for item")
-                self._statements(statement.body, function)
+                self._statements(
+                    statement.body,
+                    function,
+                    loop_depth=loop_depth + 1,
+                )
             elif isinstance(statement, SurfacePrint):
                 self._expression(statement.expression, function)
                 function.effects.add("console.write")
@@ -1065,12 +1139,32 @@ class _Elaborator:
                             context=f"pattern {raw}",
                         )
                         self._note(function, binding, "pattern_payload")
-                    self._statements(case.body, function)
+                    self._statements(
+                        case.body,
+                        function,
+                        loop_depth=loop_depth,
+                    )
                 missing = set(variants) - observed
                 if missing:
                     raise SurfaceElaborationError(
                         f"NonExhaustiveMatch: missing {sorted(missing)}"
                     )
+    def _canonical_block(
+        self,
+        statements: tuple[SurfaceStatement, ...],
+        function: _Function,
+        *,
+        depth: int,
+        tail_returns: bool,
+    ) -> tuple[str, ...]:
+        lines = self._canonical_lines(
+            statements,
+            function,
+            depth=depth,
+            tail_returns=tail_returns,
+        )
+        return lines or (("    " * depth) + "pass",)
+
     def _canonical_lines(
         self,
         statements: tuple[SurfaceStatement, ...],
@@ -1108,6 +1202,12 @@ class _Elaborator:
                     else ""
                 )
                 lines.append(f"{prefix}return{suffix}")
+            elif isinstance(statement, SurfaceBreak):
+                lines.append(f"{prefix}break")
+            elif isinstance(statement, SurfaceContinue):
+                lines.append(f"{prefix}continue")
+            elif isinstance(statement, SurfacePass):
+                lines.append(f"{prefix}pass")
             elif isinstance(statement, SurfaceExpressionStatement):
                 keyword = (
                     "return "
@@ -1127,7 +1227,7 @@ class _Elaborator:
                     f"{prefix}if {_emit_expression(statement.condition)}:"
                 )
                 lines.extend(
-                    self._canonical_lines(
+                    self._canonical_block(
                         statement.body,
                         function,
                         depth=depth + 1,
@@ -1137,7 +1237,7 @@ class _Elaborator:
                 if statement.otherwise:
                     lines.append(f"{prefix}else:")
                     lines.extend(
-                        self._canonical_lines(
+                        self._canonical_block(
                             statement.otherwise,
                             function,
                             depth=depth + 1,
@@ -1149,7 +1249,7 @@ class _Elaborator:
                     f"{prefix}while {_emit_expression(statement.condition)}:"
                 )
                 lines.extend(
-                    self._canonical_lines(
+                    self._canonical_block(
                         statement.body,
                         function,
                         depth=depth + 1,
@@ -1162,7 +1262,7 @@ class _Elaborator:
                     f"{_emit_expression(statement.iterable)}:"
                 )
                 lines.extend(
-                    self._canonical_lines(
+                    self._canonical_block(
                         statement.body,
                         function,
                         depth=depth + 1,
@@ -1176,7 +1276,7 @@ class _Elaborator:
                 for case in statement.cases:
                     lines.append(f"{prefix}    case {case.pattern}:")
                     lines.extend(
-                        self._canonical_lines(
+                        self._canonical_block(
                             case.body,
                             function,
                             depth=depth + 2,

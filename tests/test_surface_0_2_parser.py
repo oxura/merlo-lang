@@ -131,3 +131,9 @@ def test_parser_rejects_tabs_and_inconsistent_indentation() -> None:
         parse_surface("value():\n\t1\n")
     with pytest.raises(SurfaceSyntaxError, match="InvalidIndentation"):
         parse_surface("value():\n   1\n")
+
+
+
+def test_parser_reports_positional_argument_after_keyword_stably() -> None:
+    with pytest.raises(SurfaceSyntaxError, match="PositionalAfterKeyword"):
+        parse_surface("invoke(value) = target(value=1, 2)\n")

@@ -124,3 +124,64 @@ def test_recursive_effect_cycle_converges() -> None:
         assert function.kind == "task"
         assert function.effects == ("console.write",)
         assert function.capabilities == ("console.write",)
+
+
+def test_named_call_arguments_bind_by_parameter_name_independent_of_order() -> None:
+    result = elaborate(
+        "subtract(left: Int64, right: Int64) = left - right\n\n"
+        "run() = subtract(right: 2, left: 5)\n"
+    )
+
+    assert result.canonical.function("run").return_type == "Int64"
+    assert "subtract(right: 2, left: 5)" in result.canonical.to_source()
+
+
+@pytest.mark.parametrize(
+    ("source", "diagnostic"),
+    [
+        (
+            "subtract(left: Int64, right: Int64) = left - right\n\n"
+            "run() = subtract(middle: 2, left: 5)\n",
+            "UnknownArgument",
+        ),
+        (
+            "subtract(left: Int64, right: Int64) = left - right\n\n"
+            "run() = subtract(left: 5, left: 2)\n",
+            "DuplicateArgument",
+        ),
+        (
+            "subtract(left: Int64, right: Int64) = left - right\n\n"
+            "run() = subtract(left: 5)\n",
+            "MissingArgument",
+        ),
+    ],
+)
+def test_named_call_arguments_reject_invalid_bindings(
+    source: str, diagnostic: str
+) -> None:
+    with pytest.raises(SurfaceElaborationError, match=diagnostic):
+        elaborate(source)
+
+
+def test_loop_control_is_validated_and_preserved_in_canonical_source() -> None:
+    result = elaborate(
+        "run() = 0\n\n"
+        "main():\n"
+        "    value = 0\n"
+        "    while value < 4:\n"
+        "        value += 1\n"
+        "        if value == 2:\n"
+        "            continue\n"
+        "        if value == 3:\n"
+        "            break\n"
+        "    value\n"
+    )
+
+    source = result.canonical.to_source()
+    assert "            continue" in source
+    assert "            break" in source
+
+    with pytest.raises(SurfaceElaborationError, match="BreakOutsideLoop"):
+        elaborate("bad():\n    break\n")
+    with pytest.raises(SurfaceElaborationError, match="ContinueOutsideLoop"):
+        elaborate("bad():\n    continue\n")
