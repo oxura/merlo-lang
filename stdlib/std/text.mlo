@@ -40,13 +40,13 @@ export text_builder_new() -> TextBuilder:
     TextBuilder("")
 
 export text_builder_append(builder: TextBuilder, value: TextView) -> Unit:
-    builder.value = builder.value + value.to_text()
+    builder.append_text(value)
 
 export text_builder_append_byte(builder: TextBuilder, value: UInt64) -> Unit:
-    builder.value = builder.value + Bytes.from_byte(value).to_text()
+    builder.append_byte(value)
 
 export text_builder_finish(builder: TextBuilder) -> Text:
-    builder.value
+    builder.finish()
 
 export parse_uint(value: TextView) -> Result[UInt64,ParseError]:
     if value.len() == 0:
