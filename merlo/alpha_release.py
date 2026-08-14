@@ -442,7 +442,7 @@ def _copy_file(root: Path, source: Path | str, target: Path, destination: str) -
 def _manifest_payload(inputs: ReleaseInputs, validation: ValidationResult, files: Mapping[str, str], evidence: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     provenance = inputs.provenance
     return {
-        "schema_version": SCHEMA_VERSION, "release": RELEASE_VERSION, "status": validation.status,
+        "schema_version": SCHEMA_VERSION, "release": inputs.provenance.versions["package"], "status": validation.status,
         "gates": dict(sorted(validation.gates.items())), "failed_gates": list(validation.failed_gates),
         "failed_evidence_ids": list(validation.failed_evidence_ids), "evidence": list(evidence),
         "provenance": {
