@@ -896,7 +896,18 @@ class _Elaborator:
                         )
                     function.effects.add(effect)
                     function.capabilities.add(capability)
-                    term = self.types.typed(contextual_result_type(return_type, expected))
+                    term = self.types.typed(
+                        expected
+                        if (
+                            name == "network.tcp_connect"
+                            and expected
+                            and expected.startswith("Result[TcpStream,")
+                        )
+                        else contextual_result_type(return_type, expected)
+                    )
+            else:
+                raise SurfaceElaborationError("UnsupportedCall")
+        elif isinstance(expression, SurfaceIndex):
             self._expression(expression.index, function, "UInt64")
             owner = self._expression(expression.receiver, function)
             owner_type = self.types.concrete.get(self.types.find(owner))
@@ -954,7 +965,14 @@ class _Elaborator:
         else:
             raise SurfaceElaborationError(f"UnsupportedExpression: {type(expression).__name__}")
         if expected:
-            self.types.unify(term, self.types.typed(expected), context="expected expression type")
+            expected_term = self.types.typed(expected)
+            actual_type = self.types.concrete.get(self.types.find(term))
+            if (actual_type, expected) in {
+                ("Text", "TextView"),
+                ("Bytes", "BytesView"),
+            }:
+                return expected_term
+            self.types.unify(term, expected_term, context="expected expression type")
         return term
     def _statements(
         self,

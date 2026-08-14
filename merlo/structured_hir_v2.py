@@ -13,8 +13,10 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from .intrinsics import format_intrinsic_arity, intrinsic_signature
-from .intrinsics import contextual_result_type
+from .canonical_ast import CanonicalProgram
+from .ffi import FFICompileError, FFIProgram, parse_ffi_declarations, validate_ffi
+from .intrinsics import contextual_result_type, format_intrinsic_arity, intrinsic_signature
+from .type_parser import generic_parts, parse_type, validate_type_expr
 
 
 STRUCTURED_HIR_SCHEMA_VERSION = 2
@@ -1101,7 +1103,38 @@ class _HIRBuilder:
                 children=(owner,),
             )
         if isinstance(node, ast.Call):
-            arguments = tuple(self.expression(item) for item in node.args)
+            if (
+                isinstance(node.func, ast.Name)
+                and node.func.id == "__merlo_try__"
+                and len(node.args) == 1
+                and isinstance(node.args[0], ast.Call)
+            ):
+                inner_call = node.args[0]
+                signature = intrinsic_signature(ast.unparse(inner_call.func))
+                inner_expected = None
+                if signature is not None and signature.result_type.startswith("Result["):
+                    function_return = _type_name(
+                        self.functions[self.current_function].returns
+                    )
+                    function_parts = self._result_parts(function_return)
+                    signature_parts = self._result_parts(signature.result_type)
+                    if function_parts is not None and signature_parts is not None:
+                        inner_expected = (
+                            function_return
+                            if (
+                                signature.name == "network.tcp_connect"
+                                and function_parts[0] == "TcpStream"
+                            )
+                            else (
+                                f"Result[{signature_parts[0]},"
+                                f"{function_parts[1]}]"
+                            )
+                        )
+                arguments = (
+                    self.expression(inner_call, expected=inner_expected),
+                )
+            else:
+                arguments = tuple(self.expression(item) for item in node.args)
             return self._call(node, arguments, expected=expected)
         if isinstance(node, ast.BinOp):
             children = (self.expression(node.left), self.expression(node.right))
@@ -1455,14 +1488,38 @@ class _HIRBuilder:
                             f"argument {index} expects {parameter_type}, got {actual}"
                         )
                 kind = "FileOpen" if callee in {"fs.open_read", "fs.open_write"} else "DirectCall"
-                type_name = contextual_result_type(signature.result_type, expected)
+                signature_parts = self._result_parts(signature.result_type)
+                type_name = (
+                    expected
+                    if (
+                        expected
+                        and (
+                            (
+                                signature_parts is not None
+                                and expected == signature_parts[0]
+                            )
+                            or (
+                                callee == "network.tcp_connect"
+                                and expected.startswith("Result[TcpStream,")
+                            )
+                        )
+                    )
+                    else contextual_result_type(signature.result_type, expected)
+                )
                 if expected and expected.startswith("Result["):
                     expected_parts = self._result_parts(expected)
                     result_parts = self._result_parts(signature.result_type)
                     if (
                         expected_parts is None
                         or result_parts is None
-                        or expected_parts[0] != result_parts[0]
+                        or (
+                            expected_parts[0] != result_parts[0]
+                            and not (
+                                callee == "network.tcp_connect"
+                                and expected_parts[0] == "TcpStream"
+                                and result_parts[0] == "UInt64"
+                            )
+                        )
                     ):
                         raise StructuredHIRCompileError(
                             f"{self.path}:{node.lineno}: {callee} returns "
@@ -1474,7 +1531,7 @@ class _HIRBuilder:
                 if signature.result_type.startswith("Result["):
                     effects.add("may_fail")
                 operation_children = arguments
-                call_attributes["host_operation"] = callee
+                call_attributes["host_operation"] = method
                 if type_name.startswith("Result["):
                     call_attributes["error_type"] = type_name.split(",", 1)[1].rstrip("]")
                 if callee.startswith("fs."):
@@ -1747,7 +1804,14 @@ class _HIRBuilder:
         if isinstance(node, ast.Break):
             return self._new_node(node, "Break", scope_id=scope_id)
         if isinstance(node, ast.Return):
-            child = self.expression(node.value) if node.value is not None else None
+            expected_return = _type_name(
+                self.functions[self.current_function].returns
+            )
+            child = (
+                self.expression(node.value, expected=expected_return)
+                if node.value is not None
+                else None
+            )
             return_type = child.type_name if child else "Unit"
             ownership = (
                 "owned"

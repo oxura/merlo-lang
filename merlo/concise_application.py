@@ -16,6 +16,7 @@ from .intrinsics import (
     format_intrinsic_arity,
     intrinsic_signature,
 )
+from .modules import STDLIB_MODULES, _declaration
 from .version import VERSIONS
 from .runtime_contract import ALPHA_EFFECTS, CLOSED_EFFECTS
 from .canonical_ast import (
@@ -654,6 +655,11 @@ def _load_modules(entry: Path) -> tuple[_Module, ...]:
         visiting.pop()
         loaded[name] = module
         ordered.append(module)
+
+    entry_module = _read_module(entry.resolve(), root)
+    visit(entry_module.name, entry.resolve())
+    return tuple(ordered)
+
 _EFFECT_CALL_PATTERNS: dict[str, tuple[str, ...]] = {}
 for _intrinsic in INTRINSIC_SIGNATURES.values():
     _EFFECT_CALL_PATTERNS.setdefault(_intrinsic.effect, ())
@@ -1489,6 +1495,8 @@ class _Inference:
                     and isinstance(node.value, int)
                 ):
                     return expected
+                if (actual, expected) in {("Text", "TextView"), ("Bytes", "BytesView")}:
+                    return expected
                 raise ConciseApplicationError(
                     f"{self.path}:{node.lineno}: TypeConflict literal {actual} vs {expected}"
                 )
@@ -1667,9 +1675,30 @@ class _Inference:
                     raise ConciseApplicationError(
                         f"{self.path}:{node.lineno}: {format_intrinsic_arity(signature, len(node.args))}"
                     )
-                for argument, parameter_type in zip(node.args, signature.parameters, strict=True):
+                for argument, parameter_type in zip(
+                    node.args,
+                    signature.parameters,
+                    strict=True,
+                ):
                     self._expression(argument, state, parameter_type)
-                return contextual_result_type(signature.result_type, expected)
+                contextual_expected = (
+                    expected
+                    or (
+                        state.return_type
+                        if state.return_type.startswith("Result[")
+                        else None
+                    )
+                )
+                if (
+                    callee == "network.tcp_connect"
+                    and contextual_expected
+                    and contextual_expected.startswith("Result[TcpStream,")
+                ):
+                    return contextual_expected
+                return contextual_result_type(
+                    signature.result_type,
+                    contextual_expected,
+                )
             if receiver_text in {
                 "console", "fs", "env", "clock", "random", "network", "process"
             }:

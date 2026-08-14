@@ -1122,7 +1122,6 @@ static bool merlo_path_allowed(const MerloText *path) {
 static MerloBytes merlo_file_read_all(const MerloText *path);
 static uint64_t merlo_file_close(MerloFileReader *reader) {
     uint64_t status = 0;
-    merlo_file_error = 0;
     if (reader == NULL) return 1;
     if (reader->stream != NULL) {
         if (fclose(reader->stream) != 0) {
@@ -1130,9 +1129,6 @@ static uint64_t merlo_file_close(MerloFileReader *reader) {
             status = 1;
         }
         reader->stream = NULL;
-    } else {
-        merlo_file_error = UINT32_C(5);
-        status = 1;
     }
     free(reader->buffer);
     reader->buffer = NULL;
@@ -1956,7 +1952,14 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         if ok_type is None or error_type is None:
             return None
         return ok_type, error_type
-    def _error_value(self, error_type: str, code: str = "merlo_file_error") -> str:
+    def _error_value(
+        self,
+        error_type: str,
+        code: str = "merlo_file_error",
+        *,
+        text_payload: str | None = None,
+        integer_payload: str = "merlo_file_error_line",
+    ) -> str:
         descriptor = self.descriptors.get(error_type)
         if descriptor is None or descriptor.kind != "enum":
             raise RepresentationCBackendError(f"Result error type is not an enum: {error_type}")
@@ -1976,9 +1979,22 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             selected[number] = next((name for name in candidates if name in names), variants[0][0])
         def constructor(name: str, payload: str | None) -> str:
             if payload is not None:
-                raise RepresentationCBackendError(
-                    f"{error_type}.{name} error payload lowering is unsupported"
-                )
+                payload_descriptor = self.descriptors.get(payload)
+                if payload_descriptor is not None and payload_descriptor.kind == "text":
+                    if text_payload is None:
+                        raise RepresentationCBackendError(
+                            f"{error_type}.{name} requires a text error payload"
+                        )
+                    argument = (
+                        f"merlo_text_clone((const MerloText *){text_payload})"
+                    )
+                elif payload == "UInt64":
+                    argument = integer_payload
+                else:
+                    raise RepresentationCBackendError(
+                        f"{error_type}.{name} error payload lowering is unsupported"
+                    )
+                return f"merlo_make_{_identifier(error_type)}_{name}({argument})"
             if all(item[1] is None for item in variants):
                 return f"MERLO_{_identifier(error_type)}_{name}"
             return f"merlo_make_{_identifier(error_type)}_{name}()"
@@ -2046,21 +2062,46 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             and inner.func.attr in {"open_read", "read", "read_text"}
         )
         if is_file_read:
-            error_value = self._error_value(error_type)
+            error_code_temporary = (
+                f"__merlo_error_code_{self.return_ordinal}"
+            )
+            error_line_temporary = (
+                f"__merlo_error_line_{self.return_ordinal}"
+            )
+            error_value = self._error_value(
+                error_type,
+                error_code_temporary,
+                text_payload=self._address_expression(inner.args[0]),
+                integer_payload=error_line_temporary,
+            )
             lines.append(
                 f"{pad}{_c_name(ok_type)} {temporary} = "
                 f"{self._expression(inner, expected=None)};"
             )
             lines.append(f"{pad}if (merlo_file_error != 0) {{")
+            lines.append(
+                f"{pad}uint32_t {error_code_temporary} = merlo_file_error;"
+            )
+            lines.append(
+                f"{pad}uint64_t {error_line_temporary} = "
+                "merlo_file_error_line;"
+            )
             self.indent += 1
             lines.extend(self._drop_owned_lines(self._pad()))
+            error_temporary = f"__merlo_error_{self.return_ordinal}"
+            lines.append(
+                f"{self._pad()}{_c_name(error_type)} {error_temporary} = "
+                f"{error_value};"
+            )
+            lines.append(f"{self._pad()}merlo_file_error = 0;")
             lines.append(
                 f"{self._pad()}return "
                 f"merlo_make_{_identifier(self.current_function.return_type)}_Err("
-                f"{error_value});"
+                f"{error_temporary});"
             )
             self.indent -= 1
             lines.append(f"{pad}}}")
+            lines.append(f"{pad}merlo_file_error = 0;")
             lines.append(f"{pad}{target} = {temporary};")
             return lines
         result_ctype = _c_name(result_type or "")
