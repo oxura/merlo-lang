@@ -31,16 +31,16 @@ remain explicit blockers.
 The preregistration component root is:
 
 ```text
-protocol_sha256 = 87924b5b10ba02c2cd45775205e2f6d93379a9e3f5d7bfa7a1eea81aad9ac416
+protocol_sha256 = 9883e2de96777607dda0defe963808807af66317a4c7c2d44be15959932c420f
 tasks_sha256    = a387364b22e1b8f77527e376df2979a92c317bec9e57bbcdcf06765a7dc7ba31
-combined_root   = 94c1380c9a6020a05c1b789a4fa9f38de95e09740537ec2fb250d3c9527538a3
+combined_root   = 41e026f0bf0b802d475da12af7d9c5d53b0b0e2216a82b6d8bda2d40aa843d04
 ```
 
 `combined_root` is the SHA-256 of canonical JSON containing the two named
 hashes. This is a draft-review fingerprint, not the external publication
-anchor. The alpha2 baseline and six calibration manifests are bound; the
-external root remains explicitly `AWAITING_PARENT_PREREGISTRATION_COMMIT_SHA`,
-and provider/container locks remain unbound.
+anchor. The published external root is
+`bc69b019938c380fc80e579e410a3c260d0a20fc`; provider/container locks remain
+unbound and the overall status stays `DRAFT_UNRUN`.
 
 The runner validates `protocol.json`, `tasks.json`, every fixture, every oracle,
 the schedule, and all denominators before any provider call. A missing locked

@@ -4,8 +4,9 @@ The public AI productivity study is separate from Merlo's executable compiler
 benchmark. `tools/benchmarks/merlo/benchmarks/ai-ab-v1` is **`DRAFT_UNRUN`**: its 30 paired
 language-neutral tasks, expanded fixtures, oracles, prompt parity lock, seeded
 90-pair schedule, budgets, six disjoint calibration tasks, and claim gates are
-bound to the alpha2 baseline but remain unexecuted pending immutable container,
-provider, and external preregistration-root locks. No model call has occurred.
+bound to the alpha2 baseline and published external root
+`bc69b019938c380fc80e579e410a3c260d0a20fc` but remain unexecuted pending
+immutable container and provider locks. No model call has occurred.
 Legacy agent reports are not evidence for this study.
 
 ## Protocol
