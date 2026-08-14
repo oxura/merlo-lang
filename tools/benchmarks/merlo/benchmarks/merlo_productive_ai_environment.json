@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "status": "LOCKED_BEFORE_EXECUTION",
+  "date": "2026-08-14",
+  "build": {
+    "command": "docker buildx build --pull=false --no-cache --provenance=false --build-arg SOURCE_DATE_EPOCH=0 --output type=oci,dest=<output>,rewrite-timestamp=true,name=merlo-ai-experiment:locked -f tools/benchmarks/merlo/ai_experiment.Dockerfile .",
+    "dockerfile_sha256": "86e852e0250c7a591526295ea0aff8ab9f9a1547943c33065fc0a123f00ef1e0",
+    "requirements_sha256": "f89ac60b2c0c69af37210b1ce2d36a5eafbf392062e72955b4cc5dcfcb0c5793",
+    "source_date_epoch": 0
+  },
+  "image": {
+    "base": "docker.io/library/python:3.14.1-slim@sha256:b823ded4377ebb5ff1af5926702df2284e53cecbc6e3549e93a19d8632a1897e",
+    "oci_manifest_digest": "sha256:7624ff11a3aa5886608e872bc9d4b0a1c43a9b5602db5fa82831ebe3b8e0d639",
+    "oci_archive_sha256": "4df511f21344c28e61b0ecb03ef81eb41180d38dbedce7c8f807d0e484ed477c",
+    "reproducibility_check": "two clean OCI exports produced the same manifest and archive digests",
+    "registry_status": "UNPUBLISHED_GHCR_TOKEN_LACKS_PACKAGE_SCOPE"
+  },
+  "runtime_policy": {
+    "network": "none",
+    "root_filesystem": "read_only",
+    "workspace_mount": "read_only",
+    "temporary_filesystem": "/tmp"
+  },
+  "smoke": {
+    "command": "python3 -m pytest tools/benchmarks/merlo/tests/test_productive_applications.py -q -p no:cacheprovider",
+    "result": "13 passed in 0.79s"
+  }
+}

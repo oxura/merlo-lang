@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import json
 from collections import Counter
 from pathlib import Path
 
@@ -20,6 +21,9 @@ from tools.benchmarks.merlo.productive_ai_corpus import (
 
 ROOT = Path(__file__).parents[4]
 EXPECTED_APPLICATION_COUNTS = {"ndjson": 6, "csv": 6, "grep": 6}
+ENVIRONMENT_PATH = Path(
+    "tools/benchmarks/merlo/benchmarks/merlo_productive_ai_environment.json"
+)
 
 
 def test_committed_manifest_is_the_deterministic_template_output() -> None:
@@ -77,6 +81,34 @@ def test_source_pins_match_present_sources_or_record_prerequisites() -> None:
                     "kind": "PREREQUISITE",
                     "prerequisite": "SOURCE_PATH_MUST_EXIST_BEFORE_EXECUTION",
                 }
+
+
+def test_ai_environment_lock_matches_its_recipe_and_runtime_policy() -> None:
+    environment = json.loads((ROOT / ENVIRONMENT_PATH).read_text(encoding="utf-8"))
+    build = environment["build"]
+    image = environment["image"]
+
+    assert environment["status"] == "LOCKED_BEFORE_EXECUTION"
+    assert build["source_date_epoch"] == 0
+    assert build["dockerfile_sha256"] == hashlib.sha256(
+        (ROOT / "tools/benchmarks/merlo/ai_experiment.Dockerfile").read_bytes()
+    ).hexdigest()
+    assert build["requirements_sha256"] == hashlib.sha256(
+        (
+            ROOT / "tools/benchmarks/merlo/ai_experiment_requirements.txt"
+        ).read_bytes()
+    ).hexdigest()
+    assert image["base"].startswith("docker.io/library/python:3.14.1-slim@sha256:")
+    assert image["oci_manifest_digest"].startswith("sha256:")
+    assert image["oci_archive_sha256"] == (
+        "4df511f21344c28e61b0ecb03ef81eb41180d38dbedce7c8f807d0e484ed477c"
+    )
+    assert environment["runtime_policy"] == {
+        "network": "none",
+        "root_filesystem": "read_only",
+        "workspace_mount": "read_only",
+        "temporary_filesystem": "/tmp",
+    }
 
 
 def test_validation_rejects_scope_overlap_digest_tampering_and_execution() -> None:
