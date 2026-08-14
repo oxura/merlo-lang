@@ -3154,12 +3154,14 @@ class _FunctionLowerer:
                     "ownership-producing"
                 )
         if type_ == TEXT:
-            if not isinstance(node.value, ast.Call):
+            if isinstance(node.value, ast.BinOp) and isinstance(node.value.op, ast.Add):
+                pass
+            elif not isinstance(node.value, ast.Call):
                 raise PerformanceCompileError(
                     f"Text initializer for {name} is not "
                     "ownership-producing"
                 )
-            if isinstance(node.value.func, ast.Name):
+            elif isinstance(node.value.func, ast.Name):
                 signature = self.signatures.get(node.value.func.id)
                 if (
                     node.value.func.id != "move"

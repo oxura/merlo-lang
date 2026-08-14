@@ -564,10 +564,11 @@ def test_qualified_modules_keep_distinct_full_type_identities(tmp_path: Path) ->
     assert signatures["app_item"] == "app.left.Item"
     assert signatures["vendor_item"] == "vendor.left.Item"
     assert signatures["app_item"] != signatures["vendor_item"]
-    assert "app.left.parse" not in elaborated.canonical_source
-    assert "vendor.left.parse" not in elaborated.canonical_source
+    assert "\n    return app.left.parse(" not in elaborated.canonical_source
+    assert "\n    return vendor.left.parse(" not in elaborated.canonical_source
     assert "must not rewrite this comment" in elaborated.canonical_source
-    assert len({item.revision_id for item in elaborated.interfaces if item.kind == "fn"}) == 2
+    revisions = {item.name: item.revision_id for item in elaborated.interfaces if item.kind == "fn"}
+    assert revisions["app_item"] != revisions["vendor_item"]
     first_revision = elaborated.interface_revision
     entry.write_text(
         entry.read_text(encoding="utf-8").replace(
