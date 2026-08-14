@@ -1,12 +1,20 @@
 """Deterministic Merlo release validation and assembly."""
 from __future__ import annotations
 
+import argparse
+import gzip
 import hashlib
+import importlib.metadata
 import json
 import os
+import platform
 import re
 import shutil
+import subprocess
+import tarfile
+import io
 import tempfile
+import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -289,9 +297,19 @@ def _validate_provenance(provenance: ReleaseProvenance, root: Path) -> None:
     ):
         raise ReleaseValidationError("invalid provenance versions")
     package_version = provenance.versions["package"]
-    sdist_name, wheel_name, evidence_name = _distribution_filenames(package_version)
+    compiler_version = provenance.versions["compiler"]
+    displayed_version = provenance.versions["displayed"]
+    alpha_match = _ALPHA_VERSION.fullmatch(package_version)
+    if compiler_version != package_version:
+        raise ReleaseValidationError("compiler version disagrees with package version")
+    if alpha_match is None:
+        raise ReleaseValidationError("invalid provenance package version")
+    expected_displayed = f"Merlo alpha.{alpha_match.group(4)}"
+    if displayed_version != expected_displayed:
+        raise ReleaseValidationError("displayed version disagrees with package version")
     if provenance.tag != f"v{package_version}":
         raise ReleaseValidationError("provenance tag disagrees with package version")
+    sdist_name, wheel_name, evidence_name = _distribution_filenames(package_version)
     if not isinstance(provenance.platform, str) or not provenance.platform:
         raise ReleaseValidationError("invalid provenance platform or architecture")
     if not isinstance(provenance.architecture, str) or not provenance.architecture:
@@ -619,8 +637,12 @@ def _validate_manifest_shape(manifest: Mapping[str, Any]) -> None:
         not isinstance(value, str) or not value for value in versions.values()
     ):
         raise ReleaseValidationError("manifest provenance versions invalid")
-    if provenance["tag"] != f"v{versions['package']}" or manifest["release"] != versions["package"]:
+    package_version = versions["package"]
+    alpha_match = _ALPHA_VERSION.fullmatch(package_version)
+    if provenance["tag"] != f"v{package_version}" or manifest["release"] != package_version:
         raise ReleaseValidationError("manifest release identity mismatch")
+    if versions["compiler"] != package_version or alpha_match is None or versions["displayed"] != f"Merlo alpha.{alpha_match.group(4)}":
+        raise ReleaseValidationError("manifest provenance version mismatch")
     for name in ("platform", "architecture"):
         if not isinstance(provenance[name], str) or not provenance[name]:
             raise ReleaseValidationError(f"manifest provenance {name} invalid")
@@ -818,6 +840,392 @@ def write_validation_report_once(path: Path | str, validation: ValidationResult)
     temporary.write_text(payload, encoding="utf-8")
     os.replace(temporary, destination)
     return destination
+CI_ATTESTATION_SCHEMA_VERSION = 1
+ACTIVE_WORKLOAD_LOCK_PATH = "tools/benchmarks/merlo/benchmarks/alpha_performance/workloads.json"
+_JOB_RESPONSIBILITIES = {
+    "production": frozenset({"full_tests", "lsp", "examples"}),
+    "tooling": frozenset({"corpus", "sanitizers", "simplicity", "performance"}),
+    "artifacts": frozenset({"clean_demo", "packaging", "reproducibility"}),
+    "archive": frozenset(),
+}
+
+
+@dataclass(frozen=True)
+class ReleaseBuildResult:
+    """Paths and typed assembly produced by :func:`build_alpha_release`."""
+
+    assembly: AssemblyResult
+    evidence_zip: Path
+    manifest: Path
+    checksums: Path
+    sha256sums: Path
+
+    @property
+    def path(self) -> Path:
+        return self.assembly.path
+
+    @property
+    def validation(self) -> ValidationResult:
+        return self.assembly.validation
+
+
+def _read_json_object(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ReleaseValidationError(f"invalid CI attestation JSON: {path}") from exc
+    if not isinstance(value, dict):
+        raise ReleaseValidationError("CI attestation must be a JSON object")
+    return value
+
+
+def _validate_ci_attestation(attestation: Mapping[str, Any], *, tag: str, commit: str) -> dict[str, Mapping[str, Any]]:
+    if attestation.get("schema_version") != CI_ATTESTATION_SCHEMA_VERSION:
+        raise ReleaseValidationError("unsupported CI attestation schema")
+    if attestation.get("commit") != commit or attestation.get("tag") != tag:
+        raise ReleaseValidationError("CI attestation identity mismatch")
+    repository = attestation.get("repository")
+    run_id = attestation.get("run_id")
+    run_url = attestation.get("run_url")
+    if not isinstance(repository, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
+        raise ReleaseValidationError("CI attestation repository is invalid")
+    if isinstance(run_id, bool) or not isinstance(run_id, (int, str)) or not str(run_id).isdigit() or int(run_id) <= 0:
+        raise ReleaseValidationError("CI attestation run identity is invalid")
+    expected_url = f"https://github.com/{repository}/actions/runs/{int(run_id)}"
+    if run_url != expected_url:
+        raise ReleaseValidationError("CI attestation run URL is invalid")
+    jobs = attestation.get("jobs")
+    if not isinstance(jobs, Mapping) or set(jobs) != set(_JOB_RESPONSIBILITIES):
+        raise ReleaseValidationError("CI attestation jobs are incomplete")
+    validated: dict[str, Mapping[str, Any]] = {}
+    for job_name, responsibilities in _JOB_RESPONSIBILITIES.items():
+        job = jobs[job_name]
+        if not isinstance(job, Mapping) or job.get("result") != "success":
+            raise ReleaseValidationError(f"CI job did not succeed: {job_name}")
+        observed = job.get("responsibilities")
+        if not isinstance(observed, list) or any(not isinstance(item, str) for item in observed):
+            raise ReleaseValidationError(f"CI job responsibilities are invalid: {job_name}")
+        if set(observed) != set(responsibilities) or len(observed) != len(set(observed)):
+            raise ReleaseValidationError(f"CI job responsibilities mismatch: {job_name}")
+        validated[job_name] = job
+    return validated
+
+
+def _zip_timestamp(epoch: int) -> tuple[int, int, int, int, int, int]:
+    import datetime
+
+    value = datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc)
+    # ZIP timestamps cannot represent dates before 1980.
+    value = max(value, datetime.datetime(1980, 1, 1, tzinfo=datetime.timezone.utc))
+    return value.timetuple()[:6]
+
+
+def _write_deterministic_evidence(
+    destination: Path,
+    *,
+    attestation: Mapping[str, Any],
+    tag: str,
+    commit: str,
+    source_date_epoch: int,
+) -> str:
+    attestation_bytes = (_canonical(attestation) + "\n").encode("utf-8")
+    attestation_hash = _digest_bytes(attestation_bytes)
+    manifest_payload = {
+        "schema_version": CI_ATTESTATION_SCHEMA_VERSION,
+        "tag": tag,
+        "commit": commit,
+        "source_date_epoch": source_date_epoch,
+        "files": {"attestation.json": attestation_hash},
+    }
+    payload_hash = _digest(manifest_payload)
+    unsigned = {**manifest_payload, "payload_sha256": payload_hash}
+    manifest = {**unsigned, "manifest_sha256": _digest(unsigned)}
+    manifest_bytes = (_canonical(manifest) + "\n").encode("utf-8")
+    checksums = (
+        f"{attestation_hash}  attestation.json\n"
+        f"{_digest_bytes(manifest_bytes)}  manifest.json\n"
+    ).encode("utf-8")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    entries = {
+        "attestation.json": attestation_bytes,
+        "manifest.json": manifest_bytes,
+        "checksums.sha256": checksums,
+        "SHA256SUMS": checksums,
+    }
+    timestamp = _zip_timestamp(source_date_epoch)
+    with tempfile.NamedTemporaryFile(prefix=f".{destination.name}-", dir=destination.parent, delete=False) as temporary:
+        temporary_path = Path(temporary.name)
+    try:
+        with zipfile.ZipFile(temporary_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+            for name, content in entries.items():
+                info = zipfile.ZipInfo(name, timestamp)
+                info.create_system = 3
+                info.external_attr = 0o100644 << 16
+                info.compress_type = zipfile.ZIP_DEFLATED
+                archive.writestr(info, content)
+        os.replace(temporary_path, destination)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+    return attestation_hash
+
+def canonicalize_sdist(path: Path | str, source_date_epoch: int) -> Path:
+    """Rewrite an sdist with canonical tar and gzip metadata."""
+    source = Path(path)
+    if isinstance(source_date_epoch, bool) or not isinstance(source_date_epoch, int) or source_date_epoch < 0:
+        raise ReleaseValidationError("invalid source date epoch")
+    try:
+        with tarfile.open(source, "r:*") as archive:
+            members = archive.getmembers()
+            entries: list[tuple[tarfile.TarInfo, bytes]] = []
+            names: set[str] = set()
+            for member in members:
+                name = member.name
+                candidate = Path(name)
+                if (
+                    not name
+                    or "\\" in name
+                    or candidate.is_absolute()
+                    or any(part in {"", ".", ".."} for part in candidate.parts)
+                    or name in names
+                ):
+                    raise ReleaseValidationError("sdist contains unsafe or duplicate member path")
+                if member.issym() or member.islnk() or not (member.isdir() or member.isreg()):
+                    raise ReleaseValidationError("sdist contains unsupported link or special member")
+                content = b""
+                if member.isreg():
+                    extracted = archive.extractfile(member)
+                    if extracted is None:
+                        raise ReleaseValidationError("sdist regular member has no content")
+                    content = extracted.read()
+                normalized = tarfile.TarInfo(name)
+                normalized.type = tarfile.DIRTYPE if member.isdir() else tarfile.REGTYPE
+                normalized.mode = member.mode & 0o777
+                normalized.mtime = source_date_epoch
+                normalized.uid = 0
+                normalized.gid = 0
+                normalized.uname = ""
+                normalized.gname = ""
+                normalized.size = len(content)
+                entries.append((normalized, content))
+                names.add(name)
+    except (OSError, tarfile.TarError) as exc:
+        raise ReleaseValidationError("cannot read sdist") from exc
+    entries.sort(key=lambda item: item[0].name)
+    source.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(prefix=f".{source.name}-", dir=source.parent, delete=False) as temporary:
+        temporary_path = Path(temporary.name)
+    try:
+        with temporary_path.open("wb") as raw:
+            with gzip.GzipFile(fileobj=raw, mode="wb", filename="", mtime=source_date_epoch, compresslevel=9) as compressed:
+                with tarfile.open(fileobj=compressed, mode="w", format=tarfile.PAX_FORMAT) as output:
+                    for member, content in entries:
+                        output.addfile(member, io.BytesIO(content) if member.isreg() else None)
+        os.replace(temporary_path, source)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+    return source
+
+
+def _release_toolchain_identity() -> tuple[dict[str, str], dict[str, str]]:
+    try:
+        from merlo.native_c_backend import compiler_version, find_c_compiler
+        compiler = find_c_compiler()
+        if compiler is None:
+            raise ReleaseValidationError("release C compiler is unavailable")
+    except (ImportError, OSError, RuntimeError, subprocess.SubprocessError) as exc:
+        raise ReleaseValidationError("release C compiler identity is unavailable") from exc
+    if not version:
+        raise ReleaseValidationError("release C compiler version is unavailable")
+    try:
+        frontend_version = importlib.metadata.version("build")
+    except importlib.metadata.PackageNotFoundError as exc:
+        raise ReleaseValidationError("release build frontend identity is unavailable") from exc
+    return (
+        {"name": Path(compiler).name, "version": version, "target": platform.machine() or "unknown"},
+        {"name": "build", "version": frontend_version},
+    )
+
+
+def _asset_source(root: Path, dist: Path, path: Path, filename: str) -> str:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        staging = root / ".merlo-release-assets"
+        staging.mkdir(parents=True, exist_ok=True)
+        target = staging / filename
+        shutil.copyfile(path, target)
+        return _relative(target, root)
+
+
+def build_alpha_release(
+    root: Path | str,
+    dist: Path | str,
+    output: Path | str,
+    tag: str,
+    commit: str,
+    source_date_epoch: int,
+    *,
+    sample_binary: Path | str,
+    attestation: Path | str,
+) -> ReleaseBuildResult:
+    """Validate CI evidence and assemble the three alpha distribution assets."""
+    base = Path(root).resolve()
+    dist_path = Path(dist).resolve()
+    if not base.is_dir() or not dist_path.is_dir():
+        raise ReleaseValidationError("release root and dist must be directories")
+    if not _HEX40.fullmatch(commit):
+        raise ReleaseValidationError("release commit must be a 40-hex SHA")
+    if tag != f"v{RELEASE_VERSION}":
+        raise ReleaseValidationError("release tag disagrees with package version")
+    if isinstance(source_date_epoch, bool) or not isinstance(source_date_epoch, int) or source_date_epoch < 0:
+        raise ReleaseValidationError("invalid source date epoch")
+    binary = _as_path(base, sample_binary)
+    if not binary.is_file() or not os.access(binary, os.X_OK):
+        raise ReleaseValidationError("sample binary is not executable")
+    attestation_path = _as_path(base, attestation)
+    if not attestation_path.is_file():
+        raise ReleaseValidationError("missing CI attestation")
+    attestation_value = _read_json_object(attestation_path)
+    jobs = _validate_ci_attestation(attestation_value, tag=tag, commit=commit)
+    sdist_name, wheel_name, evidence_name = _distribution_filenames(RELEASE_VERSION)
+    wheel = dist_path / wheel_name
+    sdist = dist_path / sdist_name
+    if not wheel.is_file() or not sdist.is_file():
+        raise ReleaseValidationError("dist is missing the expected wheel or sdist")
+    evidence_zip = dist_path / evidence_name
+    attestation_hash = _write_deterministic_evidence(
+        evidence_zip,
+        attestation=attestation_value,
+        tag=tag,
+        commit=commit,
+        source_date_epoch=source_date_epoch,
+    )
+    raw_relative = _relative(attestation_path, base)
+    raw_hashes = {raw_relative: _file_hash(attestation_path)}
+    source_hashes = {
+        _relative(path, base): _file_hash(path)
+        for path in sorted((base / "src" / "merlo").rglob("*.py"))
+        if path.is_file()
+    }
+    if not source_hashes:
+        raise ReleaseValidationError("production source set is required")
+    compiler_path = base / "src" / "merlo" / "compiler.py"
+    lockfile_path = base / ACTIVE_WORKLOAD_LOCK_PATH
+    if not compiler_path.is_file() or not lockfile_path.is_file():
+        raise ReleaseValidationError("release compiler or workload lock is missing")
+    compiler_sha256 = _file_hash(compiler_path)
+    lock_sha256 = _file_hash(lockfile_path)
+    artifact_hashes = {
+        _asset_source(base, dist_path, wheel, wheel_name): _file_hash(wheel),
+        _asset_source(base, dist_path, sdist, sdist_name): _file_hash(sdist),
+    }
+    records = []
+    for gate in REQUIRED_GATES:
+        owner = next(name for name, values in _JOB_RESPONSIBILITIES.items() if gate in values)
+        record = EvidenceRecord(
+            id=f"ci.{owner}.{gate}",
+            kind="github-ci",
+            gate=gate,
+            status="PASSED",
+            executed=True,
+            supported=True,
+            payload={
+                "repository": attestation_value["repository"],
+                "run_id": int(attestation_value["run_id"]),
+                "run_url": attestation_value["run_url"],
+                "job": owner,
+                "result": jobs[owner]["result"],
+                "responsibility": gate,
+                "attestation_sha256": attestation_hash,
+            },
+            raw_paths=(raw_relative,),
+            source_hashes=source_hashes,
+            compiler_sha256=compiler_sha256,
+            lock_sha256=lock_sha256,
+            raw_hashes=raw_hashes,
+            artifact_hashes=artifact_hashes if gate == "reproducibility" else {},
+        )
+        records.append(record)
+    asset_paths = {
+        "wheel": _asset_source(base, dist_path, wheel, wheel_name),
+        "sdist": _asset_source(base, dist_path, sdist, sdist_name),
+        "evidence": _asset_source(base, dist_path, evidence_zip, evidence_name),
+    }
+    c_compiler, build_frontend = _release_toolchain_identity()
+    provenance = ReleaseProvenance(
+        source_commit=commit,
+        tag=tag,
+        versions={"package": RELEASE_VERSION, "compiler": RELEASE_VERSION, "displayed": "Merlo alpha.2"},
+        platform=platform.system() or "unknown",
+        architecture=platform.machine() or "unknown",
+        python={"implementation": platform.python_implementation(), "version": platform.python_version()},
+        c_compiler=c_compiler,
+        build_frontend=build_frontend,
+        source_date_epoch=source_date_epoch,
+        assets={
+            asset_paths["wheel"]: _file_hash(wheel),
+            asset_paths["sdist"]: _file_hash(sdist),
+            asset_paths["evidence"]: _file_hash(evidence_zip),
+        },
+    )
+    inputs = ReleaseInputs(
+        root=base,
+        gates=tuple(GateInput(name=gate, evidence_ids=(record.id,)) for gate, record in zip(REQUIRED_GATES, records)),
+        evidence=tuple(records),
+        source_hashes=source_hashes,
+        compiler_path=Path("src/merlo/compiler.py"),
+        compiler_sha256=compiler_sha256,
+        lockfile_path=Path(ACTIVE_WORKLOAD_LOCK_PATH),
+        lock_sha256=lock_sha256,
+        docs=tuple(REQUIRED_DOCS),
+        specs=tuple(REQUIRED_SPECS),
+        stdlib=tuple(REQUIRED_STDLIB),
+        examples=tuple(REQUIRED_EXAMPLES),
+        binaries=(binary.relative_to(base),),
+        provenance=provenance,
+    )
+    assembly = assemble_release(inputs, output)
+    verify_manifest(assembly.manifest)
+    return ReleaseBuildResult(
+        assembly=assembly,
+        evidence_zip=evidence_zip,
+        manifest=assembly.path / "manifest.json",
+        checksums=assembly.path / "checksums.sha256",
+        sha256sums=assembly.path / "SHA256SUMS",
+    )
+
+
+build_release = build_alpha_release
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Assemble a Merlo alpha release from typed CI evidence")
+    parser.add_argument("--root", type=Path, required=True)
+    parser.add_argument("--dist", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--tag", required=True)
+    parser.add_argument("--commit", required=True)
+    parser.add_argument("--source-date-epoch", type=int, required=True)
+    parser.add_argument("--binary", "--sample-binary", dest="sample_binary", type=Path, required=True)
+    parser.add_argument("--attestation", "--ci-attestation", dest="attestation", type=Path, required=True)
+    args = parser.parse_args(argv)
+    try:
+        result = build_alpha_release(
+            args.root, args.dist, args.output, args.tag, args.commit, args.source_date_epoch,
+            sample_binary=args.sample_binary, attestation=args.attestation,
+        )
+    except ReleaseValidationError as exc:
+        parser.error(str(exc))
+    print(json.dumps({
+        "status": result.validation.status,
+        "output": str(result.path),
+        "evidence": str(result.evidence_zip),
+        "manifest": str(result.manifest),
+        "checksums": str(result.checksums),
+        "SHA256SUMS": str(result.sha256sums),
+    }, sort_keys=True))
+    return 0
+
 
 
 
@@ -913,11 +1321,18 @@ def public_benchmark_evidence(
 
 
 __all__ = [
-    "ALLOWED_STATUSES", "ALPHA_RELEASE_INCOMPLETE", "ALPHA_RELEASE_REPRODUCIBILITY_DEFECT",
-    "ALPHA_RELEASE_SAFETY_DEFECT", "ALPHA_RELEASE_SUPPORTED", "AssemblyResult", "EvidenceRecord",
-    "GateInput", "RELEASE_VERSION", "REQUIRED_DOCS", "REQUIRED_EXAMPLES", "REQUIRED_GATES",
-    "REQUIRED_LICENSES", "REQUIRED_METADATA", "REQUIRED_SPECS", "REQUIRED_STDLIB", "ReleaseInputs",
+    "ACTIVE_WORKLOAD_LOCK_PATH", "ALLOWED_STATUSES", "ALPHA_RELEASE_INCOMPLETE",
+    "ALPHA_RELEASE_REPRODUCIBILITY_DEFECT", "ALPHA_RELEASE_SAFETY_DEFECT",
+    "ALPHA_RELEASE_SUPPORTED", "AssemblyResult", "CI_ATTESTATION_SCHEMA_VERSION",
+    "EvidenceRecord", "GateInput", "RELEASE_VERSION", "REQUIRED_DOCS",
+    "REQUIRED_EXAMPLES", "REQUIRED_GATES", "REQUIRED_LICENSES", "REQUIRED_METADATA",
+    "REQUIRED_SPECS", "REQUIRED_STDLIB", "ReleaseBuildResult", "ReleaseInputs",
     "ReleaseProvenance", "ReleaseValidationError", "SCHEMA_VERSION", "ValidationResult",
-    "assemble_release", "manifest_payload_sha256", "manifest_sha256", "validate_release",
+    "assemble_release", "build_alpha_release", "build_release", "canonicalize_sdist", "main",
+    "manifest_payload_sha256", "manifest_sha256", "validate_release",
     "public_benchmark_evidence",
 ]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

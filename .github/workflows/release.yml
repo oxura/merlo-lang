@@ -84,6 +84,18 @@ jobs:
           mkdir -p "$first" "$second"
           (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --wheel --sdist --outdir "$first")
           (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --wheel --sdist --outdir "$second")
+          python - "$first" "$second" "$SOURCE_DATE_EPOCH" <<'PY'
+          import sys
+          from pathlib import Path
+          from tools.release.merlo.alpha_release import canonicalize_sdist
+
+          epoch = int(sys.argv[3])
+          for root in (Path(sys.argv[1]), Path(sys.argv[2])):
+              sdists = sorted(root.glob("merlo-*.tar.gz"))
+              if len(sdists) != 1:
+                  raise SystemExit(f"expected one sdist in {root}")
+              canonicalize_sdist(sdists[0], epoch)
+          PY
           python - "$first" "$second" <<'PY'
           from __future__ import annotations
 
@@ -158,11 +170,21 @@ jobs:
           "$smoke_root/venv/bin/merlo" check --json "$smoke_root/project"
           "$smoke_root/venv/bin/merlo" build --json "$smoke_root/project"
           "$smoke_root/venv/bin/merlo" run --json "$smoke_root/project"
+          "$smoke_root/venv/bin/merlo" check --json "$GITHUB_WORKSPACE/examples/capacity-ledger"
+          "$smoke_root/venv/bin/merlo" build --json "$GITHUB_WORKSPACE/examples/capacity-ledger"
+          "$smoke_root/venv/bin/merlo" run --json "$GITHUB_WORKSPACE/examples/capacity-ledger"
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: merlo-${{ github.ref_name }}-artifacts
           path: dist/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload capacity-ledger smoke binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: merlo-${{ github.ref_name }}-capacity-ledger-smoke
+          path: examples/capacity-ledger/.merlo/build/app
           if-no-files-found: error
           retention-days: 14
 
@@ -173,11 +195,101 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout exact release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+      - name: Download capacity-ledger smoke binary
+        uses: actions/download-artifact@v4
+        with:
+          name: merlo-${{ github.ref_name }}-capacity-ledger-smoke
+          path: smoke
       - name: Download release artifacts
         uses: actions/download-artifact@v4
         with:
           name: merlo-${{ github.ref_name }}-artifacts
           path: dist
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install release builder frontend
+        run: python -m pip install build dist/*.whl
+      - name: Write canonical CI attestation
+        env:
+          MERLO_REPOSITORY: ${{ github.repository }}
+          MERLO_RUN_ID: ${{ github.run_id }}
+          MERLO_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          MERLO_TAG: ${{ github.ref_name }}
+          MERLO_COMMIT: ${{ github.sha }}
+          MERLO_PRODUCTION_RESULT: ${{ needs.production.result }}
+          MERLO_TOOLING_RESULT: ${{ needs.tooling.result }}
+          MERLO_ARCHIVE_RESULT: ${{ needs.archive.result }}
+          MERLO_ARTIFACTS_RESULT: ${{ needs.artifacts.result }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$MERLO_COMMIT"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          responsibilities = {
+              "production": ["full_tests", "lsp", "examples"],
+              "tooling": ["corpus", "sanitizers", "simplicity", "performance"],
+              "artifacts": ["clean_demo", "packaging", "reproducibility"],
+              "archive": [],
+          }
+          results = {
+              "production": os.environ["MERLO_PRODUCTION_RESULT"],
+              "tooling": os.environ["MERLO_TOOLING_RESULT"],
+              "archive": os.environ["MERLO_ARCHIVE_RESULT"],
+              "artifacts": os.environ["MERLO_ARTIFACTS_RESULT"],
+          }
+          payload = {
+              "schema_version": 1,
+              "repository": os.environ["MERLO_REPOSITORY"],
+              "run_id": int(os.environ["MERLO_RUN_ID"]),
+              "run_url": os.environ["MERLO_RUN_URL"],
+              "commit": os.environ["MERLO_COMMIT"],
+              "tag": os.environ["MERLO_TAG"],
+              "jobs": {
+                  name: {"result": results[name], "responsibilities": values}
+                  for name, values in responsibilities.items()
+              },
+          }
+          Path(".merlo-ci-attestation.json").write_text(
+              json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n",
+              encoding="utf-8",
+          )
+      - name: Prepare release builder inputs
+        run: |
+          set -euo pipefail
+          export SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+          install -m 755 smoke/app "$GITHUB_WORKSPACE/.merlo-release-smoke"
+          python -m tools.release.merlo.alpha_release \
+            --root "$GITHUB_WORKSPACE" \
+            --dist "$GITHUB_WORKSPACE/dist" \
+            --output "$GITHUB_WORKSPACE/release" \
+            --tag "$GITHUB_REF_NAME" \
+            --commit "$GITHUB_SHA" \
+            --source-date-epoch "$SOURCE_DATE_EPOCH" \
+            --binary "$GITHUB_WORKSPACE/.merlo-release-smoke" \
+            --attestation "$GITHUB_WORKSPACE/.merlo-ci-attestation.json"
+      - name: Upload assembled release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: merlo-${{ github.ref_name }}-release
+          path: release/**
+          if-no-files-found: error
+          retention-days: 14
+      - name: Stage assembled assets for GitHub release
+        run: |
+          set -euo pipefail
+          cp release/assets/*.whl dist/
+          cp release/assets/*.tar.gz dist/
+          cp release/assets/*-evidence.zip dist/
+          cp release/manifest.json release/SHA256SUMS release/checksums.sha256 dist/
       - name: Create prerelease with generated notes
         uses: actions/github-script@v7
         with:
@@ -231,7 +343,9 @@ jobs:
                 name,
                 data: fs.readFileSync(file),
                 headers: {
-                  "content-type": name.endsWith(".whl") ? "application/zip" : "application/gzip",
+                  "content-type": name.endsWith(".whl") || name.endsWith(".zip") ? "application/zip" :
+                    name.endsWith(".json") || name.endsWith(".sha256") || name === "SHA256SUMS" ? "text/plain" :
+                    "application/gzip",
                   "content-length": stat.size,
                 },
               });

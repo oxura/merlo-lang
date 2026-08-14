@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import shutil
+import tarfile
+import zipfile
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
+
+from tools.release.merlo import alpha_release as release
 
 from tools.release.merlo.alpha_release import (
     ALPHA_RELEASE_INCOMPLETE,
@@ -111,6 +117,35 @@ def _fixture(tmp_path: Path, *, complete: bool = True) -> ReleaseInputs:
         binaries=(Path("examples/hello"),),
         provenance=provenance,
     )
+
+def _builder_fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path, Path]:
+    inputs = _fixture(tmp_path)
+    root = inputs.root
+    lock = root / release.ACTIVE_WORKLOAD_LOCK_PATH
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    lock.write_bytes(b'{"active":"capacity-ledger"}\n')
+    dist = root / "dist"
+    dist.mkdir()
+    for filename in ("merlo-0.1.0a2.tar.gz", "merlo-0.1.0a2-py3-none-any.whl"):
+        shutil.copyfile(root / filename, dist / filename)
+    binary = root / "examples" / "hello"
+    attestation = root / "ci-attestation.json"
+    payload = {
+        "schema_version": 1,
+        "repository": "oxura/merlo-lang",
+        "run_id": 123,
+        "run_url": "https://github.com/oxura/merlo-lang/actions/runs/123",
+        "commit": "0123456789abcdef0123456789abcdef01234567",
+        "tag": "v0.1.0-alpha.2",
+        "jobs": {
+            "production": {"result": "success", "responsibilities": ["full_tests", "lsp", "examples"]},
+            "tooling": {"result": "success", "responsibilities": ["corpus", "sanitizers", "simplicity", "performance"]},
+            "archive": {"result": "success", "responsibilities": []},
+            "artifacts": {"result": "success", "responsibilities": ["clean_demo", "packaging", "reproducibility"]},
+        },
+    }
+    attestation.write_text(json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+    return root, dist, binary, attestation, tmp_path / "release"
 
 
 def test_missing_gate_is_rejected(tmp_path: Path) -> None:
@@ -315,3 +350,127 @@ def test_asset_names_reject_version_substrings_and_invalid_alpha_versions(tmp_pa
     versions["package"] = "1"
     with pytest.raises(ReleaseValidationError, match="package version"):
         validate_release(replace(inputs, provenance=replace(inputs.provenance, versions=versions)))
+
+
+def test_provenance_rejects_compiler_and_display_version_mismatch(tmp_path: Path) -> None:
+    inputs = _fixture(tmp_path)
+    versions = dict(inputs.provenance.versions)
+    versions["compiler"] = "0.1.0-alpha.1"
+    with pytest.raises(ReleaseValidationError, match="compiler version"):
+        validate_release(replace(inputs, provenance=replace(inputs.provenance, versions=versions)))
+    versions = dict(inputs.provenance.versions)
+    versions["displayed"] = "Merlo alpha.1"
+    with pytest.raises(ReleaseValidationError, match="displayed version"):
+        validate_release(replace(inputs, provenance=replace(inputs.provenance, versions=versions)))
+
+
+def test_provenance_rejects_tag_mismatch(tmp_path: Path) -> None:
+    inputs = _fixture(tmp_path)
+    provenance = replace(inputs.provenance, tag="v0.1.0-alpha.1")
+    with pytest.raises(ReleaseValidationError, match="tag disagrees"):
+        validate_release(replace(inputs, provenance=provenance))
+
+
+def _patch_toolchain(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        release,
+        "_release_toolchain_identity",
+        lambda: (
+            {"name": "clang", "version": "clang version test", "target": "x86_64"},
+            {"name": "build", "version": "1.2.2"},
+        ),
+    )
+
+
+def test_builder_rejects_attestation_identity_and_job_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root, dist, binary, attestation, output = _builder_fixture(tmp_path)
+    _patch_toolchain(monkeypatch)
+    payload = json.loads(attestation.read_text(encoding="utf-8"))
+    payload["commit"] = "f" * 40
+    attestation.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ReleaseValidationError, match="identity mismatch"):
+        release.build_alpha_release(root, dist, output, "v0.1.0-alpha.2", "0" * 40, 1, sample_binary=binary, attestation=attestation)
+    payload["commit"] = "0123456789abcdef0123456789abcdef01234567"
+    payload["jobs"]["tooling"]["result"] = "failure"
+    attestation.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ReleaseValidationError, match="did not succeed"):
+        release.build_alpha_release(root, dist, output, "v0.1.0-alpha.2", payload["commit"], 1, sample_binary=binary, attestation=attestation)
+
+
+def test_builder_deterministic_evidence_and_three_asset_assembly(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root, dist, binary, attestation, output = _builder_fixture(tmp_path)
+    _patch_toolchain(monkeypatch)
+    commit = "0123456789abcdef0123456789abcdef01234567"
+    first = release.build_alpha_release(root, dist, output, "v0.1.0-alpha.2", commit, 1, sample_binary=binary, attestation=attestation)
+    evidence_bytes = first.evidence_zip.read_bytes()
+    second = release.build_alpha_release(root, dist, tmp_path / "release-second", "v0.1.0-alpha.2", commit, 1, sample_binary=binary, attestation=attestation)
+    assert second.evidence_zip.read_bytes() == evidence_bytes
+    assert set(first.assembly.manifest["assets"]) == {
+        "merlo-0.1.0a2.tar.gz",
+        "merlo-0.1.0a2-py3-none-any.whl",
+        "merlo-0.1.0-alpha.2-evidence.zip",
+    }
+    with zipfile.ZipFile(first.evidence_zip) as archive:
+        assert archive.namelist() == ["attestation.json", "manifest.json", "checksums.sha256", "SHA256SUMS"]
+
+
+def test_builder_invokes_typed_assembly_and_rejects_tampering(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root, dist, binary, attestation, output = _builder_fixture(tmp_path)
+    _patch_toolchain(monkeypatch)
+    called = 0
+    real_assemble = release.assemble_release
+
+    def observed(inputs: ReleaseInputs, destination: Path | str):
+        nonlocal called
+        called += 1
+        return real_assemble(inputs, destination)
+
+    monkeypatch.setattr(release, "assemble_release", observed)
+    commit = "0123456789abcdef0123456789abcdef01234567"
+    result = release.build_alpha_release(root, dist, output, "v0.1.0-alpha.2", commit, 1, sample_binary=binary, attestation=attestation)
+    assert called == 1
+    (result.path / "docs" / "README.md").write_bytes(b"tampered")
+    with pytest.raises(ReleaseValidationError, match="payload modified"):
+        release.build_alpha_release(root, dist, output, "v0.1.0-alpha.2", commit, 1, sample_binary=binary, attestation=attestation)
+
+
+def test_builder_cli_accepts_ci_attestation_alias(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    root, dist, binary, attestation, output = _builder_fixture(tmp_path)
+    _patch_toolchain(monkeypatch)
+    commit = "0123456789abcdef0123456789abcdef01234567"
+    assert release.main([
+        "--root", str(root), "--dist", str(dist), "--output", str(output),
+        "--tag", "v0.1.0-alpha.2", "--commit", commit, "--source-date-epoch", "1",
+        "--sample-binary", str(binary), "--ci-attestation", str(attestation),
+    ]) == 0
+    assert json.loads(capsys.readouterr().out)["status"] == release.ALPHA_RELEASE_SUPPORTED
+
+
+def test_canonicalize_sdist_normalizes_headers_and_preserves_pkg_info(tmp_path: Path) -> None:
+    content = b"Metadata-Version: 2.4\nName: merlo\nVersion: 0.1.0a2\n"
+
+    def write_archive(path: Path, member_epoch: int) -> None:
+        with tarfile.open(path, "w:gz") as archive:
+            directory = tarfile.TarInfo("merlo-0.1.0a2/")
+            directory.type = tarfile.DIRTYPE
+            directory.mode = 0o755
+            directory.mtime = member_epoch
+            archive.addfile(directory)
+            member = tarfile.TarInfo("merlo-0.1.0a2/PKG-INFO")
+            member.mode = 0o644
+            member.mtime = member_epoch
+            member.size = len(content)
+            archive.addfile(member, io.BytesIO(content))
+
+    first = tmp_path / "first.tar.gz"
+    second = tmp_path / "second.tar.gz"
+    write_archive(first, 1)
+    write_archive(second, 2)
+    release.canonicalize_sdist(first, 123)
+    release.canonicalize_sdist(second, 123)
+    assert first.read_bytes() == second.read_bytes()
+    with tarfile.open(first, "r:gz") as archive:
+        member = archive.getmember("merlo-0.1.0a2/PKG-INFO")
+        assert member.mtime == 123
+        assert member.uid == member.gid == 0
+        assert archive.extractfile(member).read() == content
