@@ -191,6 +191,7 @@ def test_surface_controls_reach_c_through_production_project_handoff(
         "    Failed\n\n"
         "subtract(left: UInt64, right: UInt64) -> UInt64 = left - right\n\n"
         "export main(path: Path) -> Result[UInt64, AppError]:\n"
+        "    uses console.write\n"
         "    value = 0\n"
         "    while value < 4:\n"
         "        value += 1\n"
@@ -199,6 +200,7 @@ def test_surface_controls_reach_c_through_production_project_handoff(
         "        if value == 3:\n"
         "            break\n"
         "    result = subtract(value, 10)\n"
+        "    console.write(\"control\")\n"
         "    Ok(result)\n",
         encoding="utf-8",
     )
