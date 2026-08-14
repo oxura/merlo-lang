@@ -79,7 +79,7 @@ def _compile_arms(root: Path) -> dict[str, list[str] | None]:
         "merlo": [str(merlo_binary)],
         "c": [str(c_binary)],
         "rust": None if rustc is None else [],
-        "python": [sys.executable, "-m", "benchmarks.general_representation.reference_json"],
+        "python": [sys.executable, "-m", "tools.benchmarks.merlo.general_representation.reference_json"],
     }
 
 

@@ -55,7 +55,7 @@
       "transform": "identity"
     }
   ],
-  "payload_sha256": "2e4d50d3ea09861adb5bf00f74b2056e2523625c0dc6a6455820c3d5d0810bf3",
+  "payload_sha256": "72389696d024aed2bc29113b0bcf3dbcc67e3f48bb7a24ebbb1182ff7d5cadf6",
   "schema_version": 1,
   "selection": "two provenance-verifiable fixtures per required format",
   "status": "PINNED_EXTERNAL_FIXTURES_VERIFIED"

@@ -373,7 +373,7 @@ def build_productive_runner_registry(
     # Binaries are retained in a runtime-only directory because runners outlive
     # this function and generated benchmark artifacts must not enter the tree.
     build_root = Path(tempfile.mkdtemp(prefix="productive-performance-"))
-    python_source_path = base / "merlo" / "productive_applications.py"
+    python_source_path = base / "tools" / "benchmarks" / "merlo" / "productive_applications.py"
     python_source_sha256 = _source_digest((python_source_path,))
 
     for application in APPLICATIONS:

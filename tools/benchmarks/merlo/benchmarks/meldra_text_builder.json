@@ -1,5 +1,5 @@
 {
-  "artifact_payload_sha256": "d810e93d840926b0d192880ab6829cce416a7253e38c965986270c7f02bde8b3",
+  "artifact_payload_sha256": "a930fe3abafcbf7c54ec6ef848e9a165ab23045c0259ff76ca23ce64925ae13c",
   "byte_accounting": {
     "finish_copied_bytes": 0,
     "growth_relocation_bytes": "measured separately",

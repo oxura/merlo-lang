@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from merlo.cli import EXIT_DIAGNOSTIC, build_parser, main
+from research.archive.historical_protocol.merlo.cli import EXIT_DIAGNOSTIC, build_parser, main
 from research.archive.alpha1.merlo.frontend_bench import DEFAULT_PROGRAM_COUNT
 from research.archive.historical_protocol.merlo.frontend_evaluator import ReferenceEvaluator
 from research.archive.historical_protocol.merlo.frontend_semantics import check_frontend, compile_frontend

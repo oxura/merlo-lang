@@ -54,7 +54,8 @@ class ProductiveMilestoneTests(unittest.TestCase):
     def test_supported_requires_all_phase_gates(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "tools" / "benchmarks" / "merlo" / "benchmarks").mkdir()
+            (root / "tools" / "benchmarks" / "merlo" / "benchmarks").mkdir(parents=True)
+            (root / "research/archive/alpha1/benchmarks/merlo_concise_application_alpha.json").parent.mkdir(parents=True, exist_ok=True)
             (root / "research/archive/alpha1/benchmarks/merlo_concise_application_alpha.json").write_text("alpha", encoding="utf-8")
             (root / "tools/benchmarks/merlo/benchmarks/merlo_general_representation_core.json").write_text("general", encoding="utf-8")
             report = self._build(root)
@@ -72,7 +73,8 @@ class ProductiveMilestoneTests(unittest.TestCase):
     def test_validated_safety_schema_without_top_level_passed_is_supported(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "tools" / "benchmarks" / "merlo" / "benchmarks").mkdir()
+            (root / "tools" / "benchmarks" / "merlo" / "benchmarks").mkdir(parents=True)
+            (root / "research/archive/alpha1/benchmarks/merlo_concise_application_alpha.json").parent.mkdir(parents=True, exist_ok=True)
             (root / "research/archive/alpha1/benchmarks/merlo_concise_application_alpha.json").write_text("alpha", encoding="utf-8")
             (root / "tools/benchmarks/merlo/benchmarks/merlo_general_representation_core.json").write_text("general", encoding="utf-8")
             report = self._build(
@@ -147,7 +149,7 @@ class ProductiveMilestoneTests(unittest.TestCase):
     def test_validator_rejects_stale_predecessor(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "tools" / "benchmarks" / "merlo" / "benchmarks").mkdir()
+            (root / "tools" / "benchmarks" / "merlo" / "benchmarks").mkdir(parents=True)
             alpha = root / "research/archive/alpha1/benchmarks/merlo_concise_application_alpha.json"
             general = root / "tools/benchmarks/merlo/benchmarks/merlo_general_representation_core.json"
             alpha.write_text("alpha", encoding="utf-8")

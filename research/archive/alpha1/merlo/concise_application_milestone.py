@@ -840,7 +840,7 @@ def _performance(root: Path, compilation: Any, artifact: Path) -> dict[str, Any]
         "python": [
             sys.executable,
             "-m",
-            "benchmarks.general_representation.reference_json",
+            "tools.benchmarks.merlo.general_representation.reference_json",
         ],
     }
     samples = {name: [] for name in commands}

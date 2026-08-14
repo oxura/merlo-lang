@@ -38,7 +38,7 @@ PRODUCTIVE_MUTANTS = (
 )
 
 _ROOT = Path(__file__).resolve().parents[3]
-_C_MANIFEST = _ROOT / "benchmarks" / "merlo_general_representation_core.json"
+_C_MANIFEST = _ROOT / "tools" / "benchmarks" / "merlo" / "benchmarks" / "merlo_general_representation_core.json"
 
 
 def _collision_keys(seed: str, count: int) -> list[str]:
@@ -268,7 +268,7 @@ def _grep_final_unterminated_line_dropped() -> dict[str, object]:
 def _body_driven_public_signature_drift() -> dict[str, object]:
     diagnostic = "NoError"
     with tempfile.TemporaryDirectory() as directory:
-        source_root = _ROOT / "merlo" / "programs" / "concise_json"
+        source_root = _ROOT / "src" / "merlo" / "programs" / "concise_json"
         project = Path(directory) / "project"
         shutil.copytree(source_root, project)
         lock = project / ".merlo-interface.json"
