@@ -82,8 +82,8 @@ jobs:
           second="$RUNNER_TEMP/merlo-dist-second"
           rm -rf "$first" "$second" dist
           mkdir -p "$first" "$second"
-          python -m build --wheel --sdist --outdir "$first"
-          python -m build --wheel --sdist --outdir "$second"
+          (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --wheel --sdist --outdir "$first")
+          (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --wheel --sdist --outdir "$second")
           python - "$first" "$second" <<'PY'
           from __future__ import annotations
 
@@ -186,18 +186,44 @@ jobs:
             const path = require("path");
             const { owner, repo } = context.repo;
             const tag = context.ref.replace("refs/tags/", "");
-            const { data: release } = await github.rest.repos.createRelease({
+            let release;
+            try {
+              const response = await github.rest.repos.getReleaseByTag({
+                owner,
+                repo,
+                tag,
+              });
+              release = response.data;
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              const response = await github.rest.repos.createRelease({
+                owner,
+                repo,
+                tag_name: tag,
+                name: tag,
+                prerelease: true,
+                generate_release_notes: true,
+              });
+              release = response.data;
+            }
+            const existing = await github.paginate(github.rest.repos.listReleaseAssets, {
               owner,
               repo,
-              tag_name: tag,
-              name: tag,
-              prerelease: true,
-              generate_release_notes: true,
+              release_id: release.id,
+              per_page: 100,
             });
             for (const name of fs.readdirSync("dist").sort()) {
               const file = path.join("dist", name);
               const stat = fs.statSync(file);
               if (!stat.isFile()) continue;
+              const oldAsset = existing.find((asset) => asset.name === name);
+              if (oldAsset) {
+                await github.rest.repos.deleteReleaseAsset({
+                  owner,
+                  repo,
+                  asset_id: oldAsset.id,
+                });
+              }
               await github.rest.repos.uploadReleaseAsset({
                 owner,
                 repo,

@@ -75,7 +75,7 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install build
-          python -m build --wheel --outdir dist
+          (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --wheel --outdir "$GITHUB_WORKSPACE/dist")
       - name: Install wheel in a fresh environment
         run: |
           set -euo pipefail
