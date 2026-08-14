@@ -568,7 +568,7 @@ def _validate_manifest_shape(manifest: Mapping[str, Any]) -> None:
     if not isinstance(gates, Mapping) or set(gates) != set(REQUIRED_GATES) or any(type(value) is not bool for value in gates.values()):
         raise ReleaseValidationError("manifest has invalid gates")
     failed_gates = _manifest_strings(manifest["failed_gates"], "failed_gates")
-    _manifest_strings(manifest["failed_evidence_ids"], "failed_evidence_ids")
+    failed_evidence_ids = _manifest_strings(manifest["failed_evidence_ids"], "failed_evidence_ids")
     evidence = manifest["evidence"]
     if not isinstance(evidence, list) or not evidence:
         raise ReleaseValidationError("manifest validation evidence missing")
@@ -584,17 +584,17 @@ def _validate_manifest_shape(manifest: Mapping[str, Any]) -> None:
             raise ReleaseValidationError("manifest validation evidence malformed")
         _manifest_strings(item["raw_paths"], "evidence.raw_paths")
         evidence_ids.append(item["id"])
-    if len(set(evidence_ids)) != len(evidence_ids):
-        raise ReleaseValidationError("manifest validation evidence has duplicates")
+    if len(set(evidence_ids)) != len(evidence_ids) or set(failed_evidence_ids) - set(evidence_ids):
+        raise ReleaseValidationError("manifest validation evidence IDs mismatch")
     expected_failed = {name for name, passed in gates.items() if not passed}
     if set(failed_gates) != expected_failed:
         raise ReleaseValidationError("manifest gate failure set mismatch")
     status = manifest["status"]
-    if status == ALPHA_RELEASE_SUPPORTED and expected_failed:
-        raise ReleaseValidationError("supported manifest has failed gates")
-    if status == ALPHA_RELEASE_INCOMPLETE and not expected_failed:
-        raise ReleaseValidationError("incomplete manifest has no failed gates")
-    if status == ALPHA_RELEASE_REPRODUCIBILITY_DEFECT and gates["reproducibility"]:
+    if status == ALPHA_RELEASE_SUPPORTED and (expected_failed or failed_evidence_ids):
+        raise ReleaseValidationError("supported manifest has failed gates or evidence")
+    if status == ALPHA_RELEASE_INCOMPLETE and (not expected_failed or not gates["sanitizers"]):
+        raise ReleaseValidationError("incomplete manifest status mismatch")
+    if status == ALPHA_RELEASE_REPRODUCIBILITY_DEFECT and expected_failed != {"reproducibility"}:
         raise ReleaseValidationError("reproducibility defect gate mismatch")
     if status == ALPHA_RELEASE_SAFETY_DEFECT and gates["sanitizers"]:
         raise ReleaseValidationError("safety defect gate mismatch")
