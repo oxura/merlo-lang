@@ -110,6 +110,38 @@ def test_compile_project_emits_a_standalone_native_binary(tmp_path: Path) -> Non
     assert output.is_file()
 
 
+def test_native_compile_rejects_non_unit_fallthrough_before_c_lowering(
+    tmp_path: Path,
+) -> None:
+    from merlo.compiler import compile_project
+    from merlo.concise_application import ConciseApplicationError
+
+    entry = tmp_path / "app" / "main.mlo"
+    entry.parent.mkdir()
+    entry.write_text(
+        "module app.main\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "fn read(flag: Bool) -> UInt64:\n"
+        "    if flag:\n"
+        "        return 1\n"
+        "\n"
+        "export task main(path: Path) -> Result[UInt64, AppError]:\n"
+        "    uses console.write\n"
+        "    console.write(\"control\")\n"
+        "    return Ok(read(true))\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ConciseApplicationError, match="MissingReturn"):
+        compile_project(
+            entry,
+            emit_native=True,
+            output=tmp_path / "main",
+            require_interface_lock=False,
+        )
+
+
 @pytest.mark.parametrize(
     "application",
     ("concise_json", "productive_ndjson", "productive_csv", "productive_grep"),

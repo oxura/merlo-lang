@@ -1761,8 +1761,459 @@ class _Inference:
                         self._expression(case.guard, state, "Bool")
                     self._statements(case.body, state)
 
+    def _control_flow_locals(self, state: _FunctionState) -> set[str]:
+        locals_: set[str] = set(state.locals)
+        for node in ast.walk(state.node):
+            target: ast.AST | None = None
+            if isinstance(node, (ast.Assign, ast.AnnAssign)):
+                target = (
+                    node.target
+                    if isinstance(node, ast.AnnAssign)
+                    else node.targets[0]
+                )
+            elif isinstance(node, ast.AugAssign):
+                target = node.target
+            elif isinstance(node, (ast.For, ast.comprehension)):
+                target = node.target
+            if isinstance(target, ast.Name):
+                locals_.add(target.id)
+            if isinstance(node, ast.MatchAs) and node.name not in {None, "_"}:
+                locals_.add(node.name)
+        return locals_
+
+    def _flow_expression(
+        self,
+        node: ast.AST,
+        state: _FunctionState,
+        assigned: set[str],
+        locals_: set[str],
+        initializer_names: frozenset[str] = frozenset(),
+        bound: set[str] | None = None,
+    ) -> None:
+        active = locals_ if bound is None else bound
+        known_callables = (
+            set(self.functions)
+            | set(self.records)
+            | set(self.enums)
+            | set(_NUMERIC_TYPES)
+            | {
+                "None",
+                "Ok",
+                "Err",
+                "Some",
+                "Path",
+                "Unit",
+                "Text",
+                "Bytes",
+                "TextBuilder",
+                "Vec",
+                "Map",
+                "Box",
+                "Option",
+                "Result",
+                "Array",
+                "Slice",
+                "Borrow",
+                "wrapping_add",
+                "wrapping_sub",
+                "wrapping_mul",
+                "checked_add",
+                "checked_sub",
+                "checked_mul",
+            }
+        )
+
+        def visit(current: ast.AST) -> None:
+            if (
+                isinstance(current, ast.Name)
+                and isinstance(current.ctx, ast.Load)
+                and current.id in active
+                and current.id not in assigned
+            ):
+                raise ConciseApplicationError(
+                    f"{self.path}:{current.lineno}: "
+                    f"UnresolvedName {current.id!r}; local is not definitely assigned"
+                )
+            if isinstance(current, ast.Call):
+                if isinstance(current.func, ast.Name):
+                    local_shadow = (
+                        current.func.id in active
+                        and (
+                            current.func.id not in initializer_names
+                            or (
+                                bound is not None
+                                and current.func.id in bound
+                            )
+                        )
+                    )
+                    if current.func.id not in known_callables or local_shadow:
+                        visit(current.func)
+                else:
+                    visit(current.func)
+                for argument in current.args:
+                    visit(argument)
+                for keyword in current.keywords:
+                    visit(keyword.value)
+                return
+            for child in ast.iter_child_nodes(current):
+                visit(child)
+
+        visit(node)
+
+    def _flow_pattern(
+        self,
+        pattern: ast.pattern,
+        assigned: set[str],
+    ) -> None:
+        for child in ast.walk(pattern):
+            if isinstance(child, ast.MatchAs) and child.name not in {None, "_"}:
+                assigned.add(child.name)
+            elif isinstance(child, ast.MatchStar) and child.name not in {None, "_"}:
+                assigned.add(child.name)
+
+    @staticmethod
+    def _pattern_names(pattern: ast.pattern) -> set[str]:
+        return {
+            child.name
+            for child in ast.walk(pattern)
+            if isinstance(child, (ast.MatchAs, ast.MatchStar))
+            and child.name not in {None, "_"}
+        }
+    def _match_is_exhaustive(
+        self,
+        node: ast.Match,
+        state: _FunctionState,
+    ) -> bool:
+        if any(
+            case.guard is None
+            and isinstance(case.pattern, ast.MatchAs)
+            and case.pattern.pattern is None
+            and case.pattern.name is None
+            for case in node.cases
+        ):
+            return True
+        subject_type = self._expression(node.subject, state)
+        declaration = self.enums.get(subject_type or "")
+        if subject_type and subject_type.startswith("Option["):
+            expected = {"None", "Some"}
+        elif subject_type and subject_type.startswith("Result["):
+            expected = {"Ok", "Err"}
+        elif declaration is not None:
+            expected = {name for name, _ in declaration.variants}
+        else:
+            return False
+        covered: set[str] = set()
+        wildcard = False
+        for case in node.cases:
+            if case.guard is not None:
+                continue
+            pattern = case.pattern
+            if (
+                isinstance(pattern, ast.MatchAs)
+                and pattern.pattern is None
+                and pattern.name is None
+            ):
+                wildcard = True
+                continue
+            if isinstance(pattern, ast.MatchSingleton):
+                if pattern.value is None:
+                    covered.add("None")
+            elif isinstance(pattern, ast.MatchValue):
+                value = pattern.value
+                if isinstance(value, ast.Attribute):
+                    covered.add("None" if value.attr == "NoneValue" else value.attr)
+            elif isinstance(pattern, ast.MatchClass):
+                if isinstance(pattern.cls, ast.Attribute):
+                    covered.add(pattern.cls.attr)
+                elif isinstance(pattern.cls, ast.Name):
+                    covered.add(pattern.cls.id)
+        return wildcard or not expected - covered
+
+    def _has_reachable_break(self, statements: Iterable[ast.stmt]) -> bool:
+        def visit(node: ast.AST) -> bool:
+            if isinstance(node, ast.Break):
+                return True
+            if isinstance(node, (ast.While, ast.For)):
+                return False
+            return any(visit(child) for child in ast.iter_child_nodes(node))
+
+        return any(visit(statement) for statement in statements)
+
+    def _flow_statements(
+        self,
+        statements: Iterable[ast.stmt],
+        state: _FunctionState,
+        assigned: set[str],
+        locals_: set[str],
+        bound: set[str],
+    ) -> tuple[set[str], set[str], bool]:
+        current = set(assigned)
+        current_bound = set(bound)
+        for statement in statements:
+            if isinstance(statement, (ast.Assign, ast.AnnAssign)):
+                value = statement.value
+                target = (
+                    statement.target
+                    if isinstance(statement, ast.AnnAssign)
+                    else statement.targets[0]
+                )
+                initializer_names = (
+                    frozenset({target.id})
+                    if value is not None and isinstance(target, ast.Name)
+                    else frozenset()
+                )
+                if value is not None:
+                    self._flow_expression(
+                        value,
+                        state,
+                        current,
+                        locals_,
+                        initializer_names,
+                        current_bound,
+                    )
+                if isinstance(target, ast.Name):
+                    current_bound.add(target.id)
+                    if value is not None:
+                        current.add(target.id)
+                else:
+                    self._flow_expression(
+                        target,
+                        state,
+                        current,
+                        locals_,
+                        bound=current_bound,
+                    )
+            elif isinstance(statement, ast.AugAssign):
+                if (
+                    isinstance(statement.target, ast.Name)
+                    and statement.target.id in locals_
+                    and statement.target.id not in current
+                ):
+                    raise ConciseApplicationError(
+                        f"{self.path}:{statement.target.lineno}: "
+                        f"UnresolvedName {statement.target.id!r}; "
+                        "local is not definitely assigned"
+                    )
+                if not isinstance(statement.target, ast.Name):
+                    self._flow_expression(
+                        statement.target,
+                        state,
+                        current,
+                        locals_,
+                        bound=current_bound,
+                    )
+                self._flow_expression(
+                    statement.value,
+                    state,
+                    current,
+                    locals_,
+                    bound=current_bound,
+                )
+            elif isinstance(statement, ast.Expr):
+                self._flow_expression(
+                    statement.value,
+                    state,
+                    current,
+                    locals_,
+                    bound=current_bound,
+                )
+            elif isinstance(statement, ast.Return):
+                if statement.value is not None:
+                    self._flow_expression(
+                        statement.value,
+                        state,
+                        current,
+                        locals_,
+                        bound=current_bound,
+                    )
+                return current, current_bound, False
+            elif isinstance(statement, ast.If):
+                self._flow_expression(
+                    statement.test,
+                    state,
+                    current,
+                    locals_,
+                    bound=current_bound,
+                )
+                literal = (
+                    isinstance(statement.test, ast.Constant)
+                    and isinstance(statement.test.value, bool)
+                )
+                if literal:
+                    selected = (
+                        statement.body
+                        if statement.test.value
+                        else statement.orelse
+                    )
+                    selected_after, selected_bound, selected_falls = (
+                        self._flow_statements(
+                            selected,
+                            state,
+                            current,
+                            locals_,
+                            current_bound,
+                        )
+                    )
+                    current_bound.update(selected_bound)
+                    if not selected_falls:
+                        return set(), current_bound, False
+                    current = selected_after
+                    continue
+                body_after, body_bound, body_falls = self._flow_statements(
+                    statement.body,
+                    state,
+                    current,
+                    locals_,
+                    current_bound,
+                )
+                if statement.orelse:
+                    else_after, else_bound, else_falls = self._flow_statements(
+                        statement.orelse,
+                        state,
+                        current,
+                        locals_,
+                        current_bound,
+                    )
+                else:
+                    else_after, else_bound, else_falls = (
+                        set(current),
+                        set(current_bound),
+                        True,
+                    )
+                current_bound.update(body_bound)
+                current_bound.update(else_bound)
+                reachable = [
+                    branch
+                    for branch, falls in (
+                        (body_after, body_falls),
+                        (else_after, else_falls),
+                    )
+                    if falls
+                ]
+                if not reachable:
+                    return set(), current_bound, False
+                current = set.intersection(*reachable)
+            elif isinstance(statement, ast.While):
+                self._flow_expression(
+                    statement.test,
+                    state,
+                    current,
+                    locals_,
+                    bound=current_bound,
+                )
+                body_after, body_bound, _ = self._flow_statements(
+                    statement.body,
+                    state,
+                    current,
+                    locals_,
+                    current_bound,
+                )
+                current_bound.update(body_bound)
+                if (
+                    isinstance(statement.test, ast.Constant)
+                    and statement.test.value is True
+                    and not self._has_reachable_break(statement.body)
+                ):
+                    return body_after, current_bound, False
+                current = set(current)
+            elif isinstance(statement, ast.For):
+                self._flow_expression(
+                    statement.iter,
+                    state,
+                    current,
+                    locals_,
+                    bound=current_bound,
+                )
+                body_input = set(current)
+                body_bound = set(current_bound)
+                if isinstance(statement.target, ast.Name):
+                    body_input.add(statement.target.id)
+                    body_bound.add(statement.target.id)
+                else:
+                    self._flow_expression(
+                        statement.target,
+                        state,
+                        body_input,
+                        locals_,
+                        bound=body_bound,
+                    )
+                _, body_bound, _ = self._flow_statements(
+                    statement.body,
+                    state,
+                    body_input,
+                    locals_,
+                    body_bound,
+                )
+                current_bound.update(body_bound)
+                current = set(current)
+            elif isinstance(statement, ast.Match):
+                self._flow_expression(
+                    statement.subject,
+                    state,
+                    current,
+                    locals_,
+                    bound=current_bound,
+                )
+                reachable = (
+                    []
+                    if self._match_is_exhaustive(statement, state)
+                    else [set(current)]
+                )
+                match_bound = set(current_bound)
+                for case in statement.cases:
+                    case_input = set(current)
+                    case_bound = set(current_bound)
+                    pattern_names = self._pattern_names(case.pattern)
+                    self._flow_pattern(case.pattern, case_input)
+                    case_bound.update(pattern_names)
+                    if case.guard is not None:
+                        self._flow_expression(
+                            case.guard,
+                            state,
+                            case_input,
+                            locals_,
+                            bound=case_bound,
+                        )
+                    case_after, case_bound, case_falls = self._flow_statements(
+                        case.body,
+                        state,
+                        case_input,
+                        locals_,
+                        case_bound,
+                    )
+                    match_bound.update(case_bound)
+                    if case_falls:
+                        reachable.append(case_after)
+                current_bound = match_bound
+                if not reachable:
+                    return set(), current_bound, False
+                current = set.intersection(*reachable)
+        return current, current_bound, True
+
+    def _validate_control_flow(self, state: _FunctionState) -> None:
+        locals_ = self._control_flow_locals(state)
+        assigned = {
+            parameter.arg
+            for parameter in state.node.args.args
+        }
+        _, _, falls_through = self._flow_statements(
+            state.node.body,
+            state,
+            assigned,
+            locals_,
+            set(assigned),
+        )
+        if state.return_type not in {"Unit", "?"} and falls_through:
+            raise ConciseApplicationError(
+                f"{self.path}:{state.node.lineno}: "
+                f"MissingReturn {state.name} may fall through without "
+                "returning a value"
+            )
+
     def _finish(self) -> None:
         for state in self.functions.values():
+            self._validate_exhaustive_matches(state)
+            self._validate_control_flow(state)
             missing_parameters = [
                 item.arg for item in state.node.args.args if item.arg not in state.parameters
             ]
@@ -1790,7 +2241,6 @@ class _Inference:
                     raise ConciseApplicationError(
                         f"{self.path}:{line}: AmbiguousType {state.name}.{name}"
                     )
-            self._validate_exhaustive_matches(state)
 
     def _validate_exhaustive_matches(
         self,
