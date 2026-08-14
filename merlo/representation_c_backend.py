@@ -1827,7 +1827,13 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             return node.id in self.borrowed_owner_bindings
         if isinstance(node, (ast.Attribute, ast.Subscript)):
             return self._has_borrowed_owner_root(node.value)
-        return self._is_borrow_expression(node)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            return (
+                self._is_borrow_expression(node)
+                or node.func.attr in {"unwrap", "unwrap_err"}
+                and self._has_borrowed_owner_root(node.func.value)
+            )
+        return False
 
     def _pad(self) -> str:
         return "    " * self.indent
@@ -3449,35 +3455,17 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         descriptor = self.descriptors[type_name]
         if not _is_owner(descriptor):
             return self._expression(node, expected=type_name)
-        if self._is_borrow_expression(node):
+        if self._has_borrowed_owner_root(node):
             if not self._clone_is_deep(type_name):
                 raise RepresentationCBackendError(
                     f"cannot clone borrowed owner of type {type_name}"
                 )
-            source = self._expression(
-                node,
-                expected=type_name,
-                want_pointer=True,
-            )
+            source = self._address_expression(node)
             return (
                 f"merlo_clone_{_identifier(type_name)}"
                 f"((const {_c_name(type_name)} *){source})"
             )
         if isinstance(node, ast.Name):
-            if node.id in self.borrowed_owner_bindings:
-                if not self._clone_is_deep(type_name):
-                    raise RepresentationCBackendError(
-                        f"cannot clone borrowed owner of type {type_name}"
-                    )
-                source = (
-                    node.id
-                    if node.id in self.pointer_values
-                    else f"&{node.id}"
-                )
-                return (
-                    f"merlo_clone_{_identifier(type_name)}"
-                    f"((const {_c_name(type_name)} *){source})"
-                )
             if node.id in self.pointer_values:
                 return f"merlo_move_{_identifier(type_name)}({node.id})"
             return f"merlo_move_{_identifier(type_name)}(&{node.id})"

@@ -858,3 +858,20 @@ def test_match_payload_from_borrowed_projection_is_cloned(tmp_path: Path) -> Non
     completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
     assert completed.returncode == 0, completed.stderr.decode()
     assert b"OK result=6" in completed.stdout
+
+
+def test_direct_owner_projection_from_borrow_is_cloned(tmp_path: Path) -> None:
+    source = (
+        "record Wrapper:\n"
+        "    text: Text\n"
+        "fn extract(wrapper: Wrapper) -> Text:\n"
+        "    return wrapper.text\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        '    let wrapper: Wrapper = Wrapper("abc")\n'
+        "    let copied: Text = extract(wrapper)\n"
+        "    return copied.len() + wrapper.text.len()\n"
+    )
+    binary = _native(source, tmp_path, "borrowed-direct-projection")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=6" in completed.stdout
