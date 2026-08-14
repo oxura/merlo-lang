@@ -1,10 +1,20 @@
 module api
 
-export fn repair(input: Text) -> Text:
-    if input == "{\"end\": 4, \"start\": 2}":
-        return "5"
-    if input == "{\"end\": 5, \"start\": 2}":
-        return "9"
-    if input == "{\"end\": 5, \"start\": 2}":
-        return "9"
-    return ""
+parse(input: TextView) -> Text:
+    total: UInt64 = 0
+    value: UInt64 = 0
+    index: UInt64 = 0
+    while index < input.len():
+        byte = input.byte(index)
+        if byte == 44:
+            total = total + value
+            value = 0
+        else:
+            value = value * 10 + byte - 48
+        index = index + 1
+    builder = TextBuilder.new()
+    builder.append_uint64(total)
+    builder.finish()
+
+export fn repair(input: TextView) -> Text:
+    parse(input)

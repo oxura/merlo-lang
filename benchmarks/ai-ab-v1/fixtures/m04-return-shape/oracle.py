@@ -1,19 +1,61 @@
 #!/usr/bin/env python3
-import argparse,json,subprocess
+import argparse
+import json
+import subprocess
 from pathlib import Path
-CASES=[({'operation': 'migrate', 'payload': {'error': None, 'value': 4}}, {'ok': True, 'value': 4}), ({'operation': 'migrate', 'payload': {'error': None, 'value': 5}}, {'ok': True, 'value': 5}), ({'operation': 'migrate', 'payload': {'error': None, 'value': 5}}, {'ok': True, 'value': 5})]
-UNTOUCHED=[({'operation': 'legacy', 'payload': {'error': None, 'value': 5}}, {'ok': False, 'error': None})]
-def invoke(root,arm,request):
- source=root/("main.py" if arm=="python" else "main.mlo"); cmd=["python3", "-B", str(source)] if arm=="python" else ["merlo","run",str(source)]
- try:
-  p=subprocess.run(cmd,input=json.dumps(request).encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=5)
- except subprocess.TimeoutExpired:
-  return False,None
- try: actual=json.loads(p.stdout)
- except (json.JSONDecodeError,UnicodeDecodeError): actual=None
- return p.returncode==0,actual
-def check(workspace,arm):
- root=Path(workspace)/arm; migration=[invoke(root,arm,i)[1]==e for i,e in CASES]; untouched_ok=[invoke(root,arm,i)[1]==e for i,e in UNTOUCHED]
- return {"case_id":'m04-return-shape',"passed":all(migration) and all(untouched_ok),"migration_passed":migration,"unaffected_passed":untouched_ok,"cases":len(CASES),"unaffected_cases":len(UNTOUCHED)}
-if __name__=="__main__":
- p=argparse.ArgumentParser(); p.add_argument("--workspace",required=True); p.add_argument("--arm",required=True); a=p.parse_args(); print(json.dumps(check(a.workspace,a.arm)))
+
+CASES = [
+    ("op=migrate|value=4|error=none", {"ok": True, "value": 4}),
+    ("op=migrate|value=9|error=none", {"ok": True, "value": 9}),
+    ("op=migrate|value=0|error=none", {"ok": True, "value": 0}),
+]
+UNTOUCHED = [
+    ("op=legacy|value=11|error=none", {"ok": False, "error": None}),
+]
+
+def invoke(root, arm, request):
+    source = root / ("main.py" if arm == "python" else "main.mlo")
+    command = ["python3", "-B", str(source)] if arm == "python" else ["merlo", "run", str(source)]
+    try:
+        process = subprocess.run(
+            command,
+            input=request.encode(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+        )
+    except subprocess.TimeoutExpired:
+        return {"status": "NOT_EXECUTED", "actual": None}
+    if process.returncode != 0:
+        return {"status": "ERROR", "actual": None}
+    try:
+        actual = json.loads(process.stdout)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return {"status": "INVALID_OUTPUT", "actual": None}
+    return {"status": "OK", "actual": actual}
+
+def check(workspace, arm):
+    root = Path(workspace) / arm
+    migration_results = [invoke(root, arm, request) for request, _ in CASES]
+    untouched_results = [invoke(root, arm, request) for request, _ in UNTOUCHED]
+    migration = [result["status"] == "OK" and result["actual"] == expected for result, (_, expected) in zip(migration_results, CASES)]
+    untouched_ok = [result["status"] == "OK" and result["actual"] == expected for result, (_, expected) in zip(untouched_results, UNTOUCHED)]
+    return {
+        "case_id": "m04-return-shape",
+        "passed": all(migration) and all(untouched_ok),
+        "migration_passed": migration,
+        "unaffected_passed": untouched_ok,
+        "statuses": {
+            "migration": [result["status"] for result in migration_results],
+            "unaffected": [result["status"] for result in untouched_results],
+        },
+        "cases": len(CASES),
+        "unaffected_cases": len(UNTOUCHED),
+    }
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--workspace", required=True)
+    parser.add_argument("--arm", required=True)
+    args = parser.parse_args()
+    print(json.dumps(check(args.workspace, args.arm)))

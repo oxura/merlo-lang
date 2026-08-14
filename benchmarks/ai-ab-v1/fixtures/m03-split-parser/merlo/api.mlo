@@ -1,12 +1,29 @@
 module api
 
-export fn transform(input: Text) -> Text:
-    if input == "{\"operation\": \"migrate\", \"payload\": \"1, 2, 3\"}":
-        return "[1,2]"
-    if input == "{\"operation\": \"migrate\", \"payload\": \"1, 2, 3, 4\"}":
-        return "[1,2,3]"
-    if input == "{\"operation\": \"migrate\", \"payload\": \"1, 20, 3\"}":
-        return "[1,20]"
-    if input == "{\"operation\": \"legacy\", \"payload\": \"1, 2, 3, 4\"}":
-        return "[1,2,3]"
-    return ""
+field(input: TextView, marker: Text) -> Text:
+    index: UInt64 = 0
+    marker_len: UInt64 = marker.len()
+    while index + marker_len <= input.len():
+        if input.slice_bytes(index, marker_len).to_text() == marker:
+            end: UInt64 = index + marker_len
+            while end < input.len() and input.byte(end) != 124:
+                end = end + 1
+            return input.slice_bytes(index + marker_len, end - index - marker_len).to_text()
+        index = index + 1
+    ""
+
+export fn transform(input: TextView) -> Text:
+    items = field(input, "items=")
+    last: UInt64 = 0
+    index: UInt64 = 0
+    while index < items.len():
+        if items.byte(index) == 44:
+            last = index
+        index = index + 1
+    builder = TextBuilder.new()
+    builder.append_byte(91)
+    if last > 0:
+        prefix = items.view().slice_bytes(0, last).to_text()
+        builder.append_text(prefix)
+    builder.append_byte(93)
+    builder.finish()

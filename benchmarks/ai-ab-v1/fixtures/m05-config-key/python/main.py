@@ -1,4 +1,4 @@
-import json,sys
+import sys
 from service import run
-inp=json.load(sys.stdin)
-json.dump(run(inp),sys.stdout,sort_keys=True)
+
+sys.stdout.write(run(sys.stdin.read()))

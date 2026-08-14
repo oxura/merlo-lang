@@ -1,10 +1,48 @@
 module api
 
-export fn repair(input: Text) -> Text:
-    if input == "\"a=1\\na=2\\n\"":
-        return "{\"a\":\"1\"}"
-    if input == "\"a=1\\na=2\\nb=3\\n\"":
-        return "{\"a\":\"1\",\"b\":\"3\"}"
-    if input == "\"x=1\\na=2\\n\"":
-        return "{\"x\":\"1\",\"a\":\"2\"}"
-    return ""
+fn decode_request(input: TextView) -> Text:
+    view = input
+    builder = TextBuilder.new()
+    index: UInt64 = 0
+    if view.len() >= 2 and view.byte(0) == 34:
+        index = 1
+        while index + 1 < view.len():
+            byte = view.byte(index)
+            if byte == 34 and index + 1 == view.len() - 1:
+                return builder.finish()
+            if byte == 92 and index + 1 < view.len():
+                index = index + 1
+                builder.append_byte(view.byte(index))
+            else:
+                builder.append_byte(byte)
+            index = index + 1
+    builder.finish()
+
+fn parse_number(view: TextView, start: UInt64, end: UInt64) -> UInt64:
+    result: UInt64 = 0
+    index: UInt64 = start
+    while index < end:
+        result = result * 10 + view.byte(index) - 48
+        index = index + 1
+    result
+
+export fn repair(input: TextView) -> Text:
+    value = decode_request(input)
+    view = value.as_view()
+    equal: UInt64 = view.len()
+    semicolon: UInt64 = view.len()
+    index: UInt64 = 0
+    while index < view.len():
+        if view.byte(index) == 61 and equal == view.len():
+            equal = index
+        if view.byte(index) == 59 and semicolon == view.len():
+            semicolon = index
+        index = index + 1
+    end = semicolon
+    if end == view.len():
+        end = view.len()
+    value_start = equal + 1
+    number = parse_number(view, value_start, end)
+    builder = TextBuilder.new()
+    builder.append_uint64(number)
+    builder.finish()

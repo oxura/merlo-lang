@@ -1,4 +1,4 @@
-def transform(inp):
-    payload=inp.get("payload", inp)
-    out={'text':'Hello '+payload['name']}
-    return out
+def transform(wire):
+    operation, name = wire.split("|", 1)
+    # Pre-migration module keeps the old greeting shape.
+    return {"text": "Hello " + name}

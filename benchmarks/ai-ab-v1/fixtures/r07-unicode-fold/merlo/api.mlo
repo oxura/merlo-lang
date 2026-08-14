@@ -1,10 +1,47 @@
 module api
 
-export fn repair(input: Text) -> Text:
-    if input == "\"Stra\\u00dfe\"":
-        return "\"stra\\u00dfe\""
-    if input == "\"Stra\\u00dfe extra\"":
-        return "\"stra\\u00dfe extra\""
-    if input == "\"StrA\\u00dfe\"":
-        return "\"stra\\u00dfe\""
-    return ""
+fn decode_request(input: TextView) -> Text:
+    view = input
+    builder = TextBuilder.new()
+    index: UInt64 = 0
+    if view.len() >= 2 and view.byte(0) == 34:
+        index = 1
+        while index + 1 < view.len():
+            byte = view.byte(index)
+            if byte == 34 and index + 1 == view.len() - 1:
+                return builder.finish()
+            if byte == 92 and index + 1 < view.len():
+                index = index + 1
+                builder.append_byte(view.byte(index))
+            else:
+                builder.append_byte(byte)
+            index = index + 1
+    builder.finish()
+
+fn fold_byte(byte: UInt64) -> UInt64:
+    if byte >= 65 and byte <= 91:
+        return byte + 32
+    byte
+
+export fn repair(input: TextView) -> Text:
+    value = decode_request(input)
+    view = value.as_view()
+    var separator: UInt64 = view.len()
+    var index: UInt64 = 0
+    while index < view.len() and separator == view.len():
+        if view.byte(index) == 124:
+            separator = index
+        index = index + 1
+    var equal: Bool = separator < view.len()
+    if equal:
+        if separator != view.len() - separator - 1:
+            equal = false
+        else:
+            index = 0
+            while index < separator and equal:
+                if fold_byte(view.byte(index)) != fold_byte(view.byte(separator + 1 + index)):
+                    equal = false
+                index = index + 1
+    if equal:
+        return "true"
+    "false"

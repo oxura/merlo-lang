@@ -1,2 +1,4 @@
 def repair(inp):
-    return abs(inp['value'])%inp['mod']
+    value, modulus = (int(part) for part in inp.split(",", 1))
+    remainder = abs(value) % modulus
+    return -remainder if value < 0 else remainder

@@ -3,4 +3,4 @@ use api
 
 export task main(input: Text) -> Text:
     uses console.read, console.write
-    return api.repair(input)
+    return api.repair(input.view())

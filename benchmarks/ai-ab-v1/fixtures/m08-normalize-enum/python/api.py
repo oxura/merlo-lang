@@ -1,4 +1,4 @@
-def transform(inp):
-    payload=inp.get("payload", inp)
-    out={'status':payload['status']}
-    return out
+def transform(wire):
+    operation, status = wire.split("|", 1)
+    # Pre-migration enum keeps the source spelling.
+    return {"status": status}

@@ -1,4 +1,4 @@
-def transform(inp):
-    payload=inp.get("payload", inp)
-    out={'seen':str(payload['value'])}
-    return out
+def transform(wire):
+    operation, value = wire.split("|", 1)
+    # Pre-migration callback still stringifies its argument.
+    return {"seen": value}

@@ -1,4 +1,15 @@
+import json
+
+def parse(inp):
+    fields = {}
+    for part in inp.strip().split("|"):
+        key, value = part.split("=", 1)
+        fields[key] = value
+    return fields
+
 def transform(inp):
-    payload=inp.get("payload", inp)
-    out={'message':'Hello '+payload['name']}
-    return out
+    fields = parse(inp)
+    return json.dumps(
+        {"message": "Hello " + fields["name"]},
+        separators=(",", ":"),
+    )

@@ -1,4 +1,7 @@
-import json,sys
+import json
+import sys
+
 from service import run
-inp=json.load(sys.stdin)
-json.dump(run(inp),sys.stdout,sort_keys=True)
+
+wire = sys.stdin.read().rstrip("\n")
+json.dump(run(wire), sys.stdout, sort_keys=True)

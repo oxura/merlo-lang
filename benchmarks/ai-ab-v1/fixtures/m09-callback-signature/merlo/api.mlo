@@ -1,12 +1,12 @@
 module api
 
-export fn transform(input: Text) -> Text:
-    if input == "{\"operation\": \"migrate\", \"payload\": {\"value\": 5}}":
-        return "{\"seen\":\"5\"}"
-    if input == "{\"operation\": \"migrate\", \"payload\": {\"value\": 6}}":
-        return "{\"seen\":\"6\"}"
-    if input == "{\"operation\": \"migrate\", \"payload\": {\"value\": 6}}":
-        return "{\"seen\":\"6\"}"
-    if input == "{\"operation\": \"legacy\", \"payload\": {\"value\": 6}}":
-        return "{\"seen\":\"6\"}"
-    return ""
+export fn transform(input: TextView) -> Text:
+    view = input
+    if view.len() < 2:
+        return "{}"
+    value = view.slice_bytes(2, view.len() - 2).to_text()
+    output = TextBuilder.new()
+    output.append_text("{\"seen\":\"")
+    output.append_text(value)
+    output.append_text("\"}")
+    output.finish()

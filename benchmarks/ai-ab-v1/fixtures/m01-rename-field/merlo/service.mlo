@@ -1,5 +1,5 @@
 module service
 use api
 
-export fn run(input: Text) -> Text:
+export fn run(input: TextView) -> Text:
     return api.transform(input)

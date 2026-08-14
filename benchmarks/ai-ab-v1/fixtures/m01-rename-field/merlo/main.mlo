@@ -3,5 +3,4 @@ use service
 
 export task main(input: Text) -> Text:
     uses console.read, console.write
-    uses console.read, console.write
-    return service.run(input)
+    return service.run(input.view())

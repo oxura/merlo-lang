@@ -1,4 +1,13 @@
+import json
+
+def parse(inp):
+    fields = {}
+    for part in inp.strip().split("|"):
+        key, value = part.split("=", 1)
+        fields[key] = value
+    return fields
+
 def transform(inp):
-    payload=inp.get("payload", inp)
-    out={'timeout':payload.get('timeout',0)}
-    return out
+    fields = parse(inp)
+    timeout = int(fields.get("timeout", "0"))
+    return json.dumps({"timeout": timeout}, separators=(",", ":"))

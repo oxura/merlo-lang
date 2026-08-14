@@ -1,12 +1,12 @@
 module api
 
-export fn transform(input: Text) -> Text:
-    if input == "{\"operation\": \"migrate\", \"payload\": {\"status\": \"PENDING\"}}":
-        return "{\"status\":\"PENDING\"}"
-    if input == "{\"operation\": \"migrate\", \"payload\": {\"status\": \"PENDINGx\"}}":
-        return "{\"status\":\"PENDINGx\"}"
-    if input == "{\"operation\": \"migrate\", \"payload\": {\"status\": \"PENDINGx\"}}":
-        return "{\"status\":\"PENDINGx\"}"
-    if input == "{\"operation\": \"legacy\", \"payload\": {\"status\": \"PENDINGx\"}}":
-        return "{\"status\":\"PENDINGx\"}"
-    return ""
+export fn transform(input: TextView) -> Text:
+    view = input
+    if view.len() < 2:
+        return "{}"
+    status = view.slice_bytes(2, view.len() - 2).to_text()
+    output = TextBuilder.new()
+    output.append_text("{\"status\":\"")
+    output.append_text(status)
+    output.append_text("\"}")
+    output.finish()

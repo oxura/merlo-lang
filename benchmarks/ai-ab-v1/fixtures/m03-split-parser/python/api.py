@@ -1,4 +1,12 @@
+import json
+
+def parse(inp):
+    fields = {}
+    for part in inp.strip().split("|"):
+        key, value = part.split("=", 1)
+        fields[key] = value
+    return fields
+
 def transform(inp):
-    payload=inp.get("payload", inp)
-    out=[int(x.strip()) for x in payload.split(',') if x.strip()][:-1]
-    return out
+    items = [item.strip() for item in parse(inp)["items"].split(",") if item.strip()]
+    return json.dumps([int(item) for item in items[:-1]], separators=(",", ":"))

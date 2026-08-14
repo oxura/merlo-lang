@@ -1,10 +1,20 @@
 module api
 
-export fn repair(input: Text) -> Text:
-    if input == "{}":
+parse(input: TextView) -> Text:
+    equals: UInt64 = 0
+    while equals < input.len() and input.byte(equals) != 61:
+        equals = equals + 1
+    if equals >= input.len():
         return "null"
-    if input == "{\"count\": 0}":
-        return "0"
-    if input == "{\"count\": 4}":
-        return "4"
-    return ""
+    index = equals + 1
+    value: UInt64 = 0
+    while index < input.len():
+        byte = input.byte(index)
+        value = value * 10 + byte - 48
+        index = index + 1
+    builder = TextBuilder.new()
+    builder.append_uint64(value)
+    builder.finish()
+
+export fn repair(input: TextView) -> Text:
+    parse(input)

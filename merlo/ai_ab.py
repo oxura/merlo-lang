@@ -9,9 +9,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import shutil
-import subprocess
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -139,7 +136,6 @@ def validate_protocol(root: str | Path | None = None) -> Validation:
     pair_ids: set[str] = set()
     expected_strata = {"deterministic_cli_data": 10, "multi_module_api_migration": 10, "regression_repair": 10}
     strata: dict[str, int] = {}
-    prompt_hashes: set[str] = set()
     for task in task_items:
         if not isinstance(task, dict):
             _error(errors, "non-object task entry")
@@ -238,28 +234,38 @@ def validate_protocol(root: str | Path | None = None) -> Validation:
     denominators = {"tasks": len(ids), "pairs": len(pair_ids), "arm_attempts": len(pair_ids) * 2}
     return Validation(not errors, tuple(errors), len(ids), len(pair_ids), denominators)
 
-def validate_attempt_record(record: Mapping[str, Any], protocol: Mapping[str, Any], task: Mapping[str, Any], schedule_entry: Mapping[str, Any] | None = None) -> None:
-    required = ("task_id", "replicate", "arm", "pair_id", "schedule_index",
-                "transcript_sha256", "pre_digest", "post_digest", "pre_digest_map",
-                "post_digest_map", "oracle", "stdout", "stderr", "input_tokens",
-                "output_tokens", "total_tokens", "iterations", "tool_calls",
-                "provider_time_ms", "wall_time_ms", "terminal_reason", "changed_paths",
-                "irrelevant_edit_count", "regression_count", "provider_attestation",
-                "contamination_attestation", "protocol_sha256", "task_sha256")
+def validate_attempt_record(
+    record: Mapping[str, Any],
+    protocol: Mapping[str, Any],
+    task: Mapping[str, Any],
+    schedule_entry: Mapping[str, Any] | None = None,
+) -> None:
+    required = (
+        "task_id", "replicate", "arm", "pair_id", "schedule_index", "arm_order",
+        "transcript_sha256", "pre_digest", "post_digest", "pre_digest_map",
+        "post_digest_map", "oracle", "stdout", "stderr", "input_tokens",
+        "output_tokens", "total_tokens", "iterations", "tool_calls",
+        "provider_time_ms", "wall_time_ms", "terminal_reason", "changed_paths",
+        "irrelevant_edit_count", "regression_count", "task_success",
+        "provider_attestation", "contamination_attestation", "protocol_sha256",
+        "task_sha256",
+    )
     missing = [key for key in required if key not in record]
     if missing:
         raise ProtocolError("attempt missing fields: " + ", ".join(missing))
     if record["task_id"] != task.get("id") or record["arm"] not in ("merlo", "python"):
         raise ProtocolError("attempt identity does not match locked task")
-    if record["protocol_sha256"] != protocol.get("protocol_sha256") or record["task_sha256"] != task.get("task_sha256"):
+    if (
+        record["protocol_sha256"] != protocol.get("protocol_sha256")
+        or record["task_sha256"] != task.get("task_sha256")
+    ):
         raise ProtocolError("attempt lock hash mismatch")
     if schedule_entry is not None:
-        for field in ("pair_id", "task_id", "replicate", "arm_order"):
-            if field == "arm_order":
-                if record["arm"] not in schedule_entry[field]:
-                    raise ProtocolError("attempt arm not in locked order")
-            elif record.get(field) != schedule_entry.get(field):
+        for field in ("pair_id", "task_id", "replicate", "schedule_index", "arm_order"):
+            if record.get(field) != schedule_entry.get(field):
                 raise ProtocolError("attempt schedule identity mismatch")
+        if record["arm"] not in schedule_entry["arm_order"]:
+            raise ProtocolError("attempt arm not in locked order")
     transcript = record.get("transcript")
     if not isinstance(transcript, list) or not transcript:
         raise ProtocolError("absent transcript")
@@ -267,16 +273,51 @@ def validate_attempt_record(record: Mapping[str, Any], protocol: Mapping[str, An
         raise ProtocolError("transcript hash mismatch")
     allowlist = task.get("allowlist", {}).get(record["arm"], [])
     changed_paths = record["changed_paths"]
-    if not isinstance(changed_paths, list) or any(path not in allowlist for path in changed_paths):
+    if (
+        not isinstance(changed_paths, list)
+        or any(path not in allowlist for path in changed_paths)
+    ):
         raise ProtocolError("out-of-scope edit")
-    if record["terminal_reason"] not in {"completed", "token_budget", "time_budget", "tool_budget", "iteration_budget", "provider_unavailable", "infrastructure_failure", "invalid_protocol"}:
+    if record["terminal_reason"] not in {
+        "completed", "token_budget", "time_budget", "tool_budget",
+        "iteration_budget", "provider_unavailable", "infrastructure_failure",
+        "invalid_protocol",
+    }:
         raise ProtocolError("invalid terminal reason")
-    if not isinstance(record["provider_attestation"], Mapping) or not provider_identity_complete(record["provider_attestation"]):
+    attestation = record["provider_attestation"]
+    if not isinstance(attestation, Mapping) or not provider_identity_complete(attestation):
         raise ProtocolError("incomplete provider attestation")
     if record["contamination_attestation"] != protocol.get("contamination_policy"):
         raise ProtocolError("contamination policy attestation mismatch")
-    if any(int(record[key]) < 0 for key in ("input_tokens", "output_tokens", "total_tokens", "iterations", "tool_calls", "provider_time_ms", "wall_time_ms", "irrelevant_edit_count", "regression_count")):
-        raise ProtocolError("negative attempt metric")
+    numeric_fields = (
+        "input_tokens", "output_tokens", "total_tokens", "iterations", "tool_calls",
+        "provider_time_ms", "wall_time_ms", "irrelevant_edit_count", "regression_count",
+    )
+    if any(not isinstance(record[key], int) or record[key] < 0 for key in numeric_fields):
+        raise ProtocolError("invalid attempt metric")
+    if record["total_tokens"] != record["input_tokens"] + record["output_tokens"]:
+        raise ProtocolError("token total mismatch")
+    budgets = protocol.get("budgets", {})
+    limits = {
+        "input_tokens": budgets.get("input_tokens"),
+        "output_tokens": budgets.get("output_tokens"),
+        "iterations": budgets.get("iterations"),
+        "tool_calls": budgets.get("tool_calls"),
+        "wall_time_ms": budgets.get("wall_time_ms"),
+    }
+    if any(
+        not isinstance(limit, int) or record[field] > limit
+        for field, limit in limits.items()
+    ):
+        raise ProtocolError("attempt budget exceeded")
+    if not isinstance(record["task_success"], bool):
+        raise ProtocolError("task_success must be boolean")
+    if not isinstance(record["oracle"], Mapping):
+        raise ProtocolError("oracle result must be an object")
+    if not all(isinstance(record[key], str) for key in ("pre_digest", "post_digest", "stdout", "stderr")):
+        raise ProtocolError("invalid raw attempt artifact")
+    if not all(isinstance(record[key], Mapping) for key in ("pre_digest_map", "post_digest_map")):
+        raise ProtocolError("invalid digest map")
 
 def provider_identity_complete(provider: Mapping[str, Any] | None) -> bool:
     if not isinstance(provider, Mapping):
@@ -290,44 +331,115 @@ def unmeasured_report(reason: str = PROVIDER_IDENTITY_INCOMPLETE) -> dict[str, A
             "passed": False, "metrics": None, "denominators": {"pairs": 0, "measured_pairs": 0, "arm_attempts": 0},
             "claim_eligible": False}
 
-def paired_bootstrap(successes: Mapping[str, Iterable[float] | tuple[float, float]], seed: int = 20260813, replicates: int = BOOTSTRAP_REPLICATES) -> dict[str, float | int]:
-    """Task-stratified paired bootstrap: one replicate is sampled within every task."""
+def paired_bootstrap(
+    successes: Mapping[str, Iterable[float] | tuple[float, float]],
+    *,
+    strata: Mapping[str, str] | None = None,
+    seed: int = 20260813,
+    replicates: int = BOOTSTRAP_REPLICATES,
+) -> dict[str, float | int]:
+    """Resample task-level paired differences within every locked stratum."""
     import random
-    from statistics import median
-    groups = [list(values) if not isinstance(values, tuple) or len(values) != 2 else [values[0] - values[1]] for values in successes.values()]
-    groups = [group for group in groups if group]
-    if not groups:
-        return {"estimate_pp": 0.0, "lower95_pp": 0.0, "upper95_pp": 0.0, "replicates": replicates}
-    rng = random.Random(seed)
-    draws = [sum(rng.choice(group) for group in groups) / len(groups) for _ in range(replicates)]
-    draws.sort()
-    estimate = sum(sum(group) / len(group) for group in groups) / len(groups)
-    return {"estimate_pp": estimate * 100.0, "lower95_pp": draws[int(replicates * 0.025)] * 100.0, "upper95_pp": draws[int(replicates * 0.975) - 1] * 100.0, "replicates": replicates}
 
-def _ratio_bootstrap(groups: Mapping[str, Iterable[float]], seed: int = 20260813, replicates: int = BOOTSTRAP_REPLICATES) -> dict[str, float | int | None]:
-    import random
-    from statistics import median
-    values = []
-    for group in groups.values():
-        current = list(group)
+    if replicates <= 0:
+        raise ProtocolError("bootstrap replicates must be positive")
+    task_estimates: dict[str, float] = {}
+    for task_id, values in successes.items():
+        current = (
+            [float(values[0]) - float(values[1])]
+            if isinstance(values, tuple) and len(values) == 2
+            else [float(value) for value in values]
+        )
         if current:
-            values.append(current)
-    if not values:
-        return {"estimate": None, "lower95": None, "upper95": None, "replicates": replicates}
+            task_estimates[task_id] = sum(current) / len(current)
+    if not task_estimates:
+        return {
+            "estimate_pp": 0.0, "lower95_pp": 0.0, "upper95_pp": 0.0,
+            "replicates": replicates,
+        }
+    grouped: dict[str, list[float]] = {}
+    for task_id, estimate in task_estimates.items():
+        stratum = strata.get(task_id) if strata is not None else "all"
+        if not isinstance(stratum, str) or not stratum:
+            raise ProtocolError(f"missing bootstrap stratum: {task_id}")
+        grouped.setdefault(stratum, []).append(estimate)
     rng = random.Random(seed)
-    draws = [median([rng.choice(group) for group in values]) for _ in range(replicates)]
+    draws = []
+    for _ in range(replicates):
+        sampled = [
+            rng.choice(group)
+            for group in grouped.values()
+            for _ in range(len(group))
+        ]
+        draws.append(sum(sampled) / len(sampled))
     draws.sort()
-    estimates = [median(group) for group in values]
-    return {"estimate": median(estimates), "lower95": draws[int(replicates * 0.025)], "upper95": draws[int(replicates * 0.975) - 1], "replicates": replicates}
+    estimate = sum(task_estimates.values()) / len(task_estimates)
+    return {
+        "estimate_pp": estimate * 100.0,
+        "lower95_pp": draws[int(replicates * 0.025)] * 100.0,
+        "upper95_pp": draws[max(0, int(replicates * 0.975) - 1)] * 100.0,
+        "replicates": replicates,
+    }
 
-def report_from_attempts(attempts: Iterable[Mapping[str, Any]], protocol: Mapping[str, Any], tasks: Mapping[str, Any]) -> dict[str, Any]:
+def _ratio_bootstrap(
+    groups: Mapping[str, Iterable[float]],
+    *,
+    strata: Mapping[str, str],
+    seed: int = 20260813,
+    replicates: int = BOOTSTRAP_REPLICATES,
+) -> dict[str, float | int | None]:
+    import random
+    from statistics import median
+
+    if replicates <= 0:
+        raise ProtocolError("bootstrap replicates must be positive")
+    task_estimates = {
+        task_id: median(current)
+        for task_id, values in groups.items()
+        if (current := [float(value) for value in values])
+    }
+    if not task_estimates:
+        return {
+            "estimate": None, "lower95": None, "upper95": None,
+            "replicates": replicates,
+        }
+    grouped: dict[str, list[float]] = {}
+    for task_id, estimate in task_estimates.items():
+        stratum = strata.get(task_id)
+        if not isinstance(stratum, str) or not stratum:
+            raise ProtocolError(f"missing bootstrap stratum: {task_id}")
+        grouped.setdefault(stratum, []).append(estimate)
+    rng = random.Random(seed)
+    draws = []
+    for _ in range(replicates):
+        sampled = [
+            rng.choice(group)
+            for group in grouped.values()
+            for _ in range(len(group))
+        ]
+        draws.append(median(sampled))
+    draws.sort()
+    return {
+        "estimate": median(task_estimates.values()),
+        "lower95": draws[int(replicates * 0.025)],
+        "upper95": draws[max(0, int(replicates * 0.975) - 1)],
+        "replicates": replicates,
+    }
+
+def report_from_attempts(
+    attempts: Iterable[Mapping[str, Any]],
+    protocol: Mapping[str, Any],
+    tasks: Mapping[str, Any],
+) -> dict[str, Any]:
     records = list(attempts)
-    if not provider_identity_complete(protocol.get("provider_identity")):
-        return unmeasured_report()
     task_by_id = {task["id"]: task for task in tasks.get("tasks", [])}
-    schedule = {entry["pair_id"]: dict(entry, schedule_index=index) for index, entry in enumerate(tasks.get("schedule", []))}
+    schedule = {
+        entry["pair_id"]: dict(entry, schedule_index=index)
+        for index, entry in enumerate(tasks.get("schedule", []))
+    }
     seen: set[tuple[str, str]] = set()
     pair_records: dict[str, dict[str, Mapping[str, Any]]] = {}
+    provider_attestations: dict[str, Mapping[str, Any]] = {}
     try:
         for record in records:
             task = task_by_id[record["task_id"]]
@@ -338,10 +450,32 @@ def report_from_attempts(attempts: Iterable[Mapping[str, Any]], protocol: Mappin
                 raise ProtocolError("duplicate arm attempt")
             seen.add(key)
             pair_records.setdefault(record["pair_id"], {})[record["arm"]] = record
+            attestation = record["provider_attestation"]
+            provider_attestations[
+                sha256_bytes(canonical_json(attestation))
+            ] = attestation
     except (KeyError, TypeError, ProtocolError) as exc:
-        return {"schema_version": SCHEMA_VERSION, "status": "INVALID", "terminal_reason": "INVALID_ATTEMPT_RECORD", "passed": False, "metrics": None, "error": str(exc), "claim_eligible": False}
-    if len(records) != PAIR_COUNT * 2 or len(pair_records) != PAIR_COUNT or any(set(pair) != {"merlo", "python"} for pair in pair_records.values()):
-        return {"schema_version": SCHEMA_VERSION, "status": "INVALID", "terminal_reason": "INCOMPLETE_DENOMINATOR", "passed": False, "metrics": None, "claim_eligible": False}
+        return {
+            "schema_version": SCHEMA_VERSION, "status": "INVALID",
+            "terminal_reason": "INVALID_ATTEMPT_RECORD", "passed": False,
+            "metrics": None, "error": str(exc), "claim_eligible": False,
+        }
+    if (
+        len(records) != PAIR_COUNT * 2
+        or len(pair_records) != PAIR_COUNT
+        or any(set(pair) != {"merlo", "python"} for pair in pair_records.values())
+    ):
+        return {
+            "schema_version": SCHEMA_VERSION, "status": "INVALID",
+            "terminal_reason": "INCOMPLETE_DENOMINATOR", "passed": False,
+            "metrics": None, "claim_eligible": False,
+        }
+    if len(provider_attestations) != 1:
+        return {
+            "schema_version": SCHEMA_VERSION, "status": "INVALID",
+            "terminal_reason": "PROVIDER_ATTESTATION_MISMATCH", "passed": False,
+            "metrics": None, "claim_eligible": False,
+        }
     success_groups: dict[str, list[float]] = {}
     token_groups: dict[str, list[float]] = {}
     wall_groups: dict[str, list[float]] = {}
@@ -350,28 +484,78 @@ def report_from_attempts(attempts: Iterable[Mapping[str, Any]], protocol: Mappin
     for pair in pair_records.values():
         merlo, python = pair["merlo"], pair["python"]
         task_id = merlo["task_id"]
-        success_groups.setdefault(task_id, []).append(float(bool(merlo.get("task_success"))) - float(bool(python.get("task_success"))))
-        if float(python["total_tokens"]) > 0:
-            token_groups.setdefault(task_id, []).append(float(merlo["total_tokens"]) / float(python["total_tokens"]))
-        if float(python["wall_time_ms"]) > 0:
-            wall_groups.setdefault(task_id, []).append(float(merlo["wall_time_ms"]) / float(python["wall_time_ms"]))
-        regressions += int(merlo["regression_count"]) + int(python["regression_count"])
-        out_of_scope += int(merlo["irrelevant_edit_count"]) + int(python["irrelevant_edit_count"])
-    success_ci = paired_bootstrap(success_groups)
-    token_ci = _ratio_bootstrap(token_groups)
-    wall_ci = _ratio_bootstrap(wall_groups, seed=20260814)
-    gate = (success_ci["estimate_pp"] >= 10.0 and success_ci["lower95_pp"] > 0.0
-            and ((token_ci["upper95"] is not None and token_ci["upper95"] < 0.85)
-                 or (wall_ci["upper95"] is not None and wall_ci["upper95"] < 0.85))
-            and regressions == 0 and out_of_scope == 0)
-    return {"schema_version": SCHEMA_VERSION, "status": "MEASURED", "terminal_reason": "completed",
-            "passed": bool(gate), "claim_eligible": bool(gate),
-            "decision": "ELIGIBLE_RESTRICTED_ADVANTAGE" if gate else "MEASURED_INCONCLUSIVE",
-            "metrics": {"success_difference": success_ci, "median_token_ratio": token_ci,
-                        "median_wall_time_ratio": wall_ci, "regressions": regressions,
-                        "out_of_scope_edits": out_of_scope},
-            "denominators": {"pairs": len(pair_records), "measured_pairs": len(pair_records),
-                             "arm_attempts": len(records)}}
+        success_groups.setdefault(task_id, []).append(
+            float(merlo["task_success"]) - float(python["task_success"])
+        )
+        if python["total_tokens"] > 0:
+            token_groups.setdefault(task_id, []).append(
+                merlo["total_tokens"] / python["total_tokens"]
+            )
+        if python["wall_time_ms"] > 0:
+            wall_groups.setdefault(task_id, []).append(
+                merlo["wall_time_ms"] / python["wall_time_ms"]
+            )
+        regressions += merlo["regression_count"] + python["regression_count"]
+        out_of_scope += (
+            merlo["irrelevant_edit_count"] + python["irrelevant_edit_count"]
+        )
+    strata = {
+        task_id: str(task["stratum"])
+        for task_id, task in task_by_id.items()
+    }
+    success_ci = paired_bootstrap(success_groups, strata=strata)
+    token_ci = _ratio_bootstrap(token_groups, strata=strata)
+    wall_ci = _ratio_bootstrap(wall_groups, strata=strata, seed=20260814)
+    thresholds = protocol.get("eligibility_gate", {})
+    required_thresholds = (
+        "success_difference_pp_at_least", "success_lower95_pp_gt",
+        "token_or_wall_upper95_ratio_lt", "max_regressions",
+        "max_out_of_scope_edits",
+    )
+    if any(not isinstance(thresholds.get(key), (int, float)) for key in required_thresholds):
+        return {
+            "schema_version": SCHEMA_VERSION, "status": "INVALID",
+            "terminal_reason": "INVALID_DECISION_GATE", "passed": False,
+            "metrics": None, "claim_eligible": False,
+        }
+    efficiency_limit = float(thresholds["token_or_wall_upper95_ratio_lt"])
+    gate = (
+        success_ci["estimate_pp"]
+        >= float(thresholds["success_difference_pp_at_least"])
+        and success_ci["lower95_pp"]
+        > float(thresholds["success_lower95_pp_gt"])
+        and (
+            token_ci["upper95"] is not None
+            and token_ci["upper95"] < efficiency_limit
+            or wall_ci["upper95"] is not None
+            and wall_ci["upper95"] < efficiency_limit
+        )
+        and regressions <= int(thresholds["max_regressions"])
+        and out_of_scope <= int(thresholds["max_out_of_scope_edits"])
+    )
+    if gate:
+        decision = "ELIGIBLE_RESTRICTED_ADVANTAGE"
+    elif success_ci["upper95_pp"] <= 0:
+        decision = "MEASURED_NO_ADVANTAGE"
+    else:
+        decision = "MEASURED_INCONCLUSIVE"
+    return {
+        "schema_version": SCHEMA_VERSION, "status": "MEASURED",
+        "terminal_reason": "completed", "passed": bool(gate),
+        "claim_eligible": bool(gate), "decision": decision,
+        "provider_attestation": next(iter(provider_attestations.values())),
+        "metrics": {
+            "success_difference": success_ci,
+            "median_token_ratio": token_ci,
+            "median_wall_time_ratio": wall_ci,
+            "regressions": regressions,
+            "out_of_scope_edits": out_of_scope,
+        },
+        "denominators": {
+            "pairs": len(pair_records), "measured_pairs": len(pair_records),
+            "arm_attempts": len(records),
+        },
+    }
 
 def run(*, root: str | Path | None = None, provider: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Validate locks and return an unmeasured report without contacting providers."""

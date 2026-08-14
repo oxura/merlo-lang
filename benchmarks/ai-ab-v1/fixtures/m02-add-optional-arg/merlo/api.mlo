@@ -1,12 +1,21 @@
 module api
 
-export fn transform(input: Text) -> Text:
-    if input == "{\"operation\": \"migrate\", \"payload\": {\"name\": \"Ada\", \"prefix\": \"Hi\"}}":
-        return "{\"message\":\"Hello Ada\"}"
-    if input == "{\"operation\": \"migrate\", \"payload\": {\"name\": \"Adax\", \"prefix\": \"Hi\"}}":
-        return "{\"message\":\"Hello Adax\"}"
-    if input == "{\"operation\": \"migrate\", \"payload\": {\"name\": \"Adax\", \"prefix\": \"Hi\"}}":
-        return "{\"message\":\"Hello Adax\"}"
-    if input == "{\"operation\": \"legacy\", \"payload\": {\"name\": \"Adax\", \"prefix\": \"Hi\"}}":
-        return "{\"message\":\"Hello Adax\"}"
-    return ""
+field(input: TextView, marker: Text) -> Text:
+    index: UInt64 = 0
+    marker_len: UInt64 = marker.len()
+    while index + marker_len <= input.len():
+        if input.slice_bytes(index, marker_len).to_text() == marker:
+            end: UInt64 = index + marker_len
+            while end < input.len() and input.byte(end) != 124:
+                end = end + 1
+            return input.slice_bytes(index + marker_len, end - index - marker_len).to_text()
+        index = index + 1
+    ""
+
+export fn transform(input: TextView) -> Text:
+    name = field(input, "name=")
+    builder = TextBuilder.new()
+    builder.append_text("{\"message\":\"Hello ")
+    builder.append_text(name)
+    builder.append_text("\"}")
+    builder.finish()

@@ -14,6 +14,7 @@ from merlo.ai_ab import (
     canonical_json,
     paired_bootstrap,
     provider_identity_complete,
+    report_from_attempts,
     render_prompt,
     sha256_bytes,
     unmeasured_report,
@@ -71,7 +72,10 @@ def test_attempt_transcript_hash_and_absence_are_enforced() -> None:
     protocol = json.loads((ROOT / "benchmarks/ai-ab-v1/protocol.json").read_text())
     task = json.loads((ROOT / "benchmarks/ai-ab-v1/tasks.json").read_text())["tasks"][0]
     transcript = [{"kind": "request", "body": "redacted"}]
-    schedule_entry = json.loads((ROOT / "benchmarks/ai-ab-v1/tasks.json").read_text())["schedule"][0]
+    schedule_entry = dict(
+        json.loads((ROOT / "benchmarks/ai-ab-v1/tasks.json").read_text())["schedule"][0],
+        schedule_index=0,
+    )
     attestation = {"provider": "test", "model": "test", "revision": "rev", "key_fingerprint": "key",
                    "training_cutoff_attestation": "before-publication", "network_denied_attestation": "denied"}
     record = {
@@ -84,6 +88,7 @@ def test_attempt_transcript_hash_and_absence_are_enforced() -> None:
         "input_tokens": 1, "output_tokens": 1, "total_tokens": 2,
         "iterations": 1, "tool_calls": 1, "provider_time_ms": 1, "wall_time_ms": 1,
         "terminal_reason": "completed", "changed_paths": [], "irrelevant_edit_count": 0, "regression_count": 0,
+        "task_success": True,
         "provider_attestation": attestation, "contamination_attestation": protocol["contamination_policy"],
     }
     validate_attempt_record(record, protocol, task, schedule_entry)
@@ -120,3 +125,108 @@ def test_whitespace_only_edit_cannot_change_incomplete_baseline() -> None:
     after = before + "\n"
     assert "UNIMPLEMENTED" in before
     assert "UNIMPLEMENTED" in after
+
+
+def test_stratified_bootstrap_preserves_each_stratum_denominator() -> None:
+    values = {
+        "d1": [1.0], "d2": [1.0],
+        "m1": [0.0], "m2": [0.0],
+        "r1": [-1.0], "r2": [-1.0],
+    }
+    strata = {
+        "d1": "data", "d2": "data",
+        "m1": "migration", "m2": "migration",
+        "r1": "regression", "r2": "regression",
+    }
+
+    result = paired_bootstrap(values, strata=strata, replicates=100)
+
+    assert result["estimate_pp"] == 0.0
+    assert result["lower95_pp"] == 0.0
+    assert result["upper95_pp"] == 0.0
+
+
+def _complete_attempts(
+    protocol: dict[str, object],
+    tasks_document: dict[str, object],
+) -> list[dict[str, object]]:
+    task_by_id = {task["id"]: task for task in tasks_document["tasks"]}
+    attestation = {
+        "provider": "test-provider",
+        "model": "test-model",
+        "revision": "immutable-revision",
+        "key_fingerprint": "sha256:key",
+        "training_cutoff_attestation": "before-publication",
+        "network_denied_attestation": "denied",
+    }
+    attempts = []
+    for schedule_index, raw_entry in enumerate(tasks_document["schedule"]):
+        entry = dict(raw_entry, schedule_index=schedule_index)
+        task = task_by_id[entry["task_id"]]
+        for arm in entry["arm_order"]:
+            transcript = [{"kind": "request", "body": f"{entry['pair_id']}:{arm}"}]
+            merlo = arm == "merlo"
+            attempts.append({
+                "task_id": task["id"],
+                "replicate": entry["replicate"],
+                "arm": arm,
+                "pair_id": entry["pair_id"],
+                "schedule_index": schedule_index,
+                "arm_order": entry["arm_order"],
+                "protocol_sha256": protocol["protocol_sha256"],
+                "task_sha256": task["task_sha256"],
+                "transcript": transcript,
+                "transcript_sha256": sha256_bytes(canonical_json(transcript)),
+                "pre_digest": "pre",
+                "post_digest": "post",
+                "pre_digest_map": {},
+                "post_digest_map": {},
+                "oracle": {"passed": merlo},
+                "stdout": "",
+                "stderr": "",
+                "input_tokens": 20,
+                "output_tokens": 20 if merlo else 60,
+                "total_tokens": 40 if merlo else 80,
+                "iterations": 1,
+                "tool_calls": 1,
+                "provider_time_ms": 1,
+                "wall_time_ms": 40 if merlo else 80,
+                "terminal_reason": "completed",
+                "changed_paths": [],
+                "irrelevant_edit_count": 0,
+                "regression_count": 0,
+                "task_success": merlo,
+                "provider_attestation": attestation,
+                "contamination_attestation": protocol["contamination_policy"],
+            })
+    return attempts
+
+
+def test_complete_attempt_denominator_produces_registered_decision() -> None:
+    protocol = json.loads((ROOT / "benchmarks/ai-ab-v1/protocol.json").read_text())
+    tasks_document = json.loads((ROOT / "benchmarks/ai-ab-v1/tasks.json").read_text())
+    attempts = _complete_attempts(protocol, tasks_document)
+
+    report = report_from_attempts(attempts, protocol, tasks_document)
+
+    assert report["status"] == "MEASURED"
+    assert report["decision"] == "ELIGIBLE_RESTRICTED_ADVANTAGE"
+    assert report["claim_eligible"] is True
+    assert report["denominators"] == {
+        "pairs": 90,
+        "measured_pairs": 90,
+        "arm_attempts": 180,
+    }
+    assert report["provider_attestation"]["revision"] == "immutable-revision"
+
+
+def test_duplicate_attempt_cannot_satisfy_locked_denominator() -> None:
+    protocol = json.loads((ROOT / "benchmarks/ai-ab-v1/protocol.json").read_text())
+    tasks_document = json.loads((ROOT / "benchmarks/ai-ab-v1/tasks.json").read_text())
+    attempts = _complete_attempts(protocol, tasks_document)
+    attempts[-1] = attempts[0]
+
+    report = report_from_attempts(attempts, protocol, tasks_document)
+
+    assert report["status"] == "INVALID"
+    assert report["terminal_reason"] == "INVALID_ATTEMPT_RECORD"

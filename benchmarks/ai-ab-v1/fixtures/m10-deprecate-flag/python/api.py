@@ -1,4 +1,4 @@
-def transform(inp):
-    payload=inp.get("payload", inp)
-    out={'text':'Name: '+payload['name']}
-    return out
+def transform(wire):
+    operation, compact, name = wire.split("|", 2)
+    # Pre-migration path ignores the compact flag.
+    return {"text": "Name: " + name}

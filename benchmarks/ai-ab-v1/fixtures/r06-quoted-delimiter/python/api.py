@@ -1,2 +1,3 @@
 def repair(inp):
-    return inp.split(',')
+    # Generic baseline: splitting every delimiter ignores quoted fields.
+    return len(inp.split(','))
