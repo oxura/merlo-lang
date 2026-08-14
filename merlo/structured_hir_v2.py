@@ -300,10 +300,50 @@ def _span(path: str, node: ast.AST) -> SourceSpan:
     )
 
 
+def _ast_qualified_name(node: ast.AST) -> str:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        owner = _ast_qualified_name(node.value)
+        return f"{owner}.{node.attr}" if owner else node.attr
+    return ""
+def _ast_pattern_name(pattern: ast.pattern) -> str:
+    if isinstance(pattern, ast.MatchValue):
+        return _ast_qualified_name(pattern.value)
+    if isinstance(pattern, ast.MatchClass):
+        return _ast_qualified_name(pattern.cls)
+    if isinstance(pattern, ast.MatchAs):
+        return pattern.name or "_"
+    if isinstance(pattern, ast.MatchSingleton):
+        return "None" if pattern.value is None else str(pattern.value)
+    return ""
 def _type_name(node: ast.AST | None) -> str:
     if node is None:
         return "Unit"
-    type_name = ast.unparse(node).replace(" ", "")
+
+    def render(item: ast.AST) -> str:
+        if isinstance(item, ast.Name):
+            return item.id
+        if isinstance(item, ast.Attribute):
+            owner = render(item.value)
+            return f"{owner}.{item.attr}"
+        if isinstance(item, ast.Constant) and isinstance(item.value, int):
+            return str(item.value)
+        if isinstance(item, ast.Subscript):
+            parts = (
+                item.slice.elts
+                if isinstance(item.slice, ast.Tuple)
+                else (item.slice,)
+            )
+            return (
+                f"{render(item.value)}["
+                f"{','.join(render(part) for part in parts)}]"
+            )
+        raise StructuredHIRCompileError(
+            f"MalformedType: unsupported AST node {type(item).__name__}"
+        )
+
+    type_name = render(node)
     for alias, canonical in _TYPE_ALIASES.items():
         type_name = re.sub(rf"\b{alias}\b", canonical, type_name)
     try:
@@ -621,7 +661,7 @@ class _OwnershipChecker:
             if isinstance(node.func, ast.Attribute):
                 receiver = self._expr_type(node.func.value)
                 method = node.func.attr
-                receiver_text = ast.unparse(node.func.value)
+                receiver_text = _ast_qualified_name(node.func.value)
                 if receiver_text == "Text" and method == "from_bytes":
                     return "Text"
                 if receiver_text == "TextBuilder" and method == "new":
@@ -719,7 +759,11 @@ class _OwnershipChecker:
             self._check_expr(node.slice, state)
             return self._expr_type(node, expected)
         if isinstance(node, ast.Call):
-            name = node.func.id if isinstance(node.func, ast.Name) else ast.unparse(node.func)
+            name = (
+                node.func.id
+                if isinstance(node.func, ast.Name)
+                else _ast_qualified_name(node.func)
+            )
             if isinstance(node.func, ast.Name) and node.func.id == "drop":
                 if len(node.args) != 1 or not isinstance(node.args[0], ast.Name):
                     self._error("InvalidDrop")
@@ -748,7 +792,9 @@ class _OwnershipChecker:
             if receiver is not None:
                 self._check_expr(receiver, state)
             argument_types = [
-                self._check_expr(argument, state)
+                "value"
+                if getattr(argument, "_merlo_implicit_callable", None) is not None
+                else self._check_expr(argument, state)
                 for argument in node.args
             ]
             if isinstance(node.func, ast.Name) and node.func.id in self.functions:
@@ -769,9 +815,7 @@ class _OwnershipChecker:
                 element = vec_parts[0] if vec_parts is not None else None
                 if self._owner(element) and isinstance(node.args[0], ast.Name):
                     self._consume(node.args[0].id, state)
-            elif receiver_text := (
-                ast.unparse(receiver) if receiver is not None else ""
-            ):
+            elif (receiver_text := _ast_qualified_name(receiver)) :
                 if receiver_text == "Box" and method == "new" and node.args:
                     argument = node.args[0]
                     if isinstance(argument, ast.Name) and self._owner(self._expr_type(argument)):
@@ -785,7 +829,7 @@ class _OwnershipChecker:
             return _OwnershipState(dict(before.statuses), dict(before.borrows), True)
         for name in sorted(before.statuses):
             statuses = {
-                branch.statuses.get(name, before.statuses.get(name))
+                branch.statuses.get(name, "absent")
                 for branch in live
             }
             if len(statuses) > 1:
@@ -1090,7 +1134,11 @@ class _HIRBuilder:
                 children=(owner,),
             )
         if isinstance(node, ast.Call):
-            arguments = tuple(self.expression(item) for item in node.args)
+            arguments = tuple(
+                self.expression(item)
+                for item in node.args
+                if getattr(item, "_merlo_implicit_callable", None) is None
+            )
             return self._call(node, arguments, expected=expected)
         if isinstance(node, ast.BinOp):
             children = (self.expression(node.left), self.expression(node.right))
@@ -1223,7 +1271,7 @@ class _HIRBuilder:
         *,
         expected: str | None = None,
     ) -> HIRNode:
-        name = ast.unparse(node.func)
+        name = _ast_qualified_name(node.func)
         if isinstance(node.func, ast.Name) and node.func.id == "__merlo_try__":
             if len(arguments) != 1:
                 raise StructuredHIRCompileError(
@@ -1422,10 +1470,56 @@ class _HIRBuilder:
             ):
                 raise StructuredHIRCompileError(f"UnresolvedName: {name}")
         if isinstance(node.func, ast.Attribute):
-            receiver_text = ast.unparse(node.func.value)
+            receiver_text = _ast_qualified_name(node.func.value)
             receiver_type = self.local_types.get(receiver_text)
             method = node.func.attr
-            if receiver_text == "fs" and method in {
+            if method in {"where", "map", "count"}:
+                receiver = self.expression(node.func.value)
+                receiver_type = receiver.type_name or receiver_type
+                parts = generic_parts(receiver_type, "Vec", arity=1)
+                metadata = (
+                    getattr(node.args[0], "_merlo_implicit_callable", None)
+                    if len(node.args) == 1
+                    else None
+                )
+                if parts is None or metadata is None:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: typed collection callable metadata required"
+                    )
+                callable_id, parameter, parameter_type, return_type, expression_text = metadata
+                expected_return = "Bool" if method in {"where", "count"} else return_type
+                if method in {"where", "count"} and return_type != "Bool":
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: {method} callable must return Bool"
+                    )
+                callback = self._new_node(
+                    node.args[0],
+                    "ImplicitCallable",
+                    type_name=expected_return,
+                    attributes={
+                        "callable_id": callable_id,
+                        "callable_parameter": parameter,
+                        "parameter_type": parameter_type,
+                        "expression": expression_text,
+                    },
+                )
+                kind = "VecOperation"
+                type_name = (
+                    "UInt64"
+                    if method == "count"
+                    else receiver_type
+                    if method == "where"
+                    else f"Vec[{return_type}]"
+                )
+                operation_children = (receiver, callback)
+                call_attributes.update(
+                    {
+                        "vec_operation": method,
+                        "element_type": parts[0],
+                        "callable_parameter": parameter,
+                    }
+                )
+            elif receiver_text == "fs" and method in {
                 "open_read", "read", "read_text", "read_chunk", "open_write",
                 "write_text", "write_chunk", "close",
             }:
@@ -1692,7 +1786,7 @@ class _HIRBuilder:
         for node in ast.walk(function):
             if not isinstance(node, ast.Call):
                 continue
-            name = ast.unparse(node.func)
+            name = _ast_qualified_name(node.func)
             if (
                 ".push" in name
                 or name in {"Vec.new", "TextBuilder.new", "Text.from_bytes", "Map.new"}
@@ -1760,7 +1854,7 @@ class _HIRBuilder:
                 node,
                 kind,
                 type_name=value.type_name,
-                attributes={"target": ast.unparse(target)},
+                attributes={"target": _ast_qualified_name(target)},
                 children=(value,),
                 scope_id=scope_id,
             )
@@ -1771,7 +1865,7 @@ class _HIRBuilder:
                 node,
                 "AugAssign",
                 type_name=target.type_name or value.type_name,
-                attributes={"target": ast.unparse(node.target), "operator": type(node.op).__name__},
+                attributes={"target": _ast_qualified_name(node.target), "operator": type(node.op).__name__},
                 children=(target, value),
                 scope_id=scope_id,
             )
@@ -1871,7 +1965,7 @@ class _HIRBuilder:
         index: int,
         subject_type: str | None,
     ) -> HIRNode:
-        pattern_text = ast.unparse(case.pattern)
+        pattern_text = _ast_pattern_name(case.pattern)
         bindings: dict[str, str] = {}
         if isinstance(case.pattern, ast.MatchClass):
             variant_name = (
@@ -2120,8 +2214,8 @@ def compile_canonical_hir(
             program.to_source(),
             entry_function=entry_function,
         )
-    source = program.to_source()
-    path = next(
+    source = program.projection_source or ""
+    path = program.source_path or next(
         (
             function.span.path
             for function in program.functions
@@ -2130,6 +2224,10 @@ def compile_canonical_hir(
         "main.mlo",
     )
     module = copy.deepcopy(program.native_module)
+    try:
+        compile(module, path, "exec")
+    except (TypeError, ValueError, SyntaxError) as error:
+        raise StructuredHIRCompileError(f"{path}: invalid native AST: {error}") from error
     _validate_map_specializations(module, path)
     preprocessed = _Preprocessed(
         source,
@@ -2173,7 +2271,7 @@ def compile_canonical_hir(
     return StructuredHIRProgram(
         source,
         path,
-        program.semantic_hash,
+        hashlib.sha256(source.encode()).hexdigest(),
         tuple(types.values()),
         functions,
         entry_function,

@@ -83,6 +83,7 @@ merlo = ["stdlib/*.mlo"]
   "docs/tooling.md",
   "docs/lsp.md",
   "docs/examples.md",
+  "docs/benchmark.md",
   "docs/limitations.md",
 ]
 "spec" = [

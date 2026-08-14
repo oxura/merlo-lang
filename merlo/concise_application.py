@@ -3361,11 +3361,17 @@ def _assemble_core(
         for decision in inference.decisions(origins)
     )
     canonical_program = inference.canonical_program()
-    canonical = canonical_program.to_source()
+    canonical = (
+        canonical_program.projection_source
+        or canonical_program.to_source()
+    )
     reverse_symbols = {
         internal: (module, public_name, kind, exported)
         for module, declarations in symbols.items()
         for public_name, (kind, exported, internal) in declarations.items()
+    }
+    public_functions = {
+        name for _, name, kind in exports if kind in {"fn", "task"}
     }
     entry_module = modules[-1].name
     tasks: list[TaskBoundary] = []

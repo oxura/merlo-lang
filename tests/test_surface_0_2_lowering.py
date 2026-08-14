@@ -35,6 +35,37 @@ def test_typed_collection_shorthand_expands_to_explicit_callables() -> None:
     assert len({call.callable_id for call in function.implicit_callables}) == 2
 
 
+def test_surface_handoff_uses_native_tree_and_preserves_provenance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from merlo.structured_hir_v2 import compile_canonical_hir
+
+    source = (
+        "User:\n"
+        "    name: Text\n"
+        "    active: Bool\n\n"
+        "active_names(users: Vec[User]) -> Vec[Text] = "
+        "users.where(.active).map(.name)\n"
+    )
+    result = elaborate(source)
+
+    def reject_serialization(_program: object) -> str:
+        raise AssertionError("Surface handoff serialized canonical text")
+
+    monkeypatch.setattr(
+        "merlo.canonical_ast.CanonicalProgram.to_source",
+        reject_serialization,
+    )
+    hir = compile_canonical_hir(result.canonical, entry_function="active_names")
+    returned = hir.function("active_names").body[0]
+    operation = returned.children[0]
+    assert operation.kind == "VecOperation"
+    assert operation.type_name == "Vec[Text]"
+    assert hir.source == source
+    assert hir.source_sha256 == __import__("hashlib").sha256(source.encode()).hexdigest()
+    assert hir.function("active_names").parameters[0].source.column == 14
+
+
 def test_count_shorthand_returns_uint64_without_output_collection() -> None:
     result = elaborate(
         "Event:\n"
