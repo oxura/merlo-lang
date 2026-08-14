@@ -1787,9 +1787,20 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
     def _is_borrow_expression(self, node: ast.AST | None) -> bool:
         if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
             return False
-        if node.func.attr not in {"get", "get_mut"}:
+        method = node.func.attr
+        if method not in {"get", "get_mut"}:
             return False
-        return _map_types(self._expression_type(node.func.value) or "") is None
+        receiver_type = self._expression_type(node.func.value) or ""
+        generic = _generic(receiver_type)
+        if (
+            method == "get"
+            and generic is not None
+            and generic[0] in {"Vec", "Box"}
+            and _is_owner(self.descriptors[generic[1]])
+            and self._is_owning_temporary(node.func.value, receiver_type)
+        ):
+            return False
+        return _map_types(receiver_type) is None
 
     def _pad(self) -> str:
         return "    " * self.indent
@@ -3256,7 +3267,8 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     pointer = f"merlo_{suffix}_get({receiver}, {self._expression(node.args[0])})"
                     element_type = generic[1]
                     if (
-                        temporary_receiver
+                        method == "get"
+                        and temporary_receiver
                         and _is_owner(self.descriptors[element_type])
                     ):
                         if not self._clone_is_deep(element_type):
