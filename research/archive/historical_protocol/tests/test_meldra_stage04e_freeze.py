@@ -60,7 +60,7 @@ def test_stage04_freeze_is_complete_and_byte_valid():
 
 def test_freeze_detects_frozen_implementation_change(tmp_path: Path):
     root = _copy_freeze(tmp_path)
-    syntax = root / "tools" / "benchmarks" / "merlo" / "benchmarks" / "frozen" / "stage04" / "meldra" / "frontend_syntax.py"
+    syntax = root / "benchmarks" / "frozen" / "stage04" / "meldra" / "frontend_syntax.py"
     syntax.write_text(syntax.read_text(encoding="utf-8") + "# mutation\n", encoding="utf-8")
 
     verification = verify_stage04_freeze(root)
@@ -73,8 +73,8 @@ def test_freeze_detects_frozen_implementation_change(tmp_path: Path):
 
 def test_freeze_ignores_active_frontend_evolution(tmp_path: Path):
     root = _copy_freeze(tmp_path)
-    syntax = root / "research" / "archive" / "historical_protocol" / "merlo" / "frontend_syntax.py"
-    semantics = root / "research" / "archive" / "historical_protocol" / "merlo" / "frontend_semantics.py"
+    syntax = root / "merlo" / "frontend_syntax.py"
+    semantics = root / "merlo" / "frontend_semantics.py"
     syntax.write_text(syntax.read_text(encoding="utf-8") + "# active syntax\n", encoding="utf-8")
     semantics.write_text(
         semantics.read_text(encoding="utf-8") + "# active semantics\n",
@@ -86,7 +86,7 @@ def test_freeze_ignores_active_frontend_evolution(tmp_path: Path):
 
 def test_freeze_detects_posthoc_rule_change(tmp_path: Path):
     root = _copy_freeze(tmp_path)
-    path = root / "tools" / "benchmarks" / "merlo" / "benchmarks" / "meldra_stage04_freeze.json"
+    path = root / "benchmarks" / "meldra_stage04_freeze.json"
     manifest = json.loads(path.read_text(encoding="utf-8"))
     manifest["semantics"]["binding"]["rules"].append("posthoc exception")
     path.write_text(json.dumps(manifest), encoding="utf-8")
@@ -100,7 +100,7 @@ def test_freeze_detects_posthoc_rule_change(tmp_path: Path):
 
 def test_freeze_detects_canonical_manifest_change(tmp_path: Path):
     root = _copy_freeze(tmp_path)
-    path = root / "research" / "archive" / "alpha1" / "merlo" / "STAGE_0_4_FREEZE.json"
+    path = root / "benchmarks" / "frozen" / "stage04" / "meldra" / "STAGE_0_4_FREEZE.json"
     manifest = json.loads(path.read_text(encoding="utf-8"))
     manifest["versions"]["binder_rules"] = 2
     path.write_text(json.dumps(manifest), encoding="utf-8")

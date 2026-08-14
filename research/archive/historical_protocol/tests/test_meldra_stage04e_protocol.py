@@ -71,7 +71,7 @@ def test_stage04e_protocol_is_preregistered_and_locked():
 
 def test_protocol_lock_detects_posthoc_gate_change(tmp_path: Path):
     root = _copy_protocol(tmp_path)
-    path = root / "tools" / "benchmarks" / "merlo" / "benchmarks" / "meldra_stage04e_protocol.json"
+    path = root / "benchmarks" / "meldra_stage04e_protocol.json"
     protocol = json.loads(path.read_text(encoding="utf-8"))
     protocol["language_alpha_go"]["agent_value"]["success_gain_points_min"] = 0.0
     path.write_text(json.dumps(protocol), encoding="utf-8")

@@ -273,7 +273,10 @@ def test_world_level_rollback_restores_sources_when_rescan_fails(
     def fail_scan(*args, **kwargs):
         raise RuntimeError("forced rescan failure")
 
-    monkeypatch.setattr("merlo.world.scan_python", fail_scan)
+    monkeypatch.setattr(
+        "research.archive.historical_protocol.merlo.world.scan_python",
+        fail_scan,
+    )
     with pytest.raises(WorldError, match="rolled back"):
         world.apply(plan, capability)
 

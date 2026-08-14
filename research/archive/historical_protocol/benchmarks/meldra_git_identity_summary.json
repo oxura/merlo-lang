@@ -1,0 +1,1664 @@
+{
+  "click_deep_run": {
+    "completed_pairs_persisted": 0,
+    "error": "ValueError: split hypotheses require 1:N endpoints",
+    "note": "The aggregate run aborted inside measure_split_merge_hypotheses; it was stopped rather than allowing an unbounded rerun.",
+    "requested_pairs": 10,
+    "status": "INFRASTRUCTURE_FAILURE"
+  },
+  "date": "2026-08-10",
+  "deep_by_repository": [
+    {
+      "checkout": "/tmp/meldra-external-corpus/flask",
+      "completed_pair_count": 10,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 1,
+        "false_negative_links": 1,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 1,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": 0.0,
+        "recall_denominator": 1,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 1,
+        "ground_truth_link_count": 8936,
+        "matched_ground_truth_links": 8934,
+        "new_entity_count": 9187,
+        "precision": 1.0,
+        "precision_denominator": 8934,
+        "precision_numerator": 8934,
+        "predicted_link_count": 8934,
+        "recall": 0.999776,
+        "recall_denominator": 8936,
+        "recall_numerator": 8934,
+        "resolver_ambiguous_count": 1,
+        "resolver_no_link_count": 3,
+        "true_positive_links": 8934
+      },
+      "pairs": [
+        {
+          "new_commit": "e4e4bf6543ac1f132afddb1ffd0bf02bea4c93f7",
+          "old_commit": "7ef2946fb5151b745df30201b8c27790cac53875"
+        },
+        {
+          "new_commit": "258d68b6ff5e2244386540f48b48bab90d6ab827",
+          "old_commit": "e4e4bf6543ac1f132afddb1ffd0bf02bea4c93f7"
+        },
+        {
+          "new_commit": "2ac89889f4cc330eabd50f295dcef02828522c69",
+          "old_commit": "258d68b6ff5e2244386540f48b48bab90d6ab827"
+        },
+        {
+          "new_commit": "06ea505ce2b2042af26e96d35ebf159af7c0869d",
+          "old_commit": "2ac89889f4cc330eabd50f295dcef02828522c69"
+        },
+        {
+          "new_commit": "dcbede0cb00df32e7f1895e19e37d5f40a75d1f6",
+          "old_commit": "06ea505ce2b2042af26e96d35ebf159af7c0869d"
+        },
+        {
+          "new_commit": "7374c85ddefc3f4b177a698ab9f0cbb6a5c0b392",
+          "old_commit": "dcbede0cb00df32e7f1895e19e37d5f40a75d1f6"
+        },
+        {
+          "new_commit": "9fcd34c9f3065640bd1cd86234216ca068633fb9",
+          "old_commit": "7374c85ddefc3f4b177a698ab9f0cbb6a5c0b392"
+        },
+        {
+          "new_commit": "954f5684e4841aad84a8eec7ace7b81a0d3f6831",
+          "old_commit": "9fcd34c9f3065640bd1cd86234216ca068633fb9"
+        },
+        {
+          "new_commit": "36e4a824f340fdee7ed50937ba8e7f6bc7d17f81",
+          "old_commit": "954f5684e4841aad84a8eec7ace7b81a0d3f6831"
+        },
+        {
+          "new_commit": "6a2f545bfd8ed31e19066a299296917e034aca58",
+          "old_commit": "36e4a824f340fdee7ed50937ba8e7f6bc7d17f81"
+        }
+      ],
+      "repository": "flask",
+      "requested_pair_count": 10,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 2,
+        "new_entity_count": 9187,
+        "old_entity_count": 9192,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 3,
+        "unmatched_old_count": 8
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/httpx",
+      "completed_pair_count": 10,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 11320,
+        "matched_ground_truth_links": 11320,
+        "new_entity_count": 11440,
+        "precision": 1.0,
+        "precision_denominator": 11320,
+        "precision_numerator": 11320,
+        "predicted_link_count": 11320,
+        "recall": 1.0,
+        "recall_denominator": 11320,
+        "recall_numerator": 11320,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 11320
+      },
+      "pairs": [
+        {
+          "new_commit": "767cf6baa608a56d03f8fe438a39c2013904f0ae",
+          "old_commit": "b55d4635701d9dc22928ee647880c76b078ba3f2"
+        },
+        {
+          "new_commit": "bc00d2bd9f715b3b848925e0c259887409bceabc",
+          "old_commit": "767cf6baa608a56d03f8fe438a39c2013904f0ae"
+        },
+        {
+          "new_commit": "3fee27838e9fd0cb528861e41f3ff98164081a4b",
+          "old_commit": "bc00d2bd9f715b3b848925e0c259887409bceabc"
+        },
+        {
+          "new_commit": "652f051feaf1ab2828e1812eb0c48f9046a8b5ce",
+          "old_commit": "3fee27838e9fd0cb528861e41f3ff98164081a4b"
+        },
+        {
+          "new_commit": "4b23574cf83307ce27d3b14b4a425dc58c57d28d",
+          "old_commit": "652f051feaf1ab2828e1812eb0c48f9046a8b5ce"
+        },
+        {
+          "new_commit": "435e1dac899adeb0c156c00721ecbb1124d75842",
+          "old_commit": "4b23574cf83307ce27d3b14b4a425dc58c57d28d"
+        },
+        {
+          "new_commit": "def4778d622e8bf49a9fea4dda78cca4cf666d8a",
+          "old_commit": "435e1dac899adeb0c156c00721ecbb1124d75842"
+        },
+        {
+          "new_commit": "ca097c96f97d8d2a5da09b8ca736c7e78a2467f6",
+          "old_commit": "def4778d622e8bf49a9fea4dda78cca4cf666d8a"
+        },
+        {
+          "new_commit": "ae1b9f66238f75ced3ced5e4485408435de10768",
+          "old_commit": "ca097c96f97d8d2a5da09b8ca736c7e78a2467f6"
+        },
+        {
+          "new_commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+          "old_commit": "ae1b9f66238f75ced3ced5e4485408435de10768"
+        }
+      ],
+      "repository": "httpx",
+      "requested_pair_count": 10,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 11440,
+        "old_entity_count": 11440,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/marshmallow",
+      "completed_pair_count": 10,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 11162,
+        "matched_ground_truth_links": 11162,
+        "new_entity_count": 11224,
+        "precision": 1.0,
+        "precision_denominator": 11162,
+        "precision_numerator": 11162,
+        "predicted_link_count": 11162,
+        "recall": 1.0,
+        "recall_denominator": 11162,
+        "recall_numerator": 11162,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 2,
+        "true_positive_links": 11162
+      },
+      "pairs": [
+        {
+          "new_commit": "47d3c7c26f7c988a7c5287b018e96c4e728a2ca7",
+          "old_commit": "cea3d44f40683832b88b792b84f4a91be032f7ad"
+        },
+        {
+          "new_commit": "cd3cda8b1a9ae740d439538cee7aa8faea58d6b9",
+          "old_commit": "47d3c7c26f7c988a7c5287b018e96c4e728a2ca7"
+        },
+        {
+          "new_commit": "3265c13945a9533f9a3ade8d47eb9b32412c4c27",
+          "old_commit": "cd3cda8b1a9ae740d439538cee7aa8faea58d6b9"
+        },
+        {
+          "new_commit": "ec2178c26b1a0b46e162a48a4aa5fd9840c0de59",
+          "old_commit": "3265c13945a9533f9a3ade8d47eb9b32412c4c27"
+        },
+        {
+          "new_commit": "ba2b44928604ac7809259abc6cc18aa1df76dd96",
+          "old_commit": "ec2178c26b1a0b46e162a48a4aa5fd9840c0de59"
+        },
+        {
+          "new_commit": "fb6a7907d2ff9b629a88e79a65ab49ba1861bce3",
+          "old_commit": "ba2b44928604ac7809259abc6cc18aa1df76dd96"
+        },
+        {
+          "new_commit": "1cdbddee3d34cc64430b308811c9ac85f87d997f",
+          "old_commit": "fb6a7907d2ff9b629a88e79a65ab49ba1861bce3"
+        },
+        {
+          "new_commit": "3207be31474530f7c0685dfbd7b4faca5b35fbf5",
+          "old_commit": "1cdbddee3d34cc64430b308811c9ac85f87d997f"
+        },
+        {
+          "new_commit": "902f99c4151d1f0c4c3b8e8dfbafc7b6a76aeaa6",
+          "old_commit": "3207be31474530f7c0685dfbd7b4faca5b35fbf5"
+        },
+        {
+          "new_commit": "c7b559a1fa3aba57ca6dba0ab336841c5038a782",
+          "old_commit": "902f99c4151d1f0c4c3b8e8dfbafc7b6a76aeaa6"
+        }
+      ],
+      "repository": "marshmallow",
+      "requested_pair_count": 10,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 11224,
+        "old_entity_count": 11222,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 2,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/pluggy",
+      "completed_pair_count": 10,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 5,
+        "ground_truth_changed_links": 0,
+        "precision": 0.0,
+        "precision_denominator": 5,
+        "precision_numerator": 0,
+        "predicted_changed_links": 5,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 5,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 2877,
+        "matched_ground_truth_links": 2875,
+        "new_entity_count": 2925,
+        "precision": 0.998264,
+        "precision_denominator": 2880,
+        "precision_numerator": 2875,
+        "predicted_link_count": 2880,
+        "recall": 0.999305,
+        "recall_denominator": 2877,
+        "recall_numerator": 2875,
+        "resolver_ambiguous_count": 2,
+        "resolver_no_link_count": 5,
+        "true_positive_links": 2875
+      },
+      "pairs": [
+        {
+          "new_commit": "85d89dbc6205a63037169488953dca38ba95d1b3",
+          "old_commit": "71137409e4b1d48ceaea83d32e30b65f4d712b34"
+        },
+        {
+          "new_commit": "c1a5f3ea743c462595b77ecb866a70569e25c901",
+          "old_commit": "85d89dbc6205a63037169488953dca38ba95d1b3"
+        },
+        {
+          "new_commit": "9146d198c3bae53c6595640de9e0139797174a09",
+          "old_commit": "c1a5f3ea743c462595b77ecb866a70569e25c901"
+        },
+        {
+          "new_commit": "973b4d53621fb54ad65528d58cd0b9f87ed284e4",
+          "old_commit": "9146d198c3bae53c6595640de9e0139797174a09"
+        },
+        {
+          "new_commit": "cba86adc815a68a09f2765e70ed0cca305cc6ce2",
+          "old_commit": "973b4d53621fb54ad65528d58cd0b9f87ed284e4"
+        },
+        {
+          "new_commit": "735edb0ab69fdd6c4940606e693c098e93583afb",
+          "old_commit": "cba86adc815a68a09f2765e70ed0cca305cc6ce2"
+        },
+        {
+          "new_commit": "8d9ba39497ff3a261eb8a8caedc87551c18b97fc",
+          "old_commit": "735edb0ab69fdd6c4940606e693c098e93583afb"
+        },
+        {
+          "new_commit": "d7d724f88235b07e269c0d48b20db40135463ab1",
+          "old_commit": "8d9ba39497ff3a261eb8a8caedc87551c18b97fc"
+        },
+        {
+          "new_commit": "21bb5d175372aa474b44178b8a0577be1822279e",
+          "old_commit": "d7d724f88235b07e269c0d48b20db40135463ab1"
+        },
+        {
+          "new_commit": "f632a4d1b69e32e210063a91a71ae32fb3ac150c",
+          "old_commit": "21bb5d175372aa474b44178b8a0577be1822279e"
+        }
+      ],
+      "repository": "pluggy",
+      "requested_pair_count": 10,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 5,
+        "new_entity_count": 2925,
+        "old_entity_count": 2922,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 50,
+        "unmatched_new_count": 5,
+        "unmatched_old_count": 2
+      }
+    }
+  ],
+  "deep_four_repository_sample": {
+    "all_links": {
+      "false_positive_links": 5,
+      "ground_truth_ambiguous_count": 1,
+      "ground_truth_link_count": 34295,
+      "matched_ground_truth_links": 34291,
+      "new_entity_count": 34776,
+      "precision": {
+        "denominator": 34296,
+        "numerator": 34291,
+        "value": 0.999854
+      },
+      "predicted_link_count": 34296,
+      "recall": {
+        "denominator": 34295,
+        "numerator": 34291,
+        "value": 0.999883
+      },
+      "resolver_ambiguous_count": 3,
+      "resolver_no_link_count": 10,
+      "true_positive_links": 34291
+    },
+    "changed_only_git_proxy": {
+      "ambiguous_changed_hints": 1,
+      "false_negative_links": 1,
+      "false_positive_links": 5,
+      "ground_truth_changed_links": 1,
+      "precision": {
+        "denominator": 5,
+        "numerator": 0,
+        "value": 0.0
+      },
+      "predicted_changed_links": 5,
+      "recall": {
+        "denominator": 1,
+        "numerator": 0,
+        "value": 0.0
+      },
+      "true_positive_links": 0
+    },
+    "completed_pairs": 40,
+    "infrastructure_errors": 0,
+    "repositories": 4,
+    "requested_pairs": 40
+  },
+  "kind": "MeldraGitIdentityValidation",
+  "latest_by_repository": [
+    {
+      "checkout": "/tmp/meldra-external-corpus/aiohttp",
+      "completed_pair_count": 0,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 2,
+      "infrastructure_errors": [
+        {
+          "message": "ValueError: unsafe git archive member: CHANGES/12618.contrib.rst",
+          "operation": "extract_snapshot",
+          "pair": {
+            "new_commit": "b08408400fc1a3566ea284f7b07cd54543dcd370",
+            "old_commit": "72eaa429cf89b1e20212590f3e704444239569fb"
+          },
+          "returncode": null,
+          "stderr": "",
+          "timed_out": false
+        },
+        {
+          "message": "ValueError: unsafe git archive member: CHANGES/12618.contrib.rst",
+          "operation": "extract_snapshot",
+          "pair": {
+            "new_commit": "b08408400fc1a3566ea284f7b07cd54543dcd370",
+            "old_commit": "72eaa429cf89b1e20212590f3e704444239569fb"
+          },
+          "returncode": null,
+          "stderr": "",
+          "timed_out": false
+        }
+      ],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 0,
+        "matched_ground_truth_links": 0,
+        "new_entity_count": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_link_count": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 0
+      },
+      "pairs": [],
+      "repository": "aiohttp",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 0,
+        "old_entity_count": 0,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/black",
+      "completed_pair_count": 0,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 1,
+      "infrastructure_errors": [
+        {
+          "message": "AnalysisError: tests/data/cases/pep_572_do_not_remove_parens.py:6:6: cannot delete named expression\ntests/data/cases/python315.py:2:6: invalid syntax\ntests/data/cases/type_comment_syntax_error.py:2:13: invalid syntax\ntests/data/miscellaneous/async_as_identifier.py:1:5: invalid syntax\ntests/data/miscellaneous/invalid_header.py:1:19: invalid syntax\ntests/data/miscellaneous/pattern_matching_invalid.py:10:12: invalid syntax\ntests/data/miscellaneous/python2_detection.py:31:2: invalid decimal literal",
+          "operation": "analyze_snapshots",
+          "pair": {
+            "new_commit": "74371e2041a3120a049ced8f1cab0e7a6bc8ecd3",
+            "old_commit": "928f50354512b3857ca07c1085076286035e4a56"
+          },
+          "returncode": null,
+          "stderr": "",
+          "timed_out": false
+        }
+      ],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 0,
+        "matched_ground_truth_links": 0,
+        "new_entity_count": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_link_count": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 0
+      },
+      "pairs": [],
+      "repository": "black",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 0,
+        "old_entity_count": 0,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/celery",
+      "completed_pair_count": 1,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 7831,
+        "matched_ground_truth_links": 7831,
+        "new_entity_count": 7850,
+        "precision": 1.0,
+        "precision_denominator": 7831,
+        "precision_numerator": 7831,
+        "predicted_link_count": 7831,
+        "recall": 1.0,
+        "recall_denominator": 7831,
+        "recall_numerator": 7831,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 2,
+        "true_positive_links": 7831
+      },
+      "pairs": [
+        {
+          "new_commit": "3511be41dbeca8f3c207c997ed9496a656b2a610",
+          "old_commit": "5dc781f0bd5f36186bfcc74e0a4f9f654452c69b"
+        }
+      ],
+      "repository": "celery",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 7850,
+        "old_entity_count": 7848,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 2,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/click",
+      "completed_pair_count": 1,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 1259,
+        "matched_ground_truth_links": 1258,
+        "new_entity_count": 1300,
+        "precision": 1.0,
+        "precision_denominator": 1258,
+        "precision_numerator": 1258,
+        "predicted_link_count": 1258,
+        "recall": 0.999206,
+        "recall_denominator": 1259,
+        "recall_numerator": 1258,
+        "resolver_ambiguous_count": 1,
+        "resolver_no_link_count": 2,
+        "true_positive_links": 1258
+      },
+      "pairs": [
+        {
+          "new_commit": "9c4dfdaebe0e6b2aabc566eb81f6f10eb5cd6ea1",
+          "old_commit": "00e592cea702e0b2caa0dee42489fdb1c22cd845"
+        }
+      ],
+      "repository": "click",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 1300,
+        "old_entity_count": 1299,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 1,
+        "unmatched_new_count": 2,
+        "unmatched_old_count": 1
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/dbt-core",
+      "completed_pair_count": 0,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 2,
+      "infrastructure_errors": [
+        {
+          "message": "ValueError: unsafe git archive member: .claude/skills",
+          "operation": "extract_snapshot",
+          "pair": {
+            "new_commit": "653c19be8b905b7e1954324045497e2a8dbdf317",
+            "old_commit": "2dc450eceef75281cb6a612b32132f7a1411e89b"
+          },
+          "returncode": null,
+          "stderr": "",
+          "timed_out": false
+        },
+        {
+          "message": "ValueError: unsafe git archive member: .claude/skills",
+          "operation": "extract_snapshot",
+          "pair": {
+            "new_commit": "653c19be8b905b7e1954324045497e2a8dbdf317",
+            "old_commit": "2dc450eceef75281cb6a612b32132f7a1411e89b"
+          },
+          "returncode": null,
+          "stderr": "",
+          "timed_out": false
+        }
+      ],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 0,
+        "matched_ground_truth_links": 0,
+        "new_entity_count": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_link_count": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 0
+      },
+      "pairs": [],
+      "repository": "dbt-core",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 0,
+        "old_entity_count": 0,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/fastapi",
+      "completed_pair_count": 1,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 5215,
+        "matched_ground_truth_links": 5215,
+        "new_entity_count": 5215,
+        "precision": 1.0,
+        "precision_denominator": 5215,
+        "precision_numerator": 5215,
+        "predicted_link_count": 5215,
+        "recall": 1.0,
+        "recall_denominator": 5215,
+        "recall_numerator": 5215,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 5215
+      },
+      "pairs": [
+        {
+          "new_commit": "a9134f62683a7df133cd901b748169879e53dac4",
+          "old_commit": "b963df2927e008aca0add5c7dfa50d75771b7868"
+        }
+      ],
+      "repository": "fastapi",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 5215,
+        "old_entity_count": 5215,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/flask",
+      "completed_pair_count": 1,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 1,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 1,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": 0.0,
+        "recall_denominator": 1,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 892,
+        "matched_ground_truth_links": 891,
+        "new_entity_count": 917,
+        "precision": 1.0,
+        "precision_denominator": 891,
+        "precision_numerator": 891,
+        "predicted_link_count": 891,
+        "recall": 0.998879,
+        "recall_denominator": 892,
+        "recall_numerator": 891,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 1,
+        "true_positive_links": 891
+      },
+      "pairs": [
+        {
+          "new_commit": "6a2f545bfd8ed31e19066a299296917e034aca58",
+          "old_commit": "36e4a824f340fdee7ed50937ba8e7f6bc7d17f81"
+        }
+      ],
+      "repository": "flask",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 1,
+        "new_entity_count": 917,
+        "old_entity_count": 918,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 1,
+        "unmatched_old_count": 2
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/httpx",
+      "completed_pair_count": 1,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 1132,
+        "matched_ground_truth_links": 1132,
+        "new_entity_count": 1144,
+        "precision": 1.0,
+        "precision_denominator": 1132,
+        "precision_numerator": 1132,
+        "predicted_link_count": 1132,
+        "recall": 1.0,
+        "recall_denominator": 1132,
+        "recall_numerator": 1132,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 1132
+      },
+      "pairs": [
+        {
+          "new_commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+          "old_commit": "ae1b9f66238f75ced3ced5e4485408435de10768"
+        }
+      ],
+      "repository": "httpx",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 1144,
+        "old_entity_count": 1144,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/kedro",
+      "completed_pair_count": 0,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 1,
+      "infrastructure_errors": [
+        {
+          "message": "AnalysisError: features/test_starter/{{ cookiecutter.repo_name }}/docs/source/conf.py:20:6: invalid syntax\nkedro/templates/project/{{ cookiecutter.repo_name }}/docs/source/conf.py:26:6: invalid syntax",
+          "operation": "analyze_snapshots",
+          "pair": {
+            "new_commit": "7c8ec55bab549f7499e06c50a8b82db390347dec",
+            "old_commit": "c80b8c57df188cc1fb5ccddb531830f9e1cd9132"
+          },
+          "returncode": null,
+          "stderr": "",
+          "timed_out": false
+        }
+      ],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 0,
+        "matched_ground_truth_links": 0,
+        "new_entity_count": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_link_count": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 0
+      },
+      "pairs": [],
+      "repository": "kedro",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 0,
+        "old_entity_count": 0,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/locust",
+      "completed_pair_count": 1,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 1785,
+        "matched_ground_truth_links": 1785,
+        "new_entity_count": 1789,
+        "precision": 1.0,
+        "precision_denominator": 1785,
+        "precision_numerator": 1785,
+        "predicted_link_count": 1785,
+        "recall": 1.0,
+        "recall_denominator": 1785,
+        "recall_numerator": 1785,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 1785
+      },
+      "pairs": [
+        {
+          "new_commit": "6272527fbc4c692a00ee9851878ccbe085b31735",
+          "old_commit": "67ee4400360dc6655a729e5de89e6a099f38e9db"
+        }
+      ],
+      "repository": "locust",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 1789,
+        "old_entity_count": 1789,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/marshmallow",
+      "completed_pair_count": 1,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 1117,
+        "matched_ground_truth_links": 1117,
+        "new_entity_count": 1123,
+        "precision": 1.0,
+        "precision_denominator": 1117,
+        "precision_numerator": 1117,
+        "predicted_link_count": 1117,
+        "recall": 1.0,
+        "recall_denominator": 1117,
+        "recall_numerator": 1117,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 1117
+      },
+      "pairs": [
+        {
+          "new_commit": "c7b559a1fa3aba57ca6dba0ab336841c5038a782",
+          "old_commit": "902f99c4151d1f0c4c3b8e8dfbafc7b6a76aeaa6"
+        }
+      ],
+      "repository": "marshmallow",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 1123,
+        "old_entity_count": 1123,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/pluggy",
+      "completed_pair_count": 1,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 290,
+        "matched_ground_truth_links": 290,
+        "new_entity_count": 294,
+        "precision": 1.0,
+        "precision_denominator": 290,
+        "precision_numerator": 290,
+        "predicted_link_count": 290,
+        "recall": 1.0,
+        "recall_denominator": 290,
+        "recall_numerator": 290,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 290
+      },
+      "pairs": [
+        {
+          "new_commit": "f632a4d1b69e32e210063a91a71ae32fb3ac150c",
+          "old_commit": "21bb5d175372aa474b44178b8a0577be1822279e"
+        }
+      ],
+      "repository": "pluggy",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 294,
+        "old_entity_count": 294,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/pytest",
+      "completed_pair_count": 1,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 6127,
+        "matched_ground_truth_links": 6127,
+        "new_entity_count": 6187,
+        "precision": 1.0,
+        "precision_denominator": 6127,
+        "precision_numerator": 6127,
+        "predicted_link_count": 6127,
+        "recall": 1.0,
+        "recall_denominator": 6127,
+        "recall_numerator": 6127,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 6127
+      },
+      "pairs": [
+        {
+          "new_commit": "ecade5a6c120732f94126c806c40bee12c98398a",
+          "old_commit": "cb957123887dc45ace38f9adf9ffa679036a40fe"
+        }
+      ],
+      "repository": "pytest",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 6187,
+        "old_entity_count": 6187,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/python-telegram-bot",
+      "completed_pair_count": 1,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 6932,
+        "matched_ground_truth_links": 6932,
+        "new_entity_count": 7005,
+        "precision": 1.0,
+        "precision_denominator": 6932,
+        "precision_numerator": 6932,
+        "predicted_link_count": 6932,
+        "recall": 1.0,
+        "recall_denominator": 6932,
+        "recall_numerator": 6932,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 6932
+      },
+      "pairs": [
+        {
+          "new_commit": "377f5effb3afc2d9b1e7e1de1b908b26cc87fd17",
+          "old_commit": "062b052556fe6b01c99a6eafe60298c7ba97988b"
+        }
+      ],
+      "repository": "python-telegram-bot",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 7005,
+        "old_entity_count": 7005,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/requests",
+      "completed_pair_count": 0,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 2,
+      "infrastructure_errors": [
+        {
+          "message": "ValueError: unsafe git archive member: tests/certs/mtls/client/ca",
+          "operation": "extract_snapshot",
+          "pair": {
+            "new_commit": "1f6589ec3a1ee910f9a65cc3ceac60b26677bc0e",
+            "old_commit": "414f0513c33883adf6f2b46901d4f0b38a455851"
+          },
+          "returncode": null,
+          "stderr": "",
+          "timed_out": false
+        },
+        {
+          "message": "ValueError: unsafe git archive member: tests/certs/mtls/client/ca",
+          "operation": "extract_snapshot",
+          "pair": {
+            "new_commit": "1f6589ec3a1ee910f9a65cc3ceac60b26677bc0e",
+            "old_commit": "414f0513c33883adf6f2b46901d4f0b38a455851"
+          },
+          "returncode": null,
+          "stderr": "",
+          "timed_out": false
+        }
+      ],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 0,
+        "matched_ground_truth_links": 0,
+        "new_entity_count": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_link_count": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 0
+      },
+      "pairs": [],
+      "repository": "requests",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 0,
+        "old_entity_count": 0,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/rich",
+      "completed_pair_count": 1,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 1838,
+        "matched_ground_truth_links": 1838,
+        "new_entity_count": 1863,
+        "precision": 1.0,
+        "precision_denominator": 1838,
+        "precision_numerator": 1838,
+        "predicted_link_count": 1838,
+        "recall": 1.0,
+        "recall_denominator": 1838,
+        "recall_numerator": 1838,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 1838
+      },
+      "pairs": [
+        {
+          "new_commit": "9d8f9a372cc5916fd4781fec207ced7ddac2f08f",
+          "old_commit": "46cebbb032f920eb096efbaf23cdc6fe9dd541f7"
+        }
+      ],
+      "repository": "rich",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 1863,
+        "old_entity_count": 1863,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/scrapy",
+      "completed_pair_count": 1,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 6286,
+        "matched_ground_truth_links": 6284,
+        "new_entity_count": 6331,
+        "precision": 1.0,
+        "precision_denominator": 6284,
+        "precision_numerator": 6284,
+        "predicted_link_count": 6284,
+        "recall": 0.999682,
+        "recall_denominator": 6286,
+        "recall_numerator": 6284,
+        "resolver_ambiguous_count": 2,
+        "resolver_no_link_count": 2,
+        "true_positive_links": 6284
+      },
+      "pairs": [
+        {
+          "new_commit": "fe96c1f54b8f635e9274a854214b07887b9d8d61",
+          "old_commit": "4cc23566377f83665b615837b1a3178b157d25d0"
+        }
+      ],
+      "repository": "scrapy",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 2,
+        "new_entity_count": 6331,
+        "old_entity_count": 6331,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 2,
+        "unmatched_new_count": 2,
+        "unmatched_old_count": 2
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/sqlalchemy",
+      "completed_pair_count": 1,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 29862,
+        "matched_ground_truth_links": 29862,
+        "new_entity_count": 30340,
+        "precision": 1.0,
+        "precision_denominator": 29862,
+        "precision_numerator": 29862,
+        "predicted_link_count": 29862,
+        "recall": 1.0,
+        "recall_denominator": 29862,
+        "recall_numerator": 29862,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 29862
+      },
+      "pairs": [
+        {
+          "new_commit": "5995834ee06fc5cae45f86992d778fd5357c08ee",
+          "old_commit": "dc6a8b18a5bcda653e34aab2a70c7469dcd4300d"
+        }
+      ],
+      "repository": "sqlalchemy",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 30340,
+        "old_entity_count": 30340,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/starlette",
+      "completed_pair_count": 1,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 1301,
+        "matched_ground_truth_links": 1301,
+        "new_entity_count": 1310,
+        "precision": 1.0,
+        "precision_denominator": 1301,
+        "precision_numerator": 1301,
+        "predicted_link_count": 1301,
+        "recall": 1.0,
+        "recall_denominator": 1301,
+        "recall_numerator": 1301,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 1301
+      },
+      "pairs": [
+        {
+          "new_commit": "398e5a3430eb1ddd33e1d48d766efe41426e231f",
+          "old_commit": "4f250d6b814587e20c5365f0a5f0c4d42bcb929f"
+        }
+      ],
+      "repository": "starlette",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 1310,
+        "old_entity_count": 1310,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    },
+    {
+      "checkout": "/tmp/meldra-external-corpus/typer",
+      "completed_pair_count": 1,
+      "evolved_identity_metrics": {
+        "ambiguous_changed_hints": 0,
+        "false_negative_links": 0,
+        "false_positive_links": 0,
+        "ground_truth_changed_links": 0,
+        "precision": null,
+        "precision_denominator": 0,
+        "precision_numerator": 0,
+        "predicted_changed_links": 0,
+        "recall": null,
+        "recall_denominator": 0,
+        "recall_numerator": 0,
+        "true_positive_links": 0
+      },
+      "infrastructure_error_count": 0,
+      "infrastructure_errors": [],
+      "metrics": {
+        "false_positive_links": 0,
+        "ground_truth_ambiguous_count": 0,
+        "ground_truth_link_count": 2132,
+        "matched_ground_truth_links": 2132,
+        "new_entity_count": 2144,
+        "precision": 1.0,
+        "precision_denominator": 2132,
+        "precision_numerator": 2132,
+        "predicted_link_count": 2132,
+        "recall": 1.0,
+        "recall_denominator": 2132,
+        "recall_numerator": 2132,
+        "resolver_ambiguous_count": 0,
+        "resolver_no_link_count": 0,
+        "true_positive_links": 2132
+      },
+      "pairs": [
+        {
+          "new_commit": "361bdd822dd5eafc9c2e3e55ed3a94b746a39aa6",
+          "old_commit": "5c581176927c15e483bb7665063d31a2378770b8"
+        }
+      ],
+      "repository": "typer",
+      "requested_pair_count": 1,
+      "split_merge_hypotheses": {
+        "candidates": [],
+        "merge_candidate_count": 0,
+        "merge_groups_assessed": 0,
+        "new_entity_count": 2144,
+        "old_entity_count": 2144,
+        "split_candidate_count": 0,
+        "split_groups_assessed": 0,
+        "unmatched_new_count": 0,
+        "unmatched_old_count": 0
+      }
+    }
+  ],
+  "latest_first_parent_sample": {
+    "all_links": {
+      "false_positive_links": 0,
+      "ground_truth_ambiguous_count": 0,
+      "ground_truth_link_count": 73999,
+      "matched_ground_truth_links": 73995,
+      "new_entity_count": 74812,
+      "precision": {
+        "denominator": 73995,
+        "numerator": 73995,
+        "value": 1.0
+      },
+      "predicted_link_count": 73995,
+      "recall": {
+        "denominator": 73999,
+        "numerator": 73995,
+        "value": 0.999946
+      },
+      "resolver_ambiguous_count": 3,
+      "resolver_no_link_count": 7,
+      "true_positive_links": 73995
+    },
+    "changed_only": {
+      "ambiguous_changed_hints": 0,
+      "false_negative_links": 1,
+      "false_positive_links": 0,
+      "ground_truth_changed_links": 1,
+      "precision": {
+        "denominator": 0,
+        "numerator": 0,
+        "value": null
+      },
+      "predicted_changed_links": 0,
+      "recall": {
+        "denominator": 1,
+        "numerator": 0,
+        "value": 0.0
+      },
+      "true_positive_links": 0
+    },
+    "completed_pairs": 15,
+    "infrastructure_errors": 8,
+    "repositories": 20,
+    "requested_pairs": 20
+  },
+  "manual_audit_artifact": "tools/benchmarks/merlo/benchmarks/meldra_identity_manual_audit.json",
+  "metric_policy": "Preserved same-address links are reported separately and are not evidence for rename/move identity precision.",
+  "schema": 1
+}
