@@ -573,7 +573,7 @@ def _strict_admission(program: IndependentProgram) -> tuple[bool, tuple[str, ...
 
 def run_independent_corpus(root: str | Path = ".") -> IndependentCorpusReport:
     root_path = Path(root)
-    lock = verify_independent_corpus_lock(root_path)
+    verify_independent_corpus_lock(root_path)
     protocol = assert_stage04e_protocol(root_path)
     programs = load_independent_programs(root_path)
     python_program_passes = 0

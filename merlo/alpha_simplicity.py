@@ -114,7 +114,7 @@ def _check_expected(record: AlphaRecord) -> None:
         raise CorpusError(f"{record.id}: expected stdout must be newline terminated text")
     if expected["returncode"] != 0:
         raise CorpusError(f"{record.id}: only successful standalone examples are admissible")
-    if f'print(main())' not in record.python or "__main__" not in record.python:
+    if "print(main())" not in record.python or "__main__" not in record.python:
         raise CorpusError(f"{record.id}: Python arm is not independently executable")
     if "int main" not in record.native:
         raise CorpusError(f"{record.id}: native arm is not independently executable")

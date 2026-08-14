@@ -144,7 +144,6 @@ def run_hypothesis_experiment() -> HypothesisReport:
                 meldra_false_safe += int(plan.ready)
 
     baseline_precision = _ratio(baseline_tp, baseline_predicted)
-    baseline_recall = _ratio(baseline_tp, baseline_expected)
     baseline_fsr = _ratio(baseline_false_safe, baseline_unsafe)
     meldra_precision = _ratio(meldra_tp, meldra_predicted)
     meldra_recall = _ratio(meldra_tp, meldra_expected)

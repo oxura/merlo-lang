@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any
 
 from .frontend_evaluator import EvaluationError, ReferenceEvaluator
 from .frontend_semantics import FrontendCheckResult, check_frontend

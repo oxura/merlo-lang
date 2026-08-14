@@ -2377,7 +2377,6 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         self.return_ordinal += 1
         result_name = f"__merlo_return_{self.return_ordinal}"
         lines: list[str] = []
-        return_descriptor = self.descriptors.get(self.current_function.return_type)
         self.returning_borrowed = (
             self._contains_borrow(self.current_function.return_type)
         )

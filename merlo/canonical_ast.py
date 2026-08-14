@@ -4,6 +4,7 @@ import ast
 import hashlib
 import json
 from dataclasses import dataclass, field
+from typing import Any
 
 from .surface_ast import SourceSpan
 

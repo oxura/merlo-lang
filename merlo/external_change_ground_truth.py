@@ -7,7 +7,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
-from .external_bench import ExternalBenchmarkManifest, ExternalTaskSpec
+from .external_bench import ExternalBenchmarkManifest
 
 
 CHANGE_REVIEW_SCHEMA_VERSION = 1

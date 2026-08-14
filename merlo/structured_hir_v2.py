@@ -13,7 +13,8 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from .ffi import FFICompileError, FFIProgram, parse_ffi_declarations, validate_ffi
+from typing import Any, Iterable
+from .ffi import FFICompileError, FFIProgram, validate_ffi
 from .canonical_ast import CanonicalProgram
 from .type_parser import generic_parts, parse_type, validate_type_expr
 
@@ -719,7 +720,6 @@ class _OwnershipChecker:
             self._check_expr(node.slice, state)
             return self._expr_type(node, expected)
         if isinstance(node, ast.Call):
-            name = node.func.id if isinstance(node.func, ast.Name) else ast.unparse(node.func)
             if isinstance(node.func, ast.Name) and node.func.id == "drop":
                 if len(node.args) != 1 or not isinstance(node.args[0], ast.Name):
                     self._error("InvalidDrop")
@@ -747,10 +747,8 @@ class _OwnershipChecker:
                 self._check_name(receiver_root, state)
             if receiver is not None:
                 self._check_expr(receiver, state)
-            argument_types = [
+            for argument in node.args:
                 self._check_expr(argument, state)
-                for argument in node.args
-            ]
             if isinstance(node.func, ast.Name) and node.func.id in self.functions:
                 callee = self.functions[node.func.id]
                 for argument, parameter in zip(node.args, callee.args.args):
@@ -1197,9 +1195,9 @@ class _HIRBuilder:
         if owner in self.types:
             declaration = self.types[owner]
             if declaration.kind == "record":
-                for field in declaration.fields:
-                    if field.name == field_name:
-                        return field.type_name
+                for member in declaration.fields:
+                    if member.name == field_name:
+                        return member.type_name
         return None
 
     def _result_parts(self, type_name: str) -> tuple[str, str] | None:

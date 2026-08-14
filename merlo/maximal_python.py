@@ -9,9 +9,9 @@ import os
 import subprocess
 import sys
 import tempfile
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any, Callable, Iterable, Mapping
 
 from .model import EditCapability
 from .python_binder import PythonBindingReport, bind_python_sources

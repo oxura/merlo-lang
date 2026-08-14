@@ -1,7 +1,7 @@
 from __future__ import annotations
 import hashlib
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from typing import Iterable
 
 from .canonical_ast import (

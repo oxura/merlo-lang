@@ -16,7 +16,6 @@ from merlo import (
     changes_conflict,
     compose_changes,
 )
-from merlo.evolution import ChangeBlocked
 from merlo.world import WorldError
 
 

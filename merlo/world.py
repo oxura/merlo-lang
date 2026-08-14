@@ -6,7 +6,7 @@ import tempfile
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from .analyzer import scan_python
 from .evidence import rebind_evidence, validate_evidence
@@ -19,6 +19,7 @@ from .evolution import (
 from .model import (
     ChangePlan,
     EditCapability,
+    Entity,
     Evidence,
     IdentityHint,
     IdentityStatus,

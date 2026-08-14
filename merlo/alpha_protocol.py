@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from .refactor import RefactorTransaction, preview_change_signature, preview_move, preview_rename
+from .refactor import preview_change_signature, preview_move, preview_rename
 from .semantic_world import SemanticWorld, WorldError
 
 

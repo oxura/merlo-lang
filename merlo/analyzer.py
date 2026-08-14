@@ -19,7 +19,6 @@ from .model import (
     Entity,
     FileSnapshot,
     IdentityHint,
-    IdentityRelation,
     IdentityStatus,
     Position,
     ProgramIR,

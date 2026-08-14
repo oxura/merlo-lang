@@ -10,7 +10,6 @@ import random
 import subprocess
 import sys
 import tempfile
-from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -432,7 +431,6 @@ def _nested_source(index: int) -> str:
     depth = 1 + index % 32
     expression = "value"
     for level in range(depth):
-        indent = "    " * (level + 1)
         inner = expression.replace("\n", "\n    ")
         expression = (
             f"if value > {level}:\n"
@@ -663,7 +661,7 @@ def run_determinism_checks(root: str | Path = ".") -> DeterminismMeasurement:
 
 def run_frontend_hardening(root: str | Path = ".") -> FrontendHardeningReport:
     root_path = Path(root)
-    lock = verify_independent_corpus_lock(root_path)
+    verify_independent_corpus_lock(root_path)
     protocol = assert_stage04e_protocol(root_path)
     differential = run_differential_semantics(root_path)
     metamorphic_checks, metamorphic_passes = run_metamorphic_revision_checks()

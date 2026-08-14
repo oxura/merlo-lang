@@ -28,12 +28,10 @@ from .concise_precedence import (
 )
 from .native_c_backend import compile_c_source
 from .semantic_surface import SemanticSurfaceError, compile_semantic_surface
-from .representation_c_backend import emit_general_c
 from .structured_hir_v2 import compile_structured_hir
 from .representation_ir import lower_structured_hir_to_rir
 from .representation_mir import (
     lower_rir_to_performance_mir,
-    optimize_general_mir,
 )
 
 

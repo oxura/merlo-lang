@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping
 
 from .core_semantics import CoreProgram, CoreWorld, compile_core
@@ -12,14 +12,12 @@ from .frontend_syntax import (
     Declaration,
     Expression,
     FrontendSyntaxError,
-    MatchArm,
     Member,
     ModuleSyntax,
     Parameter,
     SourceCST,
     SourceSpan,
     Statement,
-    UseDeclaration,
     parse_source,
 )
 

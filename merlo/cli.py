@@ -14,7 +14,8 @@ from .core_bench import run_core_benchmark
 from .formatter import format_application_source
 from .experiment import run_hypothesis_experiment
 from .frontend_bench import run_frontend_benchmark
-from .frontend_evaluator import EvaluationError, ReferenceEvaluator
+from .docgen import generate_documentation, write_documentation
+from .frontend_evaluator import ReferenceEvaluator
 from .frontend_semantics import check_frontend, compile_frontend
 from .project import Project
 from .semantic_world import SemanticWorld

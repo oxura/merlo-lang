@@ -11,14 +11,13 @@ from typing import Any, Mapping
 
 from .package import (
     Dependency,
-    GitDependencyError,
     LockfileError,
     Package,
     PackageError,
     package_from_root,
     resolve_git_package,
 )
-from .version import VERSIONS, CompilerVersions
+from .version import VERSIONS
 
 MANIFEST_SCHEMA_VERSION = 1
 LOCKFILE_SCHEMA_VERSION = 1

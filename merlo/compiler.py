@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
@@ -24,7 +23,6 @@ from .representation_mir import (
 from .structured_hir_v2 import (
     StructuredHIRProgram,
     compile_canonical_hir,
-    compile_structured_hir,
 )
 from .version import VERSIONS, CompilerVersions
 

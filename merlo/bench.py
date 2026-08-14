@@ -5,7 +5,7 @@ import tempfile
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from .analyzer import scan_python
 from .model import EditCapability

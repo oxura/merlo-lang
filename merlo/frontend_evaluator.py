@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Mapping, Sequence
 
 from .frontend_semantics import FrontendCompilation, HIRLocalBinding, HIRReference, HIRSymbol
-from .frontend_syntax import Declaration, Expression, MatchArm, Member, Statement
+from .frontend_syntax import Declaration, Expression, Member, Statement
 
 
 class EvaluationError(RuntimeError):

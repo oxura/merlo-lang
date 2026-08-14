@@ -7,7 +7,7 @@ import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Mapping
 
 
 FRONTEND_SYNTAX_SCHEMA_VERSION = 1

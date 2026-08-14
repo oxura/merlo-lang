@@ -12,7 +12,7 @@ import statistics
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
 from .frontend_bench import generate_paired_corpus
 from .frontend_semantics import check_frontend

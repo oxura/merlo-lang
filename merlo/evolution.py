@@ -1669,7 +1669,6 @@ def _call_argument_insertion(
     assert span is not None
     path = Path(program.root) / edge.file
     source = path.read_text(encoding="utf-8").removeprefix("\ufeff")
-    offsets = _line_offsets(source)
     call_text = _extract_span(source, span)
     close = Position(span.end.line, span.end.column - 1)
     before_close = call_text[:-1].rstrip()
