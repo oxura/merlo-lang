@@ -6,8 +6,10 @@ import pytest
 
 from merlo.concise_application import (
     ConciseApplicationError,
+    _preprocess_core,
     elaborate_concise_application,
     elaborate_concise_core,
+    lower_concise_sum_types,
     write_interface_lock,
 )
 from merlo.concise_precedence import validate_precedence_corpus
@@ -44,6 +46,104 @@ def test_dynamic_any_is_structural_not_textual() -> None:
 
     with pytest.raises(ConciseApplicationError, match="DynamicAnyForbidden"):
         expand_source("fn identity(value: Any) -> Any:\n    value\n")
+
+
+def test_preprocess_rewrites_literals_only_in_code_tokens() -> None:
+    source = (
+        'fn text() -> Text:\n'
+        '    return "true false Option.None"\n'
+        "fn escaped() -> Text:\n"
+        "    return 'escaped \\'true\\' false Option.None'\n"
+        'fn payload() -> Bytes:\n'
+        '    # true false Option.None\n'
+        '    return b"true false Option.None"\n'
+        'fn flags() -> Bool:\n'
+        '    return true\n'
+        'fn option() -> Option[UInt64]:\n'
+        '    return Option.None\n'
+    )
+
+    rewritten = _preprocess_core(source)
+
+    assert 'return "true false Option.None"' in rewritten
+    assert "return 'escaped \\'true\\' false Option.None'" in rewritten
+    assert '    # true false Option.None' in rewritten
+    assert 'return b"true false Option.None"' in rewritten
+    assert "return True" in rewritten
+    assert "return Option.NoneValue" in rewritten
+    assert len(rewritten.splitlines()) == len(source.splitlines())
+
+
+def test_preprocess_does_not_rewrite_larger_identifiers() -> None:
+    source = (
+        "fn names() -> Text:\n"
+        "    return trueish\n"
+        "fn other_names() -> Text:\n"
+        "    return false_value\n"
+        "fn qualified() -> Text:\n"
+        "    return Option.NoneValueish\n"
+    )
+
+    rewritten = _preprocess_core(source)
+
+    assert "return trueish" in rewritten
+    assert "return false_value" in rewritten
+    assert "return Option.NoneValueish" in rewritten
+
+
+def test_multiline_literals_stay_opaque_to_preprocess_rewrites() -> None:
+    source = (
+        'fn payload() -> Text:\n'
+        '    return r"""\n'
+        'fn marker():\n'
+        'Name?\n'
+        'Option.None\n'
+        'trailing and\n'
+        '"""\n'
+    )
+
+    rewritten = _preprocess_core(source)
+
+    assert 'fn marker():' in rewritten
+    assert 'Name?' in rewritten
+    assert 'Option.None' in rewritten
+    assert 'trailing and' in rewritten
+    assert 'trailing and\n"""' in rewritten
+    assert len(rewritten.splitlines()) == len(source.splitlines())
+
+
+def test_multiline_literals_stay_opaque_to_sum_lowering() -> None:
+    source = (
+        'fn payload() -> Option[UInt64]:\n'
+        '    return br"""\n'
+        'Result.Ok(\n'
+        'Option.Some(\n'
+        'Option.None\n'
+        '"""\n'
+    )
+
+    lowered = lower_concise_sum_types(source)
+
+    assert 'Result.Ok(' in lowered
+    assert 'Option.Some(' in lowered
+    assert 'Option.None' in lowered
+
+
+def test_sum_type_normalization_ignores_strings_and_comments() -> None:
+    literal_only = (
+        'fn payload() -> Text:\n'
+        '    return "Option[ UInt64 ]"\n'
+        '    # Result[ Text, AppError ]\n'
+    )
+    assert lower_concise_sum_types(literal_only) == literal_only
+
+    mixed = (
+        'fn payload() -> Option[ UInt64 ]:\n'
+        '    return "Option[ UInt64 ]"\n'
+    )
+    lowered = lower_concise_sum_types(mixed)
+    assert 'return "Option[ UInt64 ]"' in lowered
+    assert "fn payload() -> Option_UInt64_:" in lowered
 
 
 def test_ambiguous_and_bool_numeric_programs_are_rejected() -> None:
