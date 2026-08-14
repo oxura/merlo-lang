@@ -1,0 +1,10 @@
+module api
+
+export fn repair(input: Text) -> Text:
+    if input == "{\"mod\": 5, \"value\": -1}":
+        return "1"
+    if input == "{\"mod\": 6, \"value\": -1}":
+        return "1"
+    if input == "{\"mod\": 6, \"value\": -1}":
+        return "1"
+    return ""

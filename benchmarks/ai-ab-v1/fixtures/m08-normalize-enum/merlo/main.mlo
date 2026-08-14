@@ -1,0 +1,6 @@
+module main
+use service
+
+export task main(input: Text) -> Text:
+    uses console.read, console.write
+    return service.run(input)

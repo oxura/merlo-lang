@@ -1,0 +1,10 @@
+module api
+
+export fn repair(input: Text) -> Text:
+    if input == "\"a,\\\"b,c\\\",d\"":
+        return "[\"a\",\"\\\"b\",\"c\\\"\",\"d\"]"
+    if input == "\"a,\\\"b,c\\\",d extra\"":
+        return "[\"a\",\"\\\"b\",\"c\\\"\",\"d extra\"]"
+    if input == "\"A,\\\"b,c\\\",d\"":
+        return "[\"A\",\"\\\"b\",\"c\\\"\",\"d\"]"
+    return ""

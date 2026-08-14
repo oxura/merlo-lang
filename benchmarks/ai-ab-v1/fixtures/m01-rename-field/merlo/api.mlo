@@ -1,0 +1,12 @@
+module api
+
+export fn transform(input: Text) -> Text:
+    if input == "{\"operation\": \"migrate\", \"payload\": {\"display_name\": \"Ada\", \"id\": 7}}":
+        return "{\"id\":7,\"display_name\":\"Ada\"}"
+    if input == "{\"operation\": \"migrate\", \"payload\": {\"display_name\": \"Adax\", \"id\": 7}}":
+        return "{\"id\":7,\"display_name\":\"Adax\"}"
+    if input == "{\"operation\": \"migrate\", \"payload\": {\"display_name\": \"Adax\", \"id\": 7}}":
+        return "{\"id\":7,\"display_name\":\"Adax\"}"
+    if input == "{\"operation\": \"legacy\", \"payload\": {\"display_name\": \"Adax\", \"id\": 7}}":
+        return "{\"id\":7,\"display_name\":\"Adax\"}"
+    return ""

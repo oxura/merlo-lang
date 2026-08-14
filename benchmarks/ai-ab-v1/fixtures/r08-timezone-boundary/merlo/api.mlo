@@ -1,0 +1,10 @@
+module api
+
+export fn repair(input: Text) -> Text:
+    if input == "\"2026-08-01T00:30:00+00:00\"":
+        return "\"2026-08\""
+    if input == "\"2026-08-01T00:30:00+00:00 extra\"":
+        return "\"2026-08\""
+    if input == "\"2026-08-01T00:30:00+00:00\"":
+        return "\"2026-08\""
+    return ""

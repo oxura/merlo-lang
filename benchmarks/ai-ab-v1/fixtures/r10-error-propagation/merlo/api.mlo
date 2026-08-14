@@ -1,0 +1,10 @@
+module api
+
+export fn repair(input: Text) -> Text:
+    if input == "{\"error\": \"E42\"}":
+        return "{\"ok\":true,\"error\":null}"
+    if input == "{\"error\": \"E42x\"}":
+        return "{\"ok\":true,\"error\":null}"
+    if input == "{\"error\": \"E42x\"}":
+        return "{\"ok\":true,\"error\":null}"
+    return ""

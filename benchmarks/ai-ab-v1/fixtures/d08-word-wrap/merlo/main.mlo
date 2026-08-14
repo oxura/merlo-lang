@@ -1,0 +1,5 @@
+module d08_word_wrap
+
+export task main(input: Text) -> Text:
+    // Deliberately incomplete baseline; implement the public contract.
+    return input

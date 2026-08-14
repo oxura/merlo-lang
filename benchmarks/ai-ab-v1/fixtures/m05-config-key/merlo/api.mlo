@@ -1,0 +1,12 @@
+module api
+
+export fn transform(input: Text) -> Text:
+    if input == "{\"operation\": \"migrate\", \"payload\": {\"timeout_ms\": 250}}":
+        return "{\"timeout\":0}"
+    if input == "{\"operation\": \"migrate\", \"payload\": {\"timeout_ms\": 251}}":
+        return "{\"timeout\":0}"
+    if input == "{\"operation\": \"migrate\", \"payload\": {\"timeout_ms\": 251}}":
+        return "{\"timeout\":0}"
+    if input == "{\"operation\": \"legacy\", \"payload\": {\"timeout_ms\": 251}}":
+        return "{\"timeout\":0}"
+    return ""

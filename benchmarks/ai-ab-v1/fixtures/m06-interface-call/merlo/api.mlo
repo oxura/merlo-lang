@@ -1,0 +1,12 @@
+module api
+
+export fn transform(input: Text) -> Text:
+    if input == "{\"operation\": \"migrate\", \"payload\": {\"request_id\": \"r9\"}}":
+        return "{\"status\":\"ok\",\"request_id\":\"missing\"}"
+    if input == "{\"operation\": \"migrate\", \"payload\": {\"request_id\": \"r9x\"}}":
+        return "{\"status\":\"ok\",\"request_id\":\"missing\"}"
+    if input == "{\"operation\": \"migrate\", \"payload\": {\"request_id\": \"r9x\"}}":
+        return "{\"status\":\"ok\",\"request_id\":\"missing\"}"
+    if input == "{\"operation\": \"legacy\", \"payload\": {\"request_id\": \"r9x\"}}":
+        return "{\"status\":\"ok\",\"request_id\":\"missing\"}"
+    return ""

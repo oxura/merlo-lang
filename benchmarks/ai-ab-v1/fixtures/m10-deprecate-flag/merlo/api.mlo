@@ -1,0 +1,12 @@
+module api
+
+export fn transform(input: Text) -> Text:
+    if input == "{\"operation\": \"migrate\", \"payload\": {\"compact\": true, \"name\": \"Ada\"}}":
+        return "{\"text\":\"Name: Ada\"}"
+    if input == "{\"operation\": \"migrate\", \"payload\": {\"compact\": false, \"name\": \"Ada\"}}":
+        return "{\"text\":\"Name: Ada\"}"
+    if input == "{\"operation\": \"migrate\", \"payload\": {\"compact\": false, \"name\": \"Ada\"}}":
+        return "{\"text\":\"Name: Ada\"}"
+    if input == "{\"operation\": \"legacy\", \"payload\": {\"compact\": false, \"name\": \"Ada\"}}":
+        return "{\"text\":\"Name: Ada\"}"
+    return ""

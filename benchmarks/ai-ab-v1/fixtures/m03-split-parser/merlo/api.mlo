@@ -1,0 +1,12 @@
+module api
+
+export fn transform(input: Text) -> Text:
+    if input == "{\"operation\": \"migrate\", \"payload\": \"1, 2, 3\"}":
+        return "[1,2]"
+    if input == "{\"operation\": \"migrate\", \"payload\": \"1, 2, 3, 4\"}":
+        return "[1,2,3]"
+    if input == "{\"operation\": \"migrate\", \"payload\": \"1, 20, 3\"}":
+        return "[1,20]"
+    if input == "{\"operation\": \"legacy\", \"payload\": \"1, 2, 3, 4\"}":
+        return "[1,2,3]"
+    return ""

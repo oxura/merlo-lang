@@ -1,0 +1,10 @@
+module api
+
+export fn repair(input: Text) -> Text:
+    if input == "\"a=1\\na=2\\n\"":
+        return "{\"a\":\"1\"}"
+    if input == "\"a=1\\na=2\\nb=3\\n\"":
+        return "{\"a\":\"1\",\"b\":\"3\"}"
+    if input == "\"x=1\\na=2\\n\"":
+        return "{\"x\":\"1\",\"a\":\"2\"}"
+    return ""
