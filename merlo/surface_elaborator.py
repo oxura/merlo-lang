@@ -45,7 +45,7 @@ from .surface_ast import (
     SurfaceUnary,
     SurfaceWhile,
 )
-
+from .type_parser import generic_parts, parse_type
 
 class SurfaceElaborationError(ValueError):
     pass
@@ -61,23 +61,7 @@ _HOST_CALLS = {
 
 
 def _generic_parts(type_name: str, constructor: str) -> tuple[str, ...] | None:
-    prefix = f"{constructor}["
-    if not type_name.startswith(prefix) or not type_name.endswith("]"):
-        return None
-    body = type_name[len(prefix):-1]
-    parts: list[str] = []
-    start = 0
-    depth = 0
-    for index, character in enumerate(body):
-        if character == "[":
-            depth += 1
-        elif character == "]":
-            depth -= 1
-        elif character == "," and depth == 0:
-            parts.append(body[start:index].strip())
-            start = index + 1
-    parts.append(body[start:].strip())
-    return tuple(parts)
+    return generic_parts(type_name, constructor)
 
 def _edit_distance_one(left: str, right: str) -> bool:
     if abs(len(left) - len(right)) > 1:
@@ -129,15 +113,21 @@ class _Types:
         return term
 
     def typed(self, type_name: str) -> str:
-        parts = type_name.replace("[", ",").replace("]", ",").split(",")
-        if "Any" in parts:
-            raise SurfaceElaborationError("DynamicAnyForbidden")
-        if type_name.startswith("Map[") and type_name != "Map[Text,UInt64]":
-            raise SurfaceElaborationError(
-                f"UnsupportedMapType: {type_name}"
-            )
-        term = self.variable(f"type:{type_name}")
-        self.concrete[self.find(term)] = type_name
+        try:
+            parsed = parse_type(type_name)
+        except ValueError as error:
+            raise SurfaceElaborationError(f"MalformedType: {type_name}") from error
+        stack = [parsed]
+        while stack:
+            current = stack.pop()
+            if current.name == "Any":
+                raise SurfaceElaborationError("DynamicAnyForbidden")
+            stack.extend(current.args)
+        canonical = parsed.canonical
+        if canonical.startswith("Map[") and canonical != "Map[Text,UInt64]":
+            raise SurfaceElaborationError(f"UnsupportedMapType: {canonical}")
+        term = self.variable(f"type:{canonical}")
+        self.concrete[self.find(term)] = canonical
         return term
 
     def unify(self, left: str, right: str, *, context: str) -> str:
@@ -852,7 +842,7 @@ class _Elaborator:
                     else:
                         self.types.unify(
                             value,
-                            self.types.typed(receiver_type[4:-1]),
+                            self.types.typed(_generic_parts(receiver_type, "Vec")[0]),  # type: ignore[index]
                             context="Vec.push value",
                         )
                     term = self.types.typed("Unit")
@@ -918,13 +908,17 @@ class _Elaborator:
             owner_type = self.types.concrete.get(self.types.find(owner))
             if not owner_type or not owner_type.startswith("Vec["):
                 raise SurfaceElaborationError("IndexRequiresCollection")
-            term = self.types.typed(owner_type[4:-1])
+            element_parts = _generic_parts(owner_type, "Vec")
+            if element_parts is None:
+                raise SurfaceElaborationError("IndexRequiresCollection")
+            term = self.types.typed(element_parts[0])
         elif isinstance(expression, SurfaceList):
             element = self.types.variable(f"list:{expression.span.start_line}:{expression.span.start_column}")
             for item in expression.items:
                 self.types.unify(element, self._expression(item, function), context="list element")
-            if expected and expected.startswith("Vec["):
-                self.types.unify(element, self.types.typed(expected[4:-1]), context="list expected type")
+            expected_parts = _generic_parts(expected, "Vec") if expected else None
+            if expected_parts is not None:
+                self.types.unify(element, self.types.typed(expected_parts[0]), context="list expected type")
                 term = self.types.typed(expected)
             else:
                 element_type = self.types.concrete.get(self.types.find(element))
@@ -1056,8 +1050,9 @@ class _Elaborator:
             elif isinstance(statement, SurfaceFor):
                 iterable = self._expression(statement.iterable, function)
                 iterable_type = self.types.concrete.get(self.types.find(iterable))
-                if iterable_type and iterable_type.startswith("Vec["):
-                    item_type = iterable_type[4:-1]
+                vec_parts = _generic_parts(iterable_type, "Vec")
+                if vec_parts is not None:
+                    item_type = vec_parts[0]
                 else:
                     item_type = "UInt64"
                 self.types.unify(self._local(function, statement.name), self.types.typed(item_type), context="for item")
