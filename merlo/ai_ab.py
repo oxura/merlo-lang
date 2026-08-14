@@ -23,6 +23,8 @@ PROVIDER_IDENTITY_INCOMPLETE = "UNMEASURED_PROVIDER_IDENTITY_INCOMPLETE"
 
 class ProtocolError(ValueError):
     """Raised when a locked protocol or task artifact is invalid."""
+LOCKED_PROTOCOL_SHA256 = "a4d8468f8e7b42f1b8849c9da10a868597d2c848481717604d5f977b2ffbea21"
+LOCKED_TASKS_SHA256 = "e996fd273644ef8f369b6e7c5f45f5656b281f01a9569704d512bcb90a211e79"
 
 @dataclass(frozen=True)
 class Validation:
@@ -86,13 +88,35 @@ def _task_contract(task: Mapping[str, Any]) -> str:
 def _protocol_contract(protocol: Mapping[str, Any]) -> str:
     return sha256_bytes(canonical_json(_without_digest(protocol, "protocol_sha256")))
 
-def render_prompt(task: Mapping[str, Any], language: str, workspace: str, test_command: str) -> str:
+def render_prompt(
+    task: Mapping[str, Any],
+    language: str,
+    workspace: str,
+    test_command: str,
+) -> str:
     template = str(task["prompt_template"])
     return (
         template.replace("{{TASK_ID}}", str(task["id"]))
         .replace("{{LANGUAGE}}", language)
         .replace("{{WORKSPACE}}", workspace)
         .replace("{{TEST_COMMAND}}", test_command)
+    )
+
+
+def _documents_match_preregistration_root(
+    protocol: Mapping[str, Any],
+    tasks: Mapping[str, Any],
+) -> bool:
+    schedule = tasks.get("schedule")
+    return (
+        protocol.get("protocol_sha256") == LOCKED_PROTOCOL_SHA256
+        and tasks.get("tasks_sha256") == LOCKED_TASKS_SHA256
+        and protocol.get("protocol_sha256") == _protocol_contract(protocol)
+        and tasks.get("tasks_sha256")
+        == sha256_bytes(canonical_json(_without_digest(tasks, "tasks_sha256")))
+        and protocol.get("task_manifest_sha256") == sha256_bytes(canonical_json(tasks))
+        and isinstance(schedule, list)
+        and protocol.get("schedule_sha256") == sha256_bytes(canonical_json(schedule))
     )
 
 def normalize_prompt(prompt: str) -> str:
@@ -127,6 +151,8 @@ def validate_protocol(root: str | Path | None = None) -> Validation:
     if tasks.get("schema_version") != SCHEMA_VERSION:
         _error(errors, "task schema version mismatch")
     task_items = tasks.get("tasks")
+    if protocol.get("protocol_sha256") != LOCKED_PROTOCOL_SHA256:
+        _error(errors, "protocol differs from published preregistration root")
     schedule = tasks.get("schedule")
     if not isinstance(task_items, list) or not isinstance(schedule, list):
         return Validation(False, tuple(errors + ["tasks and schedule must be arrays"]), 0, 0, {})
@@ -135,6 +161,8 @@ def validate_protocol(root: str | Path | None = None) -> Validation:
     ids: set[str] = set()
     pair_ids: set[str] = set()
     expected_strata = {"deterministic_cli_data": 10, "multi_module_api_migration": 10, "regression_repair": 10}
+    if tasks.get("tasks_sha256") != LOCKED_TASKS_SHA256:
+        _error(errors, "tasks differ from published preregistration root")
     strata: dict[str, int] = {}
     for task in task_items:
         if not isinstance(task, dict):
@@ -234,6 +262,81 @@ def validate_protocol(root: str | Path | None = None) -> Validation:
     denominators = {"tasks": len(ids), "pairs": len(pair_ids), "arm_attempts": len(pair_ids) * 2}
     return Validation(not errors, tuple(errors), len(ids), len(pair_ids), denominators)
 
+def _is_sha256(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
+def _validated_digest_map(value: object, label: str) -> dict[str, str]:
+    if not isinstance(value, Mapping) or not value:
+        raise ProtocolError(f"{label} digest map is empty")
+    result: dict[str, str] = {}
+    for path, digest in value.items():
+        if (
+            not isinstance(path, str)
+            or not path
+            or path.startswith("/")
+            or ".." in Path(path).parts
+            or not _is_sha256(digest)
+        ):
+            raise ProtocolError(f"invalid {label} digest map")
+        result[path] = digest
+    return result
+
+
+def _validate_oracle_result(result: object, task: Mapping[str, Any]) -> None:
+    if not isinstance(result, Mapping):
+        raise ProtocolError("oracle result must be an object")
+    case_count = len(task.get("language_neutral_spec", {}).get("cases", []))
+    if (
+        result.get("case_id") != task.get("id")
+        or not isinstance(result.get("passed"), bool)
+        or case_count < 1
+    ):
+        raise ProtocolError("oracle identity or aggregate is invalid")
+    stratum = task.get("stratum")
+    if stratum == "multi_module_api_migration":
+        migration = result.get("migration_passed")
+        unaffected = result.get("unaffected_passed")
+        expected_unaffected = len(
+            task.get("language_neutral_spec", {}).get("unaffected_cases", [])
+        )
+        if (
+            not isinstance(migration, list)
+            or len(migration) != case_count
+            or not all(isinstance(value, bool) for value in migration)
+            or not isinstance(unaffected, list)
+            or len(unaffected) != expected_unaffected
+            or not all(isinstance(value, bool) for value in unaffected)
+            or result["passed"] is not all(migration + unaffected)
+        ):
+            raise ProtocolError("migration oracle evidence is incomplete")
+        return
+    cases = result.get("cases")
+    if (
+        not isinstance(cases, list)
+        or len(cases) != case_count
+        or any(
+            not isinstance(item, Mapping)
+            or not isinstance(item.get("passed"), bool)
+            for item in cases
+        )
+    ):
+        raise ProtocolError("oracle case evidence is incomplete")
+    case_passes = [item["passed"] for item in cases]
+    if stratum == "regression_repair":
+        if (
+            result.get("defect_case_passed") is not case_passes[0]
+            or result.get("unaffected_cases_passed") is not all(case_passes[1:])
+        ):
+            raise ProtocolError("regression oracle evidence is inconsistent")
+    if result["passed"] is not all(case_passes):
+        raise ProtocolError("oracle aggregate does not match case evidence")
+
+
 def validate_attempt_record(
     record: Mapping[str, Any],
     protocol: Mapping[str, Any],
@@ -242,13 +345,13 @@ def validate_attempt_record(
 ) -> None:
     required = (
         "task_id", "replicate", "arm", "pair_id", "schedule_index", "arm_order",
-        "transcript_sha256", "pre_digest", "post_digest", "pre_digest_map",
-        "post_digest_map", "oracle", "stdout", "stderr", "input_tokens",
-        "output_tokens", "total_tokens", "iterations", "tool_calls",
-        "provider_time_ms", "wall_time_ms", "terminal_reason", "changed_paths",
-        "irrelevant_edit_count", "regression_count", "task_success",
-        "provider_attestation", "contamination_attestation", "protocol_sha256",
-        "task_sha256",
+        "transcript_sha256", "fixture_tree_sha256", "pre_digest", "post_digest",
+        "pre_digest_map", "post_digest_map", "oracle_sha256", "oracle", "stdout",
+        "stderr", "input_tokens", "output_tokens", "total_tokens", "iterations",
+        "tool_calls", "provider_time_ms", "wall_time_ms", "terminal_reason",
+        "changed_paths", "irrelevant_edit_count", "regression_count",
+        "task_success", "provider_attestation", "contamination_attestation",
+        "protocol_sha256", "task_sha256",
     )
     missing = [key for key in required if key not in record]
     if missing:
@@ -314,14 +417,33 @@ def validate_attempt_record(
         raise ProtocolError("ratio denominator is not measured")
     if not isinstance(record["task_success"], bool):
         raise ProtocolError("task_success must be boolean")
-    if not isinstance(record["oracle"], Mapping):
-        raise ProtocolError("oracle result must be an object")
-    if record["oracle"].get("passed") is not record["task_success"]:
+    if record["oracle_sha256"] != task.get("oracle", {}).get("sha256"):
+        raise ProtocolError("oracle source hash mismatch")
+    _validate_oracle_result(record["oracle"], task)
+    if record["oracle"]["passed"] is not record["task_success"]:
         raise ProtocolError("task_success does not match oracle result")
-    if not all(isinstance(record[key], str) for key in ("pre_digest", "post_digest", "stdout", "stderr")):
+    fixture = task.get("fixtures", {}).get(record["arm"], {})
+    if record["fixture_tree_sha256"] != fixture.get("sha256"):
+        raise ProtocolError("fixture tree hash mismatch")
+    pre_map = _validated_digest_map(record["pre_digest_map"], "pre")
+    post_map = _validated_digest_map(record["post_digest_map"], "post")
+    if record["pre_digest"] != sha256_bytes(canonical_json(pre_map)):
+        raise ProtocolError("pre digest does not match map")
+    if record["post_digest"] != sha256_bytes(canonical_json(post_map)):
+        raise ProtocolError("post digest does not match map")
+    source_files = set(fixture.get("source_files", []))
+    if not source_files <= set(pre_map) or set(pre_map) != set(post_map):
+        raise ProtocolError("digest map does not cover locked source files")
+    observed_changes = sorted(
+        path for path in pre_map if pre_map[path] != post_map[path]
+    )
+    if sorted(record["changed_paths"]) != observed_changes:
+        raise ProtocolError("changed paths do not match digest maps")
+    if not all(
+        isinstance(record[key], str)
+        for key in ("stdout", "stderr")
+    ):
         raise ProtocolError("invalid raw attempt artifact")
-    if not all(isinstance(record[key], Mapping) for key in ("pre_digest_map", "post_digest_map")):
-        raise ProtocolError("invalid digest map")
 
 def provider_identity_complete(provider: Mapping[str, Any] | None) -> bool:
     if not isinstance(provider, Mapping):
@@ -435,6 +557,12 @@ def report_from_attempts(
     protocol: Mapping[str, Any],
     tasks: Mapping[str, Any],
 ) -> dict[str, Any]:
+    if not _documents_match_preregistration_root(protocol, tasks):
+        return {
+            "schema_version": SCHEMA_VERSION, "status": "INVALID",
+            "terminal_reason": "INVALID_PROTOCOL_DEVIATION", "passed": False,
+            "metrics": None, "claim_eligible": False,
+        }
     records = list(attempts)
     task_by_id = {task["id"]: task for task in tasks.get("tasks", [])}
     schedule = {

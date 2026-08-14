@@ -68,6 +68,37 @@ def test_paired_bootstrap_is_seeded_and_keeps_task_pairs() -> None:
     assert first["replicates"] == 100
 
 
+def _oracle_report(task: dict[str, object], passed: bool) -> dict[str, object]:
+    spec = task["language_neutral_spec"]
+    case_count = len(spec["cases"])
+    report: dict[str, object] = {
+        "case_id": task["id"],
+        "passed": passed,
+    }
+    if task["stratum"] == "multi_module_api_migration":
+        report["migration_passed"] = [passed] * case_count
+        report["unaffected_passed"] = [True] * len(spec["unaffected_cases"])
+    else:
+        case_passes = [passed] * case_count
+        if task["stratum"] == "regression_repair":
+            case_passes = [passed] + [True] * (case_count - 1)
+            report["defect_case_passed"] = passed
+            report["unaffected_cases_passed"] = True
+        report["cases"] = [{"passed": value} for value in case_passes]
+    return report
+
+
+def _digest_evidence(
+    task: dict[str, object],
+    arm: str,
+) -> tuple[dict[str, str], str]:
+    digest_map = {
+        path: "a" * 64
+        for path in task["fixtures"][arm]["source_files"]
+    }
+    return digest_map, sha256_bytes(canonical_json(digest_map))
+
+
 def test_attempt_transcript_hash_and_absence_are_enforced() -> None:
     protocol = json.loads((ROOT / "benchmarks/ai-ab-v1/protocol.json").read_text())
     task = json.loads((ROOT / "benchmarks/ai-ab-v1/tasks.json").read_text())["tasks"][0]
@@ -78,26 +109,41 @@ def test_attempt_transcript_hash_and_absence_are_enforced() -> None:
     )
     attestation = {"provider": "test", "model": "test", "revision": "rev", "key_fingerprint": "key",
                    "training_cutoff_attestation": "before-publication", "network_denied_attestation": "denied"}
+    digest_map, digest = _digest_evidence(task, "merlo")
     record = {
-        "task_id": task["id"], "replicate": 1, "arm": "merlo", "pair_id": schedule_entry["pair_id"],
-        "schedule_index": 0, "arm_order": schedule_entry["arm_order"],
-        "protocol_sha256": protocol["protocol_sha256"], "task_sha256": task["task_sha256"],
-        "transcript": transcript, "transcript_sha256": sha256_bytes(canonical_json(transcript)),
-        "pre_digest": "a", "post_digest": "b", "pre_digest_map": {}, "post_digest_map": {},
-        "oracle": {"passed": True}, "stdout": "", "stderr": "",
+        "task_id": task["id"], "replicate": 1, "arm": "merlo",
+        "pair_id": schedule_entry["pair_id"], "schedule_index": 0,
+        "arm_order": schedule_entry["arm_order"],
+        "protocol_sha256": protocol["protocol_sha256"],
+        "task_sha256": task["task_sha256"],
+        "transcript": transcript,
+        "transcript_sha256": sha256_bytes(canonical_json(transcript)),
+        "fixture_tree_sha256": task["fixtures"]["merlo"]["sha256"],
+        "pre_digest": digest, "post_digest": digest,
+        "pre_digest_map": digest_map, "post_digest_map": digest_map,
+        "oracle_sha256": task["oracle"]["sha256"],
+        "oracle": _oracle_report(task, True), "stdout": "", "stderr": "",
         "input_tokens": 1, "output_tokens": 1, "total_tokens": 2,
-        "iterations": 1, "tool_calls": 1, "provider_time_ms": 1, "wall_time_ms": 1,
-        "terminal_reason": "completed", "changed_paths": [], "irrelevant_edit_count": 0, "regression_count": 0,
-        "task_success": True,
-        "provider_attestation": attestation, "contamination_attestation": protocol["contamination_policy"],
+        "iterations": 1, "tool_calls": 1, "provider_time_ms": 1,
+        "wall_time_ms": 1, "terminal_reason": "completed",
+        "changed_paths": [], "irrelevant_edit_count": 0,
+        "regression_count": 0, "task_success": True,
+        "provider_attestation": attestation,
+        "contamination_attestation": protocol["contamination_policy"],
     }
     validate_attempt_record(record, protocol, task, schedule_entry)
-    oracle_mismatch = dict(record, oracle={"passed": False})
+    oracle_mismatch = dict(record, oracle=_oracle_report(task, False))
     with pytest.raises(ProtocolError, match="does not match oracle"):
         validate_attempt_record(oracle_mismatch, protocol, task, schedule_entry)
     missing_ratio = dict(record, wall_time_ms=0)
     with pytest.raises(ProtocolError, match="ratio denominator"):
         validate_attempt_record(missing_ratio, protocol, task, schedule_entry)
+    incomplete_oracle = dict(record, oracle={"passed": True})
+    with pytest.raises(ProtocolError, match="identity or aggregate"):
+        validate_attempt_record(incomplete_oracle, protocol, task, schedule_entry)
+    forged_digest = dict(record, post_digest="b" * 64)
+    with pytest.raises(ProtocolError, match="post digest"):
+        validate_attempt_record(forged_digest, protocol, task, schedule_entry)
     record.pop("transcript")
     with pytest.raises(ProtocolError, match="absent transcript"):
         validate_attempt_record(record, protocol, task)
@@ -172,6 +218,7 @@ def _complete_attempts(
         for arm in entry["arm_order"]:
             transcript = [{"kind": "request", "body": f"{entry['pair_id']}:{arm}"}]
             merlo = arm == "merlo"
+            digest_map, digest = _digest_evidence(task, arm)
             attempts.append({
                 "task_id": task["id"],
                 "replicate": entry["replicate"],
@@ -183,11 +230,13 @@ def _complete_attempts(
                 "task_sha256": task["task_sha256"],
                 "transcript": transcript,
                 "transcript_sha256": sha256_bytes(canonical_json(transcript)),
-                "pre_digest": "pre",
-                "post_digest": "post",
-                "pre_digest_map": {},
-                "post_digest_map": {},
-                "oracle": {"passed": merlo},
+                "fixture_tree_sha256": task["fixtures"][arm]["sha256"],
+                "pre_digest": digest,
+                "post_digest": digest,
+                "pre_digest_map": digest_map,
+                "post_digest_map": digest_map,
+                "oracle_sha256": task["oracle"]["sha256"],
+                "oracle": _oracle_report(task, merlo),
                 "stdout": "",
                 "stderr": "",
                 "input_tokens": 20,
@@ -224,6 +273,26 @@ def test_complete_attempt_denominator_produces_registered_decision() -> None:
         "arm_attempts": 180,
     }
     assert report["provider_attestation"]["revision"] == "immutable-revision"
+
+
+def test_report_rejects_rehashed_protocol_deviation() -> None:
+    protocol = json.loads((ROOT / "benchmarks/ai-ab-v1/protocol.json").read_text())
+    tasks_document = json.loads(
+        (ROOT / "benchmarks/ai-ab-v1/tasks.json").read_text()
+    )
+    protocol["eligibility_gate"]["success_difference_pp_at_least"] = -100
+    unlocked = dict(protocol)
+    unlocked.pop("protocol_sha256")
+    protocol["protocol_sha256"] = sha256_bytes(canonical_json(unlocked))
+
+    report = report_from_attempts(
+        _complete_attempts(protocol, tasks_document),
+        protocol,
+        tasks_document,
+    )
+
+    assert report["status"] == "INVALID"
+    assert report["terminal_reason"] == "INVALID_PROTOCOL_DEVIATION"
 
 
 def test_duplicate_attempt_cannot_satisfy_locked_denominator() -> None:
