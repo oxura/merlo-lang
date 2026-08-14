@@ -120,7 +120,7 @@ def test_module_getattr_makes_public_names_dynamically_uncertain(tmp_path: Path)
 
 def test_reexport_chain_is_resolved_and_renamed_end_to_end(tmp_path: Path):
     _base(tmp_path)
-    _write(tmp_path, "pkg/__init__.py", "from service import greet\n")
+    _write(tmp_path, "pkg/__init__.py", "from .service import greet\n")
     _write(
         tmp_path,
         "consumer.py",
@@ -140,7 +140,7 @@ def test_reexport_chain_is_resolved_and_renamed_end_to_end(tmp_path: Path):
 
     world.apply(plan, capability)
 
-    assert "from service import welcome" in (
+    assert "from .service import welcome" in (
         tmp_path / "pkg" / "__init__.py"
     ).read_text(encoding="utf-8")
     assert "from pkg import welcome" in (tmp_path / "consumer.py").read_text(
@@ -153,7 +153,7 @@ def test_explicit_reexport_alias_preserves_public_alias(tmp_path: Path):
     _write(
         tmp_path,
         "pkg/__init__.py",
-        "from service import greet as greet\n",
+        "from .service import greet as greet\n",
     )
     _write(
         tmp_path,
@@ -175,7 +175,7 @@ def test_explicit_reexport_alias_preserves_public_alias(tmp_path: Path):
     plan = world.plan_rename(target.id, "welcome", capability)
     world.apply(plan, capability)
 
-    assert "from service import welcome as greet" in (
+    assert "from .service import welcome as greet" in (
         tmp_path / "pkg" / "__init__.py"
     ).read_text(encoding="utf-8")
     assert "from pkg import greet" in (tmp_path / "consumer.py").read_text(

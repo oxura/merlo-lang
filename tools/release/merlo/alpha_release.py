@@ -831,7 +831,11 @@ def public_benchmark_evidence(
     lock_sha256: str | None = None,
 ) -> EvidenceRecord:
     """Adapt one canonical retained public report into release evidence."""
-    from .public_benchmark import PublicBenchmarkError, canonical_report_bytes, validate_public_report
+    from tools.benchmarks.merlo.public_benchmark import (
+        PublicBenchmarkError,
+        canonical_report_bytes,
+        validate_public_report,
+    )
 
     base = Path(root).resolve()
     candidate = Path(report_path)

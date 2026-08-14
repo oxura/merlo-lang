@@ -12,7 +12,7 @@ def _write(root: Path, relative: str, source: str) -> None:
 
 
 def _move_workspace(root: Path) -> None:
-    _write(root, "pkg/__init__.py", "from source import helper\n")
+    _write(root, "pkg/__init__.py", "from .source import helper\n")
     _write(
         root,
         "pkg/source.py",
@@ -189,12 +189,12 @@ def test_move_detects_cycle_created_by_old_module_bridge(tmp_path: Path):
 
 
 def test_move_detects_cycle_created_by_migrated_import(tmp_path: Path):
-    _write(tmp_path, "pkg/__init__.py", "from consumer import caller\n")
+    _write(tmp_path, "pkg/__init__.py", "from .consumer import caller\n")
     _write(tmp_path, "pkg/source.py", "def helper():\n    return 1\n")
     _write(
         tmp_path,
         "pkg/consumer.py",
-        "from source import helper\n\ndef caller():\n    return helper()\n",
+        "from .source import helper\n\ndef caller():\n    return helper()\n",
     )
     world = SoftwareWorld.scan(tmp_path)
     target = world.program.entity("pkg.source.helper")
@@ -257,7 +257,7 @@ def test_move_blocks_import_from_destination_itself(tmp_path: Path):
     _write(
         tmp_path,
         "pkg/target.py",
-        "from source import helper\n\ndef run():\n    return helper()\n",
+        "from .source import helper\n\ndef run():\n    return helper()\n",
     )
     world = SoftwareWorld.scan(tmp_path)
     target = world.program.entity("pkg.source.helper")
