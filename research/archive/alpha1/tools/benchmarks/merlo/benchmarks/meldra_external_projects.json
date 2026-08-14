@@ -1,0 +1,167 @@
+{
+  "kind": "MeldraExternalCorpus",
+  "schema": 1,
+  "selection": "Public Python repositories not used by the Stage 0.2 fixture benchmark",
+  "projects": [
+    {
+      "branch": "master",
+      "category": "async-backend",
+      "name": "aiohttp",
+      "revision": "b08408400fc1a3566ea284f7b07cd54543dcd370",
+      "tracked_python_files": 165,
+      "url": "https://github.com/aio-libs/aiohttp.git"
+    },
+    {
+      "branch": "main",
+      "category": "tooling",
+      "name": "black",
+      "revision": "74371e2041a3120a049ced8f1cab0e7a6bc8ecd3",
+      "tracked_python_files": 342,
+      "url": "https://github.com/psf/black.git"
+    },
+    {
+      "branch": "main",
+      "category": "distributed-task-processing",
+      "name": "celery",
+      "revision": "3511be41dbeca8f3c207c997ed9496a656b2a610",
+      "tracked_python_files": 419,
+      "url": "https://github.com/celery/celery.git"
+    },
+    {
+      "branch": "main",
+      "category": "cli-library",
+      "name": "click",
+      "revision": "9c4dfdaebe0e6b2aabc566eb81f6f10eb5cd6ea1",
+      "tracked_python_files": 78,
+      "url": "https://github.com/pallets/click.git"
+    },
+    {
+      "branch": "main",
+      "category": "data-transformation",
+      "name": "dbt-core",
+      "revision": "653c19be8b905b7e1954324045497e2a8dbdf317",
+      "tracked_python_files": 46,
+      "url": "https://github.com/dbt-labs/dbt-core.git"
+    },
+    {
+      "branch": "master",
+      "category": "backend-framework",
+      "name": "fastapi",
+      "revision": "a9134f62683a7df133cd901b748169879e53dac4",
+      "tracked_python_files": 1136,
+      "url": "https://github.com/fastapi/fastapi.git"
+    },
+    {
+      "branch": "main",
+      "category": "backend-framework",
+      "name": "flask",
+      "revision": "6a2f545bfd8ed31e19066a299296917e034aca58",
+      "tracked_python_files": 83,
+      "url": "https://github.com/pallets/flask.git"
+    },
+    {
+      "branch": "master",
+      "category": "http-client",
+      "name": "httpx",
+      "revision": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+      "tracked_python_files": 60,
+      "url": "https://github.com/encode/httpx.git"
+    },
+    {
+      "branch": "main",
+      "category": "data-pipeline",
+      "name": "kedro",
+      "revision": "7c8ec55bab549f7499e06c50a8b82db390347dec",
+      "tracked_python_files": 224,
+      "url": "https://github.com/kedro-org/kedro.git"
+    },
+    {
+      "branch": "master",
+      "category": "load-testing",
+      "name": "locust",
+      "revision": "6272527fbc4c692a00ee9851878ccbe085b31735",
+      "tracked_python_files": 149,
+      "url": "https://github.com/locustio/locust.git"
+    },
+    {
+      "branch": "dev",
+      "category": "serialization-library",
+      "name": "marshmallow",
+      "revision": "c7b559a1fa3aba57ca6dba0ab336841c5038a782",
+      "tracked_python_files": 38,
+      "url": "https://github.com/marshmallow-code/marshmallow.git"
+    },
+    {
+      "branch": "main",
+      "category": "plugin-architecture",
+      "name": "pluggy",
+      "revision": "f632a4d1b69e32e210063a91a71ae32fb3ac150c",
+      "tracked_python_files": 31,
+      "url": "https://github.com/pytest-dev/pluggy.git"
+    },
+    {
+      "branch": "master",
+      "category": "bot-framework",
+      "name": "python-telegram-bot",
+      "revision": "377f5effb3afc2d9b1e7e1de1b908b26cc87fd17",
+      "tracked_python_files": 513,
+      "url": "https://github.com/python-telegram-bot/python-telegram-bot.git"
+    },
+    {
+      "branch": "main",
+      "category": "test-framework",
+      "name": "pytest",
+      "revision": "ecade5a6c120732f94126c806c40bee12c98398a",
+      "tracked_python_files": 270,
+      "url": "https://github.com/pytest-dev/pytest.git"
+    },
+    {
+      "branch": "main",
+      "category": "http-library",
+      "name": "requests",
+      "revision": "1f6589ec3a1ee910f9a65cc3ceac60b26677bc0e",
+      "tracked_python_files": 37,
+      "url": "https://github.com/psf/requests.git"
+    },
+    {
+      "branch": "main",
+      "category": "terminal-ui",
+      "name": "rich",
+      "revision": "9d8f9a372cc5916fd4781fec207ced7ddac2f08f",
+      "tracked_python_files": 213,
+      "url": "https://github.com/Textualize/rich.git"
+    },
+    {
+      "branch": "master",
+      "category": "plugin-heavy-crawler",
+      "name": "scrapy",
+      "revision": "fe96c1f54b8f635e9274a854214b07887b9d8d61",
+      "tracked_python_files": 476,
+      "url": "https://github.com/scrapy/scrapy.git"
+    },
+    {
+      "branch": "main",
+      "category": "data-access-library",
+      "name": "sqlalchemy",
+      "revision": "5995834ee06fc5cae45f86992d778fd5357c08ee",
+      "tracked_python_files": 668,
+      "url": "https://github.com/sqlalchemy/sqlalchemy.git"
+    },
+    {
+      "branch": "main",
+      "category": "async-backend",
+      "name": "starlette",
+      "revision": "398e5a3430eb1ddd33e1d48d766efe41426e231f",
+      "tracked_python_files": 71,
+      "url": "https://github.com/encode/starlette.git"
+    },
+    {
+      "branch": "master",
+      "category": "cli-framework",
+      "name": "typer",
+      "revision": "361bdd822dd5eafc9c2e3e55ed3a94b746a39aa6",
+      "tracked_python_files": 635,
+      "url": "https://github.com/fastapi/typer.git"
+    }
+  ]
+}

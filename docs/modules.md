@@ -12,7 +12,7 @@ bootstrap:
 - `std.core`, `std.option`, `std.result`, `std.text`, `std.bytes`,
   `std.collections`, `std.io`, `std.fs`, `std.cli`, `std.time`, `std.random`,
   `std.json`, `std.net`, and `std.http` under `stdlib/std/`;
-- application helpers `app.json` and `app.csv` under `merlo/stdlib/`.
+  `src/merlo/stdlib/`.
 
 The standard library is alpha source data, not a separate binary distribution.
 Its host operations still require declared effects and capabilities.

@@ -3,7 +3,7 @@
 These pages describe the artifacts that the alpha actually emits and the
 identity/provenance obligations accepted by [RFC 0001](../../rfcs/0001-repository-and-frontend-stabilization.md).
 A statement marked **planned (RFC 0001)** is a target contract, not a current
-API. Current coordination is in [`merlo/compiler.py`](../../merlo/compiler.py).
+API. Current coordination is in [`src/merlo/compiler.py`](../../src/merlo/compiler.py).
 
 - [Frontend](frontend.md) — surface parsing and the transitional project entry
 - [Binding](binding.md) — module graph, symbols, and interface revisions

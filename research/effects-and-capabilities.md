@@ -22,8 +22,8 @@ Capabilities do not make native code a sandbox. A compiler defect, unsafe FFI fu
 
 ## Artifacts
 
-- `merlo/concise_application.py`
-- `merlo/capability_experiment.py`
-- `merlo/representation_c_backend.py`
+- `src/merlo/concise_application.py`
+- `research/archive/alpha1/merlo/capability_experiment.py`
+- `src/merlo/representation_c_backend.py`
 - `tests/test_alpha_effects.py`
-- `tests/test_meldra_capability_experiment.py`
+- `research/archive/historical_protocol/tests/test_meldra_capability_experiment.py`

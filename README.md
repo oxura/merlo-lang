@@ -12,10 +12,10 @@
 
 Merlo is an experimental language and compiler built around static types,
 ownership, inferred effects, capabilities, and stable semantic representations.
-The current public toolchain is `0.1.0-alpha.1`: a Python 3.11+ bootstrap
-compiler with a C11 native backend, project tooling, an LSP server, a standard
-library, and executable examples. Its source release is known to be incomplete;
-the repository is being stabilized for one clean `0.1.0-alpha.2`.
+The current prerelease is `0.1.0-alpha.2`: a Python 3.11+ bootstrap compiler
+with a C11 native backend, project tooling, an LSP server, a standard library,
+and executable examples. The packaged compiler, archive, benchmark, and
+release-tool boundaries are explicit. No PyPI availability is claimed.
 Research and development began privately on 2026-03-19. The first public
 research alpha was released on 2026-08-14.
 
@@ -115,10 +115,17 @@ elaboration that is being replaced under [RFC 0001](rfcs/0001-repository-and-fro
 
 ## Install and run
 
-Use Python 3.11 or newer on Linux x86-64. The alpha.1 artifacts are retained
-for historical evidence and are not the recommended install: the source
-archive is incomplete, and the wheel predates later compiler portability
-repairs. Until alpha.2 is published, install the repaired public source:
+The alpha.1 artifacts remain historical evidence; the source archive is
+incomplete and the wheel predates later compiler portability repairs. Install
+the GitHub prerelease wheel (no PyPI availability is claimed):
+
+```console
+python -m pip install https://github.com/oxura/merlo-lang/releases/download/v0.1.0-alpha.2/merlo-0.1.0a2-py3-none-any.whl
+merlo new hello --name hello
+merlo run hello
+```
+
+Or install this repository checkout instead:
 
 ```console
 git clone https://github.com/oxura/merlo-lang.git
@@ -154,14 +161,16 @@ commands with a machine-readable mode return deterministic JSON through
 
 | Path | Contents |
 |---|---|
-| [`merlo/`](merlo/) | Bootstrap compiler, semantic model, native backend, CLI, and LSP |
+| [`src/merlo/`](src/merlo/) | Production compiler, semantic model, native backend, CLI, and LSP |
 | [`stdlib/`](stdlib/) | Merlo standard-library modules |
 | [`examples/`](examples/) | Executable CLI, data, package, network, and FFI projects |
-| [`tests/`](tests/) | Language, compiler, runtime, determinism, and release regressions |
-| [`benchmarks/`](benchmarks/) | Reproducible corpora, fixtures, protocols, and checked evidence |
+| [`tests/`](tests/) | Production language, compiler, runtime, and distribution regressions |
+| [`tools/benchmarks/merlo/`](tools/benchmarks/merlo/) | Explicit benchmark and evidence suites |
 | [`spec/`](spec/) | Normative alpha contracts |
 | [`docs/`](docs/) | Installation, language guide, architecture, tooling, and limitations |
-| [`research/`](research/) | Research questions, methods, results, limitations, and artifacts |
+| [`tools/release/merlo/`](tools/release/merlo/) | Explicit release assembly and validation suite |
+| [`research/archive/`](research/archive/) | Frozen historical protocol and Alpha1 evidence |
+| [`research/`](research/) | Research questions, methods, results, and limitations |
 | [`rfcs/`](rfcs/) | Process for proposed language and runtime changes |
 
 ## Documentation

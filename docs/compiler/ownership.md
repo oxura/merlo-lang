@@ -3,15 +3,15 @@
 ## Inputs and outputs
 
 Ownership enters HIR through `HIRParameter.ownership` and `HIRNode.ownership`
-in [`merlo/structured_hir_v2.py`](../../merlo/structured_hir_v2.py). RIR turns
+in [`src/merlo/structured_hir_v2.py`](../../src/merlo/structured_hir_v2.py). RIR turns
 those labels into `TypeDescriptor` copy/move/drop classes and type-directed
-`DropPlan` values in [`merlo/representation_ir.py`](../../merlo/representation_ir.py).
+`DropPlan` values in [`src/merlo/representation_ir.py`](../../src/merlo/representation_ir.py).
 `RepresentationProgram` serializes descriptors and drop plans; it does **not**
 contain `StoragePolicy` values. `storage_policy_matrix()` exists as a helper
 but is not called by `lower_structured_hir_to_rir()`.
 
 MIR materializes ownership operations and `drop_value` instructions in
-[`merlo/representation_mir.py`](../../merlo/representation_mir.py); the C
+[`src/merlo/representation_mir.py`](../../src/merlo/representation_mir.py); the C
 backend validates the predecessor chain but currently does not consume MIR
 instructions or RIR drop plans to drive emission.
 

@@ -1,0 +1,54 @@
+{
+  "cases_per_category": 10,
+  "categories": [
+    "numeric",
+    "strings",
+    "collections",
+    "records_data",
+    "parsing",
+    "business_logic",
+    "error_handling",
+    "file_data_transformations",
+    "algorithms",
+    "small_utilities"
+  ],
+  "corpus_schema": "merlo.surface-0.2.corpus.v1",
+  "gates": {
+    "any_dynamic": 0,
+    "lifetime_annotations": 0,
+    "manual_memory": 0,
+    "median_ratio_max": 0.7,
+    "merlo_longer_fraction_max": 0.15,
+    "p75_ratio_max": 0.85,
+    "zero_annotation_private_fraction_min": 0.9
+  },
+  "quantile": "nearest-rank",
+  "repository_count": 5,
+  "schema": "merlo.surface-0.2.protocol.v1",
+  "selection": {
+    "duplicates_excluded": true,
+    "generated_excluded": true,
+    "logical_line_max": 40,
+    "logical_line_min": 3,
+    "production_only": true,
+    "tests_excluded": true,
+    "unsupported_cases_retained": true
+  },
+  "tokenizer": {
+    "classes": [
+      "identifier",
+      "keyword",
+      "literal",
+      "delimiter",
+      "operator"
+    ],
+    "excludes": [
+      "comments",
+      "leading_function_docstring",
+      "whitespace",
+      "indentation",
+      "line_terminators"
+    ],
+    "version": 1
+  }
+}

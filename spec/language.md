@@ -1,6 +1,6 @@
 # Merlo alpha language specification
 
-This specification covers the public `0.1.0-alpha.1` toolchain and the
+This specification covers the public `0.1.0-alpha.2` toolchain and the
 experimental Surface 0.2 frontend. It is not a promise for unimplemented
 features.
 

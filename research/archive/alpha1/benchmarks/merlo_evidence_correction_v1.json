@@ -1,0 +1,37 @@
+{
+  "contract": "merlo.evidence-correction.v1",
+  "correction_id": "general-representation-core-2026-08-13",
+  "does_not_modify_predecessors": true,
+  "entries": [
+    {
+      "component": "Bytes/Text/Builder Core",
+      "status": "SUPPORTED",
+      "scope": "Frozen Stage 0.6P ownership, borrowing, UTF-8 Text, BytesBuilder and TextBuilder contracts only."
+    },
+    {
+      "component": "UTF-8 primitives",
+      "status": "SUPPORTED",
+      "scope": "Validation, scalar iteration and documented Bytes/Text boundaries from the frozen text-streaming milestone."
+    },
+    {
+      "component": "JSON tokenizer through opaque C intrinsic",
+      "status": "HISTORICAL_PROTOTYPE_ONLY",
+      "scope": "json_token_checksum and src/merlo/json_streaming_c.py are retained only as frozen historical evidence and are forbidden in the General Representation Core final path."
+    },
+    {
+      "component": "JSON tokenizer as ordinary Merlo program",
+      "status": "SUPPORTED",
+      "scope": "Implemented by tools/benchmarks/merlo/programs/general_json.mlo through Structured HIR v2, Representation IR v1, ordinary Performance MIR control flow, generated C11, and the 1,000-case integrated JSON corpus."
+    }
+  ],
+  "frozen_predecessors": [
+    {
+      "path": "tools/benchmarks/merlo/benchmarks/meldra_text_streaming_core.json",
+      "sha256": "f6739fcd79952f369dfafab1ba86b0a8d13a217f02b033ba2933b8ae23aacd07"
+    },
+    {
+      "path": "tools/benchmarks/merlo/benchmarks/meldra_recursive_json_intrinsic_audit.json",
+      "sha256": "dabbbeb967d5d3be545e38e236572cf79ba5f5c69f052a619ffe45652812bfef"
+    }
+  ]
+}

@@ -29,7 +29,7 @@ One clean `v0.1.0-alpha.2` will be published only after the package cutover, fro
 
 The alpha.1 wheel contains 161 Python modules. At least 64 modules, 39.8 percent, are visibly experiments, benchmarks, evidence generators, corpora, stage tooling, or research runners.
 
-`merlo/concise_application.py` is 2,775 lines. It owns or coordinates module loading, source mapping, declaration discovery, inference, task analysis, effects, capabilities, interfaces, canonical generation, sum-type rewriting, and diagnostic projection. The compiler, CLI, formatter, LSP, SemanticWorld, project test runner, and research runners depend on it.
+`src/merlo/concise_application.py` is 2,775 lines. It owns or coordinates module loading, source mapping, declaration discovery, inference, task analysis, effects, capabilities, interfaces, canonical generation, sum-type rewriting, and diagnostic projection. The compiler, CLI, formatter, LSP, SemanticWorld, project test runner, and research runners depend on it.
 
 The project path recognizes module headers, imports, tasks, calls, effects, and parts of `Option` and `Result` lowering through regex and string replacement. `surface_parser.py` and `surface_elaborator.py` already provide a useful structural path for individual sources, but expressions still pass through CPython AST and project compilation still enters through the text-oriented elaborator.
 
@@ -101,7 +101,7 @@ src/merlo/
 
 tools/
     research/
-    benchmarks/
+    tools/benchmarks/merlo/benchmarks/
     release/
 
 research/
@@ -109,7 +109,7 @@ research/
     reports/
     archive/
 
-benchmarks/
+tools/benchmarks/merlo/benchmarks/
 examples/
 spec/
 docs/

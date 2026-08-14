@@ -1,0 +1,122 @@
+{
+  "binding": {
+    "current-python-sidecar": {
+      "arm": "current-python-sidecar",
+      "denominator": 1920,
+      "note": "Current analyzer static Exact on the shared logical denominator.",
+      "numerator": 1240,
+      "rate": 0.645833,
+      "status": "OBSERVED"
+    },
+    "maximal-python-profile": {
+      "arm": "maximal-python-profile",
+      "denominator": 1920,
+      "note": "Strong binder plus explicit strict profile on generated static programs.",
+      "numerator": 1920,
+      "rate": 1.0,
+      "status": "OBSERVED"
+    },
+    "meldra-closed": {
+      "arm": "meldra-closed",
+      "denominator": 1920,
+      "note": "Frozen closed binder on the shared logical denominator.",
+      "numerator": 1920,
+      "rate": 1.0,
+      "status": "OBSERVED"
+    }
+  },
+  "bypass_detection": [
+    {
+      "case": "socket_import",
+      "diagnostics": [
+        "ForbiddenAmbientImport"
+      ],
+      "status": "BLOCKED"
+    },
+    {
+      "case": "globals_mutation",
+      "diagnostics": [
+        "DynamicRuntimeEscape"
+      ],
+      "status": "BLOCKED"
+    },
+    {
+      "case": "monkey_patch",
+      "diagnostics": [
+        "RuntimeBindingMutation"
+      ],
+      "status": "BLOCKED"
+    }
+  ],
+  "changeir": {
+    "change_signature": {
+      "applied": true,
+      "identity_continuity": true
+    },
+    "move": {
+      "applied": true,
+      "identity_continuity": true
+    },
+    "rename": {
+      "applied": true,
+      "identity_continuity": true
+    }
+  },
+  "conclusion": "Maximal Python matches generated static binding by rejecting or marking the registered dynamic semantics; external safety, false-block, burden, and agent-value gates remain UNMEASURED.",
+  "decision": "NO_GO_LANGUAGE_ALPHA",
+  "dynamic_profile_rejections": {
+    "arm": "maximal-python-profile",
+    "denominator": 23,
+    "note": "Profile rejection/dynamic-boundary rate is also an expressiveness and false-block cost.",
+    "numerator": 23,
+    "rate": 1.0,
+    "status": "GENERATED_PILOT"
+  },
+  "evidence_level": "GENERATED_PILOT_NOT_EXTERNAL_EVIDENCE",
+  "interfaces": {
+    "private_body_preserved_interface": true,
+    "public_signature_changed_interface": true
+  },
+  "lsp_status": "UNMEASURED_NO_LANGUAGE_SERVER",
+  "protocol_sha256": "29b4401c31871f219554985a253c80757ee3bdfb718d052fea4eabd41d0df1c7",
+  "runtime_audit_status": "RUNTIME_POLICY_BLOCK",
+  "runtime_report_sha256": "932f99a27aa3b00c2f64d3d54d14485f74fed46384e057147f233e7ef386e014",
+  "runtime_soundness": {
+    "current-python-sidecar": {
+      "callsites": 23,
+      "explicit_dynamic_callsites": 0,
+      "rejected_callsites": 0,
+      "static_exact_callsites": 7,
+      "unsound_exact_count": 140,
+      "unsound_exact_denominator": 140,
+      "unsound_exact_rate": 1.0
+    },
+    "maximal-python-profile": {
+      "callsites": 23,
+      "explicit_dynamic_callsites": 0,
+      "rejected_callsites": 23,
+      "static_exact_callsites": 0,
+      "unsound_exact_count": 0,
+      "unsound_exact_denominator": 0,
+      "unsound_exact_rate": 0.0
+    },
+    "meldra-closed": {
+      "callsites": 23,
+      "explicit_dynamic_callsites": 0,
+      "rejected_callsites": 0,
+      "static_exact_callsites": 23,
+      "unsound_exact_count": 0,
+      "unsound_exact_denominator": 460,
+      "unsound_exact_rate": 0.0
+    }
+  },
+  "safe_profile_programs": {
+    "arm": "maximal-python-profile",
+    "denominator": 40,
+    "note": "All 120 generated Python source units passed the strict profile.",
+    "numerator": 40,
+    "rate": 1.0,
+    "status": "GENERATED_PILOT"
+  },
+  "schema_version": 1
+}

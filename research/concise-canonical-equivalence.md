@@ -22,8 +22,8 @@ The result covers the frozen workloads and implemented language subset. It is no
 
 ## Artifacts
 
-- `merlo/concise_application.py`
-- `merlo/productive_performance.py`
-- `tests/test_concise_application_alpha.py`
-- `tests/test_productive_performance.py`
-- `benchmarks/merlo_alpha_performance.json`
+- `src/merlo/concise_application.py`
+- `tools/benchmarks/merlo/productive_performance.py`
+- `tools/benchmarks/merlo/tests/test_concise_application_alpha.py`
+- `tools/benchmarks/merlo/tests/test_productive_performance.py`
+- `research/archive/alpha1/benchmarks/merlo_alpha_performance.json`

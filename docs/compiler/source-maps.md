@@ -3,7 +3,7 @@
 ## Inputs and outputs
 
 Current source mapping is assembled by `ConciseApplicationElaboration.origins`
-and [`ProjectCompilation.diagnostic_source_map`](../../merlo/compiler.py).
+and [`ProjectCompilation.diagnostic_source_map`](../../src/merlo/compiler.py).
 `compile_project()` builds the elaboration, HIR, RIR, MIR, optimized MIR, and
 C11 artifacts; HIR nodes, RIR operations, and MIR instructions carry source
 spans and semantic fields where their dataclasses define them. MIR blocks and
@@ -12,7 +12,7 @@ function/node and returns records with `node_id`, canonical coordinates, and
 concise coordinates; it does not emit a complete map for RIR/MIR operations or
 C tokens.
 
-`SourceOrigin` in [`merlo/concise_application.py`](../../merlo/concise_application.py)
+`SourceOrigin` in [`src/merlo/concise_application.py`](../../src/merlo/concise_application.py)
 records `(canonical_line, path, source_line)`. If no concise origin matches a
 HIR source line, the map falls back to the canonical span; otherwise it
 projects the canonical end-line delta onto the concise source line. The

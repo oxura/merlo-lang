@@ -1,0 +1,21 @@
+{
+  "files": {
+    "meldra/analyzer.py": "b3f9316bfe731ad40e4d6c02f42db925a5203e94cef4a6dffb596ac2c7dfc63e",
+    "meldra/core_ir_schema_v1.json": "5bf9700ce20c3f6d906e3be2982412cec00a7dc21f692055489cc87787040ac4",
+    "meldra/evolution.py": "d169d0375b933b18774c5dddc2c69a04469cda3dc0b9d25e08c283cf299dc109",
+    "meldra/frontend_evaluator.py": "634f3d2ba07473aa5b035d8bcecfa51210a31b5c888d199abc2eaed3a4b8c496",
+    "meldra/frontend_semantics.py": "86855c24cce41eccaa217675beee96d105b29568644b75d1c889ee6587a87bfd",
+    "meldra/frontend_syntax.py": "f4313100bdab3539f20a1be2eba1780bd3bd9830c0f3f8f0c664bdfb34cdef8d",
+    "meldra/maximal_python.py": "a52787a9229b79dd37f99bb9ae9c373c34f865d2c88ff5b17218a23d22590c72",
+    "meldra/python_binder.py": "a87b672a794dc64db3e64cc1b3d4c12d51bc02c8c2834e7b0e11b2c3b7e4e9a2",
+    "meldra/world.py": "ba31f1b4614d234e930c1af0304937831acbf27c997b8f14f537a7918df487ae",
+    "tools/benchmarks/merlo/benchmarks/meldra_stage04e_decision.json": "f4f71d37dad26027b6820fe2d0d18b0c45c8ec3af362b7552254ccf88914dd9d",
+    "tools/benchmarks/merlo/benchmarks/meldra_stage04e_protocol.json": "29b4401c31871f219554985a253c80757ee3bdfb718d052fea4eabd41d0df1c7"
+  },
+  "kind": "MeldraStage05PFreeze",
+  "native_research_is_separate": true,
+  "non_go_interpretation": "NO_GO_LANGUAGE_ALPHA closes Stage 0.4E only; it does not measure or reject native performance, memory-model, compiler-quality, human-simplicity, or same-model AI-productivity hypotheses.",
+  "python_sidecar_policy": "CRITICAL_FIXES_ONLY",
+  "schema_version": 1,
+  "stage04e_decision": "NO_GO_LANGUAGE_ALPHA_USE_SEMANTIC_LAYER"
+}
