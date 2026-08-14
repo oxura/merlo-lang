@@ -5,6 +5,7 @@ export enum FsError:
     PermissionDenied
     InvalidPath
     Closed
+    InvalidUtf8
     System
 
 export path_new(value: Text) -> Path:

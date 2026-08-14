@@ -46,17 +46,14 @@ from .surface_ast import (
     SurfaceWhile,
 )
 from .type_parser import generic_parts, parse_type
+from .intrinsics import INTRINSIC_SIGNATURES, contextual_result_type
 
 class SurfaceElaborationError(ValueError):
     pass
 
 _HOST_CALLS = {
-    "console.read": ((), "Text", "console.read", "console.read"),
-    "console.write": (("Text",), "Unit", "console.write", "console.write"),
-    "fs.open_read": (("Path",), "Result[Bytes,FileError]", "fs.read", "fs.read"),
-    "fs.read": (("Path",), "Result[Bytes,FileError]", "fs.read", "fs.read"),
-    "fs.read_text": (("Path",), "Result[Text,FileError]", "fs.read", "fs.read"),
-    "fs.write_text": (("Path", "Text"), "Result[Unit,FileError]", "fs.write", "fs.write"),
+    name: (signature.parameters, signature.result_type, signature.effect, signature.capability)
+    for name, signature in INTRINSIC_SIGNATURES.items()
 }
 
 
@@ -899,10 +896,7 @@ class _Elaborator:
                         )
                     function.effects.add(effect)
                     function.capabilities.add(capability)
-                    term = self.types.typed(return_type)
-            else:
-                raise SurfaceElaborationError("UnsupportedCall")
-        elif isinstance(expression, SurfaceIndex):
+                    term = self.types.typed(contextual_result_type(return_type, expected))
             self._expression(expression.index, function, "UInt64")
             owner = self._expression(expression.receiver, function)
             owner_type = self.types.concrete.get(self.types.find(owner))

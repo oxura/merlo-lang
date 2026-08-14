@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Any
 
 from .ffi import pointer_type, validate_ffi
+from .intrinsics import INTRINSIC_SIGNATURES, format_intrinsic_arity, intrinsic_signature
 from .representation_ir import RepresentationProgram, TypeDescriptor
-from .representation_mir import GeneralPerformanceMIR
 from .structured_hir_v2 import (
     HIRFunction,
     StructuredHIRProgram,
@@ -975,8 +975,10 @@ static uint64_t merlo_process_args_count(void) {
     freeaddrinfo(result);
     return descriptor;
 }''')
+            sections.append("static uint32_t merlo_network_error = 0;")
         if "network.tcp" in self.used_effects:
-            sections.append(r'''static uint64_t merlo_network_tcp_guard(void) {
+            sections.append(r'''
+static uint64_t merlo_network_tcp_guard(void) {
     merlo_require_capability(MERLO_EFFECT_NETWORK_TCP);
     if (merlo_capabilities.network_host == NULL) return 1;
     int descriptor = merlo_connect_host(merlo_capabilities.network_host, 80);
@@ -986,35 +988,51 @@ static uint64_t merlo_process_args_count(void) {
 }
 static uint64_t merlo_network_tcp_connect(const MerloText *host, uint64_t port) {
     merlo_require_capability(MERLO_EFFECT_NETWORK_TCP);
-    if (host == NULL || merlo_capabilities.network_host == NULL) return UINT64_MAX;
+    merlo_network_error = 0;
+    if (host == NULL || merlo_capabilities.network_host == NULL) {
+        merlo_network_error = 1;
+        return UINT64_MAX;
+    }
     char *name = (char *)malloc((size_t)host->length + 1);
     if (name == NULL) merlo_allocation_trap();
     memcpy(name, host->data, (size_t)host->length);
     name[host->length] = '\0';
     if (!merlo_allowlist_contains(merlo_capabilities.network_host, name)) {
         free(name);
+        merlo_network_error = 1;
         return UINT64_MAX;
     }
     int descriptor = merlo_connect_host(name, (uint16_t)port);
     free(name);
+    if (descriptor < 0) merlo_network_error = 1;
     return descriptor < 0 ? UINT64_MAX : (uint64_t)descriptor;
 }
 static uint64_t merlo_network_tcp_send(uint64_t handle, const MerloBytesView *data) {
     merlo_require_capability(MERLO_EFFECT_NETWORK_TCP);
-    if (handle == UINT64_MAX || data == NULL) return 0;
+    merlo_network_error = 0;
+    if (handle == UINT64_MAX || data == NULL) {
+        merlo_network_error = 1;
+        return 0;
+    }
     ssize_t sent = send((int)handle, data->data, (size_t)data->length, 0);
+    if (sent < 0) merlo_network_error = 1;
     return sent < 0 ? 0 : (uint64_t)sent;
 }
 static MerloBytes merlo_network_tcp_receive(uint64_t handle, uint64_t limit) {
     merlo_require_capability(MERLO_EFFECT_NETWORK_TCP);
+    merlo_network_error = 0;
     MerloBytes result = { NULL, 0 };
-    if (handle == UINT64_MAX || limit == 0) return result;
+    if (handle == UINT64_MAX || limit == 0) {
+        if (handle == UINT64_MAX) merlo_network_error = 1;
+        return result;
+    }
     result.data = (uint8_t *)malloc((size_t)limit);
     if (result.data == NULL) merlo_allocation_trap();
     ssize_t count = recv((int)handle, result.data, (size_t)limit, 0);
     if (count <= 0) {
         free(result.data);
         result.data = NULL;
+        merlo_network_error = 1;
         return result;
     }
     result.length = (uint64_t)count;
@@ -1023,8 +1041,16 @@ static MerloBytes merlo_network_tcp_receive(uint64_t handle, uint64_t limit) {
 }
 static uint64_t merlo_network_tcp_close(uint64_t handle) {
     merlo_require_capability(MERLO_EFFECT_NETWORK_TCP);
-    if (handle == UINT64_MAX) return 1;
-    return close((int)handle) == 0 ? 0 : 1;
+    merlo_network_error = 0;
+    if (handle == UINT64_MAX) {
+        merlo_network_error = 1;
+        return 1;
+    }
+    if (close((int)handle) != 0) {
+        merlo_network_error = 1;
+        return 1;
+    }
+    return 0;
 }''')
         if "network.http" in self.used_effects:
             sections.append(r'''static uint64_t merlo_network_http_guard(void) {
@@ -1039,21 +1065,40 @@ static uint64_t merlo_network_tcp_close(uint64_t handle) {
     close(descriptor);
     return 0;
 }''')
+            sections.append(r'''static MerloBytes merlo_network_http_request(const MerloText *url) {
+    merlo_require_capability(MERLO_EFFECT_NETWORK_HTTP);
+    merlo_network_error = 0;
+    MerloBytes result = { NULL, 0 };
+    if (url == NULL || merlo_network_http_guard() != 0) {
+        merlo_network_error = 1;
+        return result;
+    }
+    return result;
+}''')
         if "fs.write" in self.used_effects:
-            sections.append(r'''static bool merlo_path_allowed(const MerloText *path);
+            sections.append(r'''static uint32_t merlo_file_write_error = 0;
+static bool merlo_path_allowed(const MerloText *path);
 static uint64_t merlo_file_write_all(const MerloText *path, const MerloBytesView *data) {
     merlo_require_capability(MERLO_EFFECT_FS_WRITE);
-    if (!merlo_path_allowed(path)) return 1;
+    merlo_file_write_error = 0;
+    if (!merlo_path_allowed(path)) {
+        merlo_file_write_error = 1;
+        return 1;
+    }
     char *name = (char *)malloc((size_t)path->length + 1);
     if (name == NULL) merlo_allocation_trap();
     memcpy(name, path->data, (size_t)path->length);
     name[path->length] = '\0';
     FILE *stream = fopen(name, "wb");
     free(name);
-    if (stream == NULL) return 1;
+    if (stream == NULL) {
+        merlo_file_write_error = 1;
+        return 1;
+    }
     size_t written = fwrite(data->data, 1, (size_t)data->length, stream);
     int close_status = fclose(stream);
-    return written == (size_t)data->length && close_status == 0 ? 0 : 1;
+    if (written != (size_t)data->length || close_status != 0) merlo_file_write_error = 1;
+    return merlo_file_write_error;
 }''')
         return "\n".join(sections)
 
@@ -1075,22 +1120,34 @@ static bool merlo_path_allowed(const MerloText *path) {
         || path->data[root_length] == (uint8_t)'/';
 }
 static MerloBytes merlo_file_read_all(const MerloText *path);
-static void merlo_file_close(MerloFileReader *reader) {
+static uint64_t merlo_file_close(MerloFileReader *reader) {
+    uint64_t status = 0;
+    merlo_file_error = 0;
+    if (reader == NULL) return 1;
     if (reader->stream != NULL) {
-        if (fclose(reader->stream) != 0 && merlo_file_error == 0) {
+        if (fclose(reader->stream) != 0) {
             merlo_file_error = UINT32_C(5);
+            status = 1;
         }
         reader->stream = NULL;
+    } else {
+        merlo_file_error = UINT32_C(5);
+        status = 1;
     }
     free(reader->buffer);
     reader->buffer = NULL;
     reader->buffer_length = 0;
     reader->buffer_capacity = 0;
     ++reader->generation;
+    return status;
 }
 static MerloFileReader merlo_file_open_write(const MerloText *path) {
     merlo_require_capability(MERLO_EFFECT_FS_WRITE);
-    if (!merlo_path_allowed(path)) return (MerloFileReader){ NULL, NULL, 0, 0, 1, 0, 0, false };
+    merlo_file_error = 0;
+    if (!merlo_path_allowed(path)) {
+        merlo_file_error = UINT32_C(4);
+        return (MerloFileReader){ NULL, NULL, 0, 0, 1, 0, 0, false };
+    }
     MerloFileReader result = { NULL, NULL, 0, 0, 1, 0, 0, false };
     char *name = (char *)malloc((size_t)path->length + 1);
     if (name == NULL) merlo_allocation_trap();
@@ -1103,8 +1160,13 @@ static MerloFileReader merlo_file_open_write(const MerloText *path) {
 }
 static MerloBytes merlo_file_read_chunk(MerloFileReader *reader, uint64_t limit) {
     merlo_require_capability(MERLO_EFFECT_FS_READ);
+    merlo_file_error = 0;
     MerloBytes result = { NULL, 0 };
-    if (reader == NULL || reader->stream == NULL || limit == 0) return result;
+    if (reader == NULL || reader->stream == NULL) {
+        merlo_file_error = UINT32_C(5);
+        return result;
+    }
+    if (limit == 0) return result;
     result.data = (uint8_t *)malloc((size_t)limit);
     if (result.data == NULL) merlo_allocation_trap();
     size_t count = fread(result.data, 1, (size_t)limit, reader->stream);
@@ -1120,12 +1182,21 @@ static MerloBytes merlo_file_read_chunk(MerloFileReader *reader, uint64_t limit)
 }
 static uint64_t merlo_file_write_chunk(MerloFileReader *reader, const MerloBytesView *data) {
     merlo_require_capability(MERLO_EFFECT_FS_WRITE);
-    if (reader == NULL || reader->stream == NULL) return 1;
+    merlo_file_error = 0;
+    if (reader == NULL || reader->stream == NULL || data == NULL) {
+        merlo_file_error = UINT32_C(5);
+        return 1;
+    }
     size_t written = fwrite(data->data, 1, (size_t)data->length, reader->stream);
-    return written == (size_t)data->length ? 0 : 1;
+    if (written != (size_t)data->length) {
+        merlo_file_error = UINT32_C(2);
+        return 1;
+    }
+    return 0;
 }
 static MerloFileReader merlo_file_open_read(const MerloText *path) {
     merlo_require_capability(MERLO_EFFECT_FS_READ);
+    merlo_file_error = 0;
     if (!merlo_path_allowed(path)) {
         merlo_file_error = UINT32_C(4);
         return (MerloFileReader){ NULL, NULL, 0, 0, 1, 0, 0, false };
@@ -1144,6 +1215,7 @@ static MerloFileReader merlo_file_open_read(const MerloText *path) {
 }
 static MerloBytes merlo_file_read_all(const MerloText *path) {
     merlo_require_capability(MERLO_EFFECT_FS_READ);
+    merlo_file_error = 0;
     if (!merlo_path_allowed(path)) {
         merlo_file_error = UINT32_C(4);
         return (MerloBytes){ NULL, 0 };
@@ -1236,6 +1308,24 @@ static bool merlo_valid_utf8(const uint8_t *data, uint64_t length) {
         }
     }
     return true;
+}
+static MerloText merlo_file_read_text(const MerloText *path) {
+    MerloBytes bytes = merlo_file_read_all(path);
+    if (merlo_file_error != 0 || bytes.data == NULL) {
+        return (MerloText){ NULL, 0 };
+    }
+    if (!merlo_valid_utf8(bytes.data, bytes.length)) {
+        free(bytes.data);
+        ++merlo_frees;
+        merlo_file_error = UINT32_C(3);
+        return (MerloText){ NULL, 0 };
+    }
+    MerloText result = merlo_text_from_bytes(
+        (const MerloBytesView *)&bytes, 0, bytes.length
+    );
+    free(bytes.data);
+    ++merlo_frees;
+    return result;
 }
 
 static MerloTextView *merlo_file_next(MerloFileLines *lines) {
@@ -1866,21 +1956,70 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         if ok_type is None or error_type is None:
             return None
         return ok_type, error_type
-    def _wrap_host_result(self, expression: str, expected: str | None) -> str:
+    def _error_value(self, error_type: str, code: str = "merlo_file_error") -> str:
+        descriptor = self.descriptors.get(error_type)
+        if descriptor is None or descriptor.kind != "enum":
+            raise RepresentationCBackendError(f"Result error type is not an enum: {error_type}")
+        variants = tuple(descriptor.variants)
+        if not variants:
+            raise RepresentationCBackendError(f"Result error enum has no variants: {error_type}")
+        names = {name for name, _payload, _ in variants}
+        by_code = (
+            (1, ("NotFound", "FileOpen", "ReadFailure", "ConnectionRefused")),
+            (2, ("System", "ReadFailure", "IoFailure")),
+            (3, ("InvalidUtf8", "InvalidData")),
+            (4, ("InvalidPath", "PermissionDenied", "CapabilityDenied")),
+            (5, ("Closed", "System")),
+        )
+        selected: dict[int, str] = {}
+        for number, candidates in by_code:
+            selected[number] = next((name for name in candidates if name in names), variants[0][0])
+        def constructor(name: str, payload: str | None) -> str:
+            if payload is not None:
+                raise RepresentationCBackendError(
+                    f"{error_type}.{name} error payload lowering is unsupported"
+                )
+            if all(item[1] is None for item in variants):
+                return f"MERLO_{_identifier(error_type)}_{name}"
+            return f"merlo_make_{_identifier(error_type)}_{name}()"
+        values = {
+            number: constructor(name, next(payload for variant, payload, _ in variants if variant == name))
+            for number, name in selected.items()
+        }
+        fallback = constructor(variants[0][0], variants[0][1])
+        result = fallback
+        for number in sorted(values, reverse=True):
+            result = f"(({code}) == UINT32_C({number}) ? {values[number]} : {result})"
+        return result
+
+    def _wrap_host_result(
+        self,
+        expression: str,
+        expected: str | None,
+        *,
+        failure_condition: str | None = None,
+        error_code: str = "merlo_file_error",
+    ) -> str:
         if not expected:
             return expression
         parts = self._result_parts(expected)
         if parts is None:
             return expression
-        ok_type, _error_type = parts
+        ok_type, error_type = parts
         if ok_type == "Unit":
-            return (
-                f"({expression}, "
-                f"merlo_make_{_identifier(expected)}_Ok())"
-            )
-        if ok_type in self.descriptors and self.descriptors[ok_type].kind == "record":
-            expression = f"merlo_make_{_identifier(ok_type)}({expression})"
-        return f"merlo_make_{_identifier(expected)}_Ok({expression})"
+            success = f"merlo_make_{_identifier(expected)}_Ok()"
+        else:
+            value = expression
+            if ok_type in self.descriptors and self.descriptors[ok_type].kind == "record":
+                value = f"merlo_make_{_identifier(ok_type)}({value})"
+            success = f"merlo_make_{_identifier(expected)}_Ok({value})"
+        if failure_condition is None:
+            return success
+        error = self._error_value(error_type, error_code)
+        return (
+            f"(({failure_condition}) ? merlo_make_{_identifier(expected)}_Err({error}) "
+            f": {success})"
+        )
     def _try_binding(self, target: str | None, marker: ast.Call, expected: str) -> list[str]:
         if len(marker.args) != 1:
             raise RepresentationCBackendError("postfix propagation expects one expression")
@@ -1904,52 +2043,10 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             isinstance(inner, ast.Call)
             and isinstance(inner.func, ast.Attribute)
             and ast.unparse(inner.func.value) == "fs"
-            and inner.func.attr in {"open_read", "read"}
+            and inner.func.attr in {"open_read", "read", "read_text"}
         )
         if is_file_read:
-            error_descriptor = self.descriptors.get(error_type)
-            if error_descriptor is None or error_descriptor.kind != "enum":
-                raise RepresentationCBackendError(
-                    "file propagation requires an enum error type"
-                )
-            read_failure = next(
-                (
-                    (variant, payload)
-                    for variant, payload, _ in error_descriptor.variants
-                    if variant in {"ReadFailure", "FileOpen"}
-                ),
-                None,
-            )
-            if read_failure is None:
-                raise RepresentationCBackendError(
-                    f"{error_type} has no file-open error variant"
-                )
-            error_variant, error_payload = read_failure
-            if error_payload is None:
-                if all(
-                    payload is None
-                    for _, payload, _ in error_descriptor.variants
-                ):
-                    error_value = (
-                        f"MERLO_{_identifier(error_type)}_{error_variant}"
-                    )
-                else:
-                    error_value = (
-                        f"merlo_make_{_identifier(error_type)}_"
-                        f"{error_variant}()"
-                    )
-            elif self.descriptors[error_payload].kind == "text":
-                path = self._address_expression(inner.args[0])
-                error_value = (
-                    f"merlo_make_{_identifier(error_type)}_"
-                    f"{error_variant}(merlo_text_clone("
-                    f"(const MerloText *){path}))"
-                )
-            else:
-                raise RepresentationCBackendError(
-                    f"{error_type}.{error_variant} has unsupported payload "
-                    f"{error_payload}"
-                )
+            error_value = self._error_value(error_type)
             lines.append(
                 f"{pad}{_c_name(ok_type)} {temporary} = "
                 f"{self._expression(inner, expected=None)};"
@@ -1957,7 +2054,6 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             lines.append(f"{pad}if (merlo_file_error != 0) {{")
             self.indent += 1
             lines.extend(self._drop_owned_lines(self._pad()))
-            lines.append(f"{self._pad()}merlo_file_error = 0;")
             lines.append(
                 f"{self._pad()}return "
                 f"merlo_make_{_identifier(self.current_function.return_type)}_Err("
@@ -1965,7 +2061,6 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             )
             self.indent -= 1
             lines.append(f"{pad}}}")
-            lines.append(f"{pad}merlo_file_error = 0;")
             lines.append(f"{pad}{target} = {temporary};")
             return lines
         result_ctype = _c_name(result_type or "")
@@ -3124,6 +3219,14 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         if isinstance(node.func, ast.Attribute):
             receiver_text = ast.unparse(node.func.value)
             method = node.func.attr
+            callee = f"{receiver_text}.{method}"
+            intrinsic = intrinsic_signature(callee)
+            if intrinsic is None and receiver_text in {
+                "console", "fs", "env", "clock", "random", "network", "process"
+            }:
+                raise RepresentationCBackendError(f"UnknownIntrinsic: {callee}")
+            if intrinsic is not None and len(node.args) != intrinsic.arity:
+                raise RepresentationCBackendError(format_intrinsic_arity(intrinsic, len(node.args)))
             if (
                 method in {"as_view", "view"}
                 and isinstance(node.func.value, ast.Call)
@@ -3137,21 +3240,31 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 return self._wrap_host_result(
                     f"merlo_file_open_read({self._address_expression(node.args[0])})",
                     expected,
+                    failure_condition="merlo_file_error != 0",
                 )
             if receiver_text == "fs" and method == "open_write":
                 return self._wrap_host_result(
                     f"merlo_file_open_write({self._address_expression(node.args[0])})",
                     expected,
+                    failure_condition="merlo_file_error != 0",
                 )
-            if receiver_text == "fs" and method in {"read", "read_text"}:
+            if receiver_text == "fs" and method == "read":
                 return self._wrap_host_result(
                     f"merlo_file_read_all({self._address_expression(node.args[0])})",
                     expected,
+                    failure_condition="merlo_file_error != 0",
+                )
+            if receiver_text == "fs" and method == "read_text":
+                return self._wrap_host_result(
+                    f"merlo_file_read_text({self._address_expression(node.args[0])})",
+                    expected,
+                    failure_condition="merlo_file_error != 0",
                 )
             if receiver_text == "fs" and method == "read_chunk":
                 return self._wrap_host_result(
                     f"merlo_file_read_chunk({self._address_expression(node.args[0])}, {self._expression(node.args[1])})",
                     expected,
+                    failure_condition="merlo_file_error != 0",
                 )
             if receiver_text == "fs" and method in {"write", "write_text"}:
                 data_type = self._expression_type(node.args[1])
@@ -3161,19 +3274,26 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 return self._wrap_host_result(
                     f"merlo_file_write_all({self._address_expression(node.args[0])}, {data})",
                     expected,
+                    failure_condition="merlo_file_error != 0 || merlo_file_write_error != 0",
                 )
             if receiver_text == "fs" and method == "write_chunk":
                 return self._wrap_host_result(
                     f"merlo_file_write_chunk({self._address_expression(node.args[0])}, {self._address_expression(node.args[1])})",
                     expected,
+                    failure_condition="merlo_file_error != 0",
                 )
             if receiver_text == "fs" and method == "close":
                 return self._wrap_host_result(
-                    f"(merlo_file_close({self._address_expression(node.args[0])}), 0)",
+                    f"merlo_file_close({self._address_expression(node.args[0])})",
                     expected,
+                    failure_condition="merlo_file_error != 0",
                 )
             if receiver_text == "console" and method == "write":
-                value = self._expression(node.args[0], expected="Text")
+                value = self._borrow_view_argument(
+                    node.args[0], "TextView", want_pointer=False
+                )
+                if value is None:
+                    value = self._expression(node.args[0], expected="TextView")
                 return (
                     f"(merlo_require_capability(MERLO_EFFECT_CONSOLE_WRITE), "
                     f"fwrite(({value}).data, 1, (size_t)({value}).length, stdout), 0)"
@@ -3186,23 +3306,48 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 return "merlo_clock_now()"
             if receiver_text == "random" and method == "read":
                 return f"merlo_random_read({self._expression(node.args[0])})"
+            if receiver_text == "network" and method == "http_request":
+                call = f"merlo_network_http_request({self._address_expression(node.args[0])})"
+                return self._wrap_host_result(
+                    call,
+                    expected,
+                    failure_condition="merlo_network_error != 0",
+                    error_code="merlo_network_error",
+                )
+            if receiver_text == "process" and method == "args":
+                return "merlo_process_args_count()"
             if receiver_text == "network" and method == "tcp_connect":
                 call = f"merlo_network_tcp_connect({self._address_expression(node.args[0])}, {self._expression(node.args[1])})"
-                if expected:
-                    ok_type = self._result_parts(expected)[0]
-                    if ok_type in self.descriptors and self.descriptors[ok_type].kind == "record":
-                        call = f"merlo_make_{_identifier(ok_type)}({call})"
-                    return f"merlo_make_{_identifier(expected)}_Ok({call})"
-                return call
+                return self._wrap_host_result(
+                    call,
+                    expected,
+                    failure_condition="merlo_network_error != 0",
+                    error_code="merlo_network_error",
+                )
             if receiver_text == "network" and method == "tcp_send":
                 call = f"merlo_network_tcp_send({self._expression(node.args[0])}, {self._address_expression(node.args[1])})"
-                return self._wrap_host_result(call, expected)
+                return self._wrap_host_result(
+                    call,
+                    expected,
+                    failure_condition="merlo_network_error != 0",
+                    error_code="merlo_network_error",
+                )
             if receiver_text == "network" and method == "tcp_receive":
                 call = f"merlo_network_tcp_receive({self._expression(node.args[0])}, {self._expression(node.args[1])})"
-                return self._wrap_host_result(call, expected)
+                return self._wrap_host_result(
+                    call,
+                    expected,
+                    failure_condition="merlo_network_error != 0",
+                    error_code="merlo_network_error",
+                )
             if receiver_text == "network" and method == "tcp_close":
                 call = f"merlo_network_tcp_close({self._expression(node.args[0])})"
-                return self._wrap_host_result(call, expected)
+                return self._wrap_host_result(
+                    call,
+                    expected,
+                    failure_condition="merlo_network_error != 0",
+                    error_code="merlo_network_error",
+                )
             if receiver_text in {"network", "tcp"} and method in {"tcp", "connect"}:
                 return "merlo_network_tcp_guard()"
             if receiver_text in self.descriptors and self.descriptors[receiver_text].kind == "enum":
@@ -3561,37 +3706,17 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 if receiver_text in self.descriptors and self.descriptors[receiver_text].kind == "enum":
                     return receiver_text
                 receiver_type = self._expression_type(node.func.value)
-                host_error = "AppError"
-                if self.current_function is not None:
-                    current_parts = self._result_parts(
-                        self.current_function.return_type
-                    )
-                    if current_parts is not None:
-                        host_error = current_parts[1]
-                if receiver_text == "fs" and method in {
-                    "open_read", "open_write", "read", "read_text",
-                    "read_chunk", "write", "write_text", "write_chunk",
-                    "close",
-                }:
-                    ok_type = (
-                        "FileReader"
-                        if method in {"open_read", "open_write"}
-                        else "Bytes"
-                        if method in {"read", "read_text", "read_chunk"}
-                        else "Unit"
-                    )
-                    return f"Result[{ok_type},{host_error}]"
-                if receiver_text == "network" and method in {
-                    "tcp_connect", "tcp_send", "tcp_receive", "tcp_close",
-                }:
-                    ok_type = (
-                        "UInt64"
-                        if method in {"tcp_connect", "tcp_send"}
-                        else "Bytes"
-                        if method == "tcp_receive"
-                        else "Unit"
-                    )
-                    return f"Result[{ok_type},{host_error}]"
+                signature = intrinsic_signature(f"{receiver_text}.{method}")
+                if signature is not None:
+                    result_parts = self._result_parts(signature.result_type)
+                    if result_parts is not None:
+                        host_error = result_parts[1]
+                        if self.current_function is not None:
+                            current_parts = self._result_parts(self.current_function.return_type)
+                            if current_parts is not None:
+                                host_error = current_parts[1]
+                        return f"Result[{result_parts[0]},{host_error}]"
+                    return signature.result_type
                 if method in {"contains", "contains_ascii_case_insensitive", "starts_with", "ends_with"}:
                     return "Bool"
                 if receiver_type == "FileReader" and method == "lines":
@@ -3995,18 +4120,28 @@ __MERLO_CAPS__
             ("TextBuilder.append", "fn(BorrowMut[TextBuilder], scalar: UInt64) -> Unit", "unique mutable borrow", "memory", True, True, True, "amortized O(1)", "merlo_text_builder_append_*"),
             ("TextBuilder.finish", "fn(TextBuilder) -> Text", "consumes builder; transfers buffer", "memory", False, False, False, "O(1)", "merlo_text_builder_finish"),
         ]
-        effect_primitives = {
-            "console.read",
-            "console.write",
-            "fs.read",
-            "fs.write",
-            "env.read",
-            "clock.now",
-            "random.read",
-            "network.tcp",
-            "network.http",
-            "process.args",
-        }
+        normalized_entries = []
+        for entry in entries:
+            signature = intrinsic_signature(entry[0])
+            if signature is None:
+                normalized_entries.append(entry)
+                continue
+            parameter_text = ", ".join(signature.parameters)
+            normalized_entries.append(
+                (
+                    entry[0],
+                    f"fn({parameter_text}) -> {signature.result_type}",
+                    entry[2],
+                    signature.effect,
+                    entry[4],
+                    entry[5],
+                    entry[6],
+                    entry[7],
+                    entry[8],
+                )
+            )
+        entries = normalized_entries
+        effect_primitives = frozenset(signature.effect for signature in INTRINSIC_SIGNATURES.values())
         lines = source.splitlines()
         result = []
         for name, signature, ownership, effect, allocates, copies, may_fail, complexity, implementation in entries:

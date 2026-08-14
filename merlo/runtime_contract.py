@@ -17,13 +17,13 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
+from .intrinsics import INTRINSIC_SIGNATURES
 
 RUNTIME_CONTRACT = "merlo.runtime-contract.v1"
 RUNTIME_ABI_VERSION = 1
-CLOSED_EFFECTS: tuple[str, ...] = (
-    "console.read", "console.write", "fs.read", "fs.write", "env.read",
-    "clock.now", "random.read", "network.tcp", "network.http", "process.args",
-)
+CLOSED_EFFECTS: tuple[str, ...] = tuple(dict.fromkeys(
+    signature.effect for signature in INTRINSIC_SIGNATURES.values()
+))
 ALPHA_EFFECTS = frozenset(CLOSED_EFFECTS)
 
 @dataclass(frozen=True)
@@ -196,6 +196,7 @@ class GuardedHostRuntime:
     def __init__(self, manifest: CapabilityManifest, *, argv: Sequence[str] = ()) -> None:
         self.manifest = manifest
         self.argv = tuple(argv)
+        self._tcp_sockets: dict[int, socket.socket] = {}
 
     def require(self, effect: str) -> None:
         if effect not in ALPHA_EFFECTS:
@@ -244,7 +245,7 @@ class GuardedHostRuntime:
 
     def clock_now(self) -> int:
         self.require("clock.now")
-        return time.time_ns()
+        return int(time.time())
 
     def random_read(self, size: int) -> bytes:
         self.require("random.read")
@@ -252,11 +253,35 @@ class GuardedHostRuntime:
             raise ValueError("random size must be a non-negative integer")
         return os.urandom(size)
 
-    def tcp_connect(self, host: str, port: int, *, timeout: float | None = None) -> socket.socket:
+    def tcp_connect(self, host: str, port: int, *, timeout: float | None = None) -> int:
         self.require("network.tcp")
         if host not in self.manifest.network_hosts:
             raise CapabilityHostDeniedError(f"CapabilityHostDenied:{host}")
-        return socket.create_connection((host, port), timeout=timeout)
+        connection = socket.create_connection((host, port), timeout=timeout)
+        handle = connection.fileno()
+        self._tcp_sockets[handle] = connection
+        return handle
+
+    def tcp_send(self, handle: int, data: bytes | bytearray | memoryview) -> int:
+        self.require("network.tcp")
+        connection = self._tcp_sockets.get(handle)
+        if connection is None:
+            raise ResourceCloseError("ClosedTcpHandle")
+        return connection.send(bytes(data))
+
+    def tcp_receive(self, handle: int, limit: int) -> bytes:
+        self.require("network.tcp")
+        connection = self._tcp_sockets.get(handle)
+        if connection is None:
+            raise ResourceCloseError("ClosedTcpHandle")
+        return connection.recv(limit)
+
+    def tcp_close(self, handle: int) -> None:
+        self.require("network.tcp")
+        connection = self._tcp_sockets.pop(handle, None)
+        if connection is None:
+            raise ResourceCloseError("ClosedTcpHandle")
+        connection.close()
 
     def http_request(self, url: str, *, method: str = "GET", body: bytes | None = None) -> bytes:
         self.require("network.http")
@@ -268,9 +293,9 @@ class GuardedHostRuntime:
         with urllib.request.urlopen(request) as response:
             return response.read()
 
-    def process_args(self) -> tuple[str, ...]:
+    def process_args(self) -> int:
         self.require("process.args")
-        return self.argv
+        return max(0, len(self.argv) - 1)
 
 
 HostRuntime = GuardedHostRuntime

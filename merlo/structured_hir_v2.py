@@ -13,9 +13,8 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from .ffi import FFICompileError, FFIProgram, parse_ffi_declarations, validate_ffi
-from .canonical_ast import CanonicalProgram
-from .type_parser import generic_parts, parse_type, validate_type_expr
+from .intrinsics import format_intrinsic_arity, intrinsic_signature
+from .intrinsics import contextual_result_type
 
 
 STRUCTURED_HIR_SCHEMA_VERSION = 2
@@ -751,6 +750,18 @@ class _OwnershipChecker:
                 self._check_expr(argument, state)
                 for argument in node.args
             ]
+            signature = intrinsic_signature(name)
+            if signature is not None:
+                for argument, parameter_ownership in zip(
+                    node.args, signature.parameter_ownership, strict=True
+                ):
+                    root = self._root_name(argument)
+                    if root is None:
+                        continue
+                    if parameter_ownership == "borrow_mut":
+                        self._check_mutation(root, state)
+                    elif parameter_ownership in {"owned", "consuming"}:
+                        self._consume(root, state)
             if isinstance(node.func, ast.Name) and node.func.id in self.functions:
                 callee = self.functions[node.func.id]
                 for argument, parameter in zip(node.args, callee.args.args):
@@ -1425,94 +1436,61 @@ class _HIRBuilder:
             receiver_text = ast.unparse(node.func.value)
             receiver_type = self.local_types.get(receiver_text)
             method = node.func.attr
-            if receiver_text == "fs" and method in {
-                "open_read", "read", "read_text", "read_chunk", "open_write",
-                "write_text", "write_chunk", "close",
-            }:
-                if method == "open_read":
-                    kind = "FileOpen"
-                is_write = method in {"open_write", "write_text", "write_chunk"}
-                contextual_return = _type_name(
-                    self.functions[self.current_function].returns
-                )
-                contextual_parts = self._result_parts(contextual_return)
-                contextual_error = (
-                    contextual_parts[1] if contextual_parts is not None else "AppError"
-                )
-                ok_type = (
-                    "FileReader" if method in {"open_read", "open_write"}
-                    else "Bytes" if method in {"read", "read_text", "read_chunk"}
-                    else "Unit"
-                )
-                fallback = f"Result[{ok_type},{contextual_error}]"
-                type_name = fallback
+            callee = f"{receiver_text}.{method}"
+            signature = intrinsic_signature(callee)
+            if signature is not None:
+                if len(arguments) != signature.arity:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: {format_intrinsic_arity(signature, len(arguments))}"
+                    )
+                for index, (argument, parameter_type) in enumerate(
+                    zip(arguments, signature.parameters, strict=True), 1
+                ):
+                    actual = argument.type_name
+                    if actual != parameter_type and not (
+                        (actual, parameter_type) in {("Text", "TextView"), ("Bytes", "BytesView")}
+                    ):
+                        raise StructuredHIRCompileError(
+                            f"{self.path}:{node.lineno}: IntrinsicTypeMismatch: {callee} "
+                            f"argument {index} expects {parameter_type}, got {actual}"
+                        )
+                kind = "FileOpen" if callee in {"fs.open_read", "fs.open_write"} else "DirectCall"
+                type_name = contextual_result_type(signature.result_type, expected)
                 if expected and expected.startswith("Result["):
                     expected_parts = self._result_parts(expected)
-                    if expected_parts is None or expected_parts[0] != ok_type:
+                    result_parts = self._result_parts(signature.result_type)
+                    if (
+                        expected_parts is None
+                        or result_parts is None
+                        or expected_parts[0] != result_parts[0]
+                    ):
                         raise StructuredHIRCompileError(
-                            f"{self.path}:{node.lineno}: {receiver_text}.{method} "
-                            f"returns {ok_type}, not {expected_parts[0] if expected_parts else expected}"
+                            f"{self.path}:{node.lineno}: {callee} returns "
+                            f"{result_parts[0] if result_parts else signature.result_type}, "
+                            f"not {expected_parts[0] if expected_parts else expected}"
                         )
-                    type_name = f"Result[{ok_type},{expected_parts[1]}]"
-                effects.update(("fs.write", "may_fail") if is_write else ("fs.read", "may_fail"))
+                ownership = signature.result_ownership
+                effects.add(signature.effect)
+                if signature.result_type.startswith("Result["):
+                    effects.add("may_fail")
                 operation_children = arguments
-                result_parts = self._result_parts(type_name)
-                error_type = result_parts[1] if result_parts is not None else "AppError"
-                call_attributes.update({"resource": "FileReader" if method in {"open_read", "open_write"} else "Bytes", "host_operation": method, "error_type": error_type})
-            elif receiver_text == "network" and method in {
-                "tcp_connect", "tcp_send", "tcp_receive", "tcp_close",
+                call_attributes["host_operation"] = callee
+                if type_name.startswith("Result["):
+                    call_attributes["error_type"] = type_name.split(",", 1)[1].rstrip("]")
+                if callee.startswith("fs."):
+                    call_attributes["resource"] = (
+                        "FileReader"
+                        if method in {"open_read", "open_write"}
+                        else "Text"
+                        if method == "read_text"
+                        else "Bytes"
+                    )
+            elif receiver_text in {
+                "console", "fs", "env", "clock", "random", "network", "process"
             }:
-                kind = "DirectCall"
-                contextual_return = _type_name(
-                    self.functions[self.current_function].returns
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: UnknownIntrinsic: {callee}"
                 )
-                contextual_parts = self._result_parts(contextual_return)
-                contextual_error = (
-                    contextual_parts[1] if contextual_parts is not None else "AppError"
-                )
-                ok_type = (
-                    "UInt64" if method in {"tcp_connect", "tcp_send"}
-                    else "Bytes" if method == "tcp_receive"
-                    else "Unit"
-                )
-                fallback = f"Result[{ok_type},{contextual_error}]"
-                type_name = fallback
-                if expected and expected.startswith("Result["):
-                    expected_parts = self._result_parts(expected)
-                    if expected_parts is None or expected_parts[0] != ok_type:
-                        raise StructuredHIRCompileError(
-                            f"{self.path}:{node.lineno}: {receiver_text}.{method} "
-                            f"returns {ok_type}, not {expected_parts[0] if expected_parts else expected}"
-                        )
-                    type_name = f"Result[{ok_type},{expected_parts[1]}]"
-                operation_children = arguments
-                result_parts = self._result_parts(type_name)
-                error_type = result_parts[1] if result_parts is not None else "AppError"
-                call_attributes.update({"host_operation": method, "error_type": error_type})
-            elif receiver_text == "console" and method in {"read", "write"}:
-                kind = "DirectCall"
-                type_name = "Unit" if method == "write" else "Bytes"
-                effects.add(f"console.{method}")
-                operation_children = arguments
-                call_attributes.update({"host_operation": f"console.{method}"})
-            elif receiver_text in {"env", "clock", "random", "process"}:
-                kind = "DirectCall"
-                effect = {
-                    "env": "env.read",
-                    "clock": "clock.now",
-                    "random": "random.read",
-                    "process": "process.args",
-                }[receiver_text]
-                type_name = "Text" if receiver_text == "env" else "Bytes" if receiver_text == "random" else "UInt64"
-                effects.add(effect)
-                operation_children = arguments
-                call_attributes.update({"host_operation": f"{receiver_text}.{method}"})
-            elif receiver_text == "network" and method in {"http_request", "http", "request"}:
-                kind = "DirectCall"
-                type_name = expected or "Result[Bytes,AppError]"
-                effects.update(("network.http", "may_fail"))
-                operation_children = arguments
-                call_attributes.update({"host_operation": "network.http"})
             elif receiver_type == "FileReader" and method == "lines":
                 kind = "FileLines"
                 type_name = "FileLines"
@@ -1700,29 +1678,11 @@ class _HIRBuilder:
                 or name.endswith(".increment")
             ):
                 effects.update(("allocate", "may_fail"))
-            if name in {"fs.open_read", "fs.read", "fs.read_text", "fs.read_chunk", "fs.close"}:
-                effects.update(("fs.read", "may_fail"))
-            elif name in {"fs.open_write", "fs.write_text", "fs.write_chunk"}:
-                effects.update(("fs.write", "may_fail"))
-            elif name in {"console.read", "console.write"}:
-                effects.add(name)
-            elif name.startswith("env."):
-                effects.add("env.read")
-            elif name.startswith("clock."):
-                effects.add("clock.now")
-            elif name.startswith("random."):
-                effects.add("random.read")
-            elif name.startswith("process."):
-                effects.add("process.args")
-            elif (
-                name in {"network.tcp", "tcp.connect"}
-                or name.startswith(("network.tcp_", "tcp."))
-            ):
-                effects.update(("network.tcp", "may_fail"))
-            elif name.startswith("network.") and any(
-                operation in name for operation in ("http", "request")
-            ):
-                effects.update(("network.http", "may_fail"))
+            signature = intrinsic_signature(name)
+            if signature is not None:
+                effects.add(signature.effect)
+                if signature.result_type.startswith("Result["):
+                    effects.add("may_fail")
             elif isinstance(node.func, ast.Name) and node.func.id in self.functions:
                 effects.update(
                     self._function_effect_hint(self.functions[node.func.id], visiting)
