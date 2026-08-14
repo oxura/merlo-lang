@@ -193,6 +193,20 @@ def test_manifest_v2_schema_rejects_invalid_top_level_and_nested_fields(tmp_path
     invalid["manifest_sha256"] = manifest_sha256(invalid)
     with pytest.raises(ReleaseValidationError, match="required inventory"):
         verify_manifest(invalid)
+    invalid = dict(manifest)
+    invalid["gates"] = dict(manifest["gates"])
+    invalid["gates"].pop("examples")
+    invalid["payload_sha256"] = manifest_payload_sha256(invalid)
+    invalid["manifest_sha256"] = manifest_sha256(invalid)
+    with pytest.raises(ReleaseValidationError, match="gates"):
+        verify_manifest(invalid)
+    invalid = dict(manifest)
+    invalid["required"] = dict(manifest["required"])
+    invalid["required"]["sources"] = []
+    invalid["payload_sha256"] = manifest_payload_sha256(invalid)
+    invalid["manifest_sha256"] = manifest_sha256(invalid)
+    with pytest.raises(ReleaseValidationError, match="sources or binaries"):
+        verify_manifest(invalid)
 
 
 def test_validation_report_carries_provenance_package_release(tmp_path: Path) -> None:

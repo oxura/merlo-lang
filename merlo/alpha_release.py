@@ -653,6 +653,8 @@ def _validate_manifest_shape(manifest: Mapping[str, Any]) -> None:
             raise ReleaseValidationError(f"manifest required inventory mismatch: {name}")
     sources = _manifest_strings(required["sources"], "required.sources")
     binaries = _manifest_strings(required["binaries"], "required.binaries")
+    if not sources or not binaries:
+        raise ReleaseValidationError("manifest required sources or binaries missing")
     for filename, digest in assets.items():
         asset_path = f"assets/{filename}"
         if files.get(asset_path) != digest:
