@@ -8,7 +8,10 @@ import pytest
 
 from merlo.concise_application import ConciseApplicationError, elaborate_concise_core
 from merlo.native_c_backend import compile_c_source
-from merlo.representation_c_backend import emit_general_c
+from merlo.representation_c_backend import (
+    RepresentationCBackendError,
+    emit_general_c,
+)
 from merlo.representation_ir import (
     ArrayDesc,
     CallbackDesc,
@@ -441,3 +444,449 @@ def test_owned_text_reborrows_as_text_view_for_native_calls(tmp_path: Path) -> N
     completed = subprocess.run([str(binary)], input=b"hello", capture_output=True, check=False)
     assert completed.returncode == 0, completed.stderr.decode()
     assert b"OK result=5" in completed.stdout
+
+
+def test_nested_owned_record_call_temporary_has_one_drop(tmp_path: Path) -> None:
+    source = (
+        "record Change:\n"
+        "    old_path: Text\n"
+        "    new_path: Text\n"
+        "fn rename(change: Change) -> UInt64:\n"
+        "    return change.old_path.len() + change.new_path.len()\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    return rename(Change(\"draft.txt\", \"published.txt\"))\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    assert "__merlo_owned_temp_1 = merlo_make_Change(" in generated.source
+    assert generated.source.count(
+        "merlo_drop_Change(&__merlo_owned_temp_1);"
+    ) == 1
+
+    binary = _native(source, tmp_path, "owned-record-call")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=22" in completed.stdout
+    assert b"text_allocations=2 text_frees=2" in completed.stdout
+
+
+def test_owned_record_return_moves_named_argument_once(tmp_path: Path) -> None:
+    source = (
+        "record Change:\n"
+        "    old_path: Text\n"
+        "    new_path: Text\n"
+        "fn take(change: Change) -> Change:\n"
+        "    return change\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let source: Change = Change(\"a\", \"bc\")\n"
+        "    let result: Change = take(source)\n"
+        "    return result.old_path.len() + result.new_path.len()\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    assert "merlo_fn_take(merlo_move_Change(&source))" in generated.source
+
+    binary = _native(source, tmp_path, "owned-record-return")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=3" in completed.stdout
+    assert b"text_allocations=2 text_frees=2" in completed.stdout
+
+
+def test_borrowed_text_literal_remains_one_stack_argument() -> None:
+    source = (
+        "fn inspect(text: Text) -> UInt64:\n"
+        "    return text.len()\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    return inspect(\"x\")\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    assert "__merlo_owned_temp_" not in generated.source
+    assert generated.source.count("= merlo_fn_inspect(") == 1
+
+
+@pytest.mark.parametrize("keyword", ("if", "while"))
+def test_control_flow_rejects_owned_temporary_borrow_arguments(keyword: str) -> None:
+    body = (
+        f"    {keyword} consume(Text.from_bytes(input, 0, input.len())):\n"
+        "        return 1\n"
+        if keyword == "if"
+        else
+        "    while consume(Text.from_bytes(input, 0, input.len())):\n"
+        "        break\n"
+    )
+    source = (
+        "fn consume(value: Text) -> Bool:\n"
+        "    return value.len() > 0\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        + body
+        + "    return 0\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(RepresentationCBackendError, match="control-flow expression"):
+        emit_general_c(hir, rir, optimized)
+
+
+def test_borrowed_view_cannot_escape_materialized_text_owner() -> None:
+    source = (
+        "fn borrow_view(value: Text) -> TextView:\n"
+        "    return value.view()\n"
+        "fn wrapper(input: BytesView) -> TextView:\n"
+        "    return borrow_view(Text.from_bytes(input, 0, input.len()))\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    return wrapper(input).len()\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
+        emit_general_c(hir, rir, optimized)
+
+def test_borrowed_map_cannot_be_shallow_cloned_for_owned_call() -> None:
+    source = (
+        "fn take(value: Map[Text,UInt64]) -> Map[Text,UInt64]:\n"
+        "    return value\n"
+        "fn wrapper(value: Map[Text,UInt64]) -> Map[Text,UInt64]:\n"
+        "    return take(value)\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    return 0\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(RepresentationCBackendError, match="cannot clone borrowed owner"):
+        emit_general_c(hir, rir, optimized)
+
+
+def test_branch_move_keeps_zeroed_source_cleanup_on_false_path() -> None:
+    source = (
+        "record Change:\n"
+        "    old_path: Text\n"
+        "    new_path: Text\n"
+        "fn take(value: Change) -> Change:\n"
+        "    return value\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let source: Change = Change(\"a\", \"bc\")\n"
+        "    if input.len() > 0:\n"
+        "        let moved: Change = take(source)\n"
+        "        return moved.old_path.len()\n"
+        "    return source.old_path.len()\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    assert generated.source.count("merlo_drop_Change(&source);") == 3
+
+
+def test_loop_body_borrow_temporary_is_dropped_at_each_iteration() -> None:
+    source = (
+        "fn consume(value: Text) -> Unit:\n"
+        "    return\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    var remaining: UInt64 = input.len()\n"
+        "    while remaining > 0:\n"
+        "        consume(Text.from_bytes(input, 0, input.len()))\n"
+        "        remaining = 0\n"
+        "    return remaining\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    assert generated.source.count("__merlo_owned_temp_1 = merlo_text_from") == 1
+    assert generated.source.count("merlo_drop_Text(&__merlo_owned_temp_1);") == 1
+
+
+@pytest.mark.parametrize("binding", ("return", "assign"))
+def test_nested_borrowed_holder_rejects_owner_escape(binding: str) -> None:
+    expression = "Holder(borrow_view(Text.from_bytes(input, 0, input.len())))"
+    if binding == "return":
+        body = f"    return {expression}\n"
+        return_type = "Holder"
+    else:
+        body = f"    let holder: Holder = {expression}\n    return 0\n"
+        return_type = "UInt64"
+    source = (
+        "record Holder:\n"
+        "    view: TextView\n"
+        "fn borrow_view(value: Text) -> TextView:\n"
+        "    return value.view()\n"
+        f"fn wrapper(input: BytesView) -> {return_type}:\n"
+        + body
+        + "fn main(input: BytesView) -> UInt64:\n"
+        + (
+            "    return wrapper(input).view.len()\n"
+            if binding == "return"
+            else "    return wrapper(input)\n"
+        )
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
+        emit_general_c(hir, rir, optimized)
+
+def test_try_propagation_drops_borrow_temporary_on_error_and_success() -> None:
+    source = (
+        "enum AppError:\n"
+        "    Failed\n"
+        "fn validate(value: Text) -> Result[UInt64,AppError]:\n"
+        "    if value.len() > 0:\n"
+        "        return Ok(1)\n"
+        "    return Err(AppError.Failed)\n"
+        "fn run(input: BytesView) -> Result[UInt64,AppError]:\n"
+        "    let value: UInt64 = validate(Text.from_bytes(input, 0, input.len()))?\n"
+        "    return Ok(value)\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    return 0\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    assert generated.source.count("merlo_drop_Text(&__merlo_owned_temp_1);") == 2
+
+
+def test_nested_borrowed_slice_rejects_materialized_vec_owner() -> None:
+    source = (
+        "record HolderSlice:\n"
+        "    view: Slice[UInt64]\n"
+        "fn borrow_slice(values: Vec[UInt64]) -> Slice[UInt64]:\n"
+        "    return values.view()\n"
+        "fn wrapper(input: BytesView) -> HolderSlice:\n"
+        "    return HolderSlice(borrow_slice(Vec.new()))\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    return 0\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
+        emit_general_c(hir, rir, optimized)
+
+
+def test_vec_view_of_owned_call_rejects_borrowed_escape() -> None:
+    source = (
+        "fn make() -> Vec[UInt64]:\n"
+        "    return Vec.new()\n"
+        "fn wrapper(input: BytesView) -> Slice[UInt64]:\n"
+        "    return make().view()\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    return 0\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
+        emit_general_c(hir, rir, optimized)
+
+
+def test_vec_text_get_clones_payload_before_temporary_drop(tmp_path: Path) -> None:
+    source = (
+        "fn make() -> Vec[Text]:\n"
+        "    let values: Vec[Text] = Vec.new()\n"
+        "    values.push(\"abc\")\n"
+        "    return values\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let value: Text = make().get(0)\n"
+        "    return value.len()\n"
+    )
+    binary = _native(source, tmp_path, "vec-text-get")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=3" in completed.stdout
+    assert b"text_allocations=2 text_frees=2" in completed.stdout
+
+
+def test_box_text_get_clones_payload_before_temporary_drop(tmp_path: Path) -> None:
+    source = (
+        "fn make() -> Box[Text]:\n"
+        "    return Box.new(\"abc\")\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let value: Text = make().get()\n"
+        "    return value.len()\n"
+    )
+    binary = _native(source, tmp_path, "box-text-get")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=3" in completed.stdout
+    assert b"text_allocations=2 text_frees=2" in completed.stdout
+
+
+def test_vec_scalar_get_copies_before_temporary_drop(tmp_path: Path) -> None:
+    source = (
+        "fn make() -> Vec[UInt64]:\n"
+        "    let values: Vec[UInt64] = Vec.new()\n"
+        "    values.push(7)\n"
+        "    return values\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let value: UInt64 = make().get(0)\n"
+        "    return value\n"
+    )
+    binary = _native(source, tmp_path, "vec-scalar-get")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=7" in completed.stdout
+
+
+def test_vec_get_mut_rejects_temporary_owner_escape() -> None:
+    source = (
+        "fn make() -> Vec[UInt64]:\n"
+        "    return Vec.new()\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let value: UInt64 = make().get_mut(0)\n"
+        "    return value\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
+        emit_general_c(hir, rir, optimized)
+
+
+def test_vec_len_uses_named_and_temporary_receivers_once(tmp_path: Path) -> None:
+    source = (
+        "fn make() -> Vec[UInt64]:\n"
+        "    let values: Vec[UInt64] = Vec.new()\n"
+        "    values.push(1)\n"
+        "    return values\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let values: Vec[UInt64] = make()\n"
+        "    return values.len() + make().len()\n"
+    )
+    binary = _native(source, tmp_path, "vec-len")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=2" in completed.stdout
+
+
+def test_owner_callback_parameter_is_rejected_until_ownership_is_explicit() -> None:
+    source = (
+        "fn inspect(value: Text) -> UInt64:\n"
+        "    return value.len()\n"
+        "fn apply(callback: Fn[Text,UInt64], value: Text) -> UInt64:\n"
+        "    return callback(value)\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        '    return apply(inspect, "x")\n'
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    with pytest.raises(
+        RepresentationCBackendError,
+        match="owning callback parameters require explicit ownership",
+    ):
+        emit_general_c(hir, rir, optimized)
+
+
+def test_get_mut_forwards_original_nested_vec(tmp_path: Path) -> None:
+    source = (
+        "fn append(values: Vec[UInt64]) -> Unit:\n"
+        "    values.push(9)\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let nested: Vec[Vec[UInt64]] = Vec.new()\n"
+        "    let values: Vec[UInt64] = Vec.new()\n"
+        "    nested.push(values)\n"
+        "    append(nested.get_mut(0))\n"
+        "    return nested.get(0).len()\n"
+    )
+    binary = _native(source, tmp_path, "nested-get-mut")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=1" in completed.stdout
+
+
+def test_borrowed_match_payload_is_cloned_not_stolen(tmp_path: Path) -> None:
+    source = (
+        "enum Holder:\n"
+        "    Value: Text\n"
+        "fn extract(holder: Holder) -> Text:\n"
+        "    match holder:\n"
+        "        case Value(text):\n"
+        "            return text\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        '    let holder: Holder = Holder.Value("abc")\n'
+        "    let copied: Text = extract(holder)\n"
+        "    match holder:\n"
+        "        case Value(original):\n"
+        "            return copied.len() + original.len()\n"
+    )
+    binary = _native(source, tmp_path, "borrowed-match")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=6" in completed.stdout
+
+
+def test_borrowed_owner_assignment_clones_source(tmp_path: Path) -> None:
+    source = (
+        "fn copy(value: Text) -> Text:\n"
+        "    let result: Text = value\n"
+        "    return result\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        '    let source: Text = "abc"\n'
+        "    let result: Text = copy(source)\n"
+        "    return source.len() + result.len()\n"
+    )
+    binary = _native(source, tmp_path, "borrowed-assignment")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=6" in completed.stdout
+
+
+def test_match_payload_from_vec_borrow_is_cloned(tmp_path: Path) -> None:
+    source = (
+        "enum Holder:\n"
+        "    Value: Text\n"
+        "fn extract(values: Vec[Holder]) -> Text:\n"
+        "    match values.get(0):\n"
+        "        case Value(text):\n"
+        "            return text\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let values: Vec[Holder] = Vec.new()\n"
+        '    values.push(Holder.Value("abc"))\n'
+        "    let copied: Text = extract(values)\n"
+        "    match values.get(0):\n"
+        "        case Value(original):\n"
+        "            return copied.len() + original.len()\n"
+    )
+    binary = _native(source, tmp_path, "borrowed-vec-match")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=6" in completed.stdout
+
+
+def test_match_payload_from_borrowed_projection_is_cloned(tmp_path: Path) -> None:
+    source = (
+        "enum Holder:\n"
+        "    Value: Text\n"
+        "record Wrapper:\n"
+        "    choice: Holder\n"
+        "fn extract(wrapper: Wrapper) -> Text:\n"
+        "    match wrapper.choice:\n"
+        "        case Value(text):\n"
+        "            return text\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        '    let wrapper: Wrapper = Wrapper(Holder.Value("abc"))\n'
+        "    let copied: Text = extract(wrapper)\n"
+        "    match wrapper.choice:\n"
+        "        case Value(original):\n"
+        "            return copied.len() + original.len()\n"
+    )
+    binary = _native(source, tmp_path, "borrowed-projection-match")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=6" in completed.stdout
+
+
+def test_direct_owner_projection_from_borrow_is_cloned(tmp_path: Path) -> None:
+    source = (
+        "record Wrapper:\n"
+        "    text: Text\n"
+        "fn extract(wrapper: Wrapper) -> Text:\n"
+        "    return wrapper.text\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        '    let wrapper: Wrapper = Wrapper("abc")\n'
+        "    let copied: Text = extract(wrapper)\n"
+        "    return copied.len() + wrapper.text.len()\n"
+    )
+    binary = _native(source, tmp_path, "borrowed-direct-projection")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=6" in completed.stdout
+
+
+def test_owner_array_subscript_from_borrow_is_cloned(tmp_path: Path) -> None:
+    source = (
+        "fn extract(values: Array[Text,1]) -> Text:\n"
+        "    return values[0]\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        '    let values: Array[Text,1] = ["abc"]\n'
+        "    let copied: Text = extract(values)\n"
+        "    return copied.len() + values[0].len()\n"
+    )
+    binary = _native(source, tmp_path, "borrowed-array-subscript")
+    completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=6" in completed.stdout
