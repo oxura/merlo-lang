@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
-from research.archive.historical_protocol.merlo.legacy_evidence import frozen_sha256
+from .legacy_evidence import frozen_sha256
 from research.archive.alpha1.merlo.frontend_bench import NegativeCase, generate_negative_cases
 from research.archive.historical_protocol.merlo.frontend_evaluator import ReferenceEvaluator
 from research.archive.historical_protocol.merlo.frontend_semantics import check_frontend
