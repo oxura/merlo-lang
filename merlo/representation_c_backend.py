@@ -2531,7 +2531,9 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             )
         elif descriptor.kind == "record":
             children = (field_type for _, field_type, _ in descriptor.fields)
-        elif descriptor.kind in {"vec", "box", "array"}:
+        elif descriptor.kind == "array":
+            return False
+        elif descriptor.kind in {"vec", "box"}:
             children = (
                 getattr(descriptor, "element_type", None)
                 or getattr(descriptor, "payload_type", None),
