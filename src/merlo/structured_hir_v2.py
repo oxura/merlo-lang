@@ -7,7 +7,6 @@ flags, and pointer arithmetic belong to lower layers.
 from __future__ import annotations
 
 import ast
-import copy
 import hashlib
 import json
 import re
@@ -16,6 +15,7 @@ from pathlib import Path
 from typing import Any, Iterable
 from merlo.ffi import FFICompileError, FFIProgram, validate_ffi
 from merlo.canonical_ast import CanonicalProgram
+from merlo.surface_ast import SurfaceProgram
 from merlo.type_parser import generic_parts, parse_type, validate_type_expr
 from merlo.intrinsics import contextual_result_type, format_intrinsic_arity, intrinsic_signature
 
@@ -237,6 +237,11 @@ class StructuredHIRProgram:
         repr=False,
         compare=False,
     )
+    surface_program: SurfaceProgram | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+    )
 
     def __post_init__(self) -> None:
         if self.schema_version != STRUCTURED_HIR_SCHEMA_VERSION:
@@ -307,7 +312,7 @@ def _stable_id(prefix: str, *parts: Any) -> str:
 
 def _span(path: str, node: ast.AST) -> SourceSpan:
     return SourceSpan(
-        path,
+        str(getattr(node, "_merlo_path", path)),
         int(getattr(node, "lineno", 1)),
         int(getattr(node, "col_offset", 0)) + 1,
         int(getattr(node, "end_lineno", getattr(node, "lineno", 1))),
@@ -2274,11 +2279,10 @@ def compile_canonical_hir(
     *,
     entry_function: str = "main",
 ) -> StructuredHIRProgram:
-    """Lower an in-memory canonical tree through the production HIR builder."""
-    if program.native_module is None:
-        return compile_structured_hir(
-            program.to_source(),
-            entry_function=entry_function,
+    """Lower the retained typed Surface tree through the production HIR builder."""
+    if program.surface_program is None:
+        raise StructuredHIRCompileError(
+            "CanonicalSurfaceRequired: serialized projections are not compiler input"
         )
     source = program.projection_source or ""
     path = program.source_path or next(
@@ -2289,16 +2293,16 @@ def compile_canonical_hir(
         ),
         "main.mlo",
     )
-    module = copy.deepcopy(program.native_module)
-    try:
-        compile(module, path, "exec")
-    except (TypeError, ValueError, SyntaxError) as error:
-        raise StructuredHIRCompileError(f"{path}: invalid native AST: {error}") from error
-    _validate_map_specializations(module, path)
+    from merlo.surface_elaborator import surface_lowering_module
+
+    module, declaration_kinds, binding_kinds = surface_lowering_module(
+        program.surface_program,
+        program,
+    )
     preprocessed = _Preprocessed(
         source,
-        dict(program.native_declaration_kinds),
-        dict(program.native_binding_kinds),
+        dict(declaration_kinds),
+        dict(binding_kinds),
     )
     types = _parse_type_declarations(
         path,
@@ -2342,6 +2346,7 @@ def compile_canonical_hir(
         functions,
         entry_function,
         native_module=module,
+        surface_program=program.surface_program,
     )
 
 

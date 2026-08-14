@@ -295,3 +295,26 @@ jobs:
           if missing:
               raise SystemExit(f"missing required release files: {missing}")
           PY
+
+  required-gates:
+    name: Required CI gates
+    if: ${{ always() }}
+    needs:
+      - production
+      - tooling
+      - archive
+      - package-smoke
+      - native-examples
+      - native-sanitizers
+      - deterministic-artifacts
+      - release-manifest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject incomplete or failed prerequisites
+        if: >-
+          ${{ contains(needs.*.result, 'failure') ||
+              contains(needs.*.result, 'cancelled') ||
+              contains(needs.*.result, 'skipped') }}
+        run: exit 1
+      - name: Confirm every required gate passed
+        run: echo "All required CI gates passed."

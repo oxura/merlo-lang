@@ -66,33 +66,14 @@ class ProjectCompilation:
     native: NativeBuildResult | None = None
     @property
     def diagnostic_source_map(self) -> tuple[dict[str, Any], ...]:
-        origins = {
-            item.canonical_line: item
-            for item in self.elaborated.origins
-        }
         result = []
         for function in self.hir.functions:
             for node in function.walk():
-                origin = origins.get(node.source.line)
                 result.append(
                     {
                         "node_id": node.id,
                         "canonical": node.source.to_dict(),
-                        "concise": (
-                            node.source.to_dict()
-                            if origin is None
-                            else {
-                                "path": origin.path,
-                                "line": origin.source_line,
-                                "column": node.source.column,
-                                "end_line": (
-                                    origin.source_line
-                                    + node.source.end_line
-                                    - node.source.line
-                                ),
-                                "end_column": node.source.end_column,
-                            }
-                        ),
+                        "concise": node.source.to_dict(),
                     }
                 )
         return tuple(result)
@@ -186,9 +167,7 @@ def compile_project(
     try:
         module_graph = ModuleGraph.load(entry)
     except ModuleError as exc:
-        raise ConciseApplicationError(
-            f"{entry}: module binding failed: {exc}"
-        ) from exc
+        raise ConciseApplicationError(str(exc)) from exc
     elaborated = elaborate_concise_application(
         entry,
         require_interface_lock=require_interface_lock,

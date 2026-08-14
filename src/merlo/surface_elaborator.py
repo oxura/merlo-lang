@@ -16,11 +16,13 @@ from merlo.canonical_ast import (
     CanonicalOptionFallback,
 )
 from merlo.surface_ast import (
+    SurfaceAnnotation,
     SurfaceAssignment,
     SurfaceBinary,
     SurfaceBinding,
     SurfaceBreak,
     SurfaceCall,
+    SurfaceComment,
     SurfaceCallArgument,
     SurfaceContinue,
     SurfaceExpression,
@@ -45,10 +47,11 @@ from merlo.surface_ast import (
     SurfaceStatement,
     SurfaceTry,
     SurfaceUnary,
+    SurfaceUses,
     SurfaceWhile,
 )
 from merlo.type_parser import generic_parts, parse_type
-from merlo.intrinsics import INTRINSIC_SIGNATURES, contextual_result_type
+from merlo.intrinsics import INTRINSIC_SIGNATURES
 
 class SurfaceElaborationError(ValueError):
     pass
@@ -57,6 +60,41 @@ _HOST_CALLS = {
     name: (signature.parameters, signature.result_type, signature.effect, signature.capability)
     for name, signature in INTRINSIC_SIGNATURES.items()
 }
+
+_INSTANCE_METHODS = {
+    ("Path", "to_text"): ((), "Text"),
+    ("Bytes", "to_text"): ((), "Text"),
+    ("Bytes", "view"): ((), "BytesView"),
+    ("BytesView", "slice"): (("UInt64", "UInt64"), "BytesView"),
+    ("Text", "as_view"): ((), "TextView"),
+    ("Text", "view"): ((), "TextView"),
+    ("Text", "contains"): (("Text",), "Bool"),
+    ("Text", "contains_ascii_case_insensitive"): (("Text",), "Bool"),
+    ("Text", "starts_with"): (("Text",), "Bool"),
+    ("Text", "ends_with"): (("Text",), "Bool"),
+    ("Text", "slice_bytes"): (("UInt64", "UInt64"), "TextView"),
+    ("TextView", "parse_uint64"): ((), "Result[UInt64,UInt64]"),
+    ("TextView", "is_ascii"): ((), "Bool"),
+    ("TextView", "is_digits"): ((), "Bool"),
+    ("TextView", "contains"): (("Text",), "Bool"),
+    ("TextView", "contains_ascii_case_insensitive"): (("Text",), "Bool"),
+    ("TextView", "slice_bytes"): (("UInt64", "UInt64"), "TextView"),
+    ("TextView", "starts_with"): (("Text",), "Bool"),
+    ("TextView", "ends_with"): (("Text",), "Bool"),
+    ("TextView", "to_text"): ((), "Text"),
+    ("TextBuilder", "append_text"): (("Text",), "Unit"),
+    ("TextBuilder", "append_byte"): (("UInt64",), "Unit"),
+    ("TextBuilder", "append_scalar"): (("UInt64",), "Unit"),
+    ("TextBuilder", "finish"): ((), "Text"),
+    ("TextBuilder", "append_uint64"): (("UInt64",), "Unit"),
+    ("FileReader", "lines"): ((), "FileLines"),
+    ("FileLines", "count_text"): ((), "Text"),
+    ("FileReader", "close"): ((), "Result[Unit,AppError]"),
+}
+_INSTANCE_METHOD_NAMES = frozenset(
+    method for _, method in _INSTANCE_METHODS
+)
+
 
 
 def _generic_parts(type_name: str, constructor: str) -> tuple[str, ...] | None:
@@ -214,6 +252,7 @@ def _bind_call_arguments(
 
 class _Elaborator:
     def __init__(self, program: SurfaceProgram) -> None:
+        self._active_binding: str | None = None
         self.program = program
         self.types = _Types()
         self.records = {
@@ -247,6 +286,11 @@ class _Elaborator:
                 {},
                 {},
             )
+            if isinstance(declaration.body, tuple):
+                for statement in declaration.body:
+                    if isinstance(statement, SurfaceUses):
+                        function.effects.update(statement.effects)
+                        function.capabilities.update(statement.effects)
             self.functions[declaration.name] = function
             for parameter in declaration.parameters:
                 if parameter.type_name:
@@ -273,6 +317,7 @@ class _Elaborator:
                     function.errors.add(result_parts[1])
         for function in self.functions.values():
             body = self._body(function.source)
+            self._validate_function_flow(function)
             self._count(body, function)
         for _ in range(max(1, len(self.functions) * 4)):
             snapshot = self._snapshot()
@@ -280,6 +325,8 @@ class _Elaborator:
                 self._statements(self._body(function.source), function)
             if snapshot == self._snapshot():
                 break
+        for function in self.functions.values():
+            self._validate_function_return(function)
         for _ in range(max(1, len(self.functions) * 2)):
             changed = False
             for function in self.functions.values():
@@ -316,6 +363,328 @@ class _Elaborator:
                 SurfaceExpressionStatement(function.body.span, function.body),  # type: ignore[union-attr]
             )
         return function.body  # type: ignore[return-value]
+    @staticmethod
+    def _literal_true(expression: SurfaceExpression) -> bool:
+        return (
+            isinstance(expression, SurfaceLiteral)
+            and expression.kind == "Bool"
+            and expression.value is True
+        )
+
+    @staticmethod
+    def _pattern_binding(pattern: str) -> str | None:
+        if "(" not in pattern or not pattern.endswith(")"):
+            return None
+        binding = pattern[:-1].rsplit("(", 1)[1]
+        return binding if binding and binding != "_" else None
+
+    def _match_exhaustive(self, statement: SurfaceMatch) -> bool:
+        patterns = {case.pattern for case in statement.cases}
+        if "_" in patterns:
+            return True
+        variants = {pattern.rsplit(".", 1)[-1].split("(", 1)[0] for pattern in patterns}
+        if variants in ({"Ok", "Err"}, {"Some", "None"}):
+            return True
+        owners = {
+            pattern.rsplit(".", 1)[0]
+            for pattern in patterns
+            if "." in pattern
+        }
+        if len(owners) != 1:
+            return False
+        enum = self.enums.get(next(iter(owners)))
+        return enum is not None and variants == {
+            item.name for item in enum.variants
+        }
+
+    @classmethod
+    def _has_current_loop_break(
+        cls,
+        statements: tuple[SurfaceStatement, ...],
+    ) -> bool:
+        for statement in statements:
+            if isinstance(statement, SurfaceBreak):
+                return True
+            if isinstance(statement, SurfaceIf):
+                if cls._has_current_loop_break(
+                    statement.body
+                ) or cls._has_current_loop_break(statement.otherwise):
+                    return True
+            elif isinstance(statement, SurfaceMatch):
+                if any(
+                    cls._has_current_loop_break(case.body)
+                    for case in statement.cases
+                ):
+                    return True
+        return False
+
+    def _block_terminates(
+        self,
+        statements: tuple[SurfaceStatement, ...],
+        *,
+        tail_position: bool = True,
+    ) -> bool:
+        executable = tuple(
+            statement
+            for statement in statements
+            if not isinstance(statement, (SurfaceUses, SurfaceComment))
+        )
+        for index, statement in enumerate(executable):
+            if isinstance(statement, SurfaceReturn):
+                return True
+            if (
+                tail_position
+                and index == len(executable) - 1
+                and isinstance(statement, SurfaceExpressionStatement)
+            ):
+                return True
+            if isinstance(statement, SurfaceIf):
+                if (
+                    statement.otherwise
+                    and self._block_terminates(
+                        statement.body,
+                        tail_position=False,
+                    )
+                    and self._block_terminates(
+                        statement.otherwise,
+                        tail_position=False,
+                    )
+                ):
+                    return True
+            elif isinstance(statement, SurfaceMatch):
+                if (
+                    statement.cases
+                    and self._match_exhaustive(statement)
+                    and all(
+                        self._block_terminates(
+                            case.body,
+                            tail_position=False,
+                        )
+                        for case in statement.cases
+                    )
+                ):
+                    return True
+            elif (
+                isinstance(statement, SurfaceWhile)
+                and self._literal_true(statement.condition)
+                and not self._has_current_loop_break(statement.body)
+            ):
+                return True
+        return False
+
+    @staticmethod
+    def _validate_expression_reads(
+        expression: SurfaceExpression,
+        assigned: set[str],
+        declared: set[str],
+    ) -> None:
+        for item in expression.walk():
+            if (
+                isinstance(item, SurfaceName)
+                and item.name in declared
+                and item.name not in assigned
+            ):
+                raise SurfaceElaborationError(
+                    f"UnresolvedName: {item.name}"
+                )
+
+    def _validate_block_flow(
+        self,
+        statements: tuple[SurfaceStatement, ...],
+        assigned: set[str],
+        declared: set[str],
+    ) -> tuple[set[str], set[str], bool]:
+        assigned = set(assigned)
+        declared = set(declared)
+        reachable = True
+        for statement in statements:
+            if not reachable:
+                break
+            if isinstance(statement, (SurfaceUses, SurfaceComment, SurfacePass)):
+                continue
+            if isinstance(statement, SurfaceBinding):
+                self._validate_expression_reads(
+                    statement.value,
+                    assigned,
+                    declared,
+                )
+                declared.add(statement.name)
+                assigned.add(statement.name)
+            elif isinstance(statement, SurfaceAnnotation):
+                declared.add(statement.name)
+            elif isinstance(statement, SurfaceAssignment):
+                if isinstance(statement.target, SurfaceName):
+                    if (
+                        statement.operator != "="
+                        and statement.target.name not in assigned
+                    ):
+                        raise SurfaceElaborationError(
+                            f"UnresolvedName: {statement.target.name}"
+                        )
+                    declared.add(statement.target.name)
+                    assigned.add(statement.target.name)
+                else:
+                    self._validate_expression_reads(
+                        statement.target,
+                        assigned,
+                        declared,
+                    )
+                self._validate_expression_reads(
+                    statement.value,
+                    assigned,
+                    declared,
+                )
+            elif isinstance(statement, SurfaceExpressionStatement):
+                self._validate_expression_reads(
+                    statement.expression,
+                    assigned,
+                    declared,
+                )
+            elif isinstance(statement, SurfaceReturn):
+                if statement.expression is not None:
+                    self._validate_expression_reads(
+                        statement.expression,
+                        assigned,
+                        declared,
+                    )
+                reachable = False
+            elif isinstance(statement, SurfacePrint):
+                self._validate_expression_reads(
+                    statement.expression,
+                    assigned,
+                    declared,
+                )
+            elif isinstance(statement, (SurfaceBreak, SurfaceContinue)):
+                reachable = False
+            elif isinstance(statement, SurfaceIf):
+                self._validate_expression_reads(
+                    statement.condition,
+                    assigned,
+                    declared,
+                )
+                body_assigned, body_declared, body_reachable = (
+                    self._validate_block_flow(
+                        statement.body,
+                        assigned,
+                        declared,
+                    )
+                )
+                else_assigned, else_declared, else_reachable = (
+                    self._validate_block_flow(
+                        statement.otherwise,
+                        assigned,
+                        declared,
+                    )
+                )
+                declared |= body_declared | else_declared
+                if self._literal_true(statement.condition):
+                    assigned = body_assigned
+                    reachable = body_reachable
+                elif (
+                    isinstance(statement.condition, SurfaceLiteral)
+                    and statement.condition.kind == "Bool"
+                    and statement.condition.value is False
+                ):
+                    assigned = else_assigned
+                    reachable = else_reachable
+                else:
+                    assigned = body_assigned & else_assigned
+                    reachable = body_reachable or else_reachable
+            elif isinstance(statement, SurfaceWhile):
+                self._validate_expression_reads(
+                    statement.condition,
+                    assigned,
+                    declared,
+                )
+                _, body_declared, _ = self._validate_block_flow(
+                    statement.body,
+                    assigned,
+                    declared,
+                )
+                declared |= body_declared
+                if (
+                    self._literal_true(statement.condition)
+                    and not self._has_current_loop_break(statement.body)
+                ):
+                    reachable = False
+            elif isinstance(statement, SurfaceFor):
+                self._validate_expression_reads(
+                    statement.iterable,
+                    assigned,
+                    declared,
+                )
+                loop_declared = declared | {statement.name}
+                loop_assigned = assigned | {statement.name}
+                _, body_declared, _ = self._validate_block_flow(
+                    statement.body,
+                    loop_assigned,
+                    loop_declared,
+                )
+                declared |= body_declared | {statement.name}
+            elif isinstance(statement, SurfaceMatch):
+                self._validate_expression_reads(
+                    statement.expression,
+                    assigned,
+                    declared,
+                )
+                case_states = []
+                case_declared = set(declared)
+                for case in statement.cases:
+                    binding = self._pattern_binding(case.pattern)
+                    incoming_assigned = set(assigned)
+                    incoming_declared = set(declared)
+                    if binding:
+                        incoming_assigned.add(binding)
+                        incoming_declared.add(binding)
+                    case_assigned, declared_in_case, case_reachable = (
+                        self._validate_block_flow(
+                            case.body,
+                            incoming_assigned,
+                            incoming_declared,
+                        )
+                    )
+                    case_states.append((case_assigned, case_reachable))
+                    case_declared |= declared_in_case
+                declared = case_declared
+                if case_states and self._match_exhaustive(statement):
+                    assigned = set.intersection(
+                        *(state for state, _ in case_states)
+                    )
+                    reachable = any(
+                        state_reachable
+                        for _, state_reachable in case_states
+                    )
+        return assigned, declared, reachable
+
+    def _validate_function_flow(self, function: _Function) -> None:
+        parameters = set(function.parameters)
+        self._validate_block_flow(
+            self._body(function.source),
+            parameters,
+            parameters,
+        )
+
+    def _validate_function_return(self, function: _Function) -> None:
+        declared_return = function.source.return_type
+        result_parts = (
+            _generic_parts(declared_return, "Result")
+            if declared_return
+            else None
+        )
+        value_return = (
+            result_parts[0]
+            if result_parts and len(result_parts) == 2
+            else declared_return
+        )
+        body = self._body(function.source)
+        if (
+            function.source.body_kind == "block"
+            and value_return not in {None, "Unit"}
+            and not self._block_terminates(body)
+        ):
+            raise SurfaceElaborationError(
+                f"MissingReturn: {function.source.name}"
+            )
 
     def _snapshot(self) -> tuple[tuple[str, str, str | None], ...]:
         return tuple(
@@ -334,6 +703,26 @@ class _Elaborator:
             return function.parameters[name]
         return function.locals.setdefault(
             name, self.types.variable(f"function:{function.source.name}:local:{name}")
+        )
+    def _local_visible(
+        self,
+        function: _Function,
+        name: str,
+        span,
+    ) -> bool:
+        if name in function.parameters:
+            return True
+        if name == self._active_binding:
+            return False
+        first = function.first_bindings.get(name)
+        if first is None:
+            return name in function.locals
+        return (
+            first.span.start_line,
+            first.span.start_column,
+        ) < (
+            span.start_line,
+            span.start_column,
         )
 
     def _lookup(self, function: _Function, name: str) -> str:
@@ -394,12 +783,21 @@ class _Elaborator:
                 name: {field.name: field.type_name for field in record.fields}
                 for name, record in self.records.items()
             }
+            map_entry_parts = (
+                _generic_parts(receiver_type, "MapEntry")
+                if receiver_type
+                else None
+            )
             candidates = [
                 (name, fields[expression.field])
                 for name, fields in field_tables.items()
                 if expression.field in fields
             ]
-            if receiver_type in self.records:
+            if map_entry_parts and expression.field in {"key", "value"}:
+                field_type = map_entry_parts[
+                    0 if expression.field == "key" else 1
+                ]
+            elif receiver_type in self.records:
                 field_type = field_tables[receiver_type][expression.field]
             elif len(candidates) == 1:
                 owner_type, field_type = candidates[0]
@@ -577,12 +975,40 @@ class _Elaborator:
         expected: str | None = None,
     ) -> str:
         if isinstance(expression, SurfaceLiteral):
-            if expression.kind == "None" and expected and expected.startswith("Option["):
+            numeric = {"Byte", "UInt64", "Int64", "Float32", "Float64"}
+            if expected in numeric and expression.kind in numeric:
+                term = self.types.typed(expected)
+            elif expression.kind == "None" and expected and expected.startswith("Option["):
                 term = self.types.typed(expected)
             else:
                 term = self.types.typed(expression.kind)
         elif isinstance(expression, SurfaceName):
-            term = self._lookup(function, expression.name)
+            if expression.name == "Unit":
+                term = self.types.typed("Unit")
+            elif self._local_visible(
+                function,
+                expression.name,
+                expression.span,
+            ):
+                term = self._lookup(function, expression.name)
+            elif expression.name in self.functions:
+                target = self.functions[expression.name]
+                parameter_types = tuple(
+                    self.types.resolve(
+                        item,
+                        name=f"{expression.name}.callback_parameter",
+                    )
+                    for item in target.parameters.values()
+                )
+                return_type = self.types.resolve(
+                    target.return_term,
+                    name=f"{expression.name}.callback_return",
+                )
+                term = self.types.typed(
+                    "Fn[" + ",".join((*parameter_types, return_type)) + "]"
+                )
+            else:
+                term = self._lookup(function, expression.name)
         elif isinstance(expression, SurfaceMember):
             term = self._member(expression, function, expected)
             expected = None
@@ -638,15 +1064,19 @@ class _Elaborator:
                         f"TruthinessForbidden: {left_type or 'unresolved'}"
                     )
             else:
+                numeric = {"Byte", "UInt64", "Int64", "Float32", "Float64"}
+                contextual = expected if expected in numeric else None
                 left = self._expression(expression.left, function)
                 left_type = self.types.concrete.get(self.types.find(left))
-                numeric = {"Byte", "UInt64", "Int64", "Float32", "Float64"}
                 if left_type is not None and left_type not in numeric:
                     raise SurfaceElaborationError(
                         "numeric operator requires numeric operands, "
                         f"got {left_type}"
                     )
-                operand_type = expected or left_type
+                if contextual is not None:
+                    left = self.types.typed(contextual)
+                    left_type = contextual
+                operand_type = contextual or left_type
                 right = self._expression(
                     expression.right, function, operand_type
                 )
@@ -678,6 +1108,41 @@ class _Elaborator:
                     for argument in expression.arguments[1:]:
                         self.types.unify(first, self._expression(argument.value, function, expected), context=name)
                     term = first
+                elif name in {
+                    "wrapping_add",
+                    "wrapping_sub",
+                    "wrapping_mul",
+                    "checked_add",
+                    "checked_sub",
+                    "checked_mul",
+                }:
+                    if len(expression.arguments) != 2:
+                        raise SurfaceElaborationError(
+                            f"ArityMismatch: {name}"
+                        )
+                    first = self._expression(
+                        expression.arguments[0].value,
+                        function,
+                        expected,
+                    )
+                    first_type = self.types.concrete.get(
+                        self.types.find(first)
+                    )
+                    if first_type not in {"Byte", "Int64", "UInt64"}:
+                        raise SurfaceElaborationError(
+                            f"NumericArgumentsRequired: {name}"
+                        )
+                    second = self._expression(
+                        expression.arguments[1].value,
+                        function,
+                        first_type,
+                    )
+                    self.types.unify(
+                        first,
+                        second,
+                        context=name,
+                    )
+                    term = first
                 elif name in self.records:
                     record = self.records[name]
                     field_types = {
@@ -696,6 +1161,17 @@ class _Elaborator:
                             field_types[field_name],
                         )
                     term = self.types.typed(name)
+                elif name == "Path":
+                    if len(expression.arguments) != 1:
+                        raise SurfaceElaborationError(
+                            "ArityMismatch: Path"
+                        )
+                    self._expression(
+                        expression.arguments[0].value,
+                        function,
+                        "Text",
+                    )
+                    term = self.types.typed("Path")
                 elif name in {"Ok", "Err", "Some", "None"}:
                     constructor_type = expected
                     declared_type = function.source.return_type
@@ -736,8 +1212,51 @@ class _Elaborator:
                             argument_type,
                         )
                     term = self.types.typed(produced_type)
+                elif self._local_visible(function, name, expression.span):
+                    callback = self._lookup(function, name)
+                    callback_type = self.types.concrete.get(
+                        self.types.find(callback)
+                    )
+                    parts = (
+                        _generic_parts(callback_type, "Fn")
+                        if callback_type is not None
+                        else None
+                    )
+                    if not parts or len(parts) < 1:
+                        raise SurfaceElaborationError(
+                            f"NotCallable: {name}"
+                        )
+                    parameter_types = parts[:-1]
+                    if (
+                        len(expression.arguments) != len(parameter_types)
+                        or any(
+                            argument.name is not None
+                            for argument in expression.arguments
+                        )
+                    ):
+                        raise SurfaceElaborationError(
+                            f"ArityMismatch: {name}"
+                        )
+                    for argument, parameter_type in zip(
+                        expression.arguments,
+                        parameter_types,
+                        strict=True,
+                    ):
+                        self._expression(
+                            argument.value,
+                            function,
+                            parameter_type,
+                        )
+                    term = self.types.typed(parts[-1])
                 elif name in self.functions:
                     target = self.functions[name]
+                    if (
+                        function.source.declared_kind == "fn"
+                        and target.source.declared_kind == "task"
+                    ):
+                        raise SurfaceElaborationError(
+                            f"EffectInPureFunction: {function.source.name}"
+                        )
                     function.calls.add(name)
                     bound = _bind_call_arguments(
                         expression,
@@ -745,12 +1264,32 @@ class _Elaborator:
                         name,
                     )
                     for parameter_name, argument in bound:
+                        parameter = target.parameters[parameter_name]
                         self.types.unify(
-                            self._expression(argument.value, function),
-                            target.parameters[parameter_name],
+                            self._expression(
+                                argument.value,
+                                function,
+                                self.types.concrete.get(
+                                    self.types.find(parameter)
+                                ),
+                            ),
+                            parameter,
                             context=f"call {name}.{parameter_name}",
                         )
-                    term = target.return_term
+                    declared_result = (
+                        target.source.return_type
+                        if target.source.return_type
+                        and _generic_parts(
+                            target.source.return_type,
+                            "Result",
+                        )
+                        else None
+                    )
+                    term = (
+                        self.types.typed(declared_result)
+                        if declared_result
+                        else target.return_term
+                    )
                 else:
                     raise SurfaceElaborationError(f"UnknownCall: {name}")
             elif isinstance(expression.callee, SurfaceMember):
@@ -769,15 +1308,21 @@ class _Elaborator:
                             f"UnknownVariant: {enum.name}.{method}"
                         )
                     payload_type = variants[method]
-                    if payload_type is None or len(expression.arguments) != 1:
+                    if payload_type is None:
+                        if expression.arguments:
+                            raise SurfaceElaborationError(
+                                f"VariantPayloadMismatch: {enum.name}.{method}"
+                            )
+                    elif len(expression.arguments) != 1:
                         raise SurfaceElaborationError(
                             f"VariantPayloadMismatch: {enum.name}.{method}"
                         )
-                    self._expression(
-                        expression.arguments[0].value,
-                        function,
-                        payload_type,
-                    )
+                    else:
+                        self._expression(
+                            expression.arguments[0].value,
+                            function,
+                            payload_type,
+                        )
                     term = self.types.typed(enum.name)
                 elif (
                     isinstance(receiver_expression, SurfaceName)
@@ -805,6 +1350,44 @@ class _Elaborator:
                     if expression.arguments:
                         raise SurfaceElaborationError("ArityMismatch: Map.new")
                     term = self.types.typed("Map[Text,UInt64]")
+                elif (
+                    isinstance(receiver_expression, SurfaceName)
+                    and receiver_expression.name == "TextBuilder"
+                    and method == "new"
+                ):
+                    if expression.arguments:
+                        raise SurfaceElaborationError(
+                            "ArityMismatch: TextBuilder.new"
+                        )
+                    term = self.types.typed("TextBuilder")
+                elif (
+                    isinstance(receiver_expression, SurfaceName)
+                    and receiver_expression.name == "Box"
+                    and method == "new"
+                ):
+                    if len(expression.arguments) != 1:
+                        raise SurfaceElaborationError(
+                            "ArityMismatch: Box.new"
+                        )
+                    payload = self._expression(
+                        expression.arguments[0].value,
+                        function,
+                    )
+                    payload_type = self.types.concrete.get(
+                        self.types.find(payload)
+                    )
+                    box_type = (
+                        expected
+                        if expected and expected.startswith("Box[")
+                        else f"Box[{payload_type}]"
+                        if payload_type
+                        else None
+                    )
+                    if box_type is None:
+                        raise SurfaceElaborationError(
+                            "AmbiguousType: Box.new"
+                        )
+                    term = self.types.typed(box_type)
                 elif method in {"where", "map", "count"}:
                     term = self._collection_call(expression, function, expected)
                     expected = None
@@ -812,11 +1395,27 @@ class _Elaborator:
                     if expression.arguments:
                         raise SurfaceElaborationError("ArityMismatch: clone")
                     term = self._expression(receiver_expression, function)
-                elif method == "len":
-                    if expression.arguments:
-                        raise SurfaceElaborationError("ArityMismatch: len")
+                elif method in {"len", "capacity", "byte", "tag"}:
+                    arity = 1 if method == "byte" else 0
+                    if len(expression.arguments) != arity:
+                        raise SurfaceElaborationError(
+                            f"ArityMismatch: {method}"
+                        )
                     self._expression(receiver_expression, function)
-                    term = self.types.typed("UInt64")
+                    for argument in expression.arguments:
+                        self._expression(
+                            argument.value,
+                            function,
+                            "UInt64",
+                        )
+                    result_type = expected if expected in {
+                        "Byte",
+                        "UInt64",
+                        "Int64",
+                        "Float32",
+                        "Float64",
+                    } else "UInt64"
+                    term = self.types.typed(result_type)
                 elif method == "push":
                     if len(expression.arguments) != 1:
                         raise SurfaceElaborationError("ArityMismatch: push")
@@ -845,10 +1444,10 @@ class _Elaborator:
                             context="Vec.push value",
                         )
                     term = self.types.typed("Unit")
-                elif method in {"increment", "get"}:
-                    if len(expression.arguments) != 1:
+                elif method == "increment":
+                    if len(expression.arguments) not in {1, 2}:
                         raise SurfaceElaborationError(
-                            f"ArityMismatch: {method}"
+                            "ArityMismatch: increment"
                         )
                     receiver = self._expression(
                         receiver_expression,
@@ -858,16 +1457,117 @@ class _Elaborator:
                     self.types.unify(
                         receiver,
                         self.types.typed("Map[Text,UInt64]"),
-                        context=f"Map.{method} receiver",
+                        context="Map.increment receiver",
                     )
                     self._expression(
                         expression.arguments[0].value,
                         function,
                         "Text",
                     )
-                    term = self.types.typed(
-                        "UInt64" if method == "get" else "Unit"
+                    if len(expression.arguments) == 2:
+                        self._expression(
+                            expression.arguments[1].value,
+                            function,
+                            "UInt64",
+                        )
+                    term = self.types.typed("Unit")
+                elif method == "insert":
+                    if len(expression.arguments) != 2:
+                        raise SurfaceElaborationError(
+                            "ArityMismatch: insert"
+                        )
+                    receiver = self._expression(
+                        receiver_expression,
+                        function,
                     )
+                    receiver_type = self.types.concrete.get(
+                        self.types.find(receiver)
+                    )
+                    map_parts = (
+                        _generic_parts(receiver_type, "Map")
+                        if receiver_type
+                        else None
+                    )
+                    if not map_parts or len(map_parts) != 2:
+                        raise SurfaceElaborationError(
+                            f"UnknownCall: {receiver_type or 'unresolved'}.insert"
+                        )
+                    self._expression(
+                        expression.arguments[0].value,
+                        function,
+                        map_parts[0],
+                    )
+                    self._expression(
+                        expression.arguments[1].value,
+                        function,
+                        map_parts[1],
+                    )
+                    term = self.types.typed("Unit")
+                elif method == "get":
+                    receiver = self._expression(
+                        receiver_expression,
+                        function,
+                    )
+                    receiver_type = self.types.concrete.get(
+                        self.types.find(receiver)
+                    )
+                    map_parts = (
+                        _generic_parts(receiver_type, "Map")
+                        if receiver_type
+                        else None
+                    )
+                    vec_parts = (
+                        _generic_parts(receiver_type, "Vec")
+                        if receiver_type
+                        else None
+                    )
+                    box_parts = (
+                        _generic_parts(receiver_type, "Box")
+                        if receiver_type
+                        else None
+                    )
+                    if map_parts and len(map_parts) == 2 and len(expression.arguments) == 1:
+                        self._expression(
+                            expression.arguments[0].value,
+                            function,
+                            map_parts[0],
+                        )
+                        term = self.types.typed(map_parts[1])
+                    elif vec_parts and len(vec_parts) == 1 and len(expression.arguments) == 1:
+                        self._expression(
+                            expression.arguments[0].value,
+                            function,
+                            "UInt64",
+                        )
+                        term = self.types.typed(vec_parts[0])
+                    elif box_parts and len(box_parts) == 1 and not expression.arguments:
+                        term = self.types.typed(box_parts[0])
+                    else:
+                        raise SurfaceElaborationError(
+                            f"ArityMismatch: {receiver_type or 'unresolved'}.get"
+                        )
+                elif method == "entries":
+                    if expression.arguments:
+                        raise SurfaceElaborationError(
+                            "ArityMismatch: entries"
+                        )
+                    receiver = self._expression(
+                        receiver_expression,
+                        function,
+                    )
+                    receiver_type = self.types.concrete.get(
+                        self.types.find(receiver)
+                    )
+                    map_parts = (
+                        _generic_parts(receiver_type, "Map")
+                        if receiver_type
+                        else None
+                    )
+                    if not map_parts or len(map_parts) != 2:
+                        raise SurfaceElaborationError(
+                            f"UnknownCall: {receiver_type or 'unresolved'}.entries"
+                        )
+                    term = self.types.typed(f"Borrow[{receiver_type}]")
                 elif (
                     isinstance(receiver_expression, SurfaceName)
                     and receiver_expression.name == "Text"
@@ -876,6 +1576,109 @@ class _Elaborator:
                     for argument in expression.arguments:
                         self._expression(argument.value, function)
                     term = self.types.typed("Text")
+                elif method in {
+                    "is_none",
+                    "is_some",
+                    "is_ok",
+                    "is_err",
+                    "unwrap",
+                    "unwrap_err",
+                }:
+                    if expression.arguments:
+                        raise SurfaceElaborationError(
+                            f"ArityMismatch: {method}"
+                        )
+                    receiver = self._expression(
+                        receiver_expression,
+                        function,
+                    )
+                    receiver_type = self.types.concrete.get(
+                        self.types.find(receiver)
+                    )
+                    option_parts = (
+                        _generic_parts(receiver_type, "Option")
+                        if receiver_type is not None
+                        else None
+                    )
+                    result_parts = (
+                        _generic_parts(receiver_type, "Result")
+                        if receiver_type is not None
+                        else None
+                    )
+                    if method in {"is_none", "is_some"} and option_parts:
+                        term = self.types.typed("Bool")
+                    elif method in {"is_ok", "is_err"} and result_parts:
+                        term = self.types.typed("Bool")
+                    elif method == "unwrap" and option_parts:
+                        term = self.types.typed(option_parts[0])
+                    elif method == "unwrap" and result_parts:
+                        term = self.types.typed(result_parts[0])
+                    elif method == "unwrap_err" and result_parts:
+                        term = self.types.typed(result_parts[1])
+                    else:
+                        raise SurfaceElaborationError(
+                            f"UnknownCall: {receiver_type or 'unresolved'}.{method}"
+                        )
+                elif method == "view":
+                    if expression.arguments:
+                        raise SurfaceElaborationError(
+                            "ArityMismatch: view"
+                        )
+                    receiver = self._expression(
+                        receiver_expression,
+                        function,
+                    )
+                    receiver_type = self.types.concrete.get(
+                        self.types.find(receiver)
+                    )
+                    if receiver_type == "Bytes":
+                        result_type = "BytesView"
+                    elif receiver_type == "Text":
+                        result_type = "TextView"
+                    elif receiver_type and receiver_type.startswith("Vec["):
+                        result_type = f"Borrow[{receiver_type}]"
+                    else:
+                        raise SurfaceElaborationError(
+                            f"UnknownCall: {receiver_type or 'unresolved'}.view"
+                        )
+                    term = self.types.typed(result_type)
+                elif (
+                    method in _INSTANCE_METHOD_NAMES
+                    and not (
+                        isinstance(receiver_expression, SurfaceName)
+                        and f"{receiver_expression.name}.{method}" in _HOST_CALLS
+                    )
+                ):
+                    receiver = self._expression(
+                        receiver_expression,
+                        function,
+                    )
+                    receiver_type = self.types.concrete.get(
+                        self.types.find(receiver)
+                    )
+                    signature = _INSTANCE_METHODS.get(
+                        (receiver_type or "", method)
+                    )
+                    if signature is None:
+                        raise SurfaceElaborationError(
+                            f"UnknownCall: {receiver_type or 'unresolved'}.{method}"
+                        )
+                    parameters, result_type = signature
+                    if len(expression.arguments) != len(parameters):
+                        raise SurfaceElaborationError(
+                            f"ArityMismatch: {receiver_type}.{method}"
+                        )
+                    for argument, parameter_type in zip(
+                        expression.arguments,
+                        parameters,
+                        strict=True,
+                    ):
+                        self._expression(
+                            argument.value,
+                            function,
+                            parameter_type,
+                        )
+                    term = self.types.typed(result_type)
                 else:
                     if not isinstance(receiver_expression, SurfaceName):
                         raise SurfaceElaborationError(
@@ -900,12 +1703,11 @@ class _Elaborator:
                     function.capabilities.add(capability)
                     term = self.types.typed(
                         expected
-                        if (
-                            name == "network.tcp_connect"
-                            and expected
-                            and expected.startswith("Result[TcpStream,")
+                        or (
+                            "Result[Unit,FsError]"
+                            if name == "fs.close"
+                            else return_type
                         )
-                        else contextual_result_type(return_type, expected)
                     )
             else:
                 raise SurfaceElaborationError("UnsupportedCall")
@@ -929,41 +1731,45 @@ class _Elaborator:
                 term = self.types.typed(expected)
             else:
                 element_type = self.types.concrete.get(self.types.find(element))
-                term = self.types.typed(f"Vec[{element_type}]") if element_type else self.types.variable(f"vec:{expression.span.start_line}")
+                term = (
+                    self.types.typed(f"Vec[{element_type}]")
+                    if element_type
+                    else self.types.variable(
+                        f"vec:{expression.span.start_line}"
+                    )
+                )
         elif isinstance(expression, SurfaceTry):
             inner_call = expression.expression
-            if (
+            named_error_call = (
                 isinstance(inner_call, SurfaceCall)
                 and isinstance(inner_call.callee, SurfaceName)
                 and inner_call.callee.name in self.functions
-            ):
-                term = self._expression(inner_call, function)
+            )
+            inner = self._expression(inner_call, function)
+            if named_error_call:
                 function.error_calls.add(inner_call.callee.name)
-            else:
-                inner = self._expression(inner_call, function)
-                inner_type = self.types.concrete.get(self.types.find(inner))
-                result_parts = (
-                    _generic_parts(inner_type, "Result")
-                    if inner_type is not None
-                    else None
+            inner_type = self.types.concrete.get(self.types.find(inner))
+            result_parts = (
+                _generic_parts(inner_type, "Result")
+                if inner_type is not None
+                else None
+            )
+            if result_parts:
+                term = self.types.typed(result_parts[0])
+                function.errors.add(result_parts[1])
+            elif named_error_call and self.functions[
+                inner_call.callee.name
+            ].errors:
+                term = inner
+            elif inner_type is not None:
+                raise SurfaceElaborationError(
+                    f"TryRequiresResult: found {inner_type}"
                 )
-                if inner_type is not None and (
-                    result_parts is None or len(result_parts) != 2
-                ):
-                    raise SurfaceElaborationError(
-                        f"TryRequiresResult: found {inner_type}"
-                    )
+            else:
                 term = self.types.variable(
                     f"try:{expression.span.path}:{expression.span.start_line}:"
                     f"{expression.span.start_column}"
                 )
-                if result_parts:
-                    self.types.unify(
-                        term,
-                        self.types.typed(result_parts[0]),
-                        context="postfix try",
-                    )
-                    function.errors.add(result_parts[1])
         else:
             raise SurfaceElaborationError(f"UnsupportedExpression: {type(expression).__name__}")
         if expected:
@@ -982,8 +1788,11 @@ class _Elaborator:
         function: _Function,
         *,
         loop_depth: int = 0,
+        tail_position: bool = True,
     ) -> None:
         for index, statement in enumerate(statements):
+            if isinstance(statement, (SurfaceUses, SurfaceComment)):
+                continue
             if isinstance(statement, SurfaceBinding):
                 if (
                     statement.name not in function.locals
@@ -1010,27 +1819,99 @@ class _Elaborator:
                             f"did you mean {similar}?"
                         )
                 term = self._local(function, statement.name)
-                value = self._expression(statement.value, function, statement.type_name)
+                previous_binding = self._active_binding
+                self._active_binding = statement.name
+                try:
+                    value = self._expression(
+                        statement.value,
+                        function,
+                        statement.type_name,
+                    )
+                finally:
+                    self._active_binding = previous_binding
                 self.types.unify(term, value, context=f"assignment {statement.name}")
                 self._note(function, statement.name, "assignment_value")
+            elif isinstance(statement, SurfaceAnnotation):
+                term = self._local(function, statement.name)
+                self.types.unify(
+                    term,
+                    self.types.typed(statement.type_name),
+                    context=f"annotation {statement.name}",
+                )
+                self._note(function, statement.name, "explicit_annotation")
             elif isinstance(statement, SurfaceAssignment):
-                if not isinstance(statement.target, SurfaceName):
-                    raise SurfaceElaborationError("UnsupportedAssignmentTarget")
-                target = self._lookup(function, statement.target.name)
-                value = self._expression(statement.value, function)
-                self.types.unify(target, value, context=f"mutation {statement.target.name}")
-                self._note(function, statement.target.name, "mutated")
+                if isinstance(statement.target, SurfaceName):
+                    target = self._lookup(function, statement.target.name)
+                    label = statement.target.name
+                    self._note(function, label, "mutated")
+                else:
+                    target = self._expression(
+                        statement.target,
+                        function,
+                    )
+                    label = type(statement.target).__name__
+                value = self._expression(
+                    statement.value,
+                    function,
+                    self.types.concrete.get(self.types.find(target)),
+                )
+                self.types.unify(
+                    target,
+                    value,
+                    context=f"mutation {label}",
+                )
             elif isinstance(statement, SurfaceReturn):
                 if statement.expression is None:
                     actual = self.types.typed("Unit")
+                    actual_result = None
                 else:
+                    direct_result_call = (
+                        isinstance(statement.expression, SurfaceCall)
+                        and isinstance(
+                            statement.expression.callee,
+                            SurfaceName,
+                        )
+                        and statement.expression.callee.name in self.functions
+                        and self.functions[
+                            statement.expression.callee.name
+                        ].source.return_type is not None
+                        and _generic_parts(
+                            self.functions[
+                                statement.expression.callee.name
+                            ].source.return_type,
+                            "Result",
+                        )
+                        is not None
+                    )
                     expected = self.types.concrete.get(
                         self.types.find(function.return_term)
                     )
                     actual = self._expression(
-                        statement.expression, function, expected
+                        statement.expression,
+                        function,
+                        None if direct_result_call else expected,
                     )
-                self.types.unify(function.return_term, actual, context=f"{function.source.name} return")
+                    actual_type = self.types.concrete.get(
+                        self.types.find(actual)
+                    )
+                    actual_result = (
+                        _generic_parts(actual_type, "Result")
+                        if actual_type
+                        else None
+                    )
+                if actual_result and len(actual_result) == 2:
+                    self.types.unify(
+                        function.return_term,
+                        self.types.typed(actual_result[0]),
+                        context=f"{function.source.name} return",
+                    )
+                    function.errors.add(actual_result[1])
+                else:
+                    self.types.unify(
+                        function.return_term,
+                        actual,
+                        context=f"{function.source.name} return",
+                    )
                 self._note(function, "$return", "explicit_return")
             elif isinstance(statement, SurfaceBreak):
                 if loop_depth == 0:
@@ -1039,41 +1920,141 @@ class _Elaborator:
                 if loop_depth == 0:
                     raise SurfaceElaborationError("ContinueOutsideLoop")
             elif isinstance(statement, SurfaceExpressionStatement):
+                is_tail = tail_position and not any(
+                    not isinstance(item, (SurfaceUses, SurfaceComment))
+                    for item in statements[index + 1 :]
+                )
+                direct_result_call = False
+                if is_tail and isinstance(statement.expression, SurfaceCall):
+                    callee = statement.expression.callee
+                    if (
+                        isinstance(callee, SurfaceName)
+                        and callee.name in self.functions
+                    ):
+                        declared = self.functions[
+                            callee.name
+                        ].source.return_type
+                        direct_result_call = bool(
+                            declared
+                            and _generic_parts(declared, "Result")
+                        )
+                    elif (
+                        isinstance(callee, SurfaceMember)
+                        and isinstance(callee.receiver, SurfaceName)
+                    ):
+                        signature = _HOST_CALLS.get(
+                            f"{callee.receiver.name}.{callee.field}"
+                        )
+                        direct_result_call = bool(
+                            signature
+                            and _generic_parts(signature[1], "Result")
+                        )
+                declared_result = (
+                    function.source.return_type
+                    if function.source.return_type
+                    and _generic_parts(
+                        function.source.return_type,
+                        "Result",
+                    )
+                    else None
+                )
                 expected = (
-                    self.types.concrete.get(self.types.find(function.return_term))
-                    if index == len(statements) - 1
+                    declared_result
+                    if is_tail and direct_result_call
+                    else self.types.concrete.get(
+                        self.types.find(function.return_term)
+                    )
+                    if is_tail
                     else None
                 )
                 actual = self._expression(
-                    statement.expression, function, expected
+                    statement.expression,
+                    function,
+                    expected,
                 )
-                if index == len(statements) - 1:
-                    self.types.unify(function.return_term, actual, context=f"{function.source.name} tail")
+                if is_tail:
+                    actual_type = self.types.concrete.get(
+                        self.types.find(actual)
+                    )
+                    actual_result = (
+                        _generic_parts(actual_type, "Result")
+                        if actual_type
+                        else None
+                    )
+                    if actual_result and len(actual_result) == 2:
+                        self.types.unify(
+                            function.return_term,
+                            self.types.typed(actual_result[0]),
+                            context=f"{function.source.name} tail",
+                        )
+                        function.errors.add(actual_result[1])
+                    else:
+                        self.types.unify(
+                            function.return_term,
+                            actual,
+                            context=f"{function.source.name} tail",
+                        )
                     self._note(function, "$return", "tail_expression")
             elif isinstance(statement, SurfaceIf):
                 self._expression(statement.condition, function, "Bool")
-                self._statements(statement.body, function, loop_depth=loop_depth)
-                self._statements(statement.otherwise, function, loop_depth=loop_depth)
+                self._statements(
+                    statement.body,
+                    function,
+                    loop_depth=loop_depth,
+                    tail_position=False,
+                )
+                self._statements(
+                    statement.otherwise,
+                    function,
+                    loop_depth=loop_depth,
+                    tail_position=False,
+                )
             elif isinstance(statement, SurfaceWhile):
                 self._expression(statement.condition, function, "Bool")
                 self._statements(
                     statement.body,
                     function,
                     loop_depth=loop_depth + 1,
+                    tail_position=False,
                 )
             elif isinstance(statement, SurfaceFor):
                 iterable = self._expression(statement.iterable, function)
                 iterable_type = self.types.concrete.get(self.types.find(iterable))
                 vec_parts = _generic_parts(iterable_type, "Vec")
+                borrowed_parts = _generic_parts(iterable_type, "Borrow")
+                borrowed_vec_parts = (
+                    _generic_parts(borrowed_parts[0], "Vec")
+                    if borrowed_parts and len(borrowed_parts) == 1
+                    else None
+                )
+                borrowed_map_parts = (
+                    _generic_parts(borrowed_parts[0], "Map")
+                    if borrowed_parts and len(borrowed_parts) == 1
+                    else None
+                )
                 if vec_parts is not None:
                     item_type = vec_parts[0]
+                elif borrowed_vec_parts is not None:
+                    item_type = borrowed_vec_parts[0]
+                elif borrowed_map_parts is not None:
+                    item_type = (
+                        f"MapEntry[{borrowed_map_parts[0]},"
+                        f"{borrowed_map_parts[1]}]"
+                    )
+                elif iterable_type == "FileLines":
+                    item_type = "TextView"
                 else:
                     item_type = "UInt64"
-                self.types.unify(self._local(function, statement.name), self.types.typed(item_type), context="for item")
+                self.types.unify(
+                    self._local(function, statement.name),
+                    self.types.typed(item_type),
+                    context="for item",
+                )
                 self._statements(
                     statement.body,
                     function,
                     loop_depth=loop_depth + 1,
+                    tail_position=False,
                 )
             elif isinstance(statement, SurfacePrint):
                 self._expression(statement.expression, function)
@@ -1106,6 +2087,10 @@ class _Elaborator:
                         item.name: item.type_name
                         for item in self.enums[matched_type].variants
                     }
+                elif statement.cases and all(
+                    case.pattern == "_" for case in statement.cases
+                ):
+                    variants = {"_": None}
                 else:
                     raise SurfaceElaborationError(
                         f"MatchRequiresClosedSum: {matched_type or 'unresolved'}"
@@ -1113,26 +2098,34 @@ class _Elaborator:
                 observed: set[str] = set()
                 for case in statement.cases:
                     raw = case.pattern
-                    pattern = raw.rsplit(".", 1)[-1]
-                    variant_match = __import__("re").fullmatch(
-                        r"([A-Za-z_]\w*)(?:\(([A-Za-z_]\w*)\))?",
-                        pattern,
-                    )
-                    if variant_match is None:
-                        raise SurfaceElaborationError(
-                            f"InvalidPattern: {raw}"
+                    if raw == "_":
+                        observed.update(variants)
+                        binding = None
+                        payload_type = None
+                    else:
+                        pattern = raw.rsplit(".", 1)[-1]
+                        variant_match = __import__("re").fullmatch(
+                            r"([A-Za-z_]\w*)(?:\(([A-Za-z_]\w*)?\))?",
+                            pattern,
                         )
-                    variant, binding = variant_match.groups()
-                    if variant not in variants:
-                        raise SurfaceElaborationError(
-                            f"UnknownVariant: {raw}"
-                        )
-                    if variant in observed:
-                        raise SurfaceElaborationError(
-                            f"DuplicateCase: {raw}"
-                        )
-                    observed.add(variant)
-                    payload_type = variants[variant]
+                        if variant_match is None:
+                            raise SurfaceElaborationError(
+                                f"InvalidPattern: {raw}"
+                            )
+                        variant, binding = variant_match.groups()
+                        if variant not in variants:
+                            raise SurfaceElaborationError(
+                                f"UnknownVariant: {raw}"
+                            )
+                        if variant in observed:
+                            raise SurfaceElaborationError(
+                                f"DuplicateCase: {raw}"
+                            )
+                        observed.add(variant)
+                        payload_type = variants[variant]
+                        if binding == "_":
+                            binding = None
+                            payload_type = None
                     if binding and payload_type is None:
                         raise SurfaceElaborationError(
                             f"PatternPayloadForbidden: {raw}"
@@ -1152,6 +2145,7 @@ class _Elaborator:
                         case.body,
                         function,
                         loop_depth=loop_depth,
+                        tail_position=False,
                     )
                 missing = set(variants) - observed
                 if missing:
@@ -1185,6 +2179,11 @@ class _Elaborator:
         lines: list[str] = []
         prefix = "    " * depth
         for index, statement in enumerate(statements):
+            if isinstance(statement, SurfaceUses):
+                continue
+            if isinstance(statement, SurfaceComment):
+                lines.append(f"{prefix}{statement.text}")
+                continue
             if isinstance(statement, SurfaceBinding):
                 type_name = self.types.resolve(
                     function.locals[statement.name],
@@ -1198,6 +2197,10 @@ class _Elaborator:
                 lines.append(
                     f"{prefix}{keyword} {statement.name}: {type_name} = "
                     f"{_emit_expression(statement.value)}"
+                )
+            elif isinstance(statement, SurfaceAnnotation):
+                lines.append(
+                    f"{prefix}{statement.name}: {statement.type_name}"
                 )
             elif isinstance(statement, SurfaceAssignment):
                 lines.append(
@@ -1422,7 +2425,7 @@ class _Elaborator:
                     function.source.name,
                     "$return",
                     "return",
-                    return_type,
+                    canonical_return_type,
                     False,
                     tuple(sorted(function.evidence.get("$return", {"body_constraint"}))),
                 )
@@ -1447,15 +2450,9 @@ class _Elaborator:
                 )
             )
         canonical = CanonicalProgram(records, tuple(functions), enums)
-        native_module, declaration_kinds, binding_kinds = _SurfaceNativeBuilder(
-            self.program,
-            canonical,
-        ).build()
         canonical = replace(
             canonical,
-            native_module=native_module,
-            native_declaration_kinds=declaration_kinds,
-            native_binding_kinds=binding_kinds,
+            surface_program=self.program,
             projection_source=self.program.source or None,
             source_path=self.program.span.path,
             source_sha256=hashlib.sha256(
@@ -1470,6 +2467,11 @@ class _Elaborator:
         )
 
 
+def _emit_nested(expression: SurfaceExpression) -> str:
+    rendered = str(_emit_expression(expression))
+    return f"({rendered})" if isinstance(expression, SurfaceBinary) else rendered
+
+
 def _emit_expression(expression: SurfaceExpression | None) -> str | None:
     if expression is None:
         return None
@@ -1482,21 +2484,27 @@ def _emit_expression(expression: SurfaceExpression | None) -> str | None:
     if isinstance(expression, SurfaceImplicitReceiver):
         return f".{expression.field}"
     if isinstance(expression, SurfaceMember):
-        return f"{_emit_expression(expression.receiver)}.{expression.field}"
+        return f"{_emit_nested(expression.receiver)}.{expression.field}"
     if isinstance(expression, SurfaceBinary):
-        return f"{_emit_expression(expression.left)} {expression.operator} {_emit_expression(expression.right)}"
+        return (
+            f"{_emit_nested(expression.left)} {expression.operator} "
+            f"{_emit_nested(expression.right)}"
+        )
     if isinstance(expression, SurfaceUnary):
-        return f"{expression.operator} {_emit_expression(expression.operand)}"
+        return f"{expression.operator} {_emit_nested(expression.operand)}"
     if isinstance(expression, SurfaceCall):
         arguments = ", ".join(
             f"{item.name}: {_emit_expression(item.value)}" if item.name else str(_emit_expression(item.value))
             for item in expression.arguments
         )
-        return f"{_emit_expression(expression.callee)}({arguments})"
+        return f"{_emit_nested(expression.callee)}({arguments})"
     if isinstance(expression, SurfaceIndex):
-        return f"{_emit_expression(expression.receiver)}[{_emit_expression(expression.index)}]"
+        return (
+            f"{_emit_nested(expression.receiver)}"
+            f"[{_emit_expression(expression.index)}]"
+        )
     if isinstance(expression, SurfaceTry):
-        return f"{_emit_expression(expression.expression)}?"
+        return f"{_emit_nested(expression.expression)}?"
     if isinstance(expression, SurfaceList):
         return f"[{', '.join(str(_emit_expression(item)) for item in expression.items)}]"
     raise SurfaceElaborationError(f"CannotEmitExpression: {type(expression).__name__}")
@@ -1510,16 +2518,18 @@ def _emit_implicit_expression(expression: SurfaceExpression) -> str:
         value = _emit_expression(expression)
         return str(value)
     if isinstance(expression, SurfaceBinary):
-        return (
-            f"{_emit_implicit_expression(expression.left)} "
-            f"{expression.operator} "
-            f"{_emit_implicit_expression(expression.right)}"
-        )
+        left = _emit_implicit_expression(expression.left)
+        right = _emit_implicit_expression(expression.right)
+        if isinstance(expression.left, SurfaceBinary):
+            left = f"({left})"
+        if isinstance(expression.right, SurfaceBinary):
+            right = f"({right})"
+        return f"{left} {expression.operator} {right}"
     if isinstance(expression, SurfaceUnary):
-        return (
-            f"{expression.operator} "
-            f"{_emit_implicit_expression(expression.operand)}"
-        )
+        operand = _emit_implicit_expression(expression.operand)
+        if isinstance(expression.operand, SurfaceBinary):
+            operand = f"({operand})"
+        return f"{expression.operator} {operand}"
     raise SurfaceElaborationError(
         f"CannotEmitImplicitExpression: {type(expression).__name__}"
     )
@@ -1577,6 +2587,7 @@ class _SurfaceNativeBuilder:
         node.col_offset = max(span.start_column - 1, 0)
         node.end_lineno = span.end_line
         node.end_col_offset = max(span.end_column - 1, node.col_offset)
+        node._merlo_path = span.path
         return node
 
     def _annotation(self, type_name: str, span) -> ast.expr:
@@ -1755,9 +2766,15 @@ class _SurfaceNativeBuilder:
 
     def _pattern(self, case: SurfaceCase, subject_type: str | None) -> ast.pattern:
         raw = case.pattern
+        if raw == "_":
+            return self._loc(
+                ast.MatchAs(),
+                case.pattern_span or case.span,
+            )
         payload = None
         if "(" in raw and raw.endswith(")"):
             raw, payload = raw[:-1].split("(", 1)
+            payload = payload or None
         owner = None
         variant = raw.rsplit(".", 1)[-1]
         if "." in raw:
@@ -1778,7 +2795,14 @@ class _SurfaceNativeBuilder:
             return self._loc(
                 ast.MatchClass(
                     cls=value,
-                    patterns=[self._loc(ast.MatchAs(name=payload), case.pattern_span or case.span)],
+                    patterns=[
+                        self._loc(
+                            ast.MatchAs(
+                                name=None if payload == "_" else payload
+                            ),
+                            case.pattern_span or case.span,
+                        )
+                    ],
                     kwd_attrs=[],
                     kwd_patterns=[],
                 ),
@@ -1799,7 +2823,12 @@ class _SurfaceNativeBuilder:
         return self._loc(
             ast.MatchClass(
                 cls=self._name(variant, case.pattern_span or case.span),
-                patterns=[self._loc(ast.MatchAs(name=payload), case.pattern_span or case.span)],
+                patterns=[
+                    self._loc(
+                        ast.MatchAs(name=None if payload == "_" else payload),
+                        case.pattern_span or case.span,
+                    )
+                ],
                 kwd_attrs=[],
                 kwd_patterns=[],
             ),
@@ -1823,9 +2852,27 @@ class _SurfaceNativeBuilder:
                 ),
                 statement.span,
             )
+        if isinstance(statement, SurfaceAnnotation):
+            self.local_types[statement.name] = statement.type_name
+            return self._loc(
+                ast.AnnAssign(
+                    target=self._name(
+                        statement.name,
+                        statement.span,
+                        ctx=ast.Store(),
+                    ),
+                    annotation=self._annotation(
+                        statement.type_name,
+                        statement.span,
+                    ),
+                    value=None,
+                    simple=1,
+                ),
+                statement.span,
+            )
         if isinstance(statement, SurfaceAssignment):
             target = self._expr(statement.target)
-            if isinstance(target, ast.Name):
+            if isinstance(target, (ast.Name, ast.Attribute, ast.Subscript)):
                 target.ctx = ast.Store()
             value = self._expr(statement.value)
             if statement.operator == "=":
@@ -1882,8 +2929,8 @@ class _SurfaceNativeBuilder:
             return self._loc(
                 ast.If(
                     test=self._expr(statement.condition),
-                    body=self._statements(statement.body),
-                    orelse=self._statements(statement.otherwise),
+                    body=self._statements(statement.body, tail_returns=False),
+                    orelse=self._statements(statement.otherwise, tail_returns=False),
                 ),
                 statement.span,
             )
@@ -1891,7 +2938,7 @@ class _SurfaceNativeBuilder:
             return self._loc(
                 ast.While(
                     test=self._expr(statement.condition),
-                    body=self._statements(statement.body),
+                    body=self._statements(statement.body, tail_returns=False),
                     orelse=[],
                 ),
                 statement.span,
@@ -1902,7 +2949,7 @@ class _SurfaceNativeBuilder:
                 ast.For(
                     target=self._name(statement.name, statement.span, ctx=ast.Store()),
                     iter=self._expr(statement.iterable),
-                    body=self._statements(statement.body),
+                    body=self._statements(statement.body, tail_returns=False),
                     orelse=[],
                     type_comment=None,
                 ),
@@ -1930,7 +2977,7 @@ class _SurfaceNativeBuilder:
                             ast.match_case(
                                 pattern=self._pattern(case, subject_type),
                                 guard=None,
-                                body=self._statements(case.body),
+                                body=self._statements(case.body, tail_returns=False),
                             ),
                             case.span,
                         )
@@ -1941,17 +2988,26 @@ class _SurfaceNativeBuilder:
             )
         raise SurfaceElaborationError(f"UnsupportedStatement: {type(statement).__name__}")
 
-    def _statements(self, statements: tuple[SurfaceStatement, ...]) -> list[ast.stmt]:
-        result: list[ast.stmt] = []
-        for index, statement in enumerate(statements):
-            result.append(
-                self._statement(
-                    statement,
-                    tail=isinstance(statement, SurfaceExpressionStatement)
-                    and index == len(statements) - 1,
-                )
+    def _statements(
+        self,
+        statements: tuple[SurfaceStatement, ...],
+        *,
+        tail_returns: bool = True,
+    ) -> list[ast.stmt]:
+        executable = tuple(
+            statement
+            for statement in statements
+            if not isinstance(statement, (SurfaceUses, SurfaceComment))
+        )
+        return [
+            self._statement(
+                statement,
+                tail=tail_returns
+                and isinstance(statement, SurfaceExpressionStatement)
+                and index == len(executable) - 1,
             )
-        return result
+            for index, statement in enumerate(executable)
+        ]
 
     def build(self) -> tuple[ast.Module, tuple[tuple[str, str], ...], tuple[tuple[int, str], ...]]:
         body: list[ast.stmt] = []
@@ -2080,6 +3136,13 @@ class _SurfaceNativeBuilder:
             raise SurfaceElaborationError(f"InvalidNativeAST: {error}") from error
         return module, tuple(declaration_kinds), tuple(sorted(binding_kinds.items()))
 
+def surface_lowering_module(
+    program: SurfaceProgram,
+    canonical: CanonicalProgram,
+) -> tuple[ast.Module, tuple[tuple[str, str], ...], tuple[tuple[int, str], ...]]:
+    """Adapt the typed Surface tree at the HIR boundary without reparsing text."""
+    return _SurfaceNativeBuilder(program, canonical).build()
+
 
 def elaborate_surface(program: SurfaceProgram) -> SurfaceElaboration:
     return _Elaborator(program).result()
@@ -2089,5 +3152,6 @@ __all__ = [
     "InferenceDecision",
     "SurfaceElaboration",
     "SurfaceElaborationError",
+    "surface_lowering_module",
     "elaborate_surface",
 ]

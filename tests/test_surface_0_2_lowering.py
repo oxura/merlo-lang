@@ -35,7 +35,7 @@ def test_typed_collection_shorthand_expands_to_explicit_callables() -> None:
     assert len({call.callable_id for call in function.implicit_callables}) == 2
 
 
-def test_surface_handoff_uses_native_tree_and_preserves_provenance(
+def test_surface_handoff_retains_tree_and_preserves_provenance(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from merlo.structured_hir_v2 import compile_canonical_hir
@@ -57,6 +57,8 @@ def test_surface_handoff_uses_native_tree_and_preserves_provenance(
         reject_serialization,
     )
     hir = compile_canonical_hir(result.canonical, entry_function="active_names")
+    assert result.canonical.surface_program is not None
+    assert hir.surface_program is result.canonical.surface_program
     returned = hir.function("active_names").body[0]
     operation = returned.children[0]
     assert operation.kind == "VecOperation"
@@ -65,6 +67,22 @@ def test_surface_handoff_uses_native_tree_and_preserves_provenance(
     assert hir.source_sha256 == __import__("hashlib").sha256(source.encode()).hexdigest()
     assert hir.function("active_names").parameters[0].source.column == 14
 
+
+def test_serialized_canonical_projection_is_not_compiler_input() -> None:
+    from merlo.canonical_ast import CanonicalProgram
+    from merlo.structured_hir_v2 import (
+        StructuredHIRCompileError,
+        compile_canonical_hir,
+    )
+
+    result = elaborate("main() -> Unit = Unit\n")
+    serialized = CanonicalProgram.from_payload(result.canonical.to_payload())
+
+    with pytest.raises(
+        StructuredHIRCompileError,
+        match="CanonicalSurfaceRequired",
+    ):
+        compile_canonical_hir(serialized)
 
 def test_count_shorthand_returns_uint64_without_output_collection() -> None:
     result = elaborate(

@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from merlo.concise_services import lower_concise_sum_types
+from merlo.surface_ast import SurfaceFunction
+from merlo.surface_parser import parse_surface
 from merlo.structured_hir_v2 import compile_structured_hir
 from merlo.type_parser import GenericTypeSyntaxError, generic_arguments, parse_type
 
@@ -30,8 +31,8 @@ def test_generic_arguments_preserve_wrong_arity_for_caller_validation() -> None:
     assert generic_arguments(parsed) == ("Text", "AppError", "Extra")
 
 
-def test_nested_sum_types_lower_to_stable_nominal_names() -> None:
-    lowered = lower_concise_sum_types(
+def test_nested_sum_types_remain_structural_type_terms() -> None:
+    program = parse_surface(
         "fn main(value: Result[ Option[Text], AppError ]) -> UInt64:\n"
         "    match value:\n"
         "        case Ok(item):\n"
@@ -39,10 +40,11 @@ def test_nested_sum_types_lower_to_stable_nominal_names() -> None:
         "        case Err(error):\n"
         "            return 1\n"
     )
-    assert "enum Result_Option_Text__AppError_:" in lowered
-    assert "enum Option_Text_:" in lowered
-    assert "Ok: Option[Text]" in lowered
-    assert "value: Result_Option_Text__AppError_" in lowered
+
+    function = program.declarations[0]
+    assert isinstance(function, SurfaceFunction)
+    assert function.parameters[0].type_name == "Result[Option[Text],AppError]"
+    assert function.return_type == "UInt64"
 
 
 def test_parse_type_accepts_inferred_type_sentinel() -> None:

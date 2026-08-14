@@ -21,12 +21,12 @@ contents. It is the boundary shared by project compilation and tooling.
 
 ## Outputs
 
-`frontend_model.py` defines the current serialized handoff:
+`frontend_model.py` defines the serialized project result:
 `ConciseApplicationElaboration`, `InferenceDecision`, `TaskBoundary`,
-`PublicInterface`, and `SourceOrigin`. The elaboration carries the canonical
-program, canonical and machine source, source and semantic digests, interface
-revisions, effects/capabilities, inference decisions, and concise origins.
-`to_dict()` is deterministic JSON data; it is not a second evaluator.
+`PublicInterface`, and `SourceOrigin`. The in-memory `CanonicalProgram` retains
+the typed `SurfaceProgram` consumed by HIR; canonical source is a deterministic
+projection for inspection and hashing, not compiler input. `to_dict()` exposes
+deterministic JSON data and is not a second evaluator.
 
 ## Invariants
 
@@ -52,11 +52,11 @@ records and their spans, not rediscover declarations with regular expressions.
 
 ## Experimental boundary
 
-The alpha still contains CPython-compatible expression parsing and transitional
-literal/postfix preprocessing in the surface path. `frontend_model.py` is the
-stable data model for this release, but a fully bound-node-only frontend and a
-Merlo-native lexer remain RFC 0001 work. No planned `BoundProgram` API is
-published here.
+The Surface parser owns expression tokenization, module declarations, types,
+statements, and comments. Module binding transforms those nodes structurally;
+it does not rename source text. The internal HIR implementation still adapts
+Surface nodes to CPython AST objects after the semantic boundary, but no
+canonical or module source is reparsed on the production frontend path.
 
 ## Verification commands
 
@@ -68,5 +68,5 @@ merlo expand PROJECT
 merlo explain PROJECT
 ```
 
-These commands exercise the production frontend; they do not promise that
-transitional source coordinates are token-perfect after canonical rewriting.
+These commands exercise the production frontend and retain token-derived source
+coordinates through module binding and HIR lowering.

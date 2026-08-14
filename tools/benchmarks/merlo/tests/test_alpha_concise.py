@@ -6,12 +6,17 @@ import pytest
 
 from merlo.frontend_model import ConciseApplicationError
 from merlo.concise_services import (
-    _preprocess_core,
     elaborate_concise_application,
     elaborate_concise_core,
-    lower_concise_sum_types,
     write_interface_lock,
 )
+from merlo.surface_ast import (
+    SurfaceFunction,
+    SurfaceLiteral,
+    SurfaceMember,
+    SurfaceName,
+)
+from merlo.surface_parser import parse_surface
 from tools.benchmarks.merlo.concise_precedence import validate_precedence_corpus
 from merlo.formatter import expand_source, explain_source, format_source
 
@@ -48,102 +53,60 @@ def test_dynamic_any_is_structural_not_textual() -> None:
         expand_source("fn identity(value: Any) -> Any:\n    value\n")
 
 
-def test_preprocess_rewrites_literals_only_in_code_tokens() -> None:
-    source = (
-        'fn text() -> Text:\n'
-        '    return "true false Option.None"\n'
-        "fn escaped() -> Text:\n"
-        "    return 'escaped \\'true\\' false Option.None'\n"
-        'fn payload() -> Bytes:\n'
-        '    # true false Option.None\n'
-        '    return b"true false Option.None"\n'
-        'fn flags() -> Bool:\n'
-        '    return true\n'
-        'fn option() -> Option[UInt64]:\n'
-        '    return Option.None\n'
+def test_native_parser_preserves_literals_and_language_values() -> None:
+    program = parse_surface(
+        'fn text() -> Text = "true false Option.None"\n'
+        'fn payload() -> Bytes = b"true false Option.None"\n'
+        "fn flag() -> Bool = true\n"
+        "fn option() -> Option[UInt64] = Option.None\n"
     )
+    text, payload, flag, option = program.declarations
 
-    rewritten = _preprocess_core(source)
+    assert isinstance(text, SurfaceFunction)
+    assert isinstance(text.body, SurfaceLiteral)
+    assert text.body.value == "true false Option.None"
+    assert isinstance(payload, SurfaceFunction)
+    assert isinstance(payload.body, SurfaceLiteral)
+    assert payload.body.value == b"true false Option.None"
+    assert isinstance(flag, SurfaceFunction)
+    assert isinstance(flag.body, SurfaceLiteral)
+    assert flag.body.value is True
+    assert isinstance(option, SurfaceFunction)
+    assert isinstance(option.body, SurfaceMember)
+    assert isinstance(option.body.receiver, SurfaceName)
+    assert option.body.receiver.name == "Option"
+    assert option.body.field == "None"
 
-    assert 'return "true false Option.None"' in rewritten
-    assert "return 'escaped \\'true\\' false Option.None'" in rewritten
-    assert '    # true false Option.None' in rewritten
-    assert 'return b"true false Option.None"' in rewritten
-    assert "return True" in rewritten
-    assert "return Option.NoneValue" in rewritten
-    assert len(rewritten.splitlines()) == len(source.splitlines())
 
-
-def test_preprocess_does_not_rewrite_larger_identifiers() -> None:
-    source = (
-        "fn names() -> Text:\n"
-        "    return trueish\n"
-        "fn other_names() -> Text:\n"
-        "    return false_value\n"
-        "fn qualified() -> Text:\n"
-        "    return Option.NoneValueish\n"
+def test_native_parser_does_not_rewrite_larger_identifiers() -> None:
+    program = parse_surface(
+        "fn first() -> Text = trueish\n"
+        "fn second() -> Text = false_value\n"
+        "fn third() -> Text = Option.NoneValueish\n"
     )
+    first, second, third = program.declarations
 
-    rewritten = _preprocess_core(source)
+    assert isinstance(first, SurfaceFunction)
+    assert isinstance(first.body, SurfaceName)
+    assert first.body.name == "trueish"
+    assert isinstance(second, SurfaceFunction)
+    assert isinstance(second.body, SurfaceName)
+    assert second.body.name == "false_value"
+    assert isinstance(third, SurfaceFunction)
+    assert isinstance(third.body, SurfaceMember)
+    assert third.body.field == "NoneValueish"
 
-    assert "return trueish" in rewritten
-    assert "return false_value" in rewritten
-    assert "return Option.NoneValueish" in rewritten
 
-
-def test_multiline_literals_stay_opaque_to_preprocess_rewrites() -> None:
-    source = (
-        'fn payload() -> Text:\n'
-        '    return r"""\n'
-        'fn marker():\n'
-        'Name?\n'
-        'Option.None\n'
-        'trailing and\n'
-        '"""\n'
+def test_sum_types_and_similar_literal_text_remain_distinct_nodes() -> None:
+    program = parse_surface(
+        'fn payload() -> Option[ UInt64 ] = "Option[ UInt64 ]"\n'
     )
+    function = program.declarations[0]
 
-    rewritten = _preprocess_core(source)
-
-    assert 'fn marker():' in rewritten
-    assert 'Name?' in rewritten
-    assert 'Option.None' in rewritten
-    assert 'trailing and' in rewritten
-    assert 'trailing and\n"""' in rewritten
-    assert len(rewritten.splitlines()) == len(source.splitlines())
-
-
-def test_multiline_literals_stay_opaque_to_sum_lowering() -> None:
-    source = (
-        'fn payload() -> Option[UInt64]:\n'
-        '    return br"""\n'
-        'Result.Ok(\n'
-        'Option.Some(\n'
-        'Option.None\n'
-        '"""\n'
-    )
-
-    lowered = lower_concise_sum_types(source)
-
-    assert 'Result.Ok(' in lowered
-    assert 'Option.Some(' in lowered
-    assert 'Option.None' in lowered
-
-
-def test_sum_type_normalization_ignores_strings_and_comments() -> None:
-    literal_only = (
-        'fn payload() -> Text:\n'
-        '    return "Option[ UInt64 ]"\n'
-        '    # Result[ Text, AppError ]\n'
-    )
-    assert lower_concise_sum_types(literal_only) == literal_only
-
-    mixed = (
-        'fn payload() -> Option[ UInt64 ]:\n'
-        '    return "Option[ UInt64 ]"\n'
-    )
-    lowered = lower_concise_sum_types(mixed)
-    assert 'return "Option[ UInt64 ]"' in lowered
-    assert "fn payload() -> Option_UInt64_:" in lowered
+    assert isinstance(function, SurfaceFunction)
+    assert function.return_type == "Option[UInt64]"
+    assert isinstance(function.body, SurfaceLiteral)
+    assert function.body.value == "Option[ UInt64 ]"
 
 
 def test_ambiguous_and_bool_numeric_programs_are_rejected() -> None:

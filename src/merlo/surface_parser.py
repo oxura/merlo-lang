@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-import ast
 import re
 from dataclasses import dataclass
 
+from merlo.module_syntax import ModuleSyntaxError, parse_module_prelude
 from merlo.surface_ast import (
     SourceSpan,
+    SurfaceAnnotation,
     SurfaceAssignment,
     SurfaceBreak,
     SurfaceBinary,
     SurfaceBinding,
     SurfaceCall,
     SurfaceCallArgument,
+    SurfaceComment,
     SurfaceCase,
     SurfaceDeclaration,
     SurfaceEnum,
@@ -39,6 +41,7 @@ from merlo.surface_ast import (
     SurfaceStatement,
     SurfaceTry,
     SurfaceUnary,
+    SurfaceUses,
     SurfaceWhile,
 )
 
@@ -58,6 +61,11 @@ class _Line:
     text: str
     raw: str
 
+def _trivia(line: _Line) -> bool:
+    text = line.text.strip()
+    return not text or text.startswith("#")
+
+
 
 def _span(path: str, line: _Line, *, end_line: _Line | None = None) -> SourceSpan:
     end = end_line or line
@@ -74,9 +82,31 @@ def _type_name(source: str) -> str:
     source = re.sub(r"\s+", "", source)
     if source.endswith("?"):
         return f"Option[{_type_name(source[:-1])}]"
+    if source.startswith("fn("):
+        depth = 0
+        closing = None
+        for index, character in enumerate(source[2:], 2):
+            if character == "(":
+                depth += 1
+            elif character == ")":
+                depth -= 1
+                if depth == 0:
+                    closing = index
+                    break
+        if closing is None or not source[closing + 1 :].startswith("->"):
+            raise ValueError(f"malformed function type {source!r}")
+        parameters = _split_top_level_commas(source[3:closing])
+        result = source[closing + 3 :]
+        if not parameters or not result:
+            raise ValueError(f"malformed function type {source!r}")
+        return "Fn[" + ",".join(
+            (*(_type_name(item) for item in parameters), _type_name(result))
+        ) + "]"
     source = source.replace("<", "[").replace(">", "]")
     aliases = {"Int": "Int64", "UInt": "UInt64", "Float": "Float64"}
-    return aliases.get(source, source)
+    for alias, canonical in aliases.items():
+        source = re.sub(rf"\b{alias}\b", canonical, source)
+    return source
 
 def _split_top_level_commas(source: str) -> tuple[str, ...]:
     parts: list[str] = []
@@ -95,241 +125,561 @@ def _split_top_level_commas(source: str) -> tuple[str, ...]:
     parts.append(source[start:])
     return tuple(parts)
 
-def _rewrite_postfix_try(source: str) -> str:
-    cursor = 0
-    quote: str | None = None
-    while cursor < len(source):
-        character = source[cursor]
-        if quote is not None:
-            if character == "\\":
-                cursor += 2
-                continue
-            if character == quote:
-                quote = None
-            cursor += 1
-            continue
-        if character in {'"', "'"}:
-            quote = character
-            cursor += 1
-            continue
-        if character != "?":
-            cursor += 1
-            continue
-        end = cursor
-        start = end - 1
-        while start >= 0 and source[start].isspace():
-            start -= 1
-        if start < 0:
-            return source
-        if source[start] == ")":
-            depth = 1
-            start -= 1
-            while start >= 0 and depth:
-                if source[start] == ")":
-                    depth += 1
-                elif source[start] == "(":
-                    depth -= 1
-                start -= 1
-            if depth:
-                return source
-            start += 1
-            while start > 0 and (
-                source[start - 1].isalnum()
-                or source[start - 1] in "_."
-            ):
-                start -= 1
-        elif source[start].isalnum() or source[start] == "_":
-            while start > 0 and (
-                source[start - 1].isalnum()
-                or source[start - 1] in "_."
-            ):
-                start -= 1
-        else:
-            return source
-        expression = source[start:end].rstrip()
-        source = (
-            f"{source[:start]}__try__({expression})"
-            f"{source[end + 1:]}"
-        )
-        cursor = start + len("__try__(") + len(expression) + 1
-    return source
+@dataclass(frozen=True)
+class _ExpressionToken:
+    kind: str
+    text: str
+    start: int
+    end: int
+    value: object = None
 
 
-def _rewrite_expression(source: str) -> str:
-    source = re.sub(r"\btrue\b", "True", source)
-    source = re.sub(r"\bfalse\b", "False", source)
-    source = re.sub(r"(?:(?<=\()|(?<=,))\s*([A-Za-z_]\w*)\s*:", r" \1=", source)
-    source = re.sub(r"(?:(?<=\()|(?<=,))\s*\.", " __implicit__.", source)
-    source = re.sub(r"^\.", "__implicit__.", source)
-    source = re.sub(
-        r"^if\s+(.+?)\s+then\s+(.+?)\s+else\s+(.+)$",
-        r"\2 if \1 else \3",
-        source,
-    )
-    return _rewrite_postfix_try(source)
+_EXPRESSION_OPERATORS = (
+    "==",
+    "!=",
+    "<=",
+    ">=",
+    "//",
+    "<<",
+    ">>",
+    "+",
+    "-",
+    "*",
+    "/",
+    "%",
+    "|",
+    "&",
+    "^",
+    "<",
+    ">",
+    ":",
+    "=",
+    ".",
+    ",",
+    "(",
+    ")",
+    "[",
+    "]",
+    "?",
+    "~",
+    "{",
+    "}",
+)
 
 
-def _operator(node: ast.AST) -> str:
-    table = {
-        ast.Add: "+",
-        ast.Sub: "-",
-        ast.Mult: "*",
-        ast.Div: "/",
-        ast.FloorDiv: "//",
-        ast.Mod: "%",
-        ast.BitOr: "|",
-        ast.BitAnd: "&",
-        ast.BitXor: "^",
-        ast.LShift: "<<",
-        ast.RShift: ">>",
-        ast.And: "and",
-        ast.Or: "or",
-        ast.Eq: "==",
-        ast.NotEq: "!=",
-        ast.Lt: "<",
-        ast.LtE: "<=",
-        ast.Gt: ">",
-        ast.GtE: ">=",
-        ast.Is: "is",
-        ast.IsNot: "is not",
-        ast.In: "in",
-        ast.NotIn: "not in",
-        ast.Not: "not",
-        ast.USub: "-",
-        ast.UAdd: "+",
-        ast.Invert: "~",
+def _decode_string(body: str, *, raw: bool, bytes_literal: bool) -> object:
+    if raw:
+        return body.encode("utf-8") if bytes_literal else body
+    result: list[str] = []
+    index = 0
+    escapes = {
+        "a": "\a",
+        "b": "\b",
+        "f": "\f",
+        "n": "\n",
+        "r": "\r",
+        "t": "\t",
+        "v": "\v",
+        "\\": "\\",
+        "'": "'",
+        '"': '"',
+        "0": "\0",
     }
-    try:
-        return table[type(node)]
-    except KeyError as exc:
-        raise ValueError(type(node).__name__) from exc
+    while index < len(body):
+        character = body[index]
+        if character != "\\":
+            result.append(character)
+            index += 1
+            continue
+        if index + 1 >= len(body):
+            result.append("\\")
+            break
+        escaped = body[index + 1]
+        if escaped in escapes:
+            result.append(escapes[escaped])
+            index += 2
+            continue
+        if escaped in "xXuU":
+            width = 2 if escaped in "xX" else 4 if escaped == "u" else 8
+            digits = body[index + 2 : index + 2 + width]
+            if len(digits) != width or any(
+                character not in "0123456789abcdefABCDEF" for character in digits
+            ):
+                result.append("\\")
+                index += 1
+                continue
+            if bytes_literal:
+                result.extend(("\\" + escaped + digits))
+            else:
+                result.append(chr(int(digits, 16)))
+            index += 2 + width
+            continue
+        if escaped in "01234567":
+            end = index + 2
+            while end < len(body) and end < index + 4 and body[end] in "01234567":
+                end += 1
+            result.append(chr(int(body[index + 1 : end], 8)))
+            index = end
+            continue
+        if escaped == "\n":
+            index += 2
+            continue
+        result.extend(("\\", escaped))
+        index += 2
+    text = "".join(result)
+    if bytes_literal:
+        try:
+            return text.encode("latin1")
+        except UnicodeEncodeError as exc:
+            raise ValueError("bytes literal contains non-ASCII text") from exc
+    return text
 
 
-def _node_span(
-    path: str,
-    line: _Line,
-    node: ast.AST,
-    *,
-    base_column: int = 0,
-) -> SourceSpan:
-    start = line.indent + base_column + int(getattr(node, "col_offset", 0)) + 1
-    end = line.indent + base_column + int(
-        getattr(node, "end_col_offset", len(line.text))
-    ) + 1
-    return SourceSpan(path, line.number, start, line.number, end)
+class _ExpressionParser:
+    _INFIX_PRECEDENCE = {
+        "or": 1,
+        "and": 2,
+        "==": 3,
+        "!=": 3,
+        "<": 3,
+        "<=": 3,
+        ">": 3,
+        ">=": 3,
+        "is": 3,
+        "is not": 3,
+        "in": 3,
+        "not in": 3,
+        "|": 4,
+        "^": 5,
+        "&": 6,
+        "<<": 7,
+        ">>": 7,
+        "+": 8,
+        "-": 8,
+        "*": 9,
+        "/": 9,
+        "//": 9,
+        "%": 9,
+    }
+    _COMPARISONS = frozenset(
+        {"==", "!=", "<", "<=", ">", ">=", "is", "is not", "in", "not in"}
+    )
 
+    def __init__(
+        self,
+        source: str,
+        path: str,
+        line: _Line,
+        *,
+        base_column: int,
+    ) -> None:
+        self.source = source
+        self.path = path
+        self.line = line
+        self.base_column = base_column
+        self.tokens = self._tokenize()
+        self.index = 0
 
-def _expression_node(
-    node: ast.AST,
-    path: str,
-    line: _Line,
-    *,
-    base_column: int = 0,
-) -> SurfaceExpression:
-    span = _node_span(path, line, node, base_column=base_column)
-    if isinstance(node, ast.Name):
-        return SurfaceName(node.id, span)
-    if isinstance(node, ast.Constant):
-        kind = (
-            "Bool"
-            if isinstance(node.value, bool)
-            else "UInt64"
-            if isinstance(node.value, int) and node.value >= 0
-            else "Int64"
-            if isinstance(node.value, int)
-            else "Float64"
-            if isinstance(node.value, float)
-            else "Text"
-            if isinstance(node.value, str)
-            else "None"
-        )
-        return SurfaceLiteral(span, node.value, kind)
-    if isinstance(node, ast.List):
-        return SurfaceList(
-            span,
-            tuple(
-                _expression_node(item, path, line, base_column=base_column)
-                for item in node.elts
+    def _error(self, code: str, message: str, position: int | None = None) -> None:
+        if position is None:
+            position = self.tokens[self.index].start if hasattr(self, "tokens") else 0
+        raise SurfaceSyntaxError(
+            code,
+            message,
+            SourceSpan(
+                self.path,
+                self.line.number,
+                self.line.indent + self.base_column + position + 1,
+                self.line.number,
+                len(self.line.raw) + 1,
             ),
         )
-    if isinstance(node, ast.Attribute):
-        if isinstance(node.value, ast.Name) and node.value.id == "__implicit__":
-            return SurfaceImplicitReceiver(span, node.attr)
-        return SurfaceMember(
-            span,
-            _expression_node(node.value, path, line, base_column=base_column),
-            node.attr,
-        )
-    if isinstance(node, ast.Subscript):
-        return SurfaceIndex(
-            span,
-            _expression_node(node.value, path, line, base_column=base_column),
-            _expression_node(node.slice, path, line, base_column=base_column),
-        )
-    if isinstance(node, ast.Call):
-        if isinstance(node.func, ast.Name) and node.func.id == "__try__" and len(node.args) == 1:
-            return SurfaceTry(
-                span,
-                _expression_node(node.args[0], path, line, base_column=base_column),
+
+    def _tokenize(self) -> list[_ExpressionToken]:
+        tokens: list[_ExpressionToken] = []
+        index = 0
+        source = self.source
+        while index < len(source):
+            if source[index].isspace():
+                index += 1
+                continue
+            if source[index] == "#":
+                break
+            start = index
+            character = source[index]
+            if character in "'\"":
+                quote = character
+                index += 1
+                body_start = index
+                escaped = False
+                while index < len(source):
+                    current = source[index]
+                    if current == quote and not escaped:
+                        body = source[body_start:index]
+                        index += 1
+                        try:
+                            value = _decode_string(body, raw=False, bytes_literal=False)
+                        except ValueError as exc:
+                            self._error("InvalidExpression", str(exc), start)
+                        tokens.append(
+                            _ExpressionToken("literal", source[start:index], start, index, value)
+                        )
+                        break
+                    escaped = current == "\\" and not escaped
+                    if current != "\\":
+                        escaped = False
+                    index += 1
+                else:
+                    self._error("InvalidExpression", "unterminated string literal", start)
+                continue
+            if character.isalpha() or character == "_":
+                prefix = ""
+                lowered = source[index : index + 2].lower()
+                if lowered in {"br", "rb"} and index + 2 < len(source) and source[index + 2] in "'\"":
+                    prefix = source[index : index + 2]
+                    index += 2
+                elif character.lower() in {"b", "r", "u"} and index + 1 < len(source) and source[index + 1] in "'\"":
+                    prefix = character
+                    index += 1
+                if prefix:
+                    quote = source[index]
+                    index += 1
+                    body_start = index
+                    escaped = False
+                    while index < len(source):
+                        current = source[index]
+                        if current == quote and not escaped:
+                            body = source[body_start:index]
+                            index += 1
+                            try:
+                                value = _decode_string(
+                                    body,
+                                    raw="r" in prefix.lower(),
+                                    bytes_literal="b" in prefix.lower(),
+                                )
+                            except ValueError as exc:
+                                self._error("InvalidExpression", str(exc), start)
+                            tokens.append(
+                                _ExpressionToken(
+                                    "literal",
+                                    source[start:index],
+                                    start,
+                                    index,
+                                    value,
+                                )
+                            )
+                            break
+                        escaped = current == "\\" and not escaped
+                        if current != "\\":
+                            escaped = False
+                        index += 1
+                    else:
+                        self._error("InvalidExpression", "unterminated string literal", start)
+                    continue
+                index = start + 1
+                while index < len(source) and (source[index].isalnum() or source[index] == "_"):
+                    index += 1
+                tokens.append(_ExpressionToken("identifier", source[start:index], start, index))
+                continue
+            if character.isdigit() or (
+                character == "." and index + 1 < len(source) and source[index + 1].isdigit()
+            ):
+                if source[index : index + 2].lower() in {"0x", "0b", "0o"}:
+                    index += 2
+                    while index < len(source) and (
+                        source[index].isalnum() or source[index] == "_"
+                    ):
+                        index += 1
+                    text = source[start:index]
+                    if text.endswith("_") or "__" in text:
+                        self._error("InvalidExpression", "invalid integer literal", start)
+                    try:
+                        value = int(text.replace("_", ""), 0)
+                    except ValueError:
+                        self._error("InvalidExpression", "invalid integer literal", start)
+                    kind = "UInt64" if value >= 0 else "Int64"
+                else:
+                    if character == ".":
+                        index += 1
+                    while index < len(source) and (source[index].isdigit() or source[index] == "_"):
+                        index += 1
+                    is_float = character == "."
+                    if index < len(source) and source[index] == ".":
+                        is_float = True
+                        index += 1
+                        while index < len(source) and (
+                            source[index].isdigit() or source[index] == "_"
+                        ):
+                            index += 1
+                    if index < len(source) and source[index] in "eE":
+                        is_float = True
+                        index += 1
+                        if index < len(source) and source[index] in "+-":
+                            index += 1
+                        while index < len(source) and (
+                            source[index].isdigit() or source[index] == "_"
+                        ):
+                            index += 1
+                    text = source[start:index]
+                    if text.endswith("_") or "__" in text:
+                        self._error("InvalidExpression", "invalid numeric literal", start)
+                    try:
+                        value = float(text.replace("_", "")) if is_float else int(text.replace("_", ""), 10)
+                    except ValueError:
+                        self._error("InvalidExpression", "invalid numeric literal", start)
+                    kind = "Float64" if is_float else "UInt64"
+                tokens.append(_ExpressionToken("literal", source[start:index], start, index, (value, kind)))
+                continue
+            matched = next(
+                (operator for operator in _EXPRESSION_OPERATORS if source.startswith(operator, index)),
+                None,
             )
-        arguments = [
-            SurfaceCallArgument(
-                _node_span(path, line, item, base_column=base_column),
-                _expression_node(item, path, line, base_column=base_column),
-            )
-            for item in node.args
-        ]
-        arguments.extend(
-            SurfaceCallArgument(
-                _node_span(path, line, item.value, base_column=base_column),
-                _expression_node(item.value, path, line, base_column=base_column),
-                item.arg,
-            )
-            for item in node.keywords
+            if matched is None:
+                self._error("InvalidExpression", f"unexpected character {character!r}", index)
+            index += len(matched)
+            tokens.append(_ExpressionToken("operator", matched, start, index))
+        tokens.append(_ExpressionToken("eof", "", len(source), len(source)))
+        return tokens
+
+    @property
+    def current(self) -> _ExpressionToken:
+        return self.tokens[self.index]
+
+    def _peek(self, count: int = 1) -> _ExpressionToken:
+        return self.tokens[min(self.index + count, len(self.tokens) - 1)]
+
+    def _take(self, text: str | None = None) -> _ExpressionToken:
+        token = self.current
+        if text is not None and token.text != text:
+            self._error("InvalidExpression", f"expected {text!r}")
+        self.index += 1
+        return token
+
+    def _span(self, start: int, end: int) -> SourceSpan:
+        return SourceSpan(
+            self.path,
+            self.line.number,
+            self.line.indent + self.base_column + start + 1,
+            self.line.number,
+            self.line.indent + self.base_column + end + 1,
         )
-        return SurfaceCall(
-            span,
-            _expression_node(node.func, path, line, base_column=base_column),
-            tuple(arguments),
-        )
-    if isinstance(node, ast.UnaryOp):
-        return SurfaceUnary(
-            span,
-            _operator(node.op),
-            _expression_node(node.operand, path, line, base_column=base_column),
-        )
-    if isinstance(node, ast.BinOp):
-        return SurfaceBinary(
-            _operator(node.op),
-            _expression_node(node.left, path, line, base_column=base_column),
-            _expression_node(node.right, path, line, base_column=base_column),
-            span,
-        )
-    if isinstance(node, ast.BoolOp):
-        values = [
-            _expression_node(item, path, line, base_column=base_column)
-            for item in node.values
-        ]
-        result = values[0]
-        for value in values[1:]:
-            result = SurfaceBinary(_operator(node.op), result, value, span)
-        return result
-    if isinstance(node, ast.Compare):
-        left = _expression_node(node.left, path, line, base_column=base_column)
-        comparisons = []
-        for operation, comparator in zip(node.ops, node.comparators, strict=True):
-            right = _expression_node(
-                comparator, path, line, base_column=base_column
-            )
-            comparisons.append(
-                SurfaceBinary(_operator(operation), left, right, span)
-            )
-            left = right
-        result = comparisons[0]
+
+    def parse(self) -> SurfaceExpression:
+        if self.current.kind == "eof":
+            self._error("InvalidExpression", "expression expected", 0)
+        expression = self._expression(0)
+        if self.current.kind != "eof":
+            self._error("InvalidExpression", f"unexpected token {self.current.text!r}")
+        return expression
+
+    def _infix(self) -> tuple[str, int, int] | None:
+        token = self.current
+        text = token.text
+        if text == "is" and self._peek().text == "not":
+            return "is not", 3, 2
+        if text == "not" and self._peek().text == "in":
+            return "not in", 3, 2
+        precedence = self._INFIX_PRECEDENCE.get(text)
+        if precedence is None:
+            return None
+        return text, precedence, 1
+
+    def _expression(self, minimum: int) -> SurfaceExpression:
+        left = self._prefix()
+        comparisons: list[SurfaceBinary] = []
+        while True:
+            infix = self._infix()
+            if infix is None or infix[1] < minimum:
+                break
+            operator, precedence, width = infix
+            self.index += width
+            right = self._expression(precedence + 1)
+            if operator in self._COMPARISONS:
+                comparisons.append(SurfaceBinary(operator, left, right, self._span(
+                    left.span.start_column - self.line.indent - self.base_column - 1,
+                    right.span.end_column - self.line.indent - self.base_column - 1,
+                )))
+                left = right
+                continue
+            if comparisons:
+                left = self._chain(comparisons)
+                comparisons = []
+            left = SurfaceBinary(operator, left, right, self._span(
+                left.span.start_column - self.line.indent - self.base_column - 1,
+                right.span.end_column - self.line.indent - self.base_column - 1,
+            ))
+        if comparisons:
+            left = self._chain(comparisons)
+        return left
+
+    def _chain(self, comparisons: list[SurfaceBinary]) -> SurfaceExpression:
+        result: SurfaceExpression = comparisons[0]
         for comparison in comparisons[1:]:
-            result = SurfaceBinary("and", result, comparison, span)
+            result = SurfaceBinary("and", result, comparison, self._span(
+                result.span.start_column - self.line.indent - self.base_column - 1,
+                comparison.span.end_column - self.line.indent - self.base_column - 1,
+            ))
         return result
-    raise SurfaceSyntaxError("UnsupportedExpression", type(node).__name__, span)
+
+    def _prefix(self) -> SurfaceExpression:
+        token = self.current
+        if token.text in {"+", "-", "~"}:
+            self._take()
+            operand = self._expression(10)
+            expression: SurfaceExpression = SurfaceUnary(
+                self._span(token.start, operand.span.end_column - self.line.indent - self.base_column - 1),
+                token.text,
+                operand,
+            )
+        elif token.text == "not":
+            self._take()
+            operand = self._expression(3)
+            expression = SurfaceUnary(
+                self._span(token.start, operand.span.end_column - self.line.indent - self.base_column - 1),
+                "not",
+                operand,
+            )
+        else:
+            expression = self._atom()
+        while True:
+            if self.current.text == ".":
+                self._take()
+                field = self.current
+                if field.kind != "identifier":
+                    self._error("InvalidExpression", "member name expected")
+                self._take()
+                expression = SurfaceMember(self._span(
+                    expression.span.start_column - self.line.indent - self.base_column - 1,
+                    field.end,
+                ), expression, field.text)
+            elif self.current.text == "[":
+                self._take()
+                index = self._expression(0)
+                if self.current.text != "]":
+                    self._error("InvalidExpression", "expected ']'", self.current.start)
+                closing = self._take()
+                expression = SurfaceIndex(self._span(
+                    expression.span.start_column - self.line.indent - self.base_column - 1,
+                    closing.end,
+                ), expression, index)
+            elif self.current.text == "(":
+                self._take()
+                arguments: list[SurfaceCallArgument] = []
+                named = False
+                if self.current.text != ")":
+                    while True:
+                        is_named = (
+                            self.current.kind == "identifier"
+                            and self._peek().text in {":", "="}
+                        )
+                        if is_named:
+                            name = self._take().text
+                            self._take()
+                            named = True
+                        else:
+                            name = None
+                            if named:
+                                self._error(
+                                    "PositionalAfterKeyword",
+                                    "positional argument follows keyword argument",
+                                )
+                        value = self._expression(0)
+                        arguments.append(SurfaceCallArgument(value.span, value, name))
+                        if self.current.text != ",":
+                            break
+                        self._take(",")
+                        if self.current.text == ")":
+                            break
+                if self.current.text != ")":
+                    self._error("InvalidExpression", "expected ')'", self.current.start)
+                closing = self._take()
+                expression = SurfaceCall(self._span(
+                    expression.span.start_column - self.line.indent - self.base_column - 1,
+                    closing.end,
+                ), expression, tuple(arguments))
+            elif self.current.text == "?":
+                closing = self._take()
+                expression = SurfaceTry(self._span(
+                    expression.span.start_column - self.line.indent - self.base_column - 1,
+                    closing.end,
+                ), expression)
+            else:
+                break
+        return expression
+
+    def _atom(self) -> SurfaceExpression:
+        token = self.current
+        if token.text in {"{", "}"}:
+            self._error("UnsupportedExpression", "DictOrSet", token.start)
+        if token.text == ".":
+            dot = self._take()
+            field = self.current
+            if field.kind != "identifier":
+                self._error("InvalidExpression", "implicit receiver field expected")
+            self._take()
+            return SurfaceImplicitReceiver(self._span(dot.start, field.end), field.text)
+        if token.text == "(":
+            self._take()
+            expression = self._expression(0)
+            if self.current.text == ",":
+                self._error("UnsupportedExpression", "Tuple", token.start)
+            if self.current.text != ")":
+                self._error("InvalidExpression", "expected ')'", self.current.start)
+            self._take()
+            return expression
+        if token.text == "[":
+            opening = self._take()
+            items: list[SurfaceExpression] = []
+            if self.current.text != "]":
+                while True:
+                    items.append(self._expression(0))
+                    if self.current.text != ",":
+                        break
+                    self._take(",")
+                    if self.current.text == "]":
+                        break
+            if self.current.text != "]":
+                self._error("InvalidExpression", "expected ']'", self.current.start)
+            closing = self._take()
+            return SurfaceList(self._span(opening.start, closing.end), tuple(items))
+        if token.kind == "literal":
+            self._take()
+            if isinstance(token.value, tuple):
+                value, kind = token.value
+            else:
+                value = token.value
+                kind = "Bytes" if isinstance(value, bytes) else "Text"
+                while (
+                    self.current.kind == "literal"
+                    and isinstance(self.current.value, type(value))
+                ):
+                    adjacent = self._take()
+                    value += adjacent.value
+                    token = _ExpressionToken(
+                        "literal",
+                        token.text,
+                        token.start,
+                        adjacent.end,
+                        value,
+                    )
+            return SurfaceLiteral(self._span(token.start, token.end), value, kind)
+        if token.kind == "identifier":
+            self._take()
+            aliases = {
+                "true": (True, "Bool"),
+                "false": (False, "Bool"),
+                "True": (True, "Bool"),
+                "False": (False, "Bool"),
+                "none": (None, "None"),
+                "null": (None, "None"),
+                "None": (None, "None"),
+            }
+            if token.text in aliases:
+                value, kind = aliases[token.text]
+                return SurfaceLiteral(self._span(token.start, token.end), value, kind)
+            return SurfaceName(token.text, self._span(token.start, token.end))
+        self._error("InvalidExpression", "expression expected", token.start)
+        raise AssertionError("unreachable")
 
 
 def _validate_implicit(expression: SurfaceExpression, path: str, line: _Line) -> None:
@@ -382,45 +732,24 @@ def _parse_expression(
     *,
     base_column: int = 0,
 ) -> SurfaceExpression:
-    try:
-        parsed = ast.parse(_rewrite_expression(source), mode="eval").body
-    except SyntaxError as exc:
-        if "positional argument follows keyword argument" in exc.msg:
-            raise SurfaceSyntaxError(
-                "PositionalAfterKeyword",
-                "positional argument follows keyword argument",
-                SourceSpan(
-                    path,
-                    line.number,
-                    line.indent + base_column + (exc.offset or 1),
-                    line.number,
-                    len(line.raw) + 1,
-                ),
-            ) from exc
-        raise SurfaceSyntaxError(
-            "InvalidExpression",
-            exc.msg,
-            SourceSpan(
-                path,
-                line.number,
-                line.indent + base_column + (exc.offset or 1),
-                line.number,
-                len(line.raw) + 1,
-            ),
-        ) from exc
-    expression = _expression_node(
-        parsed,
+    expression = _ExpressionParser(
+        source,
         path,
         line,
         base_column=base_column,
-    )
+    ).parse()
     _validate_implicit(expression, path, line)
     return expression
 
 
-def _lines(source: str, path: str) -> list[_Line]:
-    result = []
-    for number, raw in enumerate(source.splitlines(), 1):
+def _lines(
+    source: str,
+    path: str,
+    *,
+    line_offset: int = 0,
+) -> list[_Line]:
+    physical: list[_Line] = []
+    for number, raw in enumerate(source.splitlines(), 1 + line_offset):
         if "\t" in raw[: len(raw) - len(raw.lstrip())]:
             raise SurfaceSyntaxError(
                 "TabIndentationForbidden",
@@ -434,45 +763,118 @@ def _lines(source: str, path: str) -> list[_Line]:
                 "indentation must be a multiple of four spaces",
                 SourceSpan(path, number, 1, number, indent + 1),
             )
-        result.append(_Line(number, indent, raw[indent:], raw))
+        physical.append(_Line(number, indent, raw[indent:], raw))
+
+    def delimiter_delta(text: str) -> int:
+        depth = 0
+        quote: str | None = None
+        escaped = False
+        for character in text:
+            if quote is not None:
+                if escaped:
+                    escaped = False
+                elif character == "\\":
+                    escaped = True
+                elif character == quote:
+                    quote = None
+                continue
+            if character in {'"', "'"}:
+                quote = character
+            elif character == "#":
+                break
+            elif character in "([{":
+                depth += 1
+            elif character in ")]}":
+                depth -= 1
+        return depth
+
+    result: list[_Line] = []
+    pending: _Line | None = None
+    pieces: list[str] = []
+    depth = 0
+    for line in physical:
+        if pending is None:
+            pending = line
+            pieces = [line.text]
+            depth = delimiter_delta(line.text)
+        else:
+            pieces.append(line.text.strip())
+            depth += delimiter_delta(line.text)
+        if depth <= 0:
+            text = " ".join(piece for piece in pieces if piece)
+            result.append(
+                _Line(
+                    pending.number,
+                    pending.indent,
+                    text,
+                    (" " * pending.indent) + text,
+                )
+            )
+            pending = None
+            pieces = []
+            depth = 0
+    if pending is not None:
+        text = " ".join(piece for piece in pieces if piece)
+        result.append(
+            _Line(
+                pending.number,
+                pending.indent,
+                text,
+                (" " * pending.indent) + text,
+            )
+        )
     return result
 
 
 class _Parser:
-    def __init__(self, source: str, path: str) -> None:
+    def __init__(
+        self,
+        source: str,
+        path: str,
+        *,
+        line_offset: int = 0,
+    ) -> None:
         self.source = source
         self.path = path
-        self.lines = _lines(source, path)
+        self.line_offset = line_offset
+        self.lines = _lines(source, path, line_offset=line_offset)
         self.index = 0
 
     def _skip_blank(self) -> None:
-        while self.index < len(self.lines) and not self.lines[self.index].text.strip():
+        while self.index < len(self.lines) and _trivia(self.lines[self.index]):
             self.index += 1
 
     def parse(self) -> SurfaceProgram:
+        try:
+            prelude = parse_module_prelude(
+                self.source,
+                path=self.path,
+                require_module=False,
+            )
+        except ModuleSyntaxError as exc:
+            line = self.lines[exc.line - 1] if 0 < exc.line <= len(self.lines) else _Line(
+                exc.line,
+                0,
+                "",
+                "",
+            )
+            raise SurfaceSyntaxError(exc.code, exc.message, _span(self.path, line)) from exc
+
         declarations: list[SurfaceDeclaration] = []
-        module = None
-        imports = []
+        self.index = prelude.body_source_lines[0] - 1 if prelude.body_source_lines else len(self.lines)
         self._skip_blank()
         while self.index < len(self.lines):
             line = self.lines[self.index]
             if line.indent:
                 raise SurfaceSyntaxError("UnexpectedIndent", "top-level declaration expected", _span(self.path, line))
-            if match := re.fullmatch(r"module\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)", line.text):
-                module = match.group(1)
-                self.index += 1
-            elif match := re.fullmatch(r"use\s+([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)", line.text):
-                imports.append(match.group(1))
-                self.index += 1
-            else:
-                declarations.append(self._declaration())
+            declarations.append(self._declaration())
             self._skip_blank()
         end = self.lines[-1] if self.lines else _Line(1, 0, "", "")
         return SurfaceProgram(
             SourceSpan(self.path, 1, 1, end.number, len(end.raw) + 1),
             tuple(declarations),
-            module,
-            tuple(imports),
+            prelude.module,
+            prelude.imports,
             self.source,
         )
 
@@ -501,7 +903,7 @@ class _Parser:
         fields = []
         while self.index < len(self.lines):
             line = self.lines[self.index]
-            if not line.text.strip():
+            if _trivia(line):
                 self.index += 1
                 continue
             if line.indent <= start.indent:
@@ -523,7 +925,7 @@ class _Parser:
         variants = []
         while self.index < len(self.lines):
             line = self.lines[self.index]
-            if not line.text.strip():
+            if _trivia(line):
                 self.index += 1
                 continue
             if line.indent <= start.indent:
@@ -663,6 +1065,12 @@ class _Parser:
 
     def _statement(self) -> SurfaceStatement:
         line = self.lines[self.index]
+        if line.text.strip().startswith("#"):
+            self.index += 1
+            return SurfaceComment(
+                _span(self.path, line),
+                line.text.strip(),
+            )
         if match := re.fullmatch(r"for\s+([A-Za-z_]\w*)\s+in\s+(.+)\s*:", line.text):
             self.index += 1
             body = self._block(line.indent + 4)
@@ -715,7 +1123,7 @@ class _Parser:
             cases: list[SurfaceCase] = []
             while self.index < len(self.lines):
                 case_line = self.lines[self.index]
-                if not case_line.text.strip():
+                if _trivia(case_line):
                     self.index += 1
                     continue
                 if case_line.indent < line.indent + 4:
@@ -784,6 +1192,22 @@ class _Parser:
                 ),
                 tuple(cases),
             )
+        if match := re.fullmatch(r"uses\s+(.+)", line.text):
+            effects = tuple(
+                sorted(item.strip() for item in match.group(1).split(","))
+            )
+            if not effects or any(
+                re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*", effect)
+                is None
+                for effect in effects
+            ):
+                raise SurfaceSyntaxError(
+                    "InvalidUses",
+                    line.text,
+                    _span(self.path, line),
+                )
+            self.index += 1
+            return SurfaceUses(_span(self.path, line), effects)
         if match := re.fullmatch(r"print\s+(.+)", line.text):
             self.index += 1
             return SurfacePrint(
@@ -816,6 +1240,16 @@ class _Parser:
                 )
                 if match.group(1)
                 else None,
+            )
+        if match := re.fullmatch(
+            r"([A-Za-z_]\w*)\s*:\s*([^=]+)",
+            line.text,
+        ):
+            self.index += 1
+            return SurfaceAnnotation(
+                _span(self.path, line),
+                match.group(1),
+                _type_name(match.group(2)),
             )
         if match := re.fullmatch(
             r"(?:(let|var)\s+)?([A-Za-z_]\w*)"
@@ -873,14 +1307,20 @@ class _Parser:
         return SurfaceExpressionStatement(_span(self.path, line), _parse_expression(line.text, self.path, line))
 
 
-def parse_surface(source: str, *, path: str = "main.mlo") -> SurfaceProgram:
+def parse_surface(
+    source: str,
+    *,
+    path: str = "main.mlo",
+    line_offset: int = 0,
+) -> SurfaceProgram:
     if not source.strip():
+        line = 1 + line_offset
         raise SurfaceSyntaxError(
             "EmptySource",
             "source is empty",
-            SourceSpan(path, 1, 1, 1, 1),
+            SourceSpan(path, line, 1, line, 1),
         )
-    return _Parser(source, path).parse()
+    return _Parser(source, path, line_offset=line_offset).parse()
 
 
 __all__ = ["SurfaceSyntaxError", "parse_surface"]

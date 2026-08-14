@@ -12,7 +12,6 @@ from merlo.frontend_model import ConciseApplicationError
 from merlo.concise_services import (
     elaborate_concise_application,
     elaborate_concise_core,
-    lower_concise_sum_types,
 )
 from merlo.compiler import compile_project
 from research.archive.alpha1.merlo.concise_application_milestone import (
@@ -51,9 +50,7 @@ from research.archive.alpha1.merlo.native_hir import (
 )
 from tools.benchmarks.merlo.performance_opt import optimize_mir
 from research.archive.alpha1.merlo.semantic_surface import build_semantic_surface
-from merlo.structured_hir_v2 import (
-    compile_structured_hir,
-)
+from merlo.structured_hir_v2 import compile_canonical_hir
 from merlo.representation_ir import lower_structured_hir_to_rir
 from merlo.representation_mir import lower_rir_to_performance_mir
 
@@ -84,12 +81,12 @@ def test_multifile_application_expands_to_one_machine_core():
 
     assert elaborated.modules == ("app.json", "app.stats", "app.main")
     assert elaborated.semantic_ast_equal is True
-    assert elaborated.canonical_reference_equal is False
+    assert elaborated.canonical_reference_equal is True
     assert elaborated.effects == ("console.write", "fs.read")
     assert elaborated.capabilities == ("console.write", "fs.read")
     assert elaborated.interface_lock_valid is True
     assert "task main(path: Path)" in elaborated.canonical_source
-    assert "fn main(path: Path)" in elaborated.machine_source
+    assert elaborated.machine_source == elaborated.canonical_source
     assert "let data: Bytes = fs.read(path)?" in elaborated.canonical_source
     assert "Any" not in elaborated.canonical_source
 
@@ -519,7 +516,7 @@ fn main(event: Event) -> UInt64:
     assert "enum AppError:" in result["canonical_source"]
 
 
-def test_option_and_result_lower_to_nominal_machine_enums():
+def test_option_and_result_reach_hir_as_structural_types():
     source = """enum AppError:
     Invalid
 
@@ -548,12 +545,9 @@ fn main(data: BytesView, value: UInt64) -> UInt64:
         source,
         path="sum-types.mlo",
     )
-    machine = lower_concise_sum_types(
-        elaborated["canonical_source"]
-    )
-    hir = compile_structured_hir(
-        machine,
-        path="sum-types.mlo",
+    hir = compile_canonical_hir(
+        elaborated["canonical_program"],
+        entry_function="main",
     )
     representation = lower_structured_hir_to_rir(hir)
     mir = lower_rir_to_performance_mir(
@@ -561,10 +555,10 @@ fn main(data: BytesView, value: UInt64) -> UInt64:
         representation,
     )
 
-    assert "enum Option_UInt64_:" in machine
-    assert "enum Result_UInt64_AppError_:" in machine
-    assert "Option_UInt64_.NoneValue" in machine
-    assert "Result_UInt64_AppError_.Err" in machine
+    assert hir.function("optional").return_type == "Option[UInt64]"
+    assert hir.function("result").return_type == "Result[UInt64,AppError]"
+    assert "Option_UInt64_" not in elaborated["canonical_source"]
+    assert "Result_UInt64_AppError_" not in elaborated["canonical_source"]
     assert mir.representation_ir_digest == representation.digest
 
 
