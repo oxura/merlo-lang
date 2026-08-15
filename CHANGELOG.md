@@ -15,6 +15,10 @@
 - Adds the lossless full-file token/CST boundary and replaces the production
   CPython AST compatibility adapter with Merlo-owned native syntax nodes shared
   by HIR and the C backend.
+- Replaces `Vec`-specific transform lowering with one General collection
+  protocol for `Vec`, fixed `Array`, `Slice`, borrowed vectors, bytes, and text;
+  indexing, iteration, `where`, `map`, and `count` now share typed HIR and
+  native C semantics.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

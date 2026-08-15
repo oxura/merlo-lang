@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from merlo.collection_protocol import COLLECTION_OPERATIONS
 from merlo.canonical_ast import CanonicalProgram
 from merlo.elaboration.diagnostics import SurfaceElaborationError
 from merlo import native_syntax as ast
@@ -284,27 +285,33 @@ class _SurfaceNativeBuilder:
                         args.append(self._expr(argument.value))
             else:
                 args = [self._expr(argument.value) for argument in expression.arguments]
-            if isinstance(expression.callee, SurfaceMember) and expression.callee.field in {
-                "where", "map", "count"
-            }:
-                for index, argument in enumerate(expression.arguments):
-                    if any(isinstance(item, SurfaceImplicitReceiver) for item in argument.value.walk()):
-                        if self.callable_index >= len(
-                            self.canonical_functions[self.current_function].implicit_callables
-                        ):
-                            raise SurfaceElaborationError("MissingImplicitCallableMetadata")
-                        metadata = self.canonical_functions[
-                            self.current_function
-                        ].implicit_callables[self.callable_index]
-                        self.callable_index += 1
-                        candidate = args[index] if index < len(args) else self._expr(argument.value)
-                        candidate._merlo_implicit_callable = (
-                            metadata.callable_id,
-                            metadata.parameter,
-                            metadata.parameter_type,
-                            metadata.return_type,
-                            metadata.expression,
-                        )
+            if (
+                isinstance(expression.callee, SurfaceMember)
+                and expression.callee.field in COLLECTION_OPERATIONS
+            ):
+                if self.callable_index >= len(
+                    self.canonical_functions[
+                        self.current_function
+                    ].implicit_callables
+                ):
+                    raise SurfaceElaborationError(
+                        "MissingImplicitCallableMetadata"
+                    )
+                metadata = self.canonical_functions[
+                    self.current_function
+                ].implicit_callables[self.callable_index]
+                self.callable_index += 1
+                if len(args) != 1:
+                    raise SurfaceElaborationError(
+                        "InvalidCollectionCallableArity"
+                    )
+                args[0]._merlo_implicit_callable = (
+                    metadata.callable_id,
+                    metadata.parameter,
+                    metadata.parameter_type,
+                    metadata.return_type,
+                    metadata.expression,
+                )
             return self._loc(
                 ast.Call(func=callee, args=args, keywords=[]),
                 expression.span,

@@ -25,6 +25,15 @@ Structured values include:
 - `Box[T]` for indirection where recursive layout needs it.
 
 Fixed arrays carry their length. `match` over sum values must be exhaustive.
+
+`Vec[T]`, `Array[T, N]`, `Slice[T]`, `Borrow[Vec[T]]`, `Bytes`,
+`BytesView`, `Text`, and `TextView` share the General sequential collection
+protocol. They support bounds-checked indexing, `for` iteration, and the
+`where`, `map`, and `count` operations. `where` and `map` return `Vec`; `count`
+returns `UInt64`. Text collections expose their UTF-8 storage as `Byte`
+elements. Fixed array lengths remain compile-time constants; other lengths
+come from the collection view.
+
 Casts, indexing, and result propagation remain visible in the checked semantic
 pipeline. The alpha does not provide a dynamic `Any` escape hatch in concise
 application elaboration.

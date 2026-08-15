@@ -4,6 +4,11 @@ import hashlib
 from dataclasses import replace
 from typing import Iterable
 
+from merlo.collection_protocol import (
+    COLLECTION_OPERATIONS,
+    collection_result_type,
+    collection_shape,
+)
 from merlo.canonical_ast import (
     CanonicalBinding,
     CanonicalCallable,
@@ -753,23 +758,55 @@ class _Elaborator:
                 self.types.typed(receiver_type),
                 context=f"collection {operation} receiver",
             )
-        parts = _generic_parts(receiver_type, "Vec")
-        if parts is None or len(parts) != 1:
+        shape = collection_shape(receiver_type)
+        if shape is None:
             raise SurfaceElaborationError(
                 f"CollectionReceiverRequired: {receiver_type}"
             )
-        element_type = parts[0]
+        element_type = shape.element_type
         callable_expected = "Bool" if operation in {"where", "count"} else None
-        callable_term = self._implicit_expression(
-            argument,
-            function,
-            element_type,
-            callable_expected,
-        )
+        callable_parameter = "__item"
+        if isinstance(argument, SurfaceName) and argument.name in self.functions:
+            target = self.functions[argument.name]
+            if not self.type_properties.resolve(element_type).is_copy:
+                raise SurfaceElaborationError(
+                    "OwnedCollectionCallableRequiresImplicitExpression: "
+                    f"{argument.name}"
+                )
+            if target.source.declared_kind != "fn":
+                raise SurfaceElaborationError(
+                    f"EffectInCollectionCallable: {argument.name}"
+                )
+            if len(target.parameters) != 1:
+                raise SurfaceElaborationError(
+                    f"ArityMismatch: collection callable {argument.name}"
+                )
+            parameter_term = next(iter(target.parameters.values()))
+            self.types.unify(
+                parameter_term,
+                self.types.typed(element_type),
+                context=f"collection {operation} callable parameter",
+            )
+            callable_term = target.return_term
+            callable_expression = f"{argument.name}(__item)"
+            function.calls.add(argument.name)
+        else:
+            callable_term = self._implicit_expression(
+                argument,
+                function,
+                element_type,
+                callable_expected,
+            )
+            callable_expression = _emit_implicit_expression(argument)
         callable_return = self.types.resolve(
             callable_term,
             name=f"{function.source.name}.{operation} callable",
         )
+        if callable_expected is not None and callable_return != callable_expected:
+            raise SurfaceElaborationError(
+                f"CollectionCallableReturnMismatch: {operation} "
+                f"requires {callable_expected}, got {callable_return}"
+            )
         digest_input = (
             f"{function.source.name}\0{expression.span.path}\0"
             f"{expression.span.start_line}\0{expression.span.start_column}\0"
@@ -778,18 +815,18 @@ class _Elaborator:
         callable_id = hashlib.sha256(digest_input.encode()).hexdigest()[:16]
         function.implicit_callables[callable_id] = CanonicalCallable(
             callable_id,
-            "__item",
+            callable_parameter,
             element_type,
             callable_return,
-            _emit_implicit_expression(argument),
+            callable_expression,
             argument.span,
         )
-        if operation == "map":
-            term = self.types.typed(f"Vec[{callable_return}]")
-        elif operation == "where":
-            term = self.types.typed(receiver_type)
-        else:
-            term = self.types.typed("UInt64")
+        result_element = (
+            callable_return if operation == "map" else element_type
+        )
+        term = self.types.typed(
+            collection_result_type(operation, result_element)
+        )
         if expected:
             self.types.unify(
                 term,
@@ -1318,7 +1355,7 @@ class _Elaborator:
                             "AmbiguousType: Box.new"
                         )
                     term = self.types.typed(box_type)
-                elif method in {"where", "map", "count"}:
+                elif method in COLLECTION_OPERATIONS:
                     term = self._collection_call(expression, function, expected)
                     expected = None
                 elif method == "clone":
@@ -1641,19 +1678,21 @@ class _Elaborator:
             self._expression(expression.index, function, "UInt64")
             owner = self._expression(expression.receiver, function)
             owner_type = self.types.concrete.get(self.types.find(owner))
-            if not owner_type or not owner_type.startswith("Vec["):
+            shape = collection_shape(owner_type)
+            if shape is None:
                 raise SurfaceElaborationError("IndexRequiresCollection")
-            element_parts = _generic_parts(owner_type, "Vec")
-            if element_parts is None:
-                raise SurfaceElaborationError("IndexRequiresCollection")
-            term = self.types.typed(element_parts[0])
+            term = self.types.typed(shape.element_type)
         elif isinstance(expression, SurfaceList):
             element = self.types.variable(f"list:{expression.span.start_line}:{expression.span.start_column}")
             for item in expression.items:
                 self.types.unify(element, self._expression(item, function), context="list element")
-            expected_parts = _generic_parts(expected, "Vec") if expected else None
-            if expected_parts is not None:
-                self.types.unify(element, self.types.typed(expected_parts[0]), context="list expected type")
+            expected_shape = collection_shape(expected)
+            if expected_shape is not None:
+                self.types.unify(
+                    element,
+                    self.types.typed(expected_shape.element_type),
+                    context="list expected type",
+                )
                 term = self.types.typed(expected)
             else:
                 element_type = self.types.concrete.get(self.types.find(element))
@@ -1946,22 +1985,23 @@ class _Elaborator:
             elif isinstance(statement, SurfaceFor):
                 iterable = self._expression(statement.iterable, function)
                 iterable_type = self.types.concrete.get(self.types.find(iterable))
-                vec_parts = _generic_parts(iterable_type, "Vec")
+                shape = collection_shape(iterable_type)
                 borrowed_parts = _generic_parts(iterable_type, "Borrow")
-                borrowed_vec_parts = (
-                    _generic_parts(borrowed_parts[0], "Vec")
+                borrowed_type = (
+                    borrowed_parts[0]
                     if borrowed_parts and len(borrowed_parts) == 1
                     else None
                 )
+                borrowed_shape = collection_shape(borrowed_type)
                 borrowed_map_parts = (
-                    _generic_parts(borrowed_parts[0], "Map")
-                    if borrowed_parts and len(borrowed_parts) == 1
+                    _generic_parts(borrowed_type, "Map")
+                    if borrowed_type
                     else None
                 )
-                if vec_parts is not None:
-                    item_type = vec_parts[0]
-                elif borrowed_vec_parts is not None:
-                    item_type = borrowed_vec_parts[0]
+                if shape is not None:
+                    item_type = shape.element_type
+                elif borrowed_shape is not None:
+                    item_type = borrowed_shape.element_type
                 elif borrowed_map_parts is not None:
                     item_type = (
                         f"MapEntry[{borrowed_map_parts[0]},"
@@ -1970,7 +2010,9 @@ class _Elaborator:
                 elif iterable_type == "FileLines":
                     item_type = "TextView"
                 else:
-                    item_type = "UInt64"
+                    raise SurfaceElaborationError(
+                        f"CollectionReceiverRequired: for {iterable_type}"
+                    )
                 self.types.unify(
                     self._local(function, statement.name),
                     self.types.typed(item_type),

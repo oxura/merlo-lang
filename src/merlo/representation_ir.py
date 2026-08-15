@@ -999,6 +999,8 @@ _HIR_TO_RIR = {
     "EnumTag": "read_enum_tag",
     "Match": "match_enum",
     "VecOperation": "vec_operation",
+    "CollectionOperation": "collection_operation",
+    "ImplicitCallable": "implicit_callable",
     "BoxOperation": "box_operation",
     "BytesTextOperation": "bytes_text_operation",
     "NumericIntrinsic": "numeric_intrinsic",

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from merlo.surface_ast import SurfaceEnum, SurfaceRecord
+from merlo.collection_protocol import collection_shape
 from merlo.type_parser import TypeExpr, parse_type
 
 SUPPORTED_CONSTRAINTS = frozenset(
@@ -64,15 +65,7 @@ def _satisfies(
             (_NUMERIC - {"Float32", "Float64"}) | _TEXTUAL | {"Bool"}
         )
     if constraint == "Iterable":
-        return expression.name in {"Vec", "Array", "Map"} and bool(
-            expression.args
-        ) or not expression.args and expression.name in {
-            "Text",
-            "TextView",
-            "Bytes",
-            "BytesView",
-            "FileLines",
-        }
+        return collection_shape(expression.canonical) is not None
     if constraint == "Display":
         if not expression.args and expression.name in _SCALAR | {"Unit"}:
             return True

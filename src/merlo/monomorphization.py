@@ -6,6 +6,7 @@ import hashlib
 from collections import deque
 from dataclasses import replace
 
+from merlo.collection_protocol import collection_shape
 from merlo.elaboration.calls import bind_call_arguments
 from merlo.elaboration.diagnostics import SurfaceElaborationError
 from merlo.static_constraints import SUPPORTED_CONSTRAINTS, satisfies_constraint
@@ -112,18 +113,8 @@ def _bind_type(
 
 
 def _collection_element(type_name: str | None) -> str | None:
-    if type_name is None:
-        return None
-    parsed = _parsed(type_name)
-    if parsed.name in {"Vec", "Option", "Box"} and len(parsed.args) == 1:
-        return parsed.args[0].canonical
-    if parsed.name == "Array" and parsed.args:
-        return parsed.args[0].canonical
-    if parsed.name == "Map" and len(parsed.args) == 2:
-        return parsed.args[1].canonical
-    if parsed.name in {"Bytes", "BytesView", "Text", "TextView"}:
-        return "Byte"
-    return None
+    shape = collection_shape(type_name)
+    return shape.element_type if shape is not None else None
 
 
 class _Monomorphizer:

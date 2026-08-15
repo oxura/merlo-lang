@@ -13,6 +13,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 from merlo import native_syntax as ast
+from merlo.collection_protocol import (
+    COLLECTION_OPERATIONS,
+    collection_result_type,
+    collection_shape,
+)
 from merlo.ffi import FFICompileError, FFIProgram, validate_ffi
 from merlo.canonical_ast import CanonicalProgram
 from merlo.surface_ast import SurfaceProgram
@@ -706,10 +711,9 @@ class _OwnershipChecker:
                     return "Text"
         if isinstance(node, ast.Subscript):
             owner = self._expr_type(node.value)
-            vec_parts = generic_parts(owner, "Vec", arity=1)
-            if vec_parts is not None:
-                return vec_parts[0]
-        if isinstance(node, ast.Lambda):
+            shape = collection_shape(owner)
+            if shape is not None:
+                return shape.element_type
             return expected
         return expected
 
@@ -940,12 +944,19 @@ class _OwnershipChecker:
                 self._merge(state, (state, loop_state))
                 continue
             if isinstance(node, ast.For):
-                self._check_expr(node.iter, state)
+                iterable_type = self._check_expr(node.iter, state)
                 loop_state = state.clone()
                 before_statuses = set(loop_state.statuses)
                 before_borrows = set(loop_state.borrows)
                 if isinstance(node.target, ast.Name):
-                    self.env[node.target.id] = "Inferred"
+                    shape = collection_shape(iterable_type)
+                    self.env[node.target.id] = (
+                        shape.element_type
+                        if shape is not None
+                        else "TextView"
+                        if iterable_type == "FileLines"
+                        else "Inferred"
+                    )
                 loop_state = self._check_statements(node.body, loop_state)
                 for name in set(loop_state.statuses) - before_statuses:
                     loop_state.statuses.pop(name, None)
@@ -1293,9 +1304,15 @@ class _HIRBuilder:
             )
         if isinstance(node, ast.Subscript):
             owner = self.expression(node.value)
+            shape = collection_shape(owner.type_name)
+            if shape is None:
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: IndexRequiresCollection"
+                )
             return self._new_node(
                 node,
                 "Index",
+                type_name=shape.element_type,
                 ownership="borrow",
                 effects=("bounds_check",),
                 children=(owner, self.expression(node.slice)),
@@ -1580,16 +1597,16 @@ class _HIRBuilder:
             method = node.func.attr
             callee = f"{receiver_text}.{method}"
             signature = intrinsic_signature(callee)
-            if method in {"where", "map", "count"}:
+            if method in COLLECTION_OPERATIONS:
                 receiver = self.expression(node.func.value)
                 receiver_type = receiver.type_name or receiver_type
-                parts = generic_parts(receiver_type, "Vec", arity=1)
+                shape = collection_shape(receiver_type)
                 metadata = (
                     getattr(node.args[0], "_merlo_implicit_callable", None)
                     if len(node.args) == 1
                     else None
                 )
-                if parts is None or metadata is None:
+                if shape is None or metadata is None:
                     raise StructuredHIRCompileError(
                         f"{self.path}:{node.lineno}: typed collection callable metadata required"
                     )
@@ -1610,19 +1627,18 @@ class _HIRBuilder:
                         "expression": expression_text,
                     },
                 )
-                kind = "VecOperation"
-                type_name = (
-                    "UInt64"
-                    if method == "count"
-                    else receiver_type
-                    if method == "where"
-                    else f"Vec[{return_type}]"
+                kind = "CollectionOperation"
+                result_element = (
+                    return_type if method == "map" else shape.element_type
                 )
+                type_name = collection_result_type(method, result_element)
                 operation_children = (receiver, callback)
                 call_attributes.update(
                     {
-                        "vec_operation": method,
-                        "element_type": parts[0],
+                        "collection_operation": method,
+                        "collection_kind": shape.kind,
+                        "source_collection_type": receiver_type,
+                        "element_type": shape.element_type,
                         "callable_parameter": parameter,
                     }
                 )
@@ -2056,7 +2072,14 @@ class _HIRBuilder:
             return self._new_node(node, "While", children=(test, loop_body), scope_id=scope_id)
         if isinstance(node, ast.For) and isinstance(node.target, ast.Name):
             iterable = self.expression(node.iter)
-            self.local_types[node.target.id] = "TextView" if iterable.type_name == "FileLines" else "Inferred"
+            shape = collection_shape(iterable.type_name)
+            self.local_types[node.target.id] = (
+                shape.element_type
+                if shape is not None
+                else "TextView"
+                if iterable.type_name == "FileLines"
+                else "Inferred"
+            )
             body = tuple(self.statement(item, scope_suffix=f"for@{node.lineno}") for item in node.body)
             loop_body = self._new_node(node, "LoopBody", children=body, scope_id=self._scope(f"for@{node.lineno}"))
             return self._new_node(
