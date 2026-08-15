@@ -4,7 +4,7 @@ import ast as python_ast
 from pathlib import Path
 
 
-ENTRY = Path("examples/grep/src/main.mlo")
+ENTRIES = tuple(sorted(Path("examples").glob("*/src/main.mlo")))
 
 
 def test_project_compilation_never_calls_legacy_python_parser(monkeypatch) -> None:
@@ -15,13 +15,14 @@ def test_project_compilation_never_calls_legacy_python_parser(monkeypatch) -> No
         raise AssertionError("production compilation crossed the legacy parser boundary")
 
     monkeypatch.setattr(native_syntax, "parse", forbidden)
-    compilation = compile_project(ENTRY, require_interface_lock=False)
-
-    assert isinstance(compilation.hir.native_module, native_syntax.Module)
-    assert all(
-        not isinstance(node, python_ast.AST)
-        for node in native_syntax.walk(compilation.hir.native_module)
-    )
+    assert ENTRIES
+    for entry in ENTRIES:
+        compilation = compile_project(entry, require_interface_lock=False)
+        assert isinstance(compilation.hir.native_module, native_syntax.Module), entry
+        assert all(
+            not isinstance(node, python_ast.AST)
+            for node in native_syntax.walk(compilation.hir.native_module)
+        ), entry
 
 
 def test_legacy_parser_converts_immediately_to_merlo_nodes() -> None:
