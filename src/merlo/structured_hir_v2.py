@@ -18,12 +18,11 @@ from merlo.canonical_ast import CanonicalProgram
 from merlo.surface_ast import SurfaceProgram
 from merlo.type_parser import generic_parts, parse_type, validate_type_expr
 from merlo.intrinsics import contextual_result_type, format_intrinsic_arity, intrinsic_signature
+from merlo.type_properties import TypePropertyResolver
 
 
 STRUCTURED_HIR_SCHEMA_VERSION = 2
 STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v2"
-_OWNING_PREFIXES = ("Vec[", "Box[", "Map[", "Result[")
-_OWNING_TYPES = {"Text", "Bytes", "TextBuilder", "Json", "FileReader", "Path"}
 _SCALAR_TYPES = frozenset(
     {
         "Bool",
@@ -448,12 +447,6 @@ def _validate_map_specializations(module: ast.Module, path: str) -> None:
             validate(annotation)
 
 
-def _is_owned(type_name: str | None) -> bool:
-    return bool(type_name) and (
-        type_name in _OWNING_TYPES or type_name.startswith(_OWNING_PREFIXES)
-    )
-
-
 def _is_borrowed(type_name: str | None) -> bool:
     return bool(type_name) and (
         type_name in {"BytesView", "TextView", "FileLines"}
@@ -634,6 +627,7 @@ class _OwnershipChecker:
         self.types = types
         self.functions = functions
         self.current: ast.FunctionDef | None = None
+        self.type_properties = TypePropertyResolver(types)
         self.env: dict[str, str] = {}
         self.parameters: set[str] = set()
 
@@ -642,7 +636,7 @@ class _OwnershipChecker:
         raise StructuredHIRCompileError(f"{name}{suffix}")
 
     def _owner(self, type_name: str | None) -> bool:
-        return _is_owned(type_name) or bool(type_name and type_name in self.types)
+        return self.type_properties.resolve(type_name).needs_drop
 
     def _expr_type(self, node: ast.AST | None, expected: str | None = None) -> str | None:
         if node is None:
@@ -904,13 +898,6 @@ class _OwnershipChecker:
                 continue
             if isinstance(node, ast.Expr):
                 self._check_expr(node.value, state)
-                if (
-                    isinstance(node.value, ast.Call)
-                    and isinstance(node.value.func, ast.Name)
-                    and node.value.func.id == "__merlo_try__"
-                ):
-                    state.terminal = True
-                    break
                 continue
             if isinstance(node, ast.Return):
                 result_type = _type_name(self.current.returns if self.current else None)
@@ -1018,6 +1005,10 @@ class _HIRBuilder:
         self.local_types: dict[str, str] = {}
         self.current_function = ""
         self.ordinal = 0
+        self.type_properties = TypePropertyResolver(types)
+
+    def _owner(self, type_name: str | None, seen: frozenset[str] = frozenset()) -> bool:
+        return self.type_properties.resolve(type_name, seen).needs_drop
 
     @staticmethod
     def _mutable_parameter_table(
@@ -1129,7 +1120,7 @@ class _HIRBuilder:
                 node,
                 "Name",
                 type_name=type_name,
-                ownership="borrow" if _is_owned(type_name) else "value",
+                ownership="borrow" if self._owner(type_name) else "value",
                 symbol_id=symbol,
                 attributes={"name": node.id},
             )
@@ -1158,7 +1149,7 @@ class _HIRBuilder:
                 node,
                 "FieldAccess",
                 type_name=type_name,
-                ownership="borrow" if _is_owned(type_name) else "value",
+                ownership="borrow" if self._owner(type_name) else "value",
                 attributes={"field": node.attr},
                 children=(owner,),
             )
@@ -1279,7 +1270,7 @@ class _HIRBuilder:
                 node,
                 "ArrayLiteral",
                 type_name=f"Array[{element_type},{len(children)}]",
-                ownership="owned" if _is_owned(element_type) else "value",
+                ownership="owned" if self._owner(element_type) else "value",
                 attributes={"length": len(children)},
                 children=children,
             )
@@ -1359,7 +1350,7 @@ class _HIRBuilder:
                 node,
                 "ResultPropagation",
                 type_name=ok_type,
-                ownership="owned" if _is_owned(ok_type) else arguments[0].ownership,
+                ownership="owned" if self._owner(ok_type) else arguments[0].ownership,
                 effects=arguments[0].effects + ("result_branch", "may_return_error"),
                 attributes={"result_type": result_type, "error_type": error_type},
                 children=arguments,
@@ -1395,7 +1386,7 @@ class _HIRBuilder:
             elif name in self.types and self.types[name].kind == "record":
                 kind = "RecordConstruct"
                 type_name = name
-                ownership = "owned" if any(_is_owned(field.type_name) for field in self.types[name].fields) else "value"
+                ownership = "owned" if self._owner(name) else "value"
             elif name not in self.functions and name in {
                 "wrapping_add",
                 "wrapping_sub",
@@ -1467,14 +1458,14 @@ class _HIRBuilder:
                         ],
                     }
                 )
-                ownership = "owned" if _is_owned(type_name) else "value"
+                ownership = "owned" if self._owner(type_name) else "value"
                 symbol_id = _stable_id("shirs", self.path, "extern", name)
             elif name in self.functions:
                 type_name = _type_name(self.functions[name].returns)
                 effects.update(self._function_effect_hint(self.functions[name]))
                 ownership = (
                     "owned"
-                    if _is_owned(type_name)
+                    if self._owner(type_name)
                     else "borrow"
                     if _is_borrowed(type_name)
                     else "value"
@@ -1483,7 +1474,7 @@ class _HIRBuilder:
                     index
                     for index, parameter in enumerate(self.functions[name].args.args)
                     if (
-                        _is_owned(_type_name(parameter.annotation))
+                        self._owner(_type_name(parameter.annotation))
                         or _type_name(parameter.annotation) in self.types
                     )
                     and any(
@@ -1656,7 +1647,9 @@ class _HIRBuilder:
                 if callee.startswith("fs."):
                     call_attributes["resource"] = (
                         "FileReader"
-                        if method in {"open_read", "open_write"}
+                        if method == "open_read"
+                        else "FileWriter"
+                        if method == "open_write"
                         else "Text"
                         if method == "read_text"
                         else "Bytes"
@@ -1822,7 +1815,7 @@ class _HIRBuilder:
             elif receiver_text in self.types and self.types[receiver_text].kind == "enum":
                 kind = "EnumConstruct"
                 type_name = receiver_text
-                ownership = "owned" if any(_is_owned(item.payload_type) for item in self.types[receiver_text].variants) else "value"
+                ownership = "owned" if self._owner(receiver_text) else "value"
                 variant = next((item for item in self.types[receiver_text].variants if item.name == method), None)
                 if variant is None:
                     raise StructuredHIRCompileError(f"unknown enum variant {name}")
@@ -1895,7 +1888,7 @@ class _HIRBuilder:
                 node,
                 "VarBinding" if binding == "var" else "LetBinding",
                 type_name=type_name,
-                ownership="owned" if _is_owned(type_name) else "value",
+                ownership="owned" if self._owner(type_name) else "value",
                 symbol_id=_stable_id("shirs", self.path, self.current_function, "local", node.target.id),
                 attributes={"name": node.target.id, "mutable": binding == "var"},
                 children=(value,) if isinstance(value, HIRNode) else (),
@@ -1956,7 +1949,7 @@ class _HIRBuilder:
             return_type = child.type_name if child else "Unit"
             ownership = (
                 "owned"
-                if _is_owned(return_type)
+                if self._owner(return_type)
                 else "borrow"
                 if _is_borrowed(return_type)
                 else child.ownership
@@ -2135,7 +2128,7 @@ class _HIRBuilder:
         for argument in node.args.args:
             type_name = _type_name(argument.annotation)
             source = _span(self.path, argument)
-            owns_value = _is_owned(type_name) or type_name in self.types
+            owns_value = self._owner(type_name)
             ownership = (
                 "owned"
                 if owns_value and argument.arg in returned_parameters
