@@ -1,4 +1,4 @@
-"""Compile-time specialization of constraint-free Surface generic functions."""
+"""Compile-time specialization and static dispatch for Surface generics."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from dataclasses import replace
 
 from merlo.elaboration.calls import bind_call_arguments
 from merlo.elaboration.diagnostics import SurfaceElaborationError
+from merlo.static_constraints import SUPPORTED_CONSTRAINTS, satisfies_constraint
 from merlo.surface_ast import (
     SurfaceAnnotation,
     SurfaceAssignment,
@@ -28,7 +29,9 @@ from merlo.surface_ast import (
     SurfaceName,
     SurfacePrint,
     SurfaceProgram,
+    SurfaceRecord,
     SurfaceReturn,
+    SurfaceEnum,
     SurfaceStatement,
     SurfaceTry,
     SurfaceUnary,
@@ -128,6 +131,16 @@ class _Monomorphizer:
             for item in program.declarations
             if isinstance(item, SurfaceFunction) and item.type_parameters
         }
+        self.records = {
+            item.name: item
+            for item in program.declarations
+            if isinstance(item, SurfaceRecord)
+        }
+        self.enums = {
+            item.name: item
+            for item in program.declarations
+            if isinstance(item, SurfaceEnum)
+        }
         self.functions = {
             item.name: item
             for item in program.declarations
@@ -154,6 +167,12 @@ class _Monomorphizer:
                 raise SurfaceElaborationError(
                     f"GenericBoundaryAnnotationRequired: {template.name} return"
                 )
+            for type_parameter in template.type_parameters:
+                for constraint in type_parameter.constraints:
+                    if constraint not in SUPPORTED_CONSTRAINTS:
+                        raise SurfaceElaborationError(
+                            f"UnknownTypeConstraint: {constraint}"
+                        )
 
     def _infer(self, expression: SurfaceExpression, environment: dict[str, str]) -> str | None:
         if isinstance(expression, SurfaceLiteral):
@@ -223,10 +242,6 @@ class _Monomorphizer:
         environment: dict[str, str],
         expected: str | None,
     ) -> SurfaceCall:
-        if any(item.constraints for item in template.type_parameters):
-            raise SurfaceElaborationError(
-                f"GenericConstraintsNotImplemented: {template.name}"
-            )
         parameters = frozenset(item.name for item in template.type_parameters)
         mapping: dict[str, str] = {}
         bound = bind_call_arguments(
@@ -265,6 +280,20 @@ class _Monomorphizer:
                 f"GenericBoundaryAnnotationRequired: {template.name}: "
                 + ",".join(missing)
             )
+        for type_parameter in template.type_parameters:
+            concrete = mapping[type_parameter.name]
+            for constraint in type_parameter.constraints:
+                if not satisfies_constraint(
+                    constraint,
+                    concrete,
+                    records=self.records,
+                    enums=self.enums,
+                ):
+                    raise SurfaceElaborationError(
+                        f"UnsatisfiedTypeConstraint: {template.name}."
+                        f"{type_parameter.name}: {concrete} does not satisfy "
+                        f"{constraint}"
+                    )
         name = self._specialization(template, mapping)
         arguments = tuple(
             rewritten[item.name] for item in template.parameters
