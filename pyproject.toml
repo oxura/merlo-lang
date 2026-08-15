@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "merlo"
-version = "0.1.0a2"
+version = "0.1.0a3.dev0"
 description = "Merlo alpha compiler, native backend, project tooling, and language server"
 readme = "README.md"
 authors = [{name = "Mansurshakh Japarov"}]
@@ -45,114 +45,9 @@ include = ["merlo*"]
 [tool.setuptools.package-data]
 merlo = ["stdlib/*.mlo", "stdlib/std/*.mlo"]
 
-[tool.setuptools.data-files]
-"editors/vscode" = ["editors/vscode/package.json"]
-"editors/vscode/syntaxes" = ["editors/vscode/syntaxes/merlo.tmLanguage.json"]
-"docs" = [
-  "docs/README.md",
-  "docs/architecture.md",
-  "docs/project-history.md",
-  "docs/installation.md",
-  "docs/tour.md",
-  "docs/types.md",
-  "docs/ownership.md",
-  "docs/errors.md",
-  "docs/effects.md",
-  "docs/capabilities.md",
-  "docs/resources.md",
-  "docs/modules.md",
-  "docs/projects.md",
-  "docs/packages.md",
-  "docs/ffi.md",
-  "docs/semantic-world.md",
-  "docs/alpha-protocol.md",
-  "docs/ai-protocol.md",
-  "docs/tooling.md",
-  "docs/lsp.md",
-  "docs/examples.md",
-  "docs/benchmark.md",
-  "docs/limitations.md",
-]
-"spec" = [
-  "spec/README.md",
-  "spec/language.md",
-  "spec/ownership.md",
-  "spec/effects.md",
-  "spec/packages.md",
-  "spec/ffi.md",
-  "spec/semantic-world.md",
-  "spec/alpha-protocol.md",
-]
-"research" = [
-  "research/README.md",
-  "research/semantic-representations.md",
-  "research/ownership-without-lifetime-syntax.md",
-  "research/concise-canonical-equivalence.md",
-  "research/effects-and-capabilities.md",
-  "research/performance-evidence.md",
-]
-"rfcs" = ["rfcs/README.md"]
-"examples" = ["examples/README.md"]
-"examples/automation" = [
-  "examples/automation/merlo.toml",
-  "examples/automation/merlo.lock",
-  "examples/automation/input.txt",
-  "examples/automation/expected.txt",
-]
-"examples/automation/src" = ["examples/automation/src/main.mlo", "examples/automation/src/report.mlo"]
-"examples/automation/tests" = ["examples/automation/tests/automation.mlo"]
-"examples/packages" = [
-  "examples/packages/merlo.toml",
-  "examples/packages/merlo.lock",
-  "examples/packages/input.txt",
-  "examples/packages/expected.txt",
-]
-"examples/packages/src" = ["examples/packages/src/main.mlo", "examples/packages/src/greeting.mlo"]
-"examples/packages/tests" = ["examples/packages/tests/packages.mlo"]
-"examples/packages/vendor/greeting" = ["examples/packages/vendor/greeting/merlo.toml", "examples/packages/vendor/greeting/merlo.lock"]
-"examples/packages/vendor/greeting/src" = ["examples/packages/vendor/greeting/src/main.mlo"]
-"examples/network" = ["examples/network/merlo.toml", "examples/network/merlo.lock", "examples/network/input.txt", "examples/network/expected.txt"]
-"examples/network/src" = ["examples/network/src/main.mlo"]
-"examples/network/tests" = ["examples/network/tests/network.mlo"]
-"examples/ndjson" = ["examples/ndjson/merlo.toml", "examples/ndjson/merlo.lock", "examples/ndjson/expected.txt", "examples/ndjson/input.ndjson"]
-"examples/ndjson/src" = ["examples/ndjson/src/main.mlo", "examples/ndjson/src/report.mlo"]
-"examples/ndjson/tests" = ["examples/ndjson/tests/ndjson.mlo"]
-"examples/json-cli" = ["examples/json-cli/merlo.toml", "examples/json-cli/merlo.lock", "examples/json-cli/input.json", "examples/json-cli/expected.txt"]
-"examples/json-cli/src" = ["examples/json-cli/src/main.mlo"]
-"examples/json-cli/tests" = ["examples/json-cli/tests/json_cli.mlo"]
-"examples/grep" = ["examples/grep/merlo.toml", "examples/grep/merlo.lock", "examples/grep/input.txt", "examples/grep/expected.txt"]
-"examples/grep/src" = ["examples/grep/src/main.mlo", "examples/grep/src/search.mlo"]
-"examples/grep/tests" = ["examples/grep/tests/grep.mlo"]
-"examples/csv" = ["examples/csv/merlo.toml", "examples/csv/merlo.lock", "examples/csv/input.csv", "examples/csv/expected.txt"]
-"examples/csv/src" = ["examples/csv/src/main.mlo", "examples/csv/src/sales.mlo"]
-"examples/csv/tests" = ["examples/csv/tests/csv.mlo"]
-"examples/ffi" = ["examples/ffi/merlo.toml", "examples/ffi/merlo.lock", "examples/ffi/input.txt", "examples/ffi/expected.txt"]
-"examples/ffi/src" = ["examples/ffi/src/main.mlo"]
-"examples/ffi/tests" = ["examples/ffi/tests/ffi.mlo"]
-"examples/capacity-ledger" = [
-  "examples/capacity-ledger/merlo.toml",
-  "examples/capacity-ledger/merlo.lock",
-  "examples/capacity-ledger/input.txt",
-  "examples/capacity-ledger/expected.txt",
-]
-"examples/capacity-ledger/src" = [
-  "examples/capacity-ledger/src/main.mlo",
-  "examples/capacity-ledger/src/decode.mlo",
-  "examples/capacity-ledger/src/ledger.mlo",
-]
-"examples/capacity-ledger/tests" = [
-  "examples/capacity-ledger/tests/capacity_ledger.mlo",
-]
-"examples/capacity-ledger/tests/fixtures" = [
-  "examples/capacity-ledger/tests/fixtures/malformed_record.txt",
-  "examples/capacity-ledger/tests/fixtures/invalid_lane.txt",
-  "examples/capacity-ledger/tests/fixtures/invalid_minutes.txt",
-  "examples/capacity-ledger/tests/fixtures/total_overflow.txt",
-]
-
 [tool.merlo]
-release = "0.1.0-alpha.2"
-edition = "alpha.1"
+release = "0.1.0-alpha.3-dev"
+edition = "alpha.3-dev"
 platform = "Linux x86-64"
 compiler_host = "C11 Clang/GCC bootstrap"
 semantic_core = "one semantic core; no future facets in alpha"

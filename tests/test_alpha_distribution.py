@@ -106,7 +106,7 @@ def _config() -> dict[str, object]:
 
 def _project_paths(config: dict[str, object]) -> set[str]:
     setuptools = config["tool"]["setuptools"]  # type: ignore[index]
-    data_files = setuptools["data-files"]  # type: ignore[index]
+    data_files = setuptools.get("data-files", {})  # type: ignore[union-attr]
     return {
         str(path)
         for paths in data_files.values()  # type: ignore[union-attr]
@@ -117,22 +117,18 @@ def test_alpha_package_metadata_and_console_entrypoint() -> None:
     config = _config()
     project = config["project"]
     assert project["name"] == "merlo"
-    assert project["version"] == "0.1.0a2"
+    assert project["version"] == "0.1.0a3.dev0"
     assert project["requires-python"] == ">=3.11"
     assert project["dependencies"] == []
     assert project["scripts"]["merlo"] == "merlo.cli:main"
-    assert config["tool"]["merlo"]["release"] == "0.1.0-alpha.2"
+    assert config["tool"]["merlo"]["release"] == "0.1.0-alpha.3-dev"
 
 
-def test_package_data_declares_stdlib_editor_docs_specs_and_examples() -> None:
+def test_wheel_contains_only_package_runtime_data() -> None:
     config = _config()
     package_data = config["tool"]["setuptools"]["package-data"]
     assert "*.mlo" in package_data["merlo"][0]  # type: ignore[index]
-    paths = _project_paths(config)
-    assert "editors/vscode/syntaxes/merlo.tmLanguage.json" in paths
-    assert set(DOC_PATHS) <= paths
-    assert set(SPEC_PATHS) <= paths
-    assert set(EXAMPLE_PATHS + RESEARCH_PATHS + RFC_PATHS) <= paths
+    assert _project_paths(config) == set()
     assert all((ROOT / path).is_file() for path in STDLIB_PATHS)
     assert (ROOT / "editors/vscode/syntaxes/merlo.tmLanguage.json").is_file()
 

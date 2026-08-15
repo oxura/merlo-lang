@@ -18,8 +18,8 @@ jobs:
       matrix:
         python: ["3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
           cache: pip
@@ -34,8 +34,8 @@ jobs:
     name: Python 3.14 tooling tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
           cache: pip
@@ -50,8 +50,8 @@ jobs:
     name: Python 3.14 archive tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
           cache: pip
@@ -66,8 +66,8 @@ jobs:
     name: Wheel install and project smoke
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
           cache: pip
@@ -76,6 +76,19 @@ jobs:
           set -euo pipefail
           python -m pip install build
           (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --wheel --outdir "$GITHUB_WORKSPACE/dist")
+      - name: Verify wheel product boundary
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheel = next(Path("dist").glob("*.whl"))
+          forbidden = ("/docs/", "/spec/", "/research/", "/rfcs/", "/examples/", "/editors/")
+          with ZipFile(wheel) as archive:
+              leaked = [name for name in archive.namelist() if any(part in name for part in forbidden)]
+          if leaked:
+              raise SystemExit(f"wheel contains source-only assets: {leaked}")
+          PY
       - name: Install wheel in a fresh environment
         run: |
           set -euo pipefail
@@ -102,8 +115,8 @@ jobs:
       matrix:
         compiler: [clang, gcc]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
           cache: pip
@@ -164,12 +177,32 @@ jobs:
                       )
           PY
 
+  native-full-suite:
+    name: Full native suite (${{ matrix.compiler }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [clang, gcc]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: pip
+      - name: Install native test dependencies
+        run: python -m pip install -e '.[test]'
+      - name: Run complete production suite with selected compiler
+        env:
+          MERLO_C_COMPILER: ${{ matrix.compiler }}
+        run: python -m pytest tests/ -q
+
   native-sanitizers:
     name: Native ASan UBSan LSan corpus
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
           cache: pip
@@ -198,13 +231,74 @@ jobs:
                       f"{sanitizer} gate did not pass: {sorted(set(statuses))}"
                   )
           PY
+      - name: Owning constructor and call temporary safety
+        run: |
+          python - <<'PY'
+          import os
+          import shutil
+          import subprocess
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+
+          from merlo.compiler import compile_project
+
+          compiler = shutil.which("clang")
+          if compiler is None:
+              raise SystemExit("Clang is required for the focused ownership gate")
+          compilation = compile_project(
+              "examples/automation",
+              emit_native=False,
+              require_interface_lock=False,
+          )
+          sanitizers = {
+              "address": ("ASAN_OPTIONS", "halt_on_error=1:detect_leaks=1"),
+              "undefined": ("UBSAN_OPTIONS", "halt_on_error=1:print_stacktrace=1"),
+              "leak": ("LSAN_OPTIONS", "exitcode=23:report_objects=0"),
+          }
+          with TemporaryDirectory(prefix="merlo-owning-call-") as directory:
+              root = Path(directory)
+              source = root / "automation.c"
+              source.write_text(compilation.generated_c, encoding="utf-8")
+              for sanitizer, (variable, setting) in sanitizers.items():
+                  binary = root / f"automation-{sanitizer}"
+                  built = subprocess.run(
+                      [
+                          compiler,
+                          "-std=c11",
+                          "-O1",
+                          "-fno-omit-frame-pointer",
+                          f"-fsanitize={sanitizer}",
+                          str(source),
+                          "-o",
+                          str(binary),
+                      ],
+                      capture_output=True,
+                      text=True,
+                      check=False,
+                  )
+                  if built.returncode != 0:
+                      raise SystemExit(built.stderr)
+                  environment = dict(os.environ)
+                  environment[variable] = setting
+                  completed = subprocess.run(
+                      [binary, "examples/automation/input.txt"],
+                      capture_output=True,
+                      env=environment,
+                      check=False,
+                  )
+                  if completed.returncode != 0:
+                      raise SystemExit(
+                          f"{sanitizer} failed: "
+                          + completed.stderr.decode("utf-8", errors="replace")
+                      )
+          PY
 
   deterministic-artifacts:
     name: Deterministic HIR MIR C and binary artifacts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
           cache: pip
@@ -259,8 +353,8 @@ jobs:
     name: Release manifest required files
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
           cache: pip
@@ -305,6 +399,7 @@ jobs:
       - archive
       - package-smoke
       - native-examples
+      - native-full-suite
       - native-sanitizers
       - deterministic-artifacts
       - release-manifest
