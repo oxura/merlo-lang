@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import hashlib
 import json
 from pathlib import Path
@@ -84,14 +85,29 @@ def test_rename_impact_partitions_symbols_and_reasons(tmp_path: Path) -> None:
     world = _world(tmp_path)
     report = compute_semantic_impact(world, _change(world))
     assert report.contract == SEMANTIC_IMPACT_CONTRACT
-    assert [item.symbol_id for item in report.directly_changed] == ["sym-a", "sym-b"]
-    assert [item.symbol_id for item in report.transitively_affected] == ["sym-c", "sym-d"]
+    assert [
+        item.symbol_id
+        for item in report.directly_changed
+    ] == ["sym-a"]
+    assert [
+        item.symbol_id
+        for item in report.transitively_affected
+    ] == ["sym-b", "sym-c"]
     assert report.callers == ("sym-b", "sym-c")
-    assert report.callees == ("sym-a", "sym-d")
+    assert report.callees == ("sym-d",)
     assert "sym-a" not in report.callers
-    assert {edge.reason for edge in report.edges} == {"caller", "callee", "dependency"}
-    assert report.public_interface_revision_ids == ("iface-app",)
-    assert {item.path for item in report.files} == {str(tmp_path / "src.mlo"), str(tmp_path / "other.mlo")}
+    assert {
+        edge.reason for edge in report.edges
+    } == {"caller", "callee", "dependency"}
+    assert report.public_interface_revision_ids == (
+        "iface-app",
+    )
+    assert {
+        item.path for item in report.files
+    } == {
+        str(tmp_path / "src.mlo"),
+        str(tmp_path / "other.mlo"),
+    }
     assert report.tests[0].name == "smoke"
 
 
@@ -133,8 +149,13 @@ def test_noncanonical_records_are_rejected(tmp_path: Path) -> None:
             target_interface_revision_id=report.target_interface_revision_id,
             target_implementation_revision_id=report.target_implementation_revision_id,
             status="ready",
-            directly_changed=tuple(reversed(report.directly_changed)),
-            transitively_affected=report.transitively_affected,
+            directly_changed=report.directly_changed,
+            transitively_affected=tuple(
+                reversed(
+                    report.transitively_affected
+                )
+            ),
+            context_symbols=report.context_symbols,
             callers=report.callers,
             references=report.references,
             callees=report.callees,
@@ -144,6 +165,44 @@ def test_noncanonical_records_are_rejected(tmp_path: Path) -> None:
             tests=report.tests,
             interfaces=report.interfaces,
         )
+
+
+def test_report_rejects_dangling_edges_and_scalar_lists(
+    tmp_path: Path,
+) -> None:
+    from merlo.semantic_impact import ImpactEdge
+
+    world = _world(tmp_path)
+    report = compute_semantic_impact(
+        world,
+        _change(world),
+    )
+    with pytest.raises(
+        WorldError,
+        match="SemanticImpactGraphMismatch",
+    ):
+        replace(
+            report,
+            edges=(
+                ImpactEdge(
+                    "missing",
+                    report.target_symbol_id,
+                    "caller",
+                ),
+            ),
+            digest="",
+        )
+
+    payload = report.to_dict()
+    payload["callers"] = "sym-b"
+    unsigned = dict(payload)
+    unsigned.pop("digest")
+    payload["digest"] = _digest(unsigned)
+    with pytest.raises(
+        WorldError,
+        match="SemanticImpactSchemaMismatch",
+    ):
+        SemanticImpactReport.from_dict(payload)
 
 def test_stale_or_mismatched_change_is_rejected(tmp_path: Path) -> None:
     world = _world(tmp_path)

@@ -3,9 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import os
 import re
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
@@ -371,12 +369,31 @@ class ChangeIR:
         if not isinstance(value, Mapping):
             raise WorldError("ChangeIRSchemaMismatch")
         required = {"schema_version", "contract", "operation", "status", "target", "expected_world_digest", "metadata", "edits", "diagnostic", "digest"}
-        if set(value) != required:
+        if (
+            set(value) != required
+            or not isinstance(value.get("target"), Mapping)
+            or not isinstance(value.get("metadata"), Mapping)
+            or not isinstance(value.get("edits"), list)
+            or (
+                value.get("diagnostic") is not None
+                and not isinstance(
+                    value.get("diagnostic"),
+                    Mapping,
+                )
+            )
+            or not isinstance(value.get("digest"), str)
+        ):
             raise WorldError("ChangeIRSchemaMismatch")
         if value.get("schema_version") != CHANGE_IR_SCHEMA_VERSION or value.get("contract") != CHANGE_IR_CONTRACT:
             raise WorldError("ChangeIRVersionMismatch")
         payload = {key: value[key] for key in required if key != "digest"}
-        if value.get("digest") != _digest(payload):
+        try:
+            expected_digest = _digest(payload)
+        except (TypeError, ValueError) as exc:
+            raise WorldError(
+                "ChangeIRSchemaMismatch"
+            ) from exc
+        if value.get("digest") != expected_digest:
             raise WorldError("ChangeIRDigestMismatch")
         return cls(
             operation=value["operation"],
@@ -483,68 +500,121 @@ class ChangeIR:
             if not path.is_file():
                 raise StaleWorldError(f"StaleWorld: missing source {path}")
 
-    @staticmethod
-    def _atomic_write(path: Path, content: bytes) -> None:
-        temporary: Path | None = None
-        try:
-            with tempfile.NamedTemporaryFile(mode="wb", dir=path.parent, delete=False) as handle:
-                handle.write(content)
-                handle.flush()
-                os.fsync(handle.fileno())
-                temporary = Path(handle.name)
-            os.replace(temporary, path)
-        finally:
-            if temporary is not None and temporary.exists():
-                temporary.unlink()
+    def apply(
+        self,
+        world: SemanticWorld | None = None,
+    ) -> dict[str, Any]:
+        from merlo.transaction import (
+            prepare_transaction,
+        )
 
-    def apply(self, world: SemanticWorld | None = None) -> dict[str, Any]:
         active_world = world or self.world
         if active_world is None:
-            raise WorldError("ChangeIRApplyRequiresWorld")
+            raise WorldError(
+                "ChangeIRApplyRequiresWorld"
+            )
         self._validate_for_apply(active_world)
         originals: dict[str, bytes] = {}
         updated: dict[str, bytes] = {}
-        try:
-            by_path: dict[str, list[RefactorEdit]] = {}
-            for edit in self.edits:
-                by_path.setdefault(edit.path, []).append(edit)
-            for path_name, edits in by_path.items():
-                path = Path(path_name)
-                original = path.read_bytes()
-                originals[path_name] = original
-                text = original.decode("utf-8")
-                cst = parse_file_cst(text, path=path_name)
-                syntax = {item.syntax_id: item for item in cst.declarations}
-                for edit in sorted(edits, key=lambda item: item.start, reverse=True):
-                    declaration = syntax.get(edit.syntax_id)
-                    significant = tuple(
+        by_path: dict[str, list[RefactorEdit]] = {}
+        for edit in self.edits:
+            by_path.setdefault(
+                edit.path,
+                [],
+            ).append(edit)
+        for path_name, edits in by_path.items():
+            path = Path(path_name)
+            original = path.read_bytes()
+            originals[path_name] = original
+            text = original.decode("utf-8")
+            cst = parse_file_cst(
+                text,
+                path=path_name,
+            )
+            syntax = {
+                item.syntax_id: item
+                for item in cst.declarations
+            }
+            for edit in sorted(
+                edits,
+                key=lambda item: item.start,
+                reverse=True,
+            ):
+                declaration = syntax.get(
+                    edit.syntax_id
+                )
+                significant = (
+                    tuple(
                         item
                         for item in declaration.tokens
-                        if item.kind not in {"whitespace", "comment", "newline", "indent", "dedent", "eof"}
-                    ) if declaration is not None else ()
-                    token = significant[edit.token_ordinal] if edit.token_ordinal < len(significant) else None
-                    if token is None or token.token_id != edit.token_id or token.start != edit.start or token.end != edit.end:
-                        raise UnsupportedMigration(f"UnsupportedMigration: syntax identity changed at {path}:{edit.start}")
-                    old_name = self.metadata.get("old_name", text[edit.start:edit.end])
-                    if text[edit.start:edit.end] != old_name:
-                        raise UnsupportedMigration(f"UnsupportedMigration: source changed at {path}:{edit.start}")
-                    text = text[:edit.start] + edit.replacement + text[edit.end:]
-                updated[path_name] = text.encode("utf-8")
-            for path_name, content in updated.items():
-                self._atomic_write(Path(path_name), content)
-        except Exception:
-            for path_name, content in originals.items():
-                try:
-                    self._atomic_write(Path(path_name), content)
-                except OSError:
-                    Path(path_name).write_bytes(content)
-            raise
+                        if item.kind
+                        not in {
+                            "whitespace",
+                            "comment",
+                            "newline",
+                            "indent",
+                            "dedent",
+                            "eof",
+                        }
+                    )
+                    if declaration is not None
+                    else ()
+                )
+                token = (
+                    significant[edit.token_ordinal]
+                    if edit.token_ordinal
+                    < len(significant)
+                    else None
+                )
+                if (
+                    token is None
+                    or token.token_id != edit.token_id
+                    or token.start != edit.start
+                    or token.end != edit.end
+                ):
+                    raise UnsupportedMigration(
+                        "UnsupportedMigration: "
+                        "syntax identity changed at "
+                        f"{path}:{edit.start}"
+                    )
+                old_name = self.metadata.get(
+                    "old_name",
+                    text[edit.start:edit.end],
+                )
+                if (
+                    text[edit.start:edit.end]
+                    != old_name
+                ):
+                    raise UnsupportedMigration(
+                        "UnsupportedMigration: "
+                        "source changed at "
+                        f"{path}:{edit.start}"
+                    )
+                text = (
+                    text[:edit.start]
+                    + edit.replacement
+                    + text[edit.end:]
+                )
+            updated[path_name] = text.encode("utf-8")
+        transaction = prepare_transaction(
+            self,
+            active_world.root,
+            originals,
+            updated,
+        )
+        transaction_result = transaction.commit()
         return {
             "committed": True,
             "operation": self.operation,
             "target_id": self.target.symbol_id,
             "files": sorted(updated),
-            "edits": [item.to_dict() for item in self.edits],
+            "edits": [
+                item.to_dict()
+                for item in self.edits
+            ],
+            "transaction": (
+                transaction_result.to_dict()
+            ),
         }
 
 

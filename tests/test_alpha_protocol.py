@@ -46,6 +46,19 @@ def test_protocol_rename_preview_is_exact_and_apply_is_transactional(tmp_path: P
     assert all(isinstance(edit["token_ordinal"], int) for edit in preview["edits"])
     result = protocol.call("refactor.rename", {"target": "app.main.helper", "new_name": "assist", "mode": "apply"})
     assert result["committed"] is True
+    from merlo.transaction import load_transaction
+
+    transaction = load_transaction(
+        source.parent,
+        result["transaction"]["transaction_id"],
+    )
+    rolled_back = transaction.rollback()
+    assert rolled_back.changed is True
+    assert "task helper" in source.read_text(
+        encoding="utf-8"
+    )
+    replayed = transaction.replay()
+    assert replayed.changed is True
     updated = source.read_text(encoding="utf-8")
     assert "task assist" in updated
     assert "return assist(path)" in updated
@@ -280,3 +293,102 @@ def test_change_ir_rejects_operation_spoofing_and_unrelated_tokens(
         match="ChangeIRSemanticEditMismatch",
     ):
         spoofed.apply()
+
+
+def test_protocol_rejects_malformed_shapes_and_conflicting_modes(
+    tmp_path: Path,
+) -> None:
+    from merlo.alpha_protocol import AlphaProtocol
+    from merlo.semantic_world import SemanticWorld, WorldError
+
+    source = _source(tmp_path)
+    protocol = AlphaProtocol(
+        SemanticWorld.build(
+            source,
+            require_interface_lock=False,
+        )
+    )
+    rename = {
+        "target": "app.main.helper",
+        "new_name": "assist",
+    }
+
+    for operation, params in (
+        (None, {}),
+        ("world.search", []),
+        ("world.search", {"query": 1}),
+        (
+            "world.callers",
+            {
+                "target": "app.main.helper",
+                "transitive": "false",
+            },
+        ),
+    ):
+        with pytest.raises(WorldError):
+            protocol.call(operation, params)
+
+    with pytest.raises(
+        WorldError,
+        match="ConflictingRefactorMode",
+    ):
+        protocol.call(
+            "refactor.rename.preview",
+            {**rename, "mode": "apply"},
+        )
+    with pytest.raises(
+        WorldError,
+        match="ConflictingRefactorMode",
+    ):
+        protocol.call(
+            "refactor.rename.apply",
+            {**rename, "mode": "preview"},
+        )
+    assert "task helper" in source.read_text(
+        encoding="utf-8"
+    )
+
+    unsupported = protocol.call(
+        "refactor.move.apply",
+        {
+            "target": "app.main.helper",
+            "module": "app.support",
+        },
+    )
+    assert unsupported["status"] == "unsupported"
+    assert unsupported["edits"] == []
+
+
+def test_change_ir_parser_rejects_malformed_nested_shapes(
+    tmp_path: Path,
+) -> None:
+    from merlo.refactor import ChangeIR, preview_rename
+    from merlo.semantic_world import SemanticWorld, WorldError
+
+    world = SemanticWorld.build(
+        _source(tmp_path),
+        require_interface_lock=False,
+    )
+    payload = preview_rename(
+        world,
+        "app.main.helper",
+        "assist",
+    ).to_dict()
+    payload["edits"] = None
+    with pytest.raises(
+        WorldError,
+        match="ChangeIRSchemaMismatch",
+    ):
+        ChangeIR.from_dict(payload, world=world)
+
+    payload = preview_rename(
+        world,
+        "app.main.helper",
+        "assist",
+    ).to_dict()
+    payload["metadata"] = {"value": float("nan")}
+    with pytest.raises(
+        WorldError,
+        match="ChangeIRSchemaMismatch",
+    ):
+        ChangeIR.from_dict(payload, world=world)

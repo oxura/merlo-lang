@@ -6,7 +6,7 @@ import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
 from merlo.refactor import ChangeIR
 from merlo.semantic_world import SemanticWorld, WorldError
@@ -55,9 +55,17 @@ def _required(value: Mapping[str, Any], fields: set[str], error: str) -> None:
         raise WorldError(error)
 
 
-def _strings(values: Sequence[str], error: str) -> tuple[str, ...]:
+def _strings(
+    values: Any,
+    error: str,
+) -> tuple[str, ...]:
+    if not isinstance(values, (list, tuple)):
+        raise WorldError(error)
     result = tuple(values)
-    if any(type(item) is not str or not item for item in result):
+    if any(
+        type(item) is not str or not item
+        for item in result
+    ):
         raise WorldError(error)
     if result != tuple(sorted(set(result))):
         raise WorldError(error)
@@ -92,11 +100,37 @@ class ImpactSymbol:
         }
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "ImpactSymbol":
-        if not isinstance(value, Mapping):
-            raise WorldError("SemanticImpactInvalidSymbol")
-        _required(value, {"symbol_id", "revision_id", "qualified_name", "module", "exported", "reasons"}, "SemanticImpactSymbolSchemaMismatch")
-        return cls(value["symbol_id"], value["revision_id"], value["qualified_name"], value["module"], value["exported"], tuple(value["reasons"]))
+    def from_dict(
+        cls,
+        value: Mapping[str, Any],
+    ) -> "ImpactSymbol":
+        expected = {
+            "symbol_id",
+            "revision_id",
+            "qualified_name",
+            "module",
+            "exported",
+            "reasons",
+        }
+        if (
+            not isinstance(value, Mapping)
+            or set(value) != expected
+            or not isinstance(
+                value.get("reasons"),
+                list,
+            )
+        ):
+            raise WorldError(
+                "SemanticImpactSymbolSchemaMismatch"
+            )
+        return cls(
+            value["symbol_id"],
+            value["revision_id"],
+            value["qualified_name"],
+            value["module"],
+            value["exported"],
+            tuple(value["reasons"]),
+        )
 
 
 @dataclass(frozen=True)
@@ -105,19 +139,41 @@ class ImpactFile:
     reasons: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        if type(self.path) is not str or not self.path or not Path(self.path).is_absolute():
-            raise WorldError("SemanticImpactInvalidFile")
+        if (
+            type(self.path) is not str
+            or not self.path
+            or not Path(self.path).is_absolute()
+            or str(Path(self.path).resolve())
+            != self.path
+        ):
+            raise WorldError(
+                "SemanticImpactInvalidFile"
+            )
         object.__setattr__(self, "reasons", _strings(self.reasons, "SemanticImpactInvalidFileReasons"))
 
     def to_dict(self) -> dict[str, Any]:
         return {"path": self.path, "reasons": list(self.reasons)}
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "ImpactFile":
-        if not isinstance(value, Mapping):
-            raise WorldError("SemanticImpactInvalidFile")
-        _required(value, {"path", "reasons"}, "SemanticImpactFileSchemaMismatch")
-        return cls(value["path"], tuple(value["reasons"]))
+    def from_dict(
+        cls,
+        value: Mapping[str, Any],
+    ) -> "ImpactFile":
+        if (
+            not isinstance(value, Mapping)
+            or set(value) != {"path", "reasons"}
+            or not isinstance(
+                value.get("reasons"),
+                list,
+            )
+        ):
+            raise WorldError(
+                "SemanticImpactFileSchemaMismatch"
+            )
+        return cls(
+            value["path"],
+            tuple(value["reasons"]),
+        )
 
 
 @dataclass(frozen=True)
@@ -135,11 +191,31 @@ class ImpactInterface:
         return {"module": self.module, "revision_id": self.revision_id, "symbol_ids": list(self.symbol_ids)}
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "ImpactInterface":
-        if not isinstance(value, Mapping):
-            raise WorldError("SemanticImpactInvalidInterface")
-        _required(value, {"module", "revision_id", "symbol_ids"}, "SemanticImpactInterfaceSchemaMismatch")
-        return cls(value["module"], value["revision_id"], tuple(value["symbol_ids"]))
+    def from_dict(
+        cls,
+        value: Mapping[str, Any],
+    ) -> "ImpactInterface":
+        expected = {
+            "module",
+            "revision_id",
+            "symbol_ids",
+        }
+        if (
+            not isinstance(value, Mapping)
+            or set(value) != expected
+            or not isinstance(
+                value.get("symbol_ids"),
+                list,
+            )
+        ):
+            raise WorldError(
+                "SemanticImpactInterfaceSchemaMismatch"
+            )
+        return cls(
+            value["module"],
+            value["revision_id"],
+            tuple(value["symbol_ids"]),
+        )
 
 
 @dataclass(frozen=True)
@@ -147,21 +223,47 @@ class ImpactTest:
     path: str
     name: str
     reasons: tuple[str, ...] = ()
-
     def __post_init__(self) -> None:
-        if type(self.path) is not str or not self.path or type(self.name) is not str or not self.name:
-            raise WorldError("SemanticImpactInvalidTest")
+
+        if (
+            type(self.path) is not str
+            or not self.path
+            or not Path(self.path).is_absolute()
+            or str(Path(self.path).resolve())
+            != self.path
+            or type(self.name) is not str
+            or not self.name
+        ):
+            raise WorldError(
+                "SemanticImpactInvalidTest"
+            )
         object.__setattr__(self, "reasons", _strings(self.reasons, "SemanticImpactInvalidTestReasons"))
 
     def to_dict(self) -> dict[str, Any]:
         return {"path": self.path, "name": self.name, "reasons": list(self.reasons)}
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "ImpactTest":
-        if not isinstance(value, Mapping):
-            raise WorldError("SemanticImpactInvalidTest")
-        _required(value, {"path", "name", "reasons"}, "SemanticImpactTestSchemaMismatch")
-        return cls(value["path"], value["name"], tuple(value["reasons"]))
+    def from_dict(
+        cls,
+        value: Mapping[str, Any],
+    ) -> "ImpactTest":
+        expected = {"path", "name", "reasons"}
+        if (
+            not isinstance(value, Mapping)
+            or set(value) != expected
+            or not isinstance(
+                value.get("reasons"),
+                list,
+            )
+        ):
+            raise WorldError(
+                "SemanticImpactTestSchemaMismatch"
+            )
+        return cls(
+            value["path"],
+            value["name"],
+            tuple(value["reasons"]),
+        )
 
 
 @dataclass(frozen=True)
@@ -218,6 +320,7 @@ class SemanticImpactReport:
     status: str
     directly_changed: tuple[ImpactSymbol, ...]
     transitively_affected: tuple[ImpactSymbol, ...]
+    context_symbols: tuple[ImpactSymbol, ...]
     callers: tuple[str, ...]
     references: tuple[str, ...]
     callees: tuple[str, ...]
@@ -258,6 +361,7 @@ class SemanticImpactReport:
         record_types = {
             "directly_changed": ImpactSymbol,
             "transitively_affected": ImpactSymbol,
+            "context_symbols": ImpactSymbol,
             "edges": ImpactEdge,
             "files": ImpactFile,
             "tests": ImpactTest,
@@ -270,6 +374,9 @@ class SemanticImpactReport:
             key = {
                 "directly_changed": lambda item: item.symbol_id,
                 "transitively_affected": lambda item: item.symbol_id,
+                "context_symbols": (
+                    lambda item: item.symbol_id
+                ),
                 "edges": lambda item: (item.source_symbol_id, item.target_symbol_id, item.reason),
                 "files": lambda item: item.path,
                 "tests": lambda item: (item.path, item.name),
@@ -281,11 +388,99 @@ class SemanticImpactReport:
             object.__setattr__(self, name, items)
         direct_ids = tuple(item.symbol_id for item in self.directly_changed)
         transitive_ids = tuple(item.symbol_id for item in self.transitively_affected)
-        if direct_ids != tuple(sorted(set(direct_ids))) or transitive_ids != tuple(sorted(set(transitive_ids))) or set(direct_ids) & set(transitive_ids):
-            raise WorldError("SemanticImpactSymbolPartitionMismatch")
+        context_symbol_ids = tuple(
+            item.symbol_id
+            for item in self.context_symbols
+        )
+        if (
+            direct_ids != tuple(sorted(set(direct_ids)))
+            or transitive_ids
+            != tuple(sorted(set(transitive_ids)))
+            or context_symbol_ids
+            != tuple(sorted(set(context_symbol_ids)))
+            or set(direct_ids) & set(transitive_ids)
+            or set(direct_ids) & set(context_symbol_ids)
+            or set(transitive_ids)
+            & set(context_symbol_ids)
+        ):
+            raise WorldError(
+                "SemanticImpactSymbolPartitionMismatch"
+            )
+        affected_ids = set(direct_ids) | set(
+            transitive_ids
+        )
+        if (
+            self.status == "ready"
+            and self.target_symbol_id
+            not in set(direct_ids)
+        ):
+            raise WorldError(
+                "SemanticImpactTargetNotDirect"
+            )
+        if self.status == "ready":
+            target_record = next(
+                item
+                for item in self.directly_changed
+                if item.symbol_id
+                == self.target_symbol_id
+            )
+            if (
+                target_record.revision_id
+                != self.target_revision_id
+            ):
+                raise WorldError(
+                    "SemanticImpactTargetRevisionMismatch"
+                )
+        expected_context_ids = (
+            set(self.callees)
+            | set(self.dependencies)
+        ) - affected_ids
+        if set(context_symbol_ids) != (
+            expected_context_ids
+        ):
+            raise WorldError(
+                "SemanticImpactContextMismatch"
+            )
+        context_ids = (
+            affected_ids
+            | set(context_symbol_ids)
+        )
+        if (
+            not set(self.callers).issubset(
+                affected_ids
+            )
+            or not set(self.references).issubset(
+                affected_ids
+            )
+            or any(
+                edge.source_symbol_id
+                not in context_ids
+                or edge.target_symbol_id
+                not in context_ids
+                for edge in self.edges
+            )
+        ):
+            raise WorldError(
+                "SemanticImpactGraphMismatch"
+            )
         if self.status == "unsupported":
-            if self.directly_changed or self.transitively_affected or self.callers or self.references or self.callees or self.dependencies or self.edges or self.files or self.tests or self.interfaces or self.diagnostic is None:
-                raise WorldError("SemanticImpactUnsupportedNotEmpty")
+            if (
+                self.directly_changed
+                or self.transitively_affected
+                or self.context_symbols
+                or self.callers
+                or self.references
+                or self.callees
+                or self.dependencies
+                or self.edges
+                or self.files
+                or self.tests
+                or self.interfaces
+                or self.diagnostic is None
+            ):
+                raise WorldError(
+                    "SemanticImpactUnsupportedNotEmpty"
+                )
         elif self.diagnostic is not None:
             raise WorldError("SemanticImpactReadyDiagnostic")
         if self.diagnostic is not None and not isinstance(self.diagnostic, ImpactDiagnostic):
@@ -308,6 +503,10 @@ class SemanticImpactReport:
             "status": self.status,
             "directly_changed": [item.to_dict() for item in self.directly_changed],
             "transitively_affected": [item.to_dict() for item in self.transitively_affected],
+            "context_symbols": [
+                item.to_dict()
+                for item in self.context_symbols
+            ],
             "callers": list(self.callers),
             "references": list(self.references),
             "callees": list(self.callees),
@@ -334,16 +533,112 @@ class SemanticImpactReport:
         )
 
     @classmethod
-    def from_dict(cls, value: Mapping[str, Any]) -> "SemanticImpactReport":
+    def from_dict(
+        cls,
+        value: Mapping[str, Any],
+    ) -> "SemanticImpactReport":
         if not isinstance(value, Mapping):
-            raise WorldError("SemanticImpactSchemaMismatch")
-        required = set(cls.__dataclass_fields__) - {"digest"}
-        required.add("digest")
-        _required(value, required, "SemanticImpactSchemaMismatch")
-        if value.get("digest") != _digest({key: value[key] for key in required if key != "digest"}):
-            raise WorldError("SemanticImpactDigestMismatch")
+            raise WorldError(
+                "SemanticImpactSchemaMismatch"
+            )
+        required = set(cls.__dataclass_fields__)
+        collection_fields = {
+            "directly_changed",
+            "transitively_affected",
+            "context_symbols",
+            "callers",
+            "references",
+            "callees",
+            "dependencies",
+            "edges",
+            "files",
+            "tests",
+            "interfaces",
+        }
+        if (
+            set(value) != required
+            or any(
+                not isinstance(value[field], list)
+                for field in collection_fields
+            )
+        ):
+            raise WorldError(
+                "SemanticImpactSchemaMismatch"
+            )
+        payload = {
+            key: value[key]
+            for key in required
+            if key != "digest"
+        }
+        if value.get("digest") != _digest(payload):
+            raise WorldError(
+                "SemanticImpactDigestMismatch"
+            )
+        diagnostic = value["diagnostic"]
         return cls(
-            world_digest=value["world_digest"], change_digest=value["change_digest"], target_symbol_id=value["target_symbol_id"], target_revision_id=value["target_revision_id"], target_interface_revision_id=value["target_interface_revision_id"], target_implementation_revision_id=value["target_implementation_revision_id"], status=value["status"], directly_changed=tuple(ImpactSymbol.from_dict(item) for item in value["directly_changed"]), transitively_affected=tuple(ImpactSymbol.from_dict(item) for item in value["transitively_affected"]), callers=tuple(value["callers"]), references=tuple(value["references"]), callees=tuple(value["callees"]), dependencies=tuple(value["dependencies"]), edges=tuple(ImpactEdge.from_dict(item) for item in value["edges"]), files=tuple(ImpactFile.from_dict(item) for item in value["files"]), tests=tuple(ImpactTest.from_dict(item) for item in value["tests"]), interfaces=tuple(ImpactInterface.from_dict(item) for item in value["interfaces"]), diagnostic=ImpactDiagnostic.from_dict(value["diagnostic"]) if value["diagnostic"] is not None else None, schema_version=value["schema_version"], contract=value["contract"], digest=value["digest"],
+            world_digest=value["world_digest"],
+            change_digest=value["change_digest"],
+            target_symbol_id=value[
+                "target_symbol_id"
+            ],
+            target_revision_id=value[
+                "target_revision_id"
+            ],
+            target_interface_revision_id=value[
+                "target_interface_revision_id"
+            ],
+            target_implementation_revision_id=value[
+                "target_implementation_revision_id"
+            ],
+            status=value["status"],
+            directly_changed=tuple(
+                ImpactSymbol.from_dict(item)
+                for item in value["directly_changed"]
+            ),
+            transitively_affected=tuple(
+                ImpactSymbol.from_dict(item)
+                for item in value[
+                    "transitively_affected"
+                ]
+            ),
+            context_symbols=tuple(
+                ImpactSymbol.from_dict(item)
+                for item in value[
+                    "context_symbols"
+                ]
+            ),
+            callers=tuple(value["callers"]),
+            references=tuple(value["references"]),
+            callees=tuple(value["callees"]),
+            dependencies=tuple(
+                value["dependencies"]
+            ),
+            edges=tuple(
+                ImpactEdge.from_dict(item)
+                for item in value["edges"]
+            ),
+            files=tuple(
+                ImpactFile.from_dict(item)
+                for item in value["files"]
+            ),
+            tests=tuple(
+                ImpactTest.from_dict(item)
+                for item in value["tests"]
+            ),
+            interfaces=tuple(
+                ImpactInterface.from_dict(item)
+                for item in value["interfaces"]
+            ),
+            diagnostic=(
+                ImpactDiagnostic.from_dict(
+                    diagnostic
+                )
+                if diagnostic is not None
+                else None
+            ),
+            schema_version=value["schema_version"],
+            contract=value["contract"],
+            digest=value["digest"],
         )
 
     @classmethod
@@ -355,8 +650,35 @@ class SemanticImpactReport:
         return cls.from_dict(payload)
 
 
-def _symbol_record(symbol: Mapping[str, Any], reasons: set[str]) -> ImpactSymbol:
-    return ImpactSymbol(str(symbol["symbol_id"]), str(symbol["revision_id"]), str(symbol["qualified_name"]), str(symbol["module"]), bool(symbol["exported"]), tuple(sorted(reasons)))
+def _symbol_record(
+    symbol: Mapping[str, Any],
+    reasons: set[str],
+) -> ImpactSymbol:
+    string_fields = (
+        "symbol_id",
+        "revision_id",
+        "qualified_name",
+        "module",
+    )
+    if (
+        any(
+            type(symbol.get(field)) is not str
+            or not symbol[field]
+            for field in string_fields
+        )
+        or type(symbol.get("exported")) is not bool
+    ):
+        raise WorldError(
+            "SemanticImpactWorldSchemaMismatch"
+        )
+    return ImpactSymbol(
+        symbol["symbol_id"],
+        symbol["revision_id"],
+        symbol["qualified_name"],
+        symbol["module"],
+        symbol["exported"],
+        tuple(sorted(reasons)),
+    )
 
 
 def _world_path(world: SemanticWorld, value: str | Path) -> str:
@@ -381,10 +703,9 @@ def compute_semantic_impact(world: SemanticWorld, change_ir: ChangeIR) -> Semant
         raise WorldError("StaleWorld: ChangeIR belongs to another world")
     if change_ir.world is not None and change_ir.world.digest != world.digest:
         raise WorldError("SemanticImpactBindingMismatch")
-    try:
-        target = world.resolve(change_ir.target.symbol_id)
-    except Exception as exc:
-        raise WorldError("SemanticImpactUnknownTarget") from exc
+    target = world.resolve(
+        change_ir.target.symbol_id
+    )
     for key in ("symbol_id", "revision_id", "interface_revision_id", "implementation_revision_id"):
         if str(target.get(key, "")) != str(getattr(change_ir.target, key)):
             raise WorldError(f"StaleWorld: target identity changed ({key})")
@@ -412,7 +733,7 @@ def compute_semantic_impact(world: SemanticWorld, change_ir: ChangeIR) -> Semant
     if change_ir.status == "unsupported":
         diagnostic = change_ir.diagnostic
         assert diagnostic is not None
-        return SemanticImpactReport(**envelope, status="unsupported", directly_changed=(), transitively_affected=(), callers=(), references=(), callees=(), dependencies=(), edges=(), files=(), tests=(), interfaces=(), diagnostic=ImpactDiagnostic(diagnostic.code, diagnostic.message, diagnostic.details))
+        return SemanticImpactReport(**envelope, status="unsupported", directly_changed=(), transitively_affected=(), context_symbols=(), callers=(), references=(), callees=(), dependencies=(), edges=(), files=(), tests=(), interfaces=(), diagnostic=ImpactDiagnostic(diagnostic.code, diagnostic.message, diagnostic.details))
 
     symbols = {str(item["symbol_id"]): item for item in world.data.get("symbols", ())}
     edited_paths = {_world_path(world, item.path) for item in change_ir.edits}
@@ -421,9 +742,6 @@ def compute_semantic_impact(world: SemanticWorld, change_ir: ChangeIR) -> Semant
         if edit.symbol_id not in symbols:
             raise WorldError(f"UnknownSymbol: {edit.symbol_id}")
         direct_reasons.setdefault(edit.symbol_id, set()).add("edit")
-    for symbol_id, symbol in symbols.items():
-        if _world_path(world, symbol["source"]["path"]) in edited_paths:
-            direct_reasons.setdefault(symbol_id, set()).add("definition_path")
     direct_ids = set(direct_reasons)
 
     calls = tuple(world.data.get("calls", ()))
@@ -440,60 +758,112 @@ def compute_semantic_impact(world: SemanticWorld, change_ir: ChangeIR) -> Semant
     while frontier:
         discovered: set[str] = set()
         for call in calls:
-            caller, callee = str(call.get("caller_id", "")), str(call.get("callee_id", ""))
+            caller = str(
+                call.get("caller_id", "")
+            )
+            callee = str(
+                call.get("callee_id", "")
+            )
             if callee in frontier and caller in symbols:
                 callers.add(caller)
-                edges.add((caller, callee, "caller"))
+                edges.add(
+                    (caller, callee, "caller")
+                )
                 if caller not in seen:
-                    transitive.add(caller)
                     discovered.add(caller)
+        for reference in refs:
+            owner = str(
+                reference.get("owner_id", "")
+            )
+            target_id = str(
+                reference.get("target_id", "")
+            )
+            if (
+                target_id in frontier
+                and owner in symbols
+            ):
+                references.add(owner)
+                edges.add(
+                    (
+                        owner,
+                        target_id,
+                        "reference",
+                    )
+                )
+                if owner not in seen:
+                    discovered.add(owner)
+        transitive.update(discovered)
         seen.update(discovered)
         frontier = discovered
-
-    reference_frontier = set(direct_ids | transitive)
-    reference_seen: set[str] = set()
-    while reference_frontier:
-        discovered = set()
-        for affected_id in sorted(reference_frontier):
-            for ref in refs:
-                owner, target_id = str(ref.get("owner_id", "")), str(ref.get("target_id", ""))
-                if target_id == affected_id and owner in symbols:
-                    references.add(owner)
-                    if owner not in direct_ids:
-                        transitive.add(owner)
-                    edges.add((owner, target_id, "reference"))
-                    if owner not in reference_seen and owner not in direct_ids:
-                        discovered.add(owner)
-        reference_seen.update(reference_frontier)
-        reference_frontier = discovered - reference_seen
 
     for direct_id in sorted(direct_ids):
         for call in calls:
             caller, callee = str(call.get("caller_id", "")), str(call.get("callee_id", ""))
             if caller == direct_id and callee in symbols:
                 callees.add(callee)
-                if callee not in direct_ids:
-                    transitive.add(callee)
                 edges.add((caller, callee, "callee"))
         try:
             for dependency in world.dependencies(direct_id):
                 dependency_id = str(dependency["symbol_id"])
                 if dependency_id in symbols:
                     dependencies.add(dependency_id)
-                    if dependency_id not in direct_ids:
-                        transitive.add(dependency_id)
                     edges.add((direct_id, dependency_id, "dependency"))
         except (KeyError, StopIteration):
             raise WorldError("SemanticImpactWorldSchemaMismatch")
 
-    direct_records = tuple(sorted((_symbol_record(symbols[item], direct_reasons[item]) for item in direct_ids), key=lambda item: item.symbol_id))
-    transitive_reasons: dict[str, set[str]] = {item: set() for item in transitive}
+    direct_records = tuple(
+        sorted(
+            (
+                _symbol_record(
+                    symbols[item],
+                    direct_reasons[item],
+                )
+                for item in direct_ids
+            ),
+            key=lambda item: item.symbol_id,
+        )
+    )
+    transitive_reasons: dict[
+        str,
+        set[str],
+    ] = {
+        item: set()
+        for item in transitive
+    }
     for source, target_id, reason in edges:
         if source in transitive:
             transitive_reasons[source].add(reason)
         if target_id in transitive:
-            transitive_reasons[target_id].add(reason)
-    transitive_records = tuple(sorted((_symbol_record(symbols[item], transitive_reasons[item]) for item in transitive), key=lambda item: item.symbol_id))
+            transitive_reasons[target_id].add(
+                reason
+            )
+    transitive_records = tuple(
+        sorted(
+            (
+                _symbol_record(
+                    symbols[item],
+                    transitive_reasons[item],
+                )
+                for item in transitive
+            ),
+            key=lambda item: item.symbol_id,
+        )
+    )
+    context_ids = (
+        callees | dependencies
+    ) - direct_ids - transitive
+    context_records = tuple(
+        sorted(
+            (
+                _symbol_record(
+                    symbols[item],
+                    {"context"},
+                )
+                for item in context_ids
+            ),
+            key=lambda item: item.symbol_id,
+        )
+    )
 
     file_reasons: dict[str, set[str]] = {path: {"edit"} for path in edited_paths}
     for item in direct_records:
@@ -525,7 +895,7 @@ def compute_semantic_impact(world: SemanticWorld, change_ir: ChangeIR) -> Semant
         if reasons:
             test_items.append(ImpactTest(path, str(raw.get("name", Path(path).stem)), tuple(sorted(reasons))))
     tests = tuple(sorted(test_items, key=lambda item: (item.path, item.name)))
-    return SemanticImpactReport(**envelope, status="ready", directly_changed=direct_records, transitively_affected=transitive_records, callers=tuple(sorted(callers)), references=tuple(sorted(references)), callees=tuple(sorted(callees)), dependencies=tuple(sorted(dependencies)), edges=tuple(ImpactEdge(source, target_id, reason) for source, target_id, reason in sorted(edges)), files=files, tests=tests, interfaces=interfaces)
+    return SemanticImpactReport(**envelope, status="ready", directly_changed=direct_records, transitively_affected=transitive_records, context_symbols=context_records, callers=tuple(sorted(callers)), references=tuple(sorted(references)), callees=tuple(sorted(callees)), dependencies=tuple(sorted(dependencies)), edges=tuple(ImpactEdge(source, target_id, reason) for source, target_id, reason in sorted(edges)), files=files, tests=tests, interfaces=interfaces)
 
 
 __all__ = [

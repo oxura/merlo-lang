@@ -22,12 +22,11 @@ if TYPE_CHECKING:
     )
 
 WORLD_SCHEMA_VERSION = VERSIONS.semantic_world
-WORLD_CONTRACT = "merlo.semantic-world.v13"
+WORLD_CONTRACT = "merlo.semantic-world.v14"
 
 
 class WorldError(ValueError):
     """A semantic world cannot answer an exact query."""
-
 
 class StaleWorldError(WorldError):
     """The source or compiler inputs no longer match a saved world."""
@@ -67,7 +66,9 @@ def _source_hashes(graph: ModuleGraph, root: Path) -> dict[str, str]:
             key = str(path.relative_to(root))
         except ValueError:
             key = str(path)
-        result[key] = hashlib.sha256(module.source.encode("utf-8")).hexdigest()
+        result[key] = hashlib.sha256(
+            path.read_bytes()
+        ).hexdigest()
     return dict(sorted(result.items()))
 
 
@@ -249,32 +250,119 @@ class SemanticWorld:
 
         refs: list[dict[str, Any]] = []
         calls: list[dict[str, Any]] = []
-        hir_symbol_ids = {
-            function.name: symbol_by_location.get(
-                (str(Path(function.source.path).resolve()), function.source.line)
-            )
-            for function in compilation.hir.functions
+        records_by_id = {
+            item["symbol_id"]: item
+            for item in symbols
         }
+        qualified_symbols = {
+            item["qualified_name"]: item["symbol_id"]
+            for item in symbols
+        }
+        imports_by_module = {
+            item["name"]: tuple(item["imports"])
+            for item in modules
+        }
+        hir_name_candidates: dict[
+            str,
+            set[str],
+        ] = {}
         for function in compilation.hir.functions:
-            caller_id = hir_symbol_ids.get(function.name)
+            function_id = symbol_by_location.get(
+                (
+                    str(
+                        Path(
+                            function.source.path
+                        ).resolve()
+                    ),
+                    function.source.line,
+                )
+            )
+            if function_id is not None:
+                hir_name_candidates.setdefault(
+                    function.name,
+                    set(),
+                ).add(function_id)
+
+        def resolve_callee(
+            caller_id: str,
+            callee_name: str,
+        ) -> str | None:
+            caller = records_by_id[caller_id]
+            qualified = qualified_symbols.get(
+                callee_name
+            )
+            if qualified is not None:
+                return qualified
+            hir_candidates = (
+                hir_name_candidates.get(
+                    callee_name,
+                    set(),
+                )
+            )
+            if len(hir_candidates) == 1:
+                return next(iter(hir_candidates))
+            local = qualified_symbols.get(
+                f"{caller['module']}.{callee_name}"
+            )
+            if local is not None:
+                return local
+            imported = tuple(
+                qualified_symbols[
+                    f"{module}.{callee_name}"
+                ]
+                for module in imports_by_module.get(
+                    caller["module"],
+                    (),
+                )
+                if f"{module}.{callee_name}"
+                in qualified_symbols
+            )
+            return (
+                imported[0]
+                if len(imported) == 1
+                else None
+            )
+
+        for function in compilation.hir.functions:
+            location = (
+                str(Path(function.source.path).resolve()),
+                function.source.line,
+            )
+            caller_id = symbol_by_location.get(location)
             if caller_id is None:
                 continue
             for node in function.walk():
                 attributes = node.attribute_map
                 callee_text = attributes.get("callee")
-                if not callee_text or node.kind not in {
-                    "DirectCall",
-                    "CallbackCall",
-                    "ResultPropagation",
-                }:
+                if (
+                    not callee_text
+                    or node.kind
+                    not in {
+                        "DirectCall",
+                        "CallbackCall",
+                        "ResultPropagation",
+                    }
+                ):
                     continue
-                callee_id = hir_symbol_ids.get(str(callee_text))
+                callee_id = resolve_callee(
+                    caller_id,
+                    str(callee_text),
+                )
                 if callee_id is None:
                     continue
-                span = _concise_span(compilation, node, compilation.hir.path)
+                span = _concise_span(
+                    compilation,
+                    node,
+                    compilation.hir.path,
+                )
                 reference = {
                     "reference_id": _digest(
-                        (caller_id, callee_id, span, node.kind)
+                        (
+                            caller_id,
+                            callee_id,
+                            span,
+                            node.kind,
+                        )
                     )[:24],
                     "target_id": callee_id,
                     "owner_id": caller_id,
@@ -286,7 +374,9 @@ class SemanticWorld:
                 refs.append(reference)
                 calls.append(
                     {
-                        "call_id": reference["reference_id"],
+                        "call_id": reference[
+                            "reference_id"
+                        ],
                         "caller_id": caller_id,
                         "callee_id": callee_id,
                         "source": span,

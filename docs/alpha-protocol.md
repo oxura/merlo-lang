@@ -13,6 +13,17 @@ verification/property evidence; unrelated global evidence is excluded.
 transitively affected symbols and records callers, references, dependencies,
 files, interfaces, and relevant tests without changing source.
 
+Applied ChangeIR plans are materialized through a journaled
+`merlo.change-transaction.v1` transaction. The apply receipt exposes its
+transaction ID and digest; the persisted manifest supports exact rollback and
+replay only while every source is in a complete before or after state.
+
+Post-change `merlo.patch-evidence.v1` bundles bind the transaction receipt,
+before/after worlds and capsules, exact file hashes, target lineage, and
+carried verification provenance. `merlo.preservation-report.v1` separately
+checks behavioral contracts, effects, capabilities, obligations, and proof
+evidence; an authorized rename does not authorize any behavioral delta.
+
 
 Refactors are explicit and can be previewed before applying:
 

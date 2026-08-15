@@ -20,6 +20,9 @@ class CompilerVersions:
     change_ir: int
     semantic_capsule: int
     semantic_impact: int
+    patch_evidence: int
+    preservation: int
+    transaction: int
     rir: int
     mir: int
     runtime_abi: int
@@ -46,10 +49,13 @@ VERSIONS = CompilerVersions(
     change_ir=1,
     semantic_capsule=1,
     semantic_impact=1,
+    patch_evidence=1,
+    preservation=1,
+    transaction=1,
     rir=2,
     mir=2,
     runtime_abi=2,
-    semantic_world=13,
+    semantic_world=14,
     manifest=1,
     lockfile=1,
 )

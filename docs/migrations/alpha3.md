@@ -4,8 +4,9 @@ Alpha.3 intentionally changes the filesystem and verification models. The
 compiler reports language `0.3`, frontend `7`, canonical `5`, HIR `5`,
 Obligation IR `1`, range analysis `1`, bounded symbolic execution `1`, optional
 SMT `1`, property evidence `1`, verification metrics `1`, ChangeIR `1`,
-semantic capsule `1`, semantic impact `1`, RIR/MIR `2`, runtime ABI `2`, and
-SemanticWorld `13`; earlier lockfiles must be regenerated with the alpha.3
+semantic capsule `1`, semantic impact `1`, patch evidence `1`, preservation
+report `1`, change transaction `1`, RIR/MIR `2`, runtime ABI `2`, and
+SemanticWorld `14`; earlier lockfiles must be regenerated with the alpha.3
 compiler.
 
 SemanticWorld now includes the canonical constant-range analysis payload.
@@ -33,6 +34,14 @@ verification evidence.
 Change-bound impact analysis is serialized as `merlo.semantic-impact.v1`.
 Consumers should call `impact.change` with the full ChangeIR envelope instead
 of inferring affected symbols from edited paths.
+ChangeIR apply receipts now include a journaled change transaction. Consumers
+may load the transaction by ID to perform exact rollback or replay; ad hoc
+source restoration is no longer part of ChangeIR.
+
+Patch evidence and preservation are distinct v1 contracts. Patch evidence
+proves the observed structural apply/rebuild chain. Preservation reports check
+that the renamed program retained behavior-facing contracts, authority, and
+verification evidence.
 
 
 ## File handles

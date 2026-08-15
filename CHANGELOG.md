@@ -77,6 +77,12 @@
 - Adds canonical ChangeIR-bound semantic impact reports covering direct and
   transitive symbols, reference/call/dependency edges, interfaces, files, and
   tests before a change is applied.
+- Adds digest-bound patch evidence and preservation reports, keeping structural
+  apply proof separate from contract, effect, capability, obligation, and
+  verification preservation.
+- Routes ChangeIR application through durable source-snapshot transactions
+  with atomic commit, exact rollback/replay, stale-state rejection, and
+  content-addressed journals.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.
