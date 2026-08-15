@@ -38,6 +38,12 @@ bindings and callables, and allowed effects/capabilities. RIR/MIR preserve an
 explicit non-executable hole operation. C emission produces a
 `TypedHoleNotExecutable` compile-time blocker and never a value.
 
+The sibling `obligations` compiler artifact derives typed verification work
+from HIR without changing executable semantics. Function contracts and data
+invariants begin as runtime-guarded obligations; contextual holes begin
+unresolved. Stable obligation IDs are separate from predicate revisions so
+stored verification results can be invalidated precisely.
+
 ## Failure modes
 
 A missing retained Surface tree, unsupported expressions, invalid map

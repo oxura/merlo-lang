@@ -49,6 +49,13 @@ and capabilities. `check` and SemanticWorld may inspect incomplete programs,
 but native `build` rejects them with `TypedHoleNotExecutable`; no default or
 mock value is generated. Postfix `value?` remains typed `Result` propagation.
 
+The compiler derives `merlo.typed-obligation-ir.v1` from typed HIR. Categories
+cover function preconditions/postconditions, data invariants, typed holes,
+type/effect/capability/ownership/control-flow/arithmetic safety, and
+termination. Each obligation has a stable identity, content revision, owner,
+source, typed context, dependencies, and one typed disposition: unresolved,
+statically proven/refuted, runtime guarded, or explicitly deferred.
+
 Canonical source is a deterministic diagnostic projection of the typed tree.
 Its semantic hash includes types, authority, errors, and desugared operations;
 formatting whitespace and source spans do not change that hash.

@@ -177,3 +177,4 @@ def test_semantic_world_exposes_hole_completion_context(
     assert symbol["holes"][0]["expected_type"] == "Text"
     capsule = world.compile_context("main.main")
     assert capsule["holes"][0]["hole_id"].startswith("hole_")
+    assert capsule["obligations"][0]["category"] == "typed_hole"

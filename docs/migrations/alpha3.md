@@ -1,9 +1,9 @@
 # Migrating from alpha.2 to alpha.3
 
 Alpha.3 intentionally changes the filesystem and verification models. The
-compiler reports language `0.3`, frontend `7`, canonical `5`, HIR `5`, RIR `2`,
-MIR `2`, runtime ABI `2`, and SemanticWorld `4`; earlier lockfiles must be
-regenerated with the alpha.3 compiler.
+compiler reports language `0.3`, frontend `7`, canonical `5`, HIR `5`,
+Obligation IR `1`, RIR/MIR `2`, runtime ABI `2`, and SemanticWorld `5`; earlier
+lockfiles must be regenerated with the alpha.3 compiler.
 
 ## File handles
 
@@ -51,3 +51,9 @@ Bare `?` now retains a typed completion obligation when an exact type is
 available from context. Use postfix `value?` only for `Result` propagation.
 Incomplete programs can be checked and indexed, but native builds fail with
 `TypedHoleNotExecutable`.
+
+## Typed obligation artifact
+
+Compiler and SemanticWorld payloads now include the deterministic
+`merlo.typed-obligation-ir.v1` artifact. Consumers must distinguish obligation
+identity from revision and handle every typed disposition explicitly.

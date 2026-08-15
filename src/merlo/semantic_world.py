@@ -12,7 +12,7 @@ from merlo.modules import ModuleGraph
 from merlo.version import VERSIONS
 
 WORLD_SCHEMA_VERSION = VERSIONS.semantic_world
-WORLD_CONTRACT = "merlo.semantic-world.v4"
+WORLD_CONTRACT = "merlo.semantic-world.v5"
 
 
 class WorldError(ValueError):
@@ -156,6 +156,13 @@ class SemanticWorld:
                 hir = hir_by_location.get(location)
                 task = task_by_location.get(location)
                 hir_type = hir_type_by_location.get(location)
+                obligation_owner = (
+                    hir.symbol_id
+                    if hir is not None
+                    else hir_type.symbol_id
+                    if hir_type is not None
+                    else None
+                )
                 source_span = {
                     "path": module.path,
                     "line": start,
@@ -203,6 +210,13 @@ class SemanticWorld:
                         for node in hir.walk()
                         if node.kind == "TypedHole"
                     ] if hir is not None else [],
+                    "obligations": [
+                        obligation.obligation_id
+                        for obligation
+                        in compilation.obligations.obligations
+                        if obligation.owner_symbol_id
+                        == obligation_owner
+                    ],
                     "ownership": sorted({getattr(parameter, "ownership", "") for parameter in getattr(hir, "parameters", ())} - {""}),
                     "resources": sorted({attribute.get("resource") for node in hir.walk() for attribute in [node.attribute_map] if attribute.get("resource") is not None}) if hir is not None else [],
                 }
@@ -317,6 +331,10 @@ class SemanticWorld:
             "ownership": sorted([[item["symbol_id"], value] for item in symbols for value in item["ownership"]]),
             "resources": sorted({value for item in symbols for value in item["resources"]}),
             "interfaces": sorted(interfaces, key=lambda item: (item.get("module", ""), item.get("name", ""))),
+            "obligations": [
+                item.to_dict()
+                for item in compilation.obligations.obligations
+            ],
             "tests": tests,
         }
         payload["world_digest"] = _digest(payload)
@@ -468,7 +486,13 @@ class SemanticWorld:
     def compile_context(self, target: str, *, goal: str = "") -> dict[str, Any]:
         symbol = self.resolve(target)
         impact = self.impact(symbol["symbol_id"])
-        return {"kind": "TaskCapsule", "goal": goal, "target": {"symbol_id": symbol["symbol_id"], "qualified_name": symbol["qualified_name"], "module": symbol["module"], "name": symbol["name"]}, "source": self.source(symbol["symbol_id"]), "signature": symbol["signature"], "dependent_types": symbol["types"], "callers": [item["symbol_id"] for item in impact["callers"]], "dependencies": [item["symbol_id"] for item in impact["dependencies"]], "effects": list(symbol["effects"]), "capabilities": list(symbol["capabilities"]), "requirements": list(symbol["requirements"]), "ensures": list(symbol["ensures"]), "invariants": list(symbol["invariants"]), "holes": list(symbol["holes"]), "public_boundary": symbol["exported"], "tests": [item["path"] for item in self.data.get("tests", ())] if symbol["exported"] else []}
+        obligation_ids = set(symbol["obligations"])
+        obligations = [
+            item
+            for item in self.data.get("obligations", ())
+            if item["obligation_id"] in obligation_ids
+        ]
+        return {"kind": "TaskCapsule", "goal": goal, "target": {"symbol_id": symbol["symbol_id"], "qualified_name": symbol["qualified_name"], "module": symbol["module"], "name": symbol["name"]}, "source": self.source(symbol["symbol_id"]), "signature": symbol["signature"], "dependent_types": symbol["types"], "callers": [item["symbol_id"] for item in impact["callers"]], "dependencies": [item["symbol_id"] for item in impact["dependencies"]], "effects": list(symbol["effects"]), "capabilities": list(symbol["capabilities"]), "requirements": list(symbol["requirements"]), "ensures": list(symbol["ensures"]), "invariants": list(symbol["invariants"]), "holes": list(symbol["holes"]), "obligations": obligations, "public_boundary": symbol["exported"], "tests": [item["path"] for item in self.data.get("tests", ())] if symbol["exported"] else []}
 
     def diagnostics_explain(self, diagnostic: str | Mapping[str, Any]) -> dict[str, Any]:
         code = diagnostic.get("code") if isinstance(diagnostic, Mapping) else str(diagnostic).split(":", 1)[0]

@@ -14,6 +14,10 @@ from merlo.concise_services import elaborate_concise_application
 from merlo.modules import ModuleError, ModuleGraph
 from merlo.native_c_backend import NativeBuildResult, compile_c_source
 from merlo.project import Project
+from merlo.obligation_ir import (
+    ObligationProgram,
+    build_obligation_ir,
+)
 from merlo.representation_c_backend import GeneratedC, emit_general_c
 from merlo.representation_ir import RepresentationProgram, lower_structured_hir_to_rir
 from merlo.representation_mir import (
@@ -57,6 +61,7 @@ class ProjectCompilation:
     elaborated: ConciseApplicationElaboration
     module_graph: ModuleGraph
     hir: StructuredHIRProgram
+    obligations: ObligationProgram
     representation: RepresentationProgram
     mir: GeneralPerformanceMIR
     optimized_mir: GeneralPerformanceMIR
@@ -95,6 +100,11 @@ class ProjectCompilation:
             "artifacts": {
                 name: artifact.to_dict()
                 for name, artifact in self.artifacts.items()
+            },
+            "obligations": {
+                "digest": self.obligations.digest,
+                "count": len(self.obligations.obligations),
+                "unresolved": len(self.obligations.unresolved),
             },
             "native": self.native.to_dict() if self.native is not None else None,
         }
@@ -178,6 +188,7 @@ def compile_project(
             elaborated.canonical_program,
             entry_function="main",
         )
+        obligations = build_obligation_ir(hir)
         representation = lower_structured_hir_to_rir(hir)
         mir = lower_rir_to_performance_mir(hir, representation)
         optimized = optimize_general_mir(mir)
@@ -221,6 +232,13 @@ def compile_project(
         hir.to_json(),
         canonical,
     )
+    obligation_artifact = _artifact(
+        "obligations",
+        obligations.contract,
+        obligations.schema_version,
+        obligations.to_json(),
+        hir_artifact,
+    )
     rir_artifact = _artifact(
         "rir",
         representation.contract,
@@ -256,6 +274,7 @@ def compile_project(
             concise,
             canonical,
             hir_artifact,
+            obligation_artifact,
             rir_artifact,
             mir_artifact,
             optimized_artifact,
@@ -304,6 +323,7 @@ def compile_project(
         elaborated=elaborated,
         module_graph=module_graph,
         hir=hir,
+        obligations=obligations,
         representation=representation,
         mir=mir,
         optimized_mir=optimized,
