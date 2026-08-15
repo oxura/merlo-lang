@@ -40,8 +40,8 @@ from merlo.version import VERSIONS
 from merlo.type_parser import generic_parts, parse_type
 
 
-C_BACKEND_SCHEMA_VERSION = 1
-C_BACKEND_CONTRACT = "merlo.general-representation-c11.v1"
+C_BACKEND_SCHEMA_VERSION = 2
+C_BACKEND_CONTRACT = "merlo.general-representation-c11.v2"
 RUNTIME_ABI_VERSION = VERSIONS.runtime_abi
 RUNTIME_ABI_CONTRACT = "merlo.runtime-abi.v2"
 _FROZEN_GENERAL_JSON_SHA256 = (
@@ -5968,6 +5968,30 @@ def emit_general_c(
     representation: RepresentationProgram,
     mir: GeneralPerformanceMIR,
 ) -> GeneratedC:
+    holes = tuple(
+        node
+        for function in hir.functions
+        for node in function.walk()
+        if node.kind == "TypedHole"
+    )
+    if holes:
+        lines = [
+            (
+                '#error "TypedHoleNotExecutable:'
+                f"{node.attribute_map.get('hole_id')}:"
+                f'{node.type_name}"'
+            )
+            for node in holes
+        ]
+        source = "\n".join(lines) + "\n"
+        return GeneratedC(
+            source,
+            hashlib.sha256(source.encode()).hexdigest(),
+            (),
+            len(lines),
+            0,
+            (),
+        )
     return GeneralCEmitter(hir, representation, mir).emit()
 
 

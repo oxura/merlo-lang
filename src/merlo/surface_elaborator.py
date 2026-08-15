@@ -15,6 +15,9 @@ from merlo.canonical_ast import (
     CanonicalCapture,
     CanonicalContract,
     CanonicalClosure,
+    CanonicalHole,
+    CanonicalHoleBinding,
+    CanonicalHoleCallable,
     CanonicalEnum,
     CanonicalFunction,
     CanonicalProgram,
@@ -50,6 +53,7 @@ from merlo.surface_ast import (
     SurfaceIf,
     SurfaceEnsure,
     SurfaceEnum,
+    SurfaceHole,
     SurfaceIndex,
     SurfaceList,
     SurfaceLambda,
@@ -249,6 +253,14 @@ class _Elaborator:
     def _validate_record_invariants(self) -> None:
         for record in self.records.values():
             for index, invariant in enumerate(record.invariants):
+                if any(
+                    isinstance(node, SurfaceHole)
+                    for node in invariant.condition.walk()
+                ):
+                    raise SurfaceElaborationError(
+                        "TypedHoleInInvariantForbidden: "
+                        f"{record.name}"
+                    )
                 name = f"__merlo_invariant_{record.name}_{index}"
                 parameters = tuple(
                     SurfaceParameter(
@@ -1102,7 +1114,22 @@ class _Elaborator:
         function: _Function,
         expected: str | None = None,
     ) -> str:
-        if isinstance(expression, SurfaceLiteral):
+        if isinstance(expression, SurfaceHole):
+            if expected is None or expected == "Inferred":
+                raise SurfaceElaborationError(
+                    "UnconstrainedTypedHole: "
+                    f"{function.source.name}:"
+                    f"{expression.span.start_line}:"
+                    f"{expression.span.start_column}"
+                )
+            key = (
+                f"{expression.span.path}:"
+                f"{expression.span.start_line}:"
+                f"{expression.span.start_column}"
+            )
+            function.holes[key] = (expression, expected)
+            term = self.types.typed(expected)
+        elif isinstance(expression, SurfaceLiteral):
             if (
                 expected in _INTEGER_BOUNDS
                 and isinstance(expression.value, int)
@@ -2026,7 +2053,10 @@ class _Elaborator:
                     value = self._expression(
                         statement.value,
                         function,
-                        statement.type_name,
+                        statement.type_name
+                        or self.types.concrete.get(
+                            self.types.find(term)
+                        ),
                     )
                 finally:
                     self._active_binding = previous_binding
@@ -2691,6 +2721,104 @@ class _Elaborator:
                     tuple(sorted(function.evidence.get("$return", {"body_constraint"}))),
                 )
             )
+            holes = []
+            for _key, (hole, expected_type) in sorted(
+                function.holes.items()
+            ):
+                context_items = [
+                    CanonicalHoleBinding(
+                        name,
+                        type_name,
+                        (
+                            "owned"
+                            if self.type_properties.resolve(
+                                type_name
+                            ).needs_drop
+                            else "copy"
+                        ),
+                    )
+                    for name, type_name in parameter_types
+                ]
+                for name, binding in sorted(
+                    function.first_bindings.items(),
+                    key=lambda item: (
+                        item[1].span.start_line,
+                        item[1].span.start_column,
+                        item[0],
+                    ),
+                ):
+                    if (
+                        binding.span.start_line
+                        >= hole.span.start_line
+                    ):
+                        continue
+                    type_name = self.types.resolve(
+                        function.locals[name],
+                        name=(
+                            f"{function.source.name}."
+                            f"hole_context.{name}"
+                        ),
+                    )
+                    context_items.append(
+                        CanonicalHoleBinding(
+                            name,
+                            type_name,
+                            (
+                                "owned"
+                                if self.type_properties.resolve(
+                                    type_name
+                                ).needs_drop
+                                else "copy"
+                            ),
+                        )
+                    )
+                callable_items = tuple(
+                    CanonicalHoleCallable(
+                        name,
+                        tuple(
+                            (
+                                parameter_name,
+                                self.types.resolve(
+                                    term,
+                                    name=(
+                                        f"{name}."
+                                        f"{parameter_name}"
+                                    ),
+                                ),
+                            )
+                            for parameter_name, term
+                            in target.parameters.items()
+                        ),
+                        self.types.resolve(
+                            target.return_term,
+                            name=f"{name}.$return",
+                        ),
+                        tuple(sorted(target.effects)),
+                        tuple(sorted(target.capabilities)),
+                    )
+                    for name, target in sorted(
+                        self.functions.items()
+                    )
+                )
+                identity = hashlib.sha256(
+                    (
+                        f"hole\0{function.source.name}\0"
+                        f"{hole.span.path}\0"
+                        f"{hole.span.start_line}\0"
+                        f"{hole.span.start_column}"
+                    ).encode()
+                ).hexdigest()
+                holes.append(
+                    CanonicalHole(
+                        f"hole_{identity[:24]}",
+                        expected_type,
+                        hole.span,
+                        tuple(context_items),
+                        callable_items,
+                        tuple(sorted(function.effects)),
+                        tuple(sorted(function.capabilities)),
+                    )
+                )
             functions.append(
                 CanonicalFunction(
                     function.source.name,
@@ -2711,6 +2839,7 @@ class _Elaborator:
                     tuple(function.option_fallbacks.values()),
                     self._canonical_lines(statements, function),
                     tuple(function.closures.values()),
+                    tuple(holes),
                 )
             )
         canonical = CanonicalProgram(records, tuple(functions), enums)
@@ -2739,6 +2868,8 @@ def _emit_nested(expression: SurfaceExpression) -> str:
 def _emit_expression(expression: SurfaceExpression | None) -> str | None:
     if expression is None:
         return None
+    if isinstance(expression, SurfaceHole):
+        return "?"
     if isinstance(expression, SurfaceName):
         return expression.name
     if isinstance(expression, SurfaceLiteral):

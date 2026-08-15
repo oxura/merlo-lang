@@ -39,6 +39,11 @@ class SurfaceName(SurfaceNode):
 
 
 @dataclass(frozen=True)
+class SurfaceHole(SurfaceNode):
+    pass
+
+
+@dataclass(frozen=True)
 class SurfaceLiteral(SurfaceNode):
     value: object
     kind: str
@@ -117,6 +122,7 @@ class SurfaceLambda(SurfaceNode):
 SurfaceExpression: TypeAlias = (
     SurfaceName
     | SurfaceLiteral
+    | SurfaceHole
     | SurfaceList
     | SurfaceMember
     | SurfaceImplicitReceiver

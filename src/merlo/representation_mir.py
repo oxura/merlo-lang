@@ -16,8 +16,8 @@ from merlo.representation_runtime import EvaluationResult, evaluate_structured_h
 from merlo.structured_hir_v2 import SourceSpan, StructuredHIRProgram
 
 
-GENERAL_MIR_SCHEMA_VERSION = 1
-GENERAL_MIR_CONTRACT = "merlo.performance-mir.general-representation.v1"
+GENERAL_MIR_SCHEMA_VERSION = 2
+GENERAL_MIR_CONTRACT = "merlo.performance-mir.general-representation.v2"
 _DOMAIN_OPS = {"json_parse", "json_tokenize", "json_token_checksum", "json_decode", "json_build_ast"}
 
 

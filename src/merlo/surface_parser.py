@@ -27,6 +27,7 @@ from merlo.surface_ast import (
     SurfaceField,
     SurfaceFor,
     SurfaceFunction,
+    SurfaceHole,
     SurfaceIf,
     SurfaceImplementation,
     SurfaceInterface,
@@ -385,6 +386,11 @@ class _ExpressionParser:
 
     def _atom(self) -> SurfaceExpression:
         token = self.current
+        if token.text == "?":
+            self._take()
+            return SurfaceHole(
+                self._span(token.start, token.end)
+            )
         if token.text in {"{", "}"}:
             self._error("UnsupportedExpression", "DictOrSet", token.start)
         if token.text == ".":

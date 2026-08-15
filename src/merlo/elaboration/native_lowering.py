@@ -23,6 +23,7 @@ from merlo.surface_ast import (
     SurfaceIf,
     SurfaceImplicitReceiver,
     SurfaceIndex,
+    SurfaceHole,
     SurfaceList,
     SurfaceLambda,
     SurfaceLiteral,
@@ -128,6 +129,42 @@ class _SurfaceNativeBuilder:
         return self._loc(ast.Name(id=name, ctx=ctx), span)
 
     def _expr(self, expression: SurfaceExpression) -> ast.expr:
+        if isinstance(expression, SurfaceHole):
+            metadata = next(
+                (
+                    item
+                    for item in self.canonical_functions[
+                        self.current_function
+                    ].holes
+                    if item.span == expression.span
+                ),
+                None,
+            )
+            if metadata is None:
+                raise SurfaceElaborationError(
+                    "MissingTypedHoleMetadata"
+                )
+            return self._loc(
+                ast.Hole(
+                    hole_id=metadata.hole_id,
+                    expected_type=metadata.expected_type,
+                    context=tuple(
+                        (
+                            item.name,
+                            item.type_name,
+                            item.ownership,
+                        )
+                        for item in metadata.context
+                    ),
+                    callables=tuple(
+                        item.to_payload()
+                        for item in metadata.callables
+                    ),
+                    effects=metadata.effects,
+                    capabilities=metadata.capabilities,
+                ),
+                expression.span,
+            )
         if isinstance(expression, SurfaceName):
             return self._name(expression.name, expression.span)
         if isinstance(expression, SurfaceLiteral):

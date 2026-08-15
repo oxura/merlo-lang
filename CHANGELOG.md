@@ -3,9 +3,9 @@
 ## Unreleased
 
 - Starts the `0.1.0-alpha.3-dev` compatibility line with language contract
-  `0.3`, frontend `6`, canonical `4`, HIR `4`, runtime ABI `2`, and
-  SemanticWorld `3`. Alpha.2 lockfiles must be regenerated; see the migration
-  guide.
+  `0.3`, frontend `7`, canonical `5`, HIR `5`, RIR/MIR `2`, runtime ABI `2`,
+  and SemanticWorld `4`. Alpha.2 lockfiles must be regenerated; see the
+  migration guide.
 - Replaces owner/view pointer punning with real view descriptors and locks the
   generated C under GCC and Clang strict-aliasing optimization.
 - Defines byte and text escape semantics, rejecting Unicode escapes in bytes,
@@ -47,6 +47,9 @@
 - Adds pure, typed record invariants, preserves them through canonical, HIR,
   representation descriptors, and SemanticWorld, and enforces them at every
   native record constructor.
+- Adds contextual bare `?` holes with exact expected types and completion
+  contexts in canonical, HIR, and SemanticWorld data. RIR/MIR retain explicit
+  non-executable hole operations; native builds fail without a fallback value.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

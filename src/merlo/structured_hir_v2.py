@@ -26,8 +26,8 @@ from merlo.intrinsics import contextual_result_type, format_intrinsic_arity, int
 from merlo.type_properties import TypePropertyResolver
 
 
-STRUCTURED_HIR_SCHEMA_VERSION = 4
-STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v4"
+STRUCTURED_HIR_SCHEMA_VERSION = 5
+STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v5"
 _SCALAR_TYPES = frozenset(
     {
         "Bool",
@@ -1183,6 +1183,32 @@ class _HIRBuilder:
         *,
         expected: str | None = None,
     ) -> HIRNode:
+        if isinstance(node, ast.Hole):
+            if expected is not None and expected != node.expected_type:
+                raise StructuredHIRCompileError(
+                    "TypedHoleContextMismatch: "
+                    f"{node.hole_id}: {node.expected_type} != "
+                    f"{expected}"
+                )
+            return self._new_node(
+                node,
+                "TypedHole",
+                type_name=node.expected_type,
+                ownership=(
+                    "owned"
+                    if self._owner(node.expected_type)
+                    else "value"
+                ),
+                symbol_id=node.hole_id,
+                attributes={
+                    "hole_id": node.hole_id,
+                    "expected_type": node.expected_type,
+                    "context": list(node.context),
+                    "callables": list(node.callables),
+                    "effects": list(node.effects),
+                    "capabilities": list(node.capabilities),
+                },
+            )
         if isinstance(node, ast.Name):
             type_name = self.local_types.get(node.id)
             symbol = _stable_id(

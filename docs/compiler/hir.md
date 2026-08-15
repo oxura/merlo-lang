@@ -17,12 +17,12 @@ tree is rejected; serialized projections are not compiler input.
 ## Outputs
 
 The function returns `StructuredHIRProgram`, contract
-`merlo.structured-typed-hir.v4`, schema version `4`. It contains source
+`merlo.structured-typed-hir.v5`, schema version `5`. It contains source
 text/digest, `HIRTypeDecl` values with typed record invariants,
 `HIRField`/`HIRVariant` values, `HIRFunction` records, typed parameters,
-function contracts, an entry function, and tree-shaped `HIRNode` bodies.
-`HIRNode.walk()` traverses contract conditions and executable nodes for
-source-map projection.
+function contracts, contextual `TypedHole` nodes, an entry function, and
+tree-shaped `HIRNode` bodies. `HIRNode.walk()` traverses contract conditions
+and executable nodes for source-map projection.
 
 ## Invariants
 
@@ -33,6 +33,10 @@ pointers, and drop flags are rejected here. Stable JSON includes source and
 semantic identity for every function and node.
 Requirements and ensures are Boolean, source-spanned HIR expressions. Their
 revision IDs contribute to the enclosing function revision.
+Typed holes retain their expected type, stable source identity, visible typed
+bindings and callables, and allowed effects/capabilities. RIR/MIR preserve an
+explicit non-executable hole operation. C emission produces a
+`TypedHoleNotExecutable` compile-time blocker and never a value.
 
 ## Failure modes
 

@@ -58,6 +58,11 @@ constraints are errors. Recursive call groups require at least one explicit
 boundary. Exported interfaces become explicit, content-addressed contracts once
 locked.
 
+Bare `?` is an incomplete expression only when its context determines one exact
+type. The compiler records that expected type and the visible typed scope as a
+completion obligation. It never treats a hole as `Any`, zero, `None`, or another
+runtime fallback.
+
 `T?` is the human spelling of `Option[T]`. `option or fallback` is accepted only
 when the left side is `Option[T]` and the right side is `T`; `Bool or Bool`
 remains boolean. Text, integers, records, and collections do not have implicit

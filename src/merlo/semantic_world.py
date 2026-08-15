@@ -12,7 +12,7 @@ from merlo.modules import ModuleGraph
 from merlo.version import VERSIONS
 
 WORLD_SCHEMA_VERSION = VERSIONS.semantic_world
-WORLD_CONTRACT = "merlo.semantic-world.v3"
+WORLD_CONTRACT = "merlo.semantic-world.v4"
 
 
 class WorldError(ValueError):
@@ -194,6 +194,15 @@ class SemanticWorld:
                         item.expression
                         for item in hir_type.invariants
                     ] if hir_type is not None else [],
+                    "holes": [
+                        {
+                            **node.attribute_map,
+                            "source": node.source.to_dict(),
+                            "node_id": node.id,
+                        }
+                        for node in hir.walk()
+                        if node.kind == "TypedHole"
+                    ] if hir is not None else [],
                     "ownership": sorted({getattr(parameter, "ownership", "") for parameter in getattr(hir, "parameters", ())} - {""}),
                     "resources": sorted({attribute.get("resource") for node in hir.walk() for attribute in [node.attribute_map] if attribute.get("resource") is not None}) if hir is not None else [],
                 }
@@ -459,7 +468,7 @@ class SemanticWorld:
     def compile_context(self, target: str, *, goal: str = "") -> dict[str, Any]:
         symbol = self.resolve(target)
         impact = self.impact(symbol["symbol_id"])
-        return {"kind": "TaskCapsule", "goal": goal, "target": {"symbol_id": symbol["symbol_id"], "qualified_name": symbol["qualified_name"], "module": symbol["module"], "name": symbol["name"]}, "source": self.source(symbol["symbol_id"]), "signature": symbol["signature"], "dependent_types": symbol["types"], "callers": [item["symbol_id"] for item in impact["callers"]], "dependencies": [item["symbol_id"] for item in impact["dependencies"]], "effects": list(symbol["effects"]), "capabilities": list(symbol["capabilities"]), "requirements": list(symbol["requirements"]), "ensures": list(symbol["ensures"]), "invariants": list(symbol["invariants"]), "public_boundary": symbol["exported"], "tests": [item["path"] for item in self.data.get("tests", ())] if symbol["exported"] else []}
+        return {"kind": "TaskCapsule", "goal": goal, "target": {"symbol_id": symbol["symbol_id"], "qualified_name": symbol["qualified_name"], "module": symbol["module"], "name": symbol["name"]}, "source": self.source(symbol["symbol_id"]), "signature": symbol["signature"], "dependent_types": symbol["types"], "callers": [item["symbol_id"] for item in impact["callers"]], "dependencies": [item["symbol_id"] for item in impact["dependencies"]], "effects": list(symbol["effects"]), "capabilities": list(symbol["capabilities"]), "requirements": list(symbol["requirements"]), "ensures": list(symbol["ensures"]), "invariants": list(symbol["invariants"]), "holes": list(symbol["holes"]), "public_boundary": symbol["exported"], "tests": [item["path"] for item in self.data.get("tests", ())] if symbol["exported"] else []}
 
     def diagnostics_explain(self, diagnostic: str | Mapping[str, Any]) -> dict[str, Any]:
         code = diagnostic.get("code") if isinstance(diagnostic, Mapping) else str(diagnostic).split(":", 1)[0]

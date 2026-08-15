@@ -120,6 +120,18 @@ GtE = _define("GtE", cmpop)
 
 Name = _define("Name", expr, ("id", "ctx"))
 Constant = _define("Constant", expr, ("value", "kind"))
+Hole = _define(
+    "Hole",
+    expr,
+    (
+        "hole_id",
+        "expected_type",
+        "context",
+        "callables",
+        "effects",
+        "capabilities",
+    ),
+)
 Attribute = _define("Attribute", expr, ("value", "attr", "ctx"))
 Subscript = _define("Subscript", expr, ("value", "slice", "ctx"))
 List = _define("List", expr, ("elts", "ctx"))
@@ -240,6 +252,8 @@ def unparse(node: AST | None) -> str:
     if isinstance(node, BoolOp):
         symbol = " and " if isinstance(node.op, And) else " or "
         return symbol.join(unparse(item) for item in node.values)
+    if isinstance(node, Hole):
+        return "?"
     if isinstance(node, Compare):
         result = unparse(node.left)
         for operation, comparator in zip(node.ops, node.comparators, strict=True):

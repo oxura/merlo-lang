@@ -17,8 +17,8 @@ from merlo.ffi import pointer_type
 from merlo.type_parser import generic_parts, parse_type
 
 
-REPRESENTATION_IR_SCHEMA_VERSION = 1
-REPRESENTATION_IR_CONTRACT = "merlo.representation-ir.v1"
+REPRESENTATION_IR_SCHEMA_VERSION = 2
+REPRESENTATION_IR_CONTRACT = "merlo.representation-ir.v2"
 MAX_U64 = (1 << 64) - 1
 
 def _type_leaf(type_name: str) -> str:
@@ -1004,6 +1004,7 @@ def build_drop_plans(descriptors: Iterable[TypeDescriptor], *, recursion_limit: 
 
 
 _HIR_TO_RIR = {
+    "TypedHole": "typed_hole",
     "RecordConstruct": "construct_record",
     "FieldAccess": "get_field",
     "SetField": "set_field",

@@ -141,6 +141,65 @@ class CanonicalContract:
         }
 
 
+@dataclass(frozen=True)
+class CanonicalHoleBinding:
+    name: str
+    type_name: str
+    ownership: str
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "type": self.type_name,
+            "ownership": self.ownership,
+        }
+
+
+@dataclass(frozen=True)
+class CanonicalHoleCallable:
+    name: str
+    parameters: tuple[tuple[str, str], ...]
+    return_type: str
+    effects: tuple[str, ...]
+    capabilities: tuple[str, ...]
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "parameters": [list(item) for item in self.parameters],
+            "return_type": self.return_type,
+            "effects": list(self.effects),
+            "capabilities": list(self.capabilities),
+        }
+
+
+@dataclass(frozen=True)
+class CanonicalHole:
+    hole_id: str
+    expected_type: str
+    span: SourceSpan
+    context: tuple[CanonicalHoleBinding, ...]
+    callables: tuple[CanonicalHoleCallable, ...]
+    effects: tuple[str, ...]
+    capabilities: tuple[str, ...]
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "node": "typed_hole",
+            "hole_id": self.hole_id,
+            "expected_type": self.expected_type,
+            "span": _span_payload(self.span),
+            "context": [
+                item.to_payload() for item in self.context
+            ],
+            "callables": [
+                item.to_payload() for item in self.callables
+            ],
+            "effects": list(self.effects),
+            "capabilities": list(self.capabilities),
+        }
+
+
 CanonicalStatement = CanonicalReturn | CanonicalBinding
 
 
@@ -163,6 +222,7 @@ class CanonicalFunction:
     option_fallbacks: tuple[CanonicalOptionFallback, ...] = ()
     canonical_lines: tuple[str, ...] = ()
     closures: tuple[CanonicalClosure, ...] = ()
+    holes: tuple[CanonicalHole, ...] = ()
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -190,6 +250,7 @@ class CanonicalFunction:
             ],
             "canonical_lines": list(self.canonical_lines),
             "closures": [item.to_payload() for item in self.closures],
+            "holes": [item.to_payload() for item in self.holes],
         }
 
     @property
@@ -265,7 +326,7 @@ class CanonicalProgram:
 
     def to_payload(self) -> dict[str, Any]:
         return {
-            "schema": "merlo.canonical-typed-ast.v4",
+            "schema": "merlo.canonical-typed-ast.v5",
             "records": [item.to_payload() for item in self.records],
             "functions": [item.to_payload() for item in self.functions],
             "enums": [item.to_payload() for item in self.enums],
@@ -295,6 +356,8 @@ class CanonicalProgram:
                 fallback.pop("span", None)
             for closure in function["closures"]:
                 closure.pop("span", None)
+            for hole in function["holes"]:
+                hole.pop("span", None)
         return hashlib.sha256(
             json.dumps(
                 payload,
@@ -414,6 +477,48 @@ class CanonicalProgram:
                 )
                 for value in item.get("closures", ())
             )
+            holes = tuple(
+                CanonicalHole(
+                    value["hole_id"],
+                    value["expected_type"],
+                    span(value["span"]),
+                    tuple(
+                        CanonicalHoleBinding(
+                            binding["name"],
+                            binding["type"],
+                            binding["ownership"],
+                        )
+                        for binding in value.get("context", ())
+                    ),
+                    tuple(
+                        CanonicalHoleCallable(
+                            callable_value["name"],
+                            tuple(
+                                tuple(parameter)
+                                for parameter in callable_value.get(
+                                    "parameters",
+                                    (),
+                                )
+                            ),
+                            callable_value["return_type"],
+                            tuple(callable_value.get("effects", ())),
+                            tuple(
+                                callable_value.get(
+                                    "capabilities",
+                                    (),
+                                )
+                            ),
+                        )
+                        for callable_value in value.get(
+                            "callables",
+                            (),
+                        )
+                    ),
+                    tuple(value.get("effects", ())),
+                    tuple(value.get("capabilities", ())),
+                )
+                for value in item.get("holes", ())
+            )
             functions.append(
                 CanonicalFunction(
                     item["name"],
@@ -436,6 +541,7 @@ class CanonicalProgram:
                     option_fallbacks,
                     tuple(item.get("canonical_lines", ())),
                     closures,
+                    holes,
                 )
             )
         return cls(records, tuple(functions), enums)
@@ -520,7 +626,13 @@ __all__ = [
     "CanonicalEnum",
     "CanonicalCallable",
     "CanonicalBinding",
+    "CanonicalCapture",
+    "CanonicalClosure",
+    "CanonicalContract",
     "CanonicalFunction",
+    "CanonicalHole",
+    "CanonicalHoleBinding",
+    "CanonicalHoleCallable",
     "CanonicalOptionFallback",
     "CanonicalProgram",
     "CanonicalRecord",

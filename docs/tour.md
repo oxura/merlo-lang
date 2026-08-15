@@ -46,6 +46,16 @@ Positive:
 Every `Positive(...)` construction checks the invariant. Ordinary records are
 immutable; typed machines and transition invariants are not part of this alpha.
 
+Use a bare `?` to retain an intentionally incomplete, exactly typed expression:
+
+```merlo
+let discount: UInt64 = ?
+```
+
+The semantic model records the expected type and visible scope. `merlo check`
+can expose that context; `merlo build` rejects the hole instead of inventing a
+value. This is distinct from postfix `operation()?` result propagation.
+
 `or` is boolean OR only for `Bool`; for `Option[T] or T` it is a strict typed
 fallback. Other truthiness is rejected. `.field` is an implicit callable only
 inside `where`, `map`, and `count`; it cannot capture locals or appear at an

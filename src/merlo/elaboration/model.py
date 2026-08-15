@@ -8,7 +8,7 @@ from merlo.canonical_ast import (
     CanonicalOptionFallback,
     CanonicalProgram,
 )
-from merlo.surface_ast import SurfaceBinding, SurfaceFunction
+from merlo.surface_ast import SurfaceBinding, SurfaceFunction, SurfaceHole
 
 
 @dataclass(frozen=True)
@@ -47,6 +47,9 @@ class FunctionState:
     option_fallbacks: dict[str, CanonicalOptionFallback] = field(default_factory=dict)
     closures: dict[str, CanonicalClosure] = field(default_factory=dict)
     read_counts: dict[str, int] = field(default_factory=dict)
+    holes: dict[str, tuple[SurfaceHole, str]] = field(
+        default_factory=dict
+    )
 
 
 __all__ = ["FunctionState", "InferenceDecision", "SurfaceElaboration"]

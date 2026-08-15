@@ -208,6 +208,8 @@ def bind_module(
                 unqualified(node.name, node.span, locals_, call=call),
                 node.span,
             )
+        if isinstance(node, surface.SurfaceHole):
+            return node
         if isinstance(node, surface.SurfaceLiteral):
             return node
         if isinstance(node, surface.SurfaceList):

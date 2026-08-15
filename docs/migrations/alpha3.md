@@ -1,9 +1,9 @@
 # Migrating from alpha.2 to alpha.3
 
 Alpha.3 intentionally changes the filesystem and verification models. The
-compiler reports language `0.3`, frontend `6`, canonical `4`, HIR `4`, runtime
-ABI `2`, and SemanticWorld `3`; earlier lockfiles must be regenerated with the
-alpha.3 compiler.
+compiler reports language `0.3`, frontend `7`, canonical `5`, HIR `5`, RIR `2`,
+MIR `2`, runtime ABI `2`, and SemanticWorld `4`; earlier lockfiles must be
+regenerated with the alpha.3 compiler.
 
 ## File handles
 
@@ -44,3 +44,10 @@ and SemanticWorld revisions now include these clauses.
 Place pure Boolean `invariant` clauses after a record's fields. Every record
 constructor checks every clause. Record invariants participate in canonical,
 HIR, descriptor, and SemanticWorld revisions.
+
+## Contextual typed holes
+
+Bare `?` now retains a typed completion obligation when an exact type is
+available from context. Use postfix `value?` only for `Result` propagation.
+Incomplete programs can be checked and indexed, but native builds fail with
+`TypedHoleNotExecutable`.

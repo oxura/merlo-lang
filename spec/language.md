@@ -41,6 +41,14 @@ update syntax, so successful construction establishes the invariant for the
 value's lifetime. Typed machines and transition invariants remain outside this
 alpha contract.
 
+A bare `?` is a contextual typed hole. Its surrounding return, annotation,
+argument, or constructor field must determine one exact expected type;
+otherwise elaboration reports `UnconstrainedTypedHole`. Canonical and HIR data
+retain the hole identity, source, visible typed bindings, callables, effects,
+and capabilities. `check` and SemanticWorld may inspect incomplete programs,
+but native `build` rejects them with `TypedHoleNotExecutable`; no default or
+mock value is generated. Postfix `value?` remains typed `Result` propagation.
+
 Canonical source is a deterministic diagnostic projection of the typed tree.
 Its semantic hash includes types, authority, errors, and desugared operations;
 formatting whitespace and source spans do not change that hash.

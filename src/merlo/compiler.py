@@ -265,6 +265,22 @@ def compile_project(
 
     native: NativeBuildResult | None = None
     if emit_native:
+        holes = tuple(
+            node
+            for function in hir.functions
+            for node in function.walk()
+            if node.kind == "TypedHole"
+        )
+        if holes:
+            identifiers = ", ".join(
+                str(node.attribute_map.get("hole_id"))
+                for node in holes
+            )
+            raise ConciseApplicationError(
+                f"{entry}: TypedHoleNotExecutable: "
+                f"{identifiers}"
+            )
+    if emit_native:
         destination = (
             Path(output).resolve()
             if output is not None
