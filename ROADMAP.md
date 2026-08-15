@@ -1,5 +1,15 @@
 # Merlo roadmap
 
+## 0.1.0-alpha.3-dev — active development
+
+Alpha.3 is the compiler-foundation milestone. It advances the language
+contract to `0.3`, the frontend contract to `4`, and the runtime ABI to `2`.
+Its release gates are strict-aliasing-safe native lowering, locked literal and
+resource lifetimes, a full source-preserving lexer/CST, direct typed Surface
+lowering, descriptor-based ownership, and one generated builtin contract graph.
+
+The published prerelease remains alpha.2 until every alpha.3 gate is green.
+
 ## 0.1.0-alpha.2 — current prerelease
 
 The current prerelease packages the Python 3.11+ bootstrap compiler and `merlo`

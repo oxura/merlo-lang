@@ -13,14 +13,14 @@ def test_alpha_versions_are_independent_and_frozen() -> None:
     from merlo.version import VERSIONS
 
     assert VERSIONS.to_dict() == {
-        "release": "0.1.0-alpha.2",
-        "language": "0.2",
-        "frontend": 3,
+        "release": "0.1.0-alpha.3-dev",
+        "language": "0.3",
+        "frontend": 4,
         "canonical": 2,
         "hir": 2,
         "rir": 1,
         "mir": 1,
-        "runtime_abi": 1,
+        "runtime_abi": 2,
         "semantic_world": 1,
         "manifest": 1,
         "lockfile": 1,

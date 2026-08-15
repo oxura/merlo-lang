@@ -6,12 +6,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from merlo.frontend_model import CONCISE_SURFACE_VERSION
 from tools.benchmarks.merlo.concise_precedence import PRECEDENCE_TABLE
 from merlo.runtime_contract import ALPHA_EFFECTS
 
 
 CONCISE_SURFACE_FREEZE_SCHEMA_VERSION = 2
+CONCISE_SURFACE_VERSION = "0.2"
 CONCISE_SURFACE_FREEZE_FILENAME = "merlo_concise_surface_v0_2.json"
 CONCISE_SURFACE_FREEZE_STATUS = "CONCISE_SURFACE_V0_2_FROZEN"
 
