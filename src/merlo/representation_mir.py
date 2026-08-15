@@ -7,6 +7,10 @@ import json
 from dataclasses import dataclass, field, replace
 from typing import Any
 
+from merlo.collection_protocol import (
+    FUSIBLE_COLLECTION_ELEMENTS,
+    collection_shape,
+)
 from merlo.representation_ir import RIROperation, RIRFunction, RepresentationProgram
 from merlo.representation_runtime import EvaluationResult, evaluate_structured_hir
 from merlo.structured_hir_v2 import SourceSpan, StructuredHIRProgram
@@ -537,9 +541,123 @@ def lower_rir_to_performance_mir(
     )
 
 
-def optimize_general_mir(mir: GeneralPerformanceMIR) -> GeneralPerformanceMIR:
-    functions = []
+def _fuse_collection_pipelines(
+    mir: GeneralPerformanceMIR,
+) -> GeneralPerformanceMIR:
+    functions: list[GeneralMIRFunction] = []
     for function in mir.functions:
+        blocks: list[GeneralMIRBlock] = []
+        for block in function.blocks:
+            producers = {
+                instruction.result: instruction
+                for instruction in block.instructions
+                if instruction.result is not None
+            }
+            receiver_values = {
+                instruction.operands[0]
+                for instruction in block.instructions
+                if instruction.op == "collection_operation"
+                and instruction.operands
+            }
+            use_counts: dict[str, int] = {}
+            for instruction in block.instructions:
+                for operand in instruction.operands:
+                    use_counts[operand] = use_counts.get(operand, 0) + 1
+            removed: set[str] = set()
+            replacements: dict[str, GeneralMIRInstruction] = {}
+            for outer in block.instructions:
+                if (
+                    outer.op != "collection_operation"
+                    or outer.result in receiver_values
+                ):
+                    continue
+                chain = [outer]
+                current = outer
+                while current.operands:
+                    receiver = current.operands[0]
+                    producer = producers.get(receiver)
+                    if (
+                        producer is None
+                        or producer.op != "collection_operation"
+                        or use_counts.get(receiver) != 1
+                    ):
+                        base = receiver
+                        break
+                    chain.append(producer)
+                    current = producer
+                else:
+                    continue
+                if len(chain) < 2:
+                    continue
+                stages = tuple(reversed(chain))
+                operations = tuple(
+                    str(item.attribute_map.get("collection_operation", ""))
+                    for item in stages
+                )
+                if (
+                    any(item not in {"where", "map", "count"} for item in operations)
+                    or "count" in operations[:-1]
+                ):
+                    continue
+                if any(
+                    str(item.attribute_map.get("element_type", ""))
+                    not in FUSIBLE_COLLECTION_ELEMENTS
+                    for item in stages
+                ):
+                    continue
+                map_results = (
+                    collection_shape(item.type_name)
+                    for item, operation in zip(
+                        stages,
+                        operations,
+                        strict=True,
+                    )
+                    if operation == "map"
+                )
+                if any(
+                    result is None
+                    or result.element_type
+                    not in FUSIBLE_COLLECTION_ELEMENTS
+                    for result in map_results
+                ):
+                    continue
+                callbacks = tuple(item.operands[1] for item in stages)
+                producing_stages = sum(
+                    operation != "count" for operation in operations
+                )
+                output_allocations = int(operations[-1] != "count")
+                attributes = dict(outer.attributes)
+                attributes.update(
+                    {
+                        "pipeline_operations": operations,
+                        "pipeline_stage_count": len(stages),
+                        "intermediate_allocations_removed": (
+                            producing_stages - output_allocations
+                        ),
+                        "fused": True,
+                    }
+                )
+                replacements[outer.id] = replace(
+                    outer,
+                    op="fused_collection_pipeline",
+                    operands=(base, *callbacks),
+                    attributes=tuple(sorted(attributes.items())),
+                )
+                removed.update(item.id for item in stages[:-1])
+            instructions = tuple(
+                replacements.get(instruction.id, instruction)
+                for instruction in block.instructions
+                if instruction.id not in removed
+            )
+            blocks.append(replace(block, instructions=instructions))
+        functions.append(replace(function, blocks=tuple(blocks)))
+    return replace(mir, functions=tuple(functions))
+
+
+def optimize_general_mir(mir: GeneralPerformanceMIR) -> GeneralPerformanceMIR:
+    fused = _fuse_collection_pipelines(mir)
+    functions = []
+    for function in fused.functions:
         blocks = []
         for block in function.blocks:
             instructions = []
@@ -554,6 +672,7 @@ def optimize_general_mir(mir: GeneralPerformanceMIR) -> GeneralPerformanceMIR:
         functions=tuple(functions),
         optimized=True,
         optimization_passes=(
+            "collection_pipeline_fusion",
             "representation_monomorphization",
             "constant_folding",
             "bounds_check_analysis",

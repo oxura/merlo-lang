@@ -17,6 +17,7 @@ from typing import Any
 from merlo import native_syntax as ast
 from merlo.collection_protocol import (
     COLLECTION_OPERATIONS,
+    FUSIBLE_COLLECTION_ELEMENTS,
     collection_result_type,
     collection_shape,
 )
@@ -3946,12 +3947,248 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             return self._call_expression(node, expected=expected, want_pointer=want_pointer)
         raise RepresentationCBackendError(f"unsupported C expression: {type(node).__name__}@{getattr(node, 'lineno', 0)}")
 
+    def _collection_callback_expression(
+        self,
+        node: ast.expr,
+        parameter: str,
+        return_type: str,
+    ) -> str:
+        if isinstance(node, ast.Name) and node.id in self.functions:
+            callback_call = ast.Call(
+                func=node,
+                args=[ast.Name(id=parameter, ctx=ast.Load())],
+                keywords=[],
+            )
+            return self._call_expression(
+                callback_call,
+                expected=return_type,
+                want_pointer=False,
+            )
+        return self._expression(node, expected=return_type)
+
+    def _collection_pipeline(
+        self,
+        node: ast.Call,
+    ) -> tuple[
+        ast.expr,
+        Any,
+        tuple[tuple[ast.Call, str, tuple[Any, ...]], ...],
+    ] | None:
+        stages_reversed: list[
+            tuple[ast.Call, str, tuple[Any, ...]]
+        ] = []
+        current: ast.expr = node
+        while (
+            isinstance(current, ast.Call)
+            and isinstance(current.func, ast.Attribute)
+            and current.func.attr in COLLECTION_OPERATIONS
+            and len(current.args) == 1
+        ):
+            metadata = getattr(
+                current.args[0],
+                "_merlo_implicit_callable",
+                None,
+            )
+            if metadata is None:
+                return None
+            stages_reversed.append(
+                (current, current.func.attr, metadata)
+            )
+            current = current.func.value
+        if len(stages_reversed) < 2:
+            return None
+        stages = tuple(reversed(stages_reversed))
+        operations = tuple(stage[1] for stage in stages)
+        if "count" in operations[:-1]:
+            return None
+        shape = collection_shape(self._expression_type(current))
+        if shape is None:
+            return None
+        element_type = shape.element_type
+        for _call, operation, metadata in stages:
+            (
+                _callable_id,
+                _parameter,
+                parameter_type,
+                return_type,
+                _text,
+            ) = metadata
+            descriptor = self.descriptors.get(element_type)
+            if (
+                element_type not in FUSIBLE_COLLECTION_ELEMENTS
+                or parameter_type != element_type
+                or descriptor is None
+                or _is_owner(descriptor)
+            ):
+                return None
+            if operation in {"where", "count"}:
+                if return_type != "Bool":
+                    return None
+            else:
+                element_type = return_type
+                result_descriptor = self.descriptors.get(element_type)
+                if (
+                    element_type not in FUSIBLE_COLLECTION_ELEMENTS
+                    or result_descriptor is None
+                    or _is_owner(result_descriptor)
+                ):
+                    return None
+        return current, shape, stages
+
+    def _fused_collection_expression(
+        self,
+        node: ast.Call,
+    ) -> str | None:
+        pipeline = self._collection_pipeline(node)
+        if pipeline is None:
+            return None
+        base, shape, stages = pipeline
+        self.temporary_ordinal += 1
+        ordinal = self.temporary_ordinal
+        result = f"__merlo_fused_collection_{ordinal}"
+        index = f"__merlo_fused_index_{ordinal}"
+        source_value = f"__merlo_fused_value_{ordinal}"
+        source = self._address_expression(base)
+        length = (
+            f"UINT64_C({shape.fixed_length})"
+            if shape.fixed_length is not None
+            else f"({source})->length"
+        )
+        final_operation = stages[-1][1]
+        result_element = shape.element_type
+        for _call, operation, metadata in stages:
+            if operation == "map":
+                result_element = metadata[3]
+        result_type = collection_result_type(
+            final_operation,
+            result_element,
+        )
+        pad = self._pad()
+        lines: list[str] = []
+        if final_operation == "count":
+            lines.append(f"{pad}uint64_t {result} = UINT64_C(0);")
+        else:
+            lines.extend(
+                [
+                    f"{pad}{_c_name(result_type)} {result} = "
+                    "{ NULL, UINT64_C(0), UINT64_C(0), UINT64_C(0) };",
+                    f"{pad}if ({length} != 0) {{",
+                    f"{pad}    {result}.data = "
+                    f"({_c_name(result_element)} *)malloc("
+                    f"(size_t){length} * "
+                    f"sizeof({_c_name(result_element)}));",
+                    f"{pad}    if ({result}.data == NULL) "
+                    "merlo_allocation_trap();",
+                    f"{pad}    {result}.capacity = {length};",
+                    f"{pad}    ++merlo_allocations; "
+                    "++merlo_vec_allocations;",
+                    f"{pad}}}",
+                ]
+            )
+        lines.extend(
+            [
+                f"{pad}for (uint64_t {index} = UINT64_C(0); "
+                f"{index} < {length}; ++{index}) {{",
+                f"{pad}    {_c_name(shape.element_type)} "
+                f"{source_value} = ({source})->data[{index}];",
+            ]
+        )
+
+        def emit_stage(
+            stage_index: int,
+            value: str,
+            indent: str,
+        ) -> None:
+            call, operation, metadata = stages[stage_index]
+            (
+                _callable_id,
+                parameter,
+                parameter_type,
+                return_type,
+                _text,
+            ) = metadata
+            lines.append(f"{indent}{{")
+            if value != parameter:
+                lines.append(
+                    f"{indent}    {_c_name(parameter_type)} {parameter} = "
+                    f"{value};"
+                )
+            previous_type = self.env_types.get(parameter)
+            self.env_types[parameter] = parameter_type
+            try:
+                callback = self._collection_callback_expression(
+                    call.args[0],
+                    parameter,
+                    return_type,
+                )
+            finally:
+                if previous_type is None:
+                    self.env_types.pop(parameter, None)
+                else:
+                    self.env_types[parameter] = previous_type
+            last = stage_index == len(stages) - 1
+            if operation == "where":
+                lines.append(f"{indent}    if ({callback}) {{")
+                if last:
+                    lines.append(
+                        f"{indent}        {result}.data"
+                        f"[{result}.length++] = {parameter};"
+                    )
+                else:
+                    emit_stage(
+                        stage_index + 1,
+                        parameter,
+                        indent + "        ",
+                    )
+                lines.append(f"{indent}    }}")
+            elif operation == "map":
+                mapped = (
+                    f"__merlo_fused_mapped_{ordinal}_{stage_index}"
+                )
+                lines.append(
+                    f"{indent}    {_c_name(return_type)} {mapped} = "
+                    f"{callback};"
+                )
+                if last:
+                    lines.append(
+                        f"{indent}    {result}.data"
+                        f"[{result}.length++] = {mapped};"
+                    )
+                else:
+                    emit_stage(
+                        stage_index + 1,
+                        mapped,
+                        indent + "    ",
+                    )
+            else:
+                lines.append(
+                    f"{indent}    if ({callback}) ++{result};"
+                )
+            lines.append(f"{indent}}}")
+
+        emit_stage(
+            0,
+            source_value,
+            f"{pad}    ",
+        )
+        lines.append(f"{pad}}}")
+        self.pending_expression_lines.extend(lines)
+        return result
+
     def _general_collection_expression(
         self,
         node: ast.Call,
         shape,
         operation: str,
     ) -> str:
+        if (
+            self.mir.optimized
+            and "collection_pipeline_fusion"
+            in self.mir.optimization_passes
+        ):
+            fused = self._fused_collection_expression(node)
+            if fused is not None:
+                return fused
         if len(node.args) != 1:
             raise RepresentationCBackendError(
                 f"{operation} expects one collection callable"
@@ -4016,27 +4253,11 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 isinstance(node.args[0], ast.Name)
                 and node.args[0].id in self.functions
             )
-            if explicit_function:
-                callback_call = ast.Call(
-                    func=node.args[0],
-                    args=[
-                        ast.Name(
-                            id=parameter,
-                            ctx=ast.Load(),
-                        )
-                    ],
-                    keywords=[],
-                )
-                callback = self._call_expression(
-                    callback_call,
-                    expected=return_type,
-                    want_pointer=False,
-                )
-            else:
-                callback = self._expression(
-                    node.args[0],
-                    expected=return_type,
-                )
+            callback = self._collection_callback_expression(
+                node.args[0],
+                parameter,
+                return_type,
+            )
             if operation == "count":
                 lines.append(
                     f"{pad}    if ({callback}) ++{result};"

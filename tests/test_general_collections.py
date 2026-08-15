@@ -117,6 +117,153 @@ def test_general_collection_transforms_and_iteration_run_natively(
     assert b"vec_allocations=2 vec_frees=2" in completed.stdout
 
 
+def test_eligible_collection_pipeline_fuses_without_intermediate_vectors(
+    tmp_path: Path,
+) -> None:
+    source = (
+        "fn above(value: UInt64) -> Bool:\n"
+        "    value > 1\n"
+        "fn increment(value: UInt64) -> UInt64:\n"
+        "    value + 1\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let values: Array[UInt64,3] = [1, 2, 3]\n"
+        "    values.where(above).map(increment).count(above)\n"
+    )
+    hir = compile_canonical_hir(elaborate(source).canonical)
+    representation = lower_structured_hir_to_rir(hir)
+    baseline = lower_rir_to_performance_mir(hir, representation)
+    optimized = optimize_general_mir(baseline)
+    operations = [
+        instruction
+        for function in optimized.functions
+        if function.name == "main"
+        for block in function.blocks
+        for instruction in block.instructions
+        if "collection" in instruction.op
+    ]
+
+    assert [item.op for item in operations] == [
+        "fused_collection_pipeline"
+    ]
+    assert operations[0].attribute_map["pipeline_operations"] == (
+        "where",
+        "map",
+        "count",
+    )
+    assert (
+        operations[0]
+        .attribute_map["intermediate_allocations_removed"]
+        == 2
+    )
+
+    baseline_c = emit_general_c(hir, representation, baseline)
+    fused_c = emit_general_c(hir, representation, optimized)
+    assert "__merlo_fused_collection_" not in baseline_c.source
+    assert "__merlo_fused_collection_" in fused_c.source
+    baseline_build = compile_c_source(
+        baseline_c.source,
+        output_dir=tmp_path / "baseline",
+        stem="collection-pipeline-baseline",
+    )
+    fused_build = compile_c_source(
+        fused_c.source,
+        output_dir=tmp_path / "fused",
+        stem="collection-pipeline-fused",
+    )
+    assert baseline_build.status == "MEASURED", baseline_build.stderr
+    assert fused_build.status == "MEASURED", fused_build.stderr
+
+    baseline_run = subprocess.run(
+        [baseline_build.binary_path],
+        input=b"",
+        capture_output=True,
+        check=False,
+    )
+    fused_run = subprocess.run(
+        [fused_build.binary_path],
+        input=b"",
+        capture_output=True,
+        check=False,
+    )
+    assert baseline_run.returncode == fused_run.returncode == 0
+    assert b"OK result=2" in baseline_run.stdout
+    assert b"OK result=2" in fused_run.stdout
+    assert b"vec_allocations=2" in baseline_run.stdout
+    assert b"vec_allocations=0" in fused_run.stdout
+
+
+def test_fused_pipeline_materializes_only_its_final_vector(
+    tmp_path: Path,
+) -> None:
+    source = (
+        "fn above(value: UInt64) -> Bool:\n"
+        "    value > 1\n"
+        "fn increment(value: UInt64) -> UInt64:\n"
+        "    value + 1\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let values: Array[UInt64,3] = [1, 2, 3]\n"
+        "    let result: Vec[UInt64] = "
+        "values.where(above).map(increment)\n"
+        "    result[0] + result.len()\n"
+    )
+    hir = compile_canonical_hir(elaborate(source).canonical)
+    representation = lower_structured_hir_to_rir(hir)
+    optimized = optimize_general_mir(
+        lower_rir_to_performance_mir(hir, representation)
+    )
+    generated = emit_general_c(hir, representation, optimized)
+    build = compile_c_source(
+        generated.source,
+        output_dir=tmp_path,
+        stem="collection-pipeline-output",
+    )
+
+    assert build.status == "MEASURED", build.stderr
+    completed = subprocess.run(
+        [build.binary_path],
+        input=b"",
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0
+    assert b"OK result=5" in completed.stdout
+    assert b"vec_allocations=1 vec_frees=1" in completed.stdout
+
+
+def test_owned_element_pipeline_remains_unfused() -> None:
+    source = (
+        "record User:\n"
+        "    active: Bool\n"
+        "    name: Text\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let users: Array[User,1] = "
+        "[User(true, \"Ada\")]\n"
+        "    let names: Vec[Text] = "
+        "users.where(.active).map(.name)\n"
+        "    names.len()\n"
+    )
+    hir = compile_canonical_hir(elaborate(source).canonical)
+    representation = lower_structured_hir_to_rir(hir)
+    optimized = optimize_general_mir(
+        lower_rir_to_performance_mir(hir, representation)
+    )
+    operations = [
+        instruction.op
+        for function in optimized.functions
+        if function.name == "main"
+        for block in function.blocks
+        for instruction in block.instructions
+        if "collection" in instruction.op
+    ]
+    generated = emit_general_c(hir, representation, optimized)
+
+    assert operations == [
+        "collection_operation",
+        "collection_operation",
+    ]
+    assert "__merlo_fused_collection_" not in generated.source
+
+
 def test_text_and_bytes_are_indexable_general_collections(
     tmp_path: Path,
 ) -> None:

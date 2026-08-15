@@ -33,6 +33,9 @@ protocol. They support bounds-checked indexing, `for` iteration, and the
 returns `UInt64`. Text collections expose their UTF-8 storage as `Byte`
 elements. Fixed array lengths remain compile-time constants; other lengths
 come from the collection view.
+Eligible direct `where`/`map`/`count` chains over copy scalars fuse into one
+native loop. A terminal `count` allocates no intermediate vectors; a terminal
+`where` or `map` materializes only its final `Vec`.
 
 Casts, indexing, and result propagation remain visible in the checked semantic
 pipeline. The alpha does not provide a dynamic `Any` escape hatch in concise

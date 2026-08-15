@@ -19,6 +19,9 @@
   protocol for `Vec`, fixed `Array`, `Slice`, borrowed vectors, bytes, and text;
   indexing, iteration, `where`, `map`, and `count` now share typed HIR and
   native C semantics.
+- Fuses eligible copy-scalar collection chains into one native loop, removing
+  every intermediate vector allocation while preserving ordered callback and
+  bounds semantics.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

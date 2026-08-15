@@ -7,6 +7,22 @@ from dataclasses import dataclass
 from merlo.type_parser import generic_parts
 
 COLLECTION_OPERATIONS = frozenset({"where", "map", "count"})
+FUSIBLE_COLLECTION_ELEMENTS = frozenset(
+    {
+        "Bool",
+        "Byte",
+        "Int8",
+        "UInt8",
+        "Int16",
+        "UInt16",
+        "Int32",
+        "UInt32",
+        "Int64",
+        "UInt64",
+        "Float32",
+        "Float64",
+    }
+)
 
 @dataclass(frozen=True)
 class CollectionShape:
@@ -75,6 +91,7 @@ def collection_result_type(operation: str, element_type: str) -> str:
 
 __all__ = [
     "COLLECTION_OPERATIONS",
+    "FUSIBLE_COLLECTION_ELEMENTS",
     "CollectionShape",
     "collection_result_type",
     "collection_shape",
