@@ -68,6 +68,9 @@
 - Measures automatically closed obligations with deduplicated engine
   provenance, conservative refutation precedence, per-category counts, and an
   exact integer closure rate.
+- Replaces unversioned refactor transactions and ad hoc unsupported responses
+  with canonical, digest-bound `ChangeIR`, revision/world validation, and one
+  preview/apply envelope across protocol, CLI, and LSP.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

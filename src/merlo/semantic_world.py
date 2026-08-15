@@ -12,7 +12,7 @@ from merlo.modules import ModuleGraph
 from merlo.version import VERSIONS
 
 WORLD_SCHEMA_VERSION = VERSIONS.semantic_world
-WORLD_CONTRACT = "merlo.semantic-world.v10"
+WORLD_CONTRACT = "merlo.semantic-world.v11"
 
 
 class WorldError(ValueError):

@@ -14,8 +14,11 @@ merlo refactor signature app.main.helper "(value: UInt64) -> Text" PROJECT
 ```
 
 In alpha.2, exact rename plans are the only refactors that can become ready and
-be applied. `move` and `signature` are reserved protocol operations that return
-`UnsupportedMigration`; they do not edit source yet.
+be applied. Every preview is a canonical `merlo.change-ir.v1` envelope with a
+schema version, deterministic digest, world/target revisions, immutable
+metadata, and source-anchored edits. `move` and `signature` are reserved
+protocol operations that return the same envelope with `status: unsupported`;
+they do not edit source and cannot be applied.
 
 The CLI checks the affected semantic world and returns a diagnostic when a
 migration is unsupported, a target is missing, or an edit capability is not

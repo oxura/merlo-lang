@@ -125,15 +125,17 @@ class AlphaProtocol:
             new_name = values.get("new_name", values.get("name"))
             if not isinstance(new_name, str):
                 raise WorldError("MissingRenameName: rename requires new_name")
-            transaction = preview_rename(self.world, target, new_name)
+            change = preview_rename(self.world, target, new_name)
             mode = "apply" if operation.endswith(".apply") else str(values.get("mode", "preview"))
-            return transaction.apply() if mode == "apply" else transaction.to_dict()
+            return change.apply() if mode == "apply" else change.to_dict()
         if operation in {"refactor.move", "refactor.move.preview", "refactor.move.apply"}:
-            result = preview_move(self.world, self._target(values), str(values.get("module", "")))
-            return result
-        if operation in {"refactor.signature", "refactor.change_signature", "refactor.signature.preview", "refactor.signature.apply"}:
-            result = preview_change_signature(self.world, self._target(values), str(values.get("signature", "")))
-            return result
+            change = preview_move(self.world, self._target(values), str(values.get("module", "")))
+            mode = "apply" if operation.endswith(".apply") else str(values.get("mode", "preview"))
+            return change.apply() if mode == "apply" else change.to_dict()
+        if operation in {"refactor.signature", "refactor.change_signature", "refactor.signature.preview", "refactor.signature.apply", "refactor.change_signature.preview", "refactor.change_signature.apply"}:
+            change = preview_change_signature(self.world, self._target(values), str(values.get("signature", "")))
+            mode = "apply" if operation.endswith(".apply") else str(values.get("mode", "preview"))
+            return change.apply() if mode == "apply" else change.to_dict()
         raise WorldError(f"UnknownOperation: {operation}")
 
 

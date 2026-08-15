@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -34,6 +35,11 @@ def test_protocol_rename_preview_is_exact_and_apply_is_transactional(tmp_path: P
     protocol = AlphaProtocol(SemanticWorld.build(source, require_interface_lock=False))
     preview = protocol.call("refactor.rename", {"target": "app.main.helper", "new_name": "assist", "mode": "preview"})
     assert preview["operation"] == "rename"
+    assert preview["schema_version"] == 1
+    assert preview["contract"] == "merlo.change-ir.v1"
+    assert preview["status"] == "ready"
+    assert preview["digest"]
+    assert preview["target"]["revision_id"]
     assert preview["edits"]
     assert all(edit["syntax_id"] for edit in preview["edits"])
     assert all(edit["token_id"] for edit in preview["edits"])
@@ -62,6 +68,8 @@ def test_protocol_rejects_stale_and_unsupported_migrations_without_partial_write
     assert "helper" in source.read_text(encoding="utf-8")
     unsupported = protocol.call("refactor.move", {"target": "app.main.helper", "module": "app.other", "mode": "preview"})
     assert unsupported["diagnostic"]["code"] == "UnsupportedMigration"
+    assert unsupported["status"] == "unsupported"
+    assert unsupported["edits"] == []
 
 
 def test_protocol_rename_uses_only_semantic_spans_for_nested_calls(tmp_path: Path) -> None:
@@ -113,3 +121,66 @@ def test_protocol_rename_uses_only_semantic_spans_for_nested_calls(tmp_path: Pat
     assert "fn assist" in updated
     assert "assist(assist(1))" in updated
     assert "helper" not in updated
+
+
+def test_change_ir_roundtrip_tamper_and_apply_status(
+    tmp_path: Path,
+) -> None:
+    import json
+
+    from merlo.refactor import ChangeIR, preview_move, preview_rename
+    from merlo.semantic_world import (
+        SemanticWorld,
+        StaleWorldError,
+        UnsupportedMigration,
+        WorldError,
+    )
+
+    source = _source(tmp_path)
+    world = SemanticWorld.build(source, require_interface_lock=False)
+    change = preview_rename(world, "app.main.helper", "assist")
+
+    restored = ChangeIR.from_json(change.to_json(), world=world)
+    assert restored.to_dict() == change.to_dict()
+    assert restored.digest == change.digest
+
+    tampered = json.loads(change.to_json())
+    tampered["metadata"]["new_name"] = "different"
+    first = change.edits[0]
+    with pytest.raises(WorldError, match="sorted and unique"):
+        replace(
+            change,
+            edits=(first, first),
+            digest="",
+        )
+    with pytest.raises(WorldError, match="escapes project root"):
+        replace(
+            change,
+            edits=(replace(first, path="/tmp/outside.mlo"),),
+            digest="",
+        )
+    stale_target = replace(
+        change.target,
+        revision_id="rev_stale",
+    )
+    stale_change = replace(
+        change,
+        target=stale_target,
+        digest="",
+    )
+    with pytest.raises(
+        StaleWorldError,
+        match="target identity changed",
+    ):
+        stale_change.apply()
+
+    with pytest.raises(WorldError, match="ChangeIRDigestMismatch"):
+        ChangeIR.from_dict(tampered, world=world)
+
+    unsupported = preview_move(
+        world,
+        "app.main.helper",
+        "app.other",
+    )
+    with pytest.raises(UnsupportedMigration):
+        unsupported.apply()

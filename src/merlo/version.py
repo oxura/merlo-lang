@@ -17,6 +17,7 @@ class CompilerVersions:
     smt: int
     property_evidence: int
     verification_metrics: int
+    change_ir: int
     rir: int
     mir: int
     runtime_abi: int
@@ -40,10 +41,11 @@ VERSIONS = CompilerVersions(
     smt=1,
     property_evidence=1,
     verification_metrics=1,
+    change_ir=1,
     rir=2,
     mir=2,
     runtime_abi=2,
-    semantic_world=10,
+    semantic_world=11,
     manifest=1,
     lockfile=1,
 )

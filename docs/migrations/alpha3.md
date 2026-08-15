@@ -3,9 +3,9 @@
 Alpha.3 intentionally changes the filesystem and verification models. The
 compiler reports language `0.3`, frontend `7`, canonical `5`, HIR `5`,
 Obligation IR `1`, range analysis `1`, bounded symbolic execution `1`, optional
-SMT `1`, property evidence `1`, verification metrics `1`, RIR/MIR `2`, runtime
-ABI `2`, and SemanticWorld `10`; earlier lockfiles must be regenerated with the
-alpha.3 compiler.
+SMT `1`, property evidence `1`, verification metrics `1`, ChangeIR `1`, RIR/MIR
+`2`, runtime ABI `2`, and SemanticWorld `11`; earlier lockfiles must be
+regenerated with the alpha.3 compiler.
 
 SemanticWorld now includes the canonical constant-range analysis payload.
 Compiler results expose the same payload and merge its checked-arithmetic and
@@ -22,6 +22,10 @@ normalized typed counterexamples. Consumers must honor each property's
 Closure-rate consumers should read the exact closed/total counts or integer
 `closed_rate_basis_points`; refutations and incomplete evidence are never
 included in the numerator.
+Semantic refactor previews now use the versioned `merlo.change-ir.v1` envelope
+with target revisions, world binding, immutable metadata, canonical edit
+identities, and a digest. Unsupported operations use the same envelope and
+cannot be applied.
 
 
 ## File handles
