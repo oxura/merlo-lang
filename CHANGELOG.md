@@ -37,6 +37,10 @@
 - Recomputes the frozen 48-program paired-source corpus at a median
   concise-Merlo/Python lexical-token ratio of 0.5455, with a module CLI and
   explicit source-surface-only claim boundary.
+- Adds a checked seven-workload Merlo/C/Rust native study with raw samples,
+  frozen checksums and source hashes; the measured geometric-mean ratio to each
+  workload's faster native baseline is 1.091, with shared allocation called out
+  as the 1.821 outlier.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.
