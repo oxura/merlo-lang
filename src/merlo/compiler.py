@@ -17,7 +17,9 @@ from merlo.project import Project
 from merlo.obligation_ir import (
     ObligationProgram,
     build_obligation_ir,
+    extend_obligations,
 )
+from merlo.range_analysis import RangeAnalysisResult, analyze_constant_ranges
 from merlo.representation_c_backend import GeneratedC, emit_general_c
 from merlo.representation_ir import RepresentationProgram, lower_structured_hir_to_rir
 from merlo.representation_mir import (
@@ -62,6 +64,7 @@ class ProjectCompilation:
     module_graph: ModuleGraph
     hir: StructuredHIRProgram
     obligations: ObligationProgram
+    range_analysis: RangeAnalysisResult
     representation: RepresentationProgram
     mir: GeneralPerformanceMIR
     optimized_mir: GeneralPerformanceMIR
@@ -105,6 +108,13 @@ class ProjectCompilation:
                 "digest": self.obligations.digest,
                 "count": len(self.obligations.obligations),
                 "unresolved": len(self.obligations.unresolved),
+            },
+            "range_analysis": {
+                "digest": self.range_analysis.digest,
+                "fact_count": len(self.range_analysis.facts),
+                "unreachable_branch_count": len(
+                    self.range_analysis.unreachable_branch_ids
+                ),
             },
             "native": self.native.to_dict() if self.native is not None else None,
         }
@@ -188,7 +198,11 @@ def compile_project(
             elaborated.canonical_program,
             entry_function="main",
         )
-        obligations = build_obligation_ir(hir)
+        range_analysis = analyze_constant_ranges(hir)
+        obligations = extend_obligations(
+            build_obligation_ir(hir),
+            range_analysis.obligations,
+        )
         representation = lower_structured_hir_to_rir(hir)
         mir = lower_rir_to_performance_mir(hir, representation)
         optimized = optimize_general_mir(mir)
@@ -231,6 +245,13 @@ def compile_project(
         hir.schema_version,
         hir.to_json(),
         canonical,
+    )
+    range_artifact = _artifact(
+        "ranges",
+        range_analysis.contract,
+        range_analysis.schema_version,
+        range_analysis.to_json(),
+        hir_artifact,
     )
     obligation_artifact = _artifact(
         "obligations",
@@ -275,6 +296,7 @@ def compile_project(
             canonical,
             hir_artifact,
             obligation_artifact,
+            range_artifact,
             rir_artifact,
             mir_artifact,
             optimized_artifact,
@@ -324,6 +346,7 @@ def compile_project(
         module_graph=module_graph,
         hir=hir,
         obligations=obligations,
+        range_analysis=range_analysis,
         representation=representation,
         mir=mir,
         optimized_mir=optimized,

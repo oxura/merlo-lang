@@ -54,6 +54,9 @@
   contracts, invariants, holes, and future safety proofs, with separate stable
   identity and content revisions exposed through compiler and SemanticWorld
   artifacts.
+- Adds deterministic constant and branch-local integer range refinement,
+  unreachable-branch facts, and checked arithmetic/cast safety obligations to
+  compiler artifacts and SemanticWorld.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

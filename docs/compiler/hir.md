@@ -44,6 +44,14 @@ invariants begin as runtime-guarded obligations; contextual holes begin
 unresolved. Stable obligation IDs are separate from predicate revisions so
 stored verification results can be invalidated precisely.
 
+The sibling `ranges` artifact, contract
+`merlo.constant-range-analysis.v1`, propagates closed integer intervals through
+constants, bindings, checked arithmetic, casts, preconditions, and conditional
+branches. It records branch-local facts and unreachable branch IDs. Checked
+arithmetic and narrowing casts contribute typed safety obligations; only
+intervals wholly inside or outside the target domain are proven or refuted.
+Overlapping or otherwise unknown domains remain unresolved.
+
 ## Failure modes
 
 A missing retained Surface tree, unsupported expressions, invalid map

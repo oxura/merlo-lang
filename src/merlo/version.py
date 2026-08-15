@@ -12,6 +12,7 @@ class CompilerVersions:
     canonical: int
     hir: int
     obligation_ir: int
+    range_analysis: int
     rir: int
     mir: int
     runtime_abi: int
@@ -30,10 +31,11 @@ VERSIONS = CompilerVersions(
     canonical=5,
     hir=5,
     obligation_ir=1,
+    range_analysis=1,
     rir=2,
     mir=2,
     runtime_abi=2,
-    semantic_world=5,
+    semantic_world=6,
     manifest=1,
     lockfile=1,
 )

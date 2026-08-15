@@ -118,6 +118,16 @@ def test_project_compile_reuses_the_validated_module_graph(
         require_interface_lock=False,
     )
     assert compilation.module_graph.modules
+    assert compilation.artifacts["ranges"].content == (
+        compilation.range_analysis.to_json()
+    )
+    assert {
+        item.obligation_id
+        for item in compilation.range_analysis.obligations
+    } <= {
+        item.obligation_id
+        for item in compilation.obligations.obligations
+    }
 
 
 @pytest.mark.parametrize("name", EXAMPLE_NAMES)
@@ -133,6 +143,9 @@ def test_each_example_uses_production_compile_world_index_and_inspect(name: str,
     )
     world.save()
     assert world.map("json")["modules"]
+    assert world.data["range_analysis"] == (
+        compilation.range_analysis.to_dict()
+    )
     inspected = world.inspect("main.main")
     assert inspected["symbol"]["qualified_name"] == "main.main"
     assert world.search("main")

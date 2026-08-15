@@ -56,6 +56,14 @@ termination. Each obligation has a stable identity, content revision, owner,
 source, typed context, dependencies, and one typed disposition: unresolved,
 statically proven/refuted, runtime guarded, or explicitly deferred.
 
+The compiler also emits deterministic
+`merlo.constant-range-analysis.v1` facts. Preconditions and comparisons refine
+integer intervals within their branch. Checked arithmetic and narrowing casts
+create arithmetic- or type-safety obligations: wholly safe ranges are proven,
+wholly impossible ranges are refuted, and partial/unknown ranges remain
+unresolved. Wrapping intrinsics retain modular semantics and are not reported
+as checked-overflow proofs.
+
 Canonical source is a deterministic diagnostic projection of the typed tree.
 Its semantic hash includes types, authority, errors, and desugared operations;
 formatting whitespace and source spans do not change that hash.

@@ -399,6 +399,26 @@ def build_obligation_ir(hir: StructuredHIRProgram) -> ObligationProgram:
     )
 
 
+def extend_obligations(
+    program: ObligationProgram,
+    additions: Iterable[TypedObligation],
+) -> ObligationProgram:
+    by_id = {
+        item.obligation_id: item for item in program.obligations
+    }
+    for item in additions:
+        existing = by_id.get(item.obligation_id)
+        if existing is not None and existing != item:
+            raise ValueError(
+                f"ConflictingObligation: {item.obligation_id}"
+            )
+        by_id[item.obligation_id] = item
+    return ObligationProgram(
+        program.hir_digest,
+        tuple(sorted(by_id.values(), key=lambda item: item.obligation_id)),
+    )
+
+
 def replace_obligations(
     program: ObligationProgram,
     replacements: Iterable[TypedObligation],
@@ -437,4 +457,5 @@ __all__ = [
     "TypedObligation",
     "build_obligation_ir",
     "replace_obligations",
+    "extend_obligations",
 ]

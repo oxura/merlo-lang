@@ -12,7 +12,7 @@ from merlo.modules import ModuleGraph
 from merlo.version import VERSIONS
 
 WORLD_SCHEMA_VERSION = VERSIONS.semantic_world
-WORLD_CONTRACT = "merlo.semantic-world.v5"
+WORLD_CONTRACT = "merlo.semantic-world.v6"
 
 
 class WorldError(ValueError):
@@ -335,6 +335,7 @@ class SemanticWorld:
                 item.to_dict()
                 for item in compilation.obligations.obligations
             ],
+            "range_analysis": compilation.range_analysis.to_dict(),
             "tests": tests,
         }
         payload["world_digest"] = _digest(payload)
