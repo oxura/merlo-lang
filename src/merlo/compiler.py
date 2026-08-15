@@ -171,6 +171,7 @@ def compile_project(
     elaborated = elaborate_concise_application(
         entry,
         require_interface_lock=require_interface_lock,
+        module_graph=module_graph,
     )
     try:
         hir = compile_canonical_hir(

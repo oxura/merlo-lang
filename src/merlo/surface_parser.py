@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from merlo.frontend.lexer import ExpressionLexError, ExpressionToken, lex_expression
 from merlo.module_syntax import ModuleSyntaxError, parse_module_prelude
 from merlo.surface_ast import (
     SourceSpan,
@@ -125,116 +126,6 @@ def _split_top_level_commas(source: str) -> tuple[str, ...]:
     parts.append(source[start:])
     return tuple(parts)
 
-@dataclass(frozen=True)
-class _ExpressionToken:
-    kind: str
-    text: str
-    start: int
-    end: int
-    value: object = None
-
-
-_EXPRESSION_OPERATORS = (
-    "==",
-    "!=",
-    "<=",
-    ">=",
-    "//",
-    "<<",
-    ">>",
-    "+",
-    "-",
-    "*",
-    "/",
-    "%",
-    "|",
-    "&",
-    "^",
-    "<",
-    ">",
-    ":",
-    "=",
-    ".",
-    ",",
-    "(",
-    ")",
-    "[",
-    "]",
-    "?",
-    "~",
-    "{",
-    "}",
-)
-
-
-def _decode_string(body: str, *, raw: bool, bytes_literal: bool) -> object:
-    if raw:
-        return body.encode("utf-8") if bytes_literal else body
-    result: list[str] = []
-    index = 0
-    escapes = {
-        "a": "\a",
-        "b": "\b",
-        "f": "\f",
-        "n": "\n",
-        "r": "\r",
-        "t": "\t",
-        "v": "\v",
-        "\\": "\\",
-        "'": "'",
-        '"': '"',
-        "0": "\0",
-    }
-    while index < len(body):
-        character = body[index]
-        if character != "\\":
-            result.append(character)
-            index += 1
-            continue
-        if index + 1 >= len(body):
-            result.append("\\")
-            break
-        escaped = body[index + 1]
-        if escaped in escapes:
-            result.append(escapes[escaped])
-            index += 2
-            continue
-        if escaped in "xXuU":
-            width = 2 if escaped in "xX" else 4 if escaped == "u" else 8
-            digits = body[index + 2 : index + 2 + width]
-            if len(digits) != width or any(
-                character not in "0123456789abcdefABCDEF" for character in digits
-            ):
-                result.append("\\")
-                index += 1
-                continue
-            if bytes_literal:
-                result.extend(("\\" + escaped + digits))
-            else:
-                result.append(chr(int(digits, 16)))
-            index += 2 + width
-            continue
-        if escaped in "01234567":
-            end = index + 2
-            while end < len(body) and end < index + 4 and body[end] in "01234567":
-                end += 1
-            result.append(chr(int(body[index + 1 : end], 8)))
-            index = end
-            continue
-        if escaped == "\n":
-            index += 2
-            continue
-        result.extend(("\\", escaped))
-        index += 2
-    text = "".join(result)
-    if bytes_literal:
-        try:
-            return text.encode("latin1")
-        except UnicodeEncodeError as exc:
-            raise ValueError("bytes literal contains non-ASCII text") from exc
-    return text
-
-
 class _ExpressionParser:
     _INFIX_PRECEDENCE = {
         "or": 1,
@@ -277,7 +168,10 @@ class _ExpressionParser:
         self.path = path
         self.line = line
         self.base_column = base_column
-        self.tokens = self._tokenize()
+        try:
+            self.tokens = lex_expression(source)
+        except ExpressionLexError as exc:
+            self._error("InvalidExpression", exc.message, exc.position)
         self.index = 0
 
     def _error(self, code: str, message: str, position: int | None = None) -> None:
@@ -295,160 +189,14 @@ class _ExpressionParser:
             ),
         )
 
-    def _tokenize(self) -> list[_ExpressionToken]:
-        tokens: list[_ExpressionToken] = []
-        index = 0
-        source = self.source
-        while index < len(source):
-            if source[index].isspace():
-                index += 1
-                continue
-            if source[index] == "#":
-                break
-            start = index
-            character = source[index]
-            if character in "'\"":
-                quote = character
-                index += 1
-                body_start = index
-                escaped = False
-                while index < len(source):
-                    current = source[index]
-                    if current == quote and not escaped:
-                        body = source[body_start:index]
-                        index += 1
-                        try:
-                            value = _decode_string(body, raw=False, bytes_literal=False)
-                        except ValueError as exc:
-                            self._error("InvalidExpression", str(exc), start)
-                        tokens.append(
-                            _ExpressionToken("literal", source[start:index], start, index, value)
-                        )
-                        break
-                    escaped = current == "\\" and not escaped
-                    if current != "\\":
-                        escaped = False
-                    index += 1
-                else:
-                    self._error("InvalidExpression", "unterminated string literal", start)
-                continue
-            if character.isalpha() or character == "_":
-                prefix = ""
-                lowered = source[index : index + 2].lower()
-                if lowered in {"br", "rb"} and index + 2 < len(source) and source[index + 2] in "'\"":
-                    prefix = source[index : index + 2]
-                    index += 2
-                elif character.lower() in {"b", "r", "u"} and index + 1 < len(source) and source[index + 1] in "'\"":
-                    prefix = character
-                    index += 1
-                if prefix:
-                    quote = source[index]
-                    index += 1
-                    body_start = index
-                    escaped = False
-                    while index < len(source):
-                        current = source[index]
-                        if current == quote and not escaped:
-                            body = source[body_start:index]
-                            index += 1
-                            try:
-                                value = _decode_string(
-                                    body,
-                                    raw="r" in prefix.lower(),
-                                    bytes_literal="b" in prefix.lower(),
-                                )
-                            except ValueError as exc:
-                                self._error("InvalidExpression", str(exc), start)
-                            tokens.append(
-                                _ExpressionToken(
-                                    "literal",
-                                    source[start:index],
-                                    start,
-                                    index,
-                                    value,
-                                )
-                            )
-                            break
-                        escaped = current == "\\" and not escaped
-                        if current != "\\":
-                            escaped = False
-                        index += 1
-                    else:
-                        self._error("InvalidExpression", "unterminated string literal", start)
-                    continue
-                index = start + 1
-                while index < len(source) and (source[index].isalnum() or source[index] == "_"):
-                    index += 1
-                tokens.append(_ExpressionToken("identifier", source[start:index], start, index))
-                continue
-            if character.isdigit() or (
-                character == "." and index + 1 < len(source) and source[index + 1].isdigit()
-            ):
-                if source[index : index + 2].lower() in {"0x", "0b", "0o"}:
-                    index += 2
-                    while index < len(source) and (
-                        source[index].isalnum() or source[index] == "_"
-                    ):
-                        index += 1
-                    text = source[start:index]
-                    if text.endswith("_") or "__" in text:
-                        self._error("InvalidExpression", "invalid integer literal", start)
-                    try:
-                        value = int(text.replace("_", ""), 0)
-                    except ValueError:
-                        self._error("InvalidExpression", "invalid integer literal", start)
-                    kind = "UInt64" if value >= 0 else "Int64"
-                else:
-                    if character == ".":
-                        index += 1
-                    while index < len(source) and (source[index].isdigit() or source[index] == "_"):
-                        index += 1
-                    is_float = character == "."
-                    if index < len(source) and source[index] == ".":
-                        is_float = True
-                        index += 1
-                        while index < len(source) and (
-                            source[index].isdigit() or source[index] == "_"
-                        ):
-                            index += 1
-                    if index < len(source) and source[index] in "eE":
-                        is_float = True
-                        index += 1
-                        if index < len(source) and source[index] in "+-":
-                            index += 1
-                        while index < len(source) and (
-                            source[index].isdigit() or source[index] == "_"
-                        ):
-                            index += 1
-                    text = source[start:index]
-                    if text.endswith("_") or "__" in text:
-                        self._error("InvalidExpression", "invalid numeric literal", start)
-                    try:
-                        value = float(text.replace("_", "")) if is_float else int(text.replace("_", ""), 10)
-                    except ValueError:
-                        self._error("InvalidExpression", "invalid numeric literal", start)
-                    kind = "Float64" if is_float else "UInt64"
-                tokens.append(_ExpressionToken("literal", source[start:index], start, index, (value, kind)))
-                continue
-            matched = next(
-                (operator for operator in _EXPRESSION_OPERATORS if source.startswith(operator, index)),
-                None,
-            )
-            if matched is None:
-                self._error("InvalidExpression", f"unexpected character {character!r}", index)
-            index += len(matched)
-            tokens.append(_ExpressionToken("operator", matched, start, index))
-        tokens.append(_ExpressionToken("eof", "", len(source), len(source)))
-        return tokens
-
     @property
-    def current(self) -> _ExpressionToken:
+    def current(self) -> ExpressionToken:
         return self.tokens[self.index]
 
-    def _peek(self, count: int = 1) -> _ExpressionToken:
+    def _peek(self, count: int = 1) -> ExpressionToken:
         return self.tokens[min(self.index + count, len(self.tokens) - 1)]
 
-    def _take(self, text: str | None = None) -> _ExpressionToken:
+    def _take(self, text: str | None = None) -> ExpressionToken:
         token = self.current
         if text is not None and token.text != text:
             self._error("InvalidExpression", f"expected {text!r}")
@@ -655,7 +403,7 @@ class _ExpressionParser:
                 ):
                     adjacent = self._take()
                     value += adjacent.value
-                    token = _ExpressionToken(
+                    token = ExpressionToken(
                         "literal",
                         token.text,
                         token.start,

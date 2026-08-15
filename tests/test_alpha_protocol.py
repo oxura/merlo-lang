@@ -53,3 +53,53 @@ def test_protocol_rejects_stale_and_unsupported_migrations_without_partial_write
     assert "helper" in source.read_text(encoding="utf-8")
     unsupported = protocol.call("refactor.move", {"target": "app.main.helper", "module": "app.other", "mode": "preview"})
     assert unsupported["diagnostic"]["code"] == "UnsupportedMigration"
+
+
+def test_protocol_rename_uses_only_semantic_spans_for_nested_calls(tmp_path: Path) -> None:
+    from merlo.alpha_protocol import AlphaProtocol
+    from merlo.semantic_world import SemanticWorld
+
+    source = tmp_path / "app" / "main.mlo"
+    source.parent.mkdir(parents=True)
+    source.write_text(
+        "module app.main\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "fn helper(value: UInt64) -> UInt64:\n"
+        "    return value\n\n"
+        "export task main(path: Path) -> Result[Text, AppError]:\n"
+        "    uses console.write\n"
+        '    console.write("main")\n'
+        "    let value: UInt64 = helper(helper(1))\n"
+        '    return Ok("main")\n',
+        encoding="utf-8",
+    )
+    protocol = AlphaProtocol(
+        SemanticWorld.build(source, require_interface_lock=False)
+    )
+
+    preview = protocol.call(
+        "refactor.rename",
+        {
+            "target": "app.main.helper",
+            "new_name": "assist",
+            "mode": "preview",
+        },
+    )
+    edits = preview["edits"]
+    assert len(edits) == 3
+    assert len({(item["start"], item["end"]) for item in edits}) == 3
+
+    result = protocol.call(
+        "refactor.rename",
+        {
+            "target": "app.main.helper",
+            "new_name": "assist",
+            "mode": "apply",
+        },
+    )
+    assert result["committed"] is True
+    updated = source.read_text(encoding="utf-8")
+    assert "fn assist" in updated
+    assert "assist(assist(1))" in updated
+    assert "helper" not in updated

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from merlo.frontend_model import ConciseApplicationError
 from merlo.module_syntax import ModuleSyntaxError, parse_module_prelude
-from merlo.modules import STDLIB_MODULES
+from merlo.modules import ModuleGraph, STDLIB_MODULES
 
 
 @dataclass(frozen=True)
@@ -97,4 +97,32 @@ def _load_modules(entry: Path) -> tuple[_Module, ...]:
     return tuple(ordered)
 
 
-__all__ = ["_Module", "_load_modules", "_project_root", "_read_module"]
+def _modules_from_graph(graph: ModuleGraph) -> tuple[_Module, ...]:
+    """Adapt an already validated graph without reading or traversing it again."""
+    result = []
+    for module in graph.modules:
+        path = Path(module.path)
+        try:
+            prelude = parse_module_prelude(module.source, path=module.path)
+        except ModuleSyntaxError as exc:  # Defensive: the graph already validated it.
+            raise ConciseApplicationError(str(exc)) from exc
+        result.append(
+            _Module(
+                module.name,
+                path,
+                module.source,
+                module.imports,
+                prelude.body,
+                prelude.body_source_lines,
+            )
+        )
+    return tuple(result)
+
+
+__all__ = [
+    "_Module",
+    "_load_modules",
+    "_modules_from_graph",
+    "_project_root",
+    "_read_module",
+]
