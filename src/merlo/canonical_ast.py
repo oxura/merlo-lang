@@ -55,6 +55,41 @@ class CanonicalBinding:
 
 
 @dataclass(frozen=True)
+class CanonicalCapture:
+    name: str
+    type_name: str
+    ownership: str
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "type": self.type_name,
+            "ownership": self.ownership,
+        }
+
+
+@dataclass(frozen=True)
+class CanonicalClosure:
+    closure_id: str
+    parameters: tuple[tuple[str, str], ...]
+    return_type: str
+    expression: str
+    captures: tuple[CanonicalCapture, ...]
+    span: SourceSpan
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "node": "closure",
+            "closure_id": self.closure_id,
+            "parameters": [list(item) for item in self.parameters],
+            "return_type": self.return_type,
+            "expression": self.expression,
+            "captures": [item.to_payload() for item in self.captures],
+            "span": _span_payload(self.span),
+        }
+
+
+@dataclass(frozen=True)
 class CanonicalCallable:
     callable_id: str
     parameter: str
@@ -110,6 +145,7 @@ class CanonicalFunction:
     implicit_callables: tuple[CanonicalCallable, ...] = ()
     option_fallbacks: tuple[CanonicalOptionFallback, ...] = ()
     canonical_lines: tuple[str, ...] = ()
+    closures: tuple[CanonicalClosure, ...] = ()
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -132,6 +168,7 @@ class CanonicalFunction:
                 item.to_payload() for item in self.option_fallbacks
             ],
             "canonical_lines": list(self.canonical_lines),
+            "closures": [item.to_payload() for item in self.closures],
         }
 
     @property
@@ -224,6 +261,8 @@ class CanonicalProgram:
                 callable_expression.pop("span", None)
             for fallback in function["option_fallbacks"]:
                 fallback.pop("span", None)
+            for closure in function["closures"]:
+                closure.pop("span", None)
         return hashlib.sha256(
             json.dumps(
                 payload,
@@ -301,6 +340,24 @@ class CanonicalProgram:
                 )
                 for value in item.get("option_fallbacks", ())
             )
+            closures = tuple(
+                CanonicalClosure(
+                    value["closure_id"],
+                    tuple(tuple(parameter) for parameter in value["parameters"]),
+                    value["return_type"],
+                    value["expression"],
+                    tuple(
+                        CanonicalCapture(
+                            capture["name"],
+                            capture["type"],
+                            capture["ownership"],
+                        )
+                        for capture in value.get("captures", ())
+                    ),
+                    span(value["span"]),
+                )
+                for value in item.get("closures", ())
+            )
             functions.append(
                 CanonicalFunction(
                     item["name"],
@@ -320,6 +377,7 @@ class CanonicalProgram:
                     implicit_callables,
                     option_fallbacks,
                     tuple(item.get("canonical_lines", ())),
+                    closures,
                 )
             )
         return cls(records, tuple(functions), enums)

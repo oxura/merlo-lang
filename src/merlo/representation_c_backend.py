@@ -207,6 +207,12 @@ class GeneralCEmitter:
         self.function_nodes = {
             item.name: item for item in self.module.body if isinstance(item, ast.FunctionDef)
         }
+        self.closure_nodes = tuple(
+            node
+            for node in ast.walk(self.module)
+            if isinstance(node, ast.Lambda)
+            and getattr(node, "_merlo_closure_metadata", None) is not None
+        )
         self.current_function: HIRFunction | None = None
         self.env_types: dict[str, str] = {}
         self.pointer_values: set[str] = set()
@@ -235,11 +241,13 @@ class GeneralCEmitter:
             self._forward_declarations(),
             self._vec_box_types(),
             self._nominal_types(),
+            self._closure_types(),
             self._function_prototypes(),
             self._primitive_runtime(),
             self._effect_runtime(),
             self._file_runtime(),
             self._move_drop_glue(),
+            self._closure_runtime(),
             self._constructors(),
             self._vec_box_runtime(),
             self._map_runtime(),
@@ -585,7 +593,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     f"typedef struct {{ const {_c_name(descriptor.element_type)} *data; "
                     f"uint64_t length; }} {_c_name(descriptor.name)};"
                 )
-            elif descriptor.kind == "callback":
+            elif descriptor.kind in {"callback", "closure"}:
                 callback = _callback_parts(descriptor.name)
                 assert callback is not None
                 parameter_types, return_type = callback
@@ -599,10 +607,32 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 parameters = ", ".join(
                     _c_name(item) for item in parameter_types
                 )
+                name = _c_name(descriptor.name)
+                signature = "void *" + (f", {parameters}" if parameters else "")
                 lines.append(
-                    f"typedef {_c_name(return_type)} (*{_c_name(descriptor.name)})"
-                    f"({parameters or 'void'});"
+                    f"typedef {_c_name(return_type)} (*{name}Call)"
+                    f"({signature});"
                 )
+                lines.append(
+                    f"typedef struct {{ {name}Call call; void *environment; "
+                    f"void (*retain)(void *); void (*release)(void *); }} {name};"
+                )
+        return "\n".join(lines)
+
+    def _closure_types(self) -> str:
+        lines: list[str] = []
+        for node in self.closure_nodes:
+            closure_id, _parameters, _return_type, captures, _owner = (
+                node._merlo_closure_metadata
+            )
+            fields = " ".join(
+                f"{_c_name(type_name)} {name};"
+                for name, type_name, _ownership in captures
+            )
+            lines.append(
+                f"typedef struct {{ uint64_t references; {fields} }} "
+                f"MerloClosureEnv_{closure_id};"
+            )
         return "\n".join(lines)
 
     def _nominal_types(self) -> str:
@@ -1714,6 +1744,188 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             lines.extend(self._emit_zero_move_drop(descriptor))
         return "\n".join(lines)
 
+    def _closure_runtime(self) -> str:
+        lines: list[str] = []
+        for function in self.hir.functions:
+            callback_type = "Fn[" + ",".join(
+                (*[item.type_name for item in function.parameters], function.return_type)
+            ) + "]"
+            descriptor = self.descriptors.get(callback_type)
+            if descriptor is None or descriptor.kind not in {"callback", "closure"}:
+                continue
+            if any(
+                _is_owner(self.descriptors[item.type_name])
+                for item in function.parameters
+            ):
+                continue
+            parameters = ", ".join(
+                f"{_c_name(item.type_name)} {item.name}"
+                for item in function.parameters
+            )
+            signature = "void *environment" + (
+                f", {parameters}" if parameters else ""
+            )
+            lines.append(
+                f"static {_c_name(function.return_type)} "
+                f"merlo_closure_adapter_{function.name}({signature}) {{"
+            )
+            lines.append("    (void)environment;")
+            call = f"merlo_fn_{function.name}(" + ", ".join(
+                item.name for item in function.parameters
+            ) + ")"
+            if function.return_type == "Unit":
+                lines.extend([f"    {call};", "}"])
+            else:
+                lines.extend([f"    return {call};", "}"])
+
+        for node in self.closure_nodes:
+            closure_id, parameters, return_type, captures, owner = (
+                node._merlo_closure_metadata
+            )
+            callback_type = "Fn[" + ",".join(
+                (*[type_name for _name, type_name in parameters], return_type)
+            ) + "]"
+            ctype = _c_name(callback_type)
+            environment_type = f"MerloClosureEnv_{closure_id}"
+            lines.extend(
+                [
+                    f"static void merlo_closure_retain_{closure_id}(void *raw) {{",
+                    f"    {environment_type} *environment = ({environment_type} *)raw;",
+                    "    if (environment != NULL) ++environment->references;",
+                    "}",
+                    f"static void merlo_closure_release_{closure_id}(void *raw) {{",
+                    f"    {environment_type} *environment = ({environment_type} *)raw;",
+                    "    if (environment == NULL || --environment->references != 0) return;",
+                ]
+            )
+            for name, type_name, ownership in captures:
+                if ownership == "owned":
+                    lines.append(
+                        f"    merlo_drop_{_identifier(type_name)}"
+                        f"(&environment->{name});"
+                    )
+            lines.extend(
+                [
+                    "    free(environment);",
+                    "    ++merlo_frees;",
+                    "}",
+                ]
+            )
+
+            parameter_declarations = ", ".join(
+                f"{_c_name(type_name)} {name}"
+                for name, type_name in parameters
+            )
+            call_signature = "void *raw" + (
+                f", {parameter_declarations}" if parameter_declarations else ""
+            )
+            lines.extend(
+                [
+                    f"static {_c_name(return_type)} "
+                    f"merlo_closure_call_{closure_id}({call_signature}) {{",
+                    f"    {environment_type} *environment = "
+                    f"({environment_type} *)raw;",
+                ]
+            )
+            if not captures:
+                lines.append("    (void)environment;")
+            for name, type_name, _ownership in captures:
+                lines.append(
+                    f"    {_c_name(type_name)} {name} = environment->{name};"
+                )
+
+            previous_function = self.current_function
+            previous_types = self.env_types
+            previous_pointers = self.pointer_values
+            previous_owned = self.owned_locals
+            previous_pending_lines = self.pending_expression_lines
+            previous_pending_drops = self.pending_expression_drops
+            self.current_function = self.functions[owner]
+            self.env_types = {
+                **{name: type_name for name, type_name, _ownership in captures},
+                **dict(parameters),
+            }
+            self.pointer_values = set()
+            self.owned_locals = {}
+            self.pending_expression_lines = []
+            self.pending_expression_drops = []
+            try:
+                body = self._expression(node.body, expected=return_type)
+                if (
+                    isinstance(node.body, ast.Name)
+                    and any(
+                        name == node.body.id and ownership == "owned"
+                        for name, _type_name_, ownership in captures
+                    )
+                ):
+                    body = (
+                        f"merlo_clone_{_identifier(return_type)}"
+                        f"(&{node.body.id})"
+                    )
+                lines.extend(self.pending_expression_lines)
+                if return_type == "Unit":
+                    lines.extend([f"    (void)({body});", "    return;"])
+                else:
+                    lines.append(f"    {_c_name(return_type)} result = {body};")
+                lines.extend(self.pending_expression_drops)
+                if return_type != "Unit":
+                    lines.append("    return result;")
+                lines.append("}")
+            finally:
+                self.current_function = previous_function
+                self.env_types = previous_types
+                self.pointer_values = previous_pointers
+                self.owned_locals = previous_owned
+                self.pending_expression_lines = previous_pending_lines
+                self.pending_expression_drops = previous_pending_drops
+
+            make_parameters = []
+            for name, type_name, ownership in captures:
+                pointer = "const " if ownership == "owned" else ""
+                suffix = " *" if ownership == "owned" else " "
+                make_parameters.append(
+                    f"{pointer}{_c_name(type_name)}{suffix}{name}"
+                )
+            lines.append(
+                f"static {ctype} merlo_closure_make_{closure_id}"
+                f"({', '.join(make_parameters) if make_parameters else 'void'}) {{"
+            )
+            if not captures:
+                lines.extend(
+                    [
+                        f"    return ({ctype}){{ "
+                        f"merlo_closure_call_{closure_id}, NULL, NULL, NULL }};",
+                        "}",
+                    ]
+                )
+                continue
+            lines.extend(
+                [
+                    f"    {environment_type} *environment = "
+                    f"({environment_type} *)malloc(sizeof({environment_type}));",
+                    "    if (environment == NULL) merlo_allocation_trap();",
+                    "    environment->references = UINT64_C(1);",
+                ]
+            )
+            for name, type_name, ownership in captures:
+                value = (
+                    f"merlo_clone_{_identifier(type_name)}({name})"
+                    if ownership == "owned"
+                    else name
+                )
+                lines.append(f"    environment->{name} = {value};")
+            lines.extend(
+                [
+                    "    ++merlo_allocations;",
+                    f"    return ({ctype}){{ "
+                    f"merlo_closure_call_{closure_id}, environment, "
+                    f"merlo_closure_retain_{closure_id}, "
+                    f"merlo_closure_release_{closure_id} }};",
+                    "}",
+                ]
+            )
+        return "\n".join(lines)
+
     def _emit_zero_move_drop(self, descriptor: TypeDescriptor) -> list[str]:
         ctype = _c_name(descriptor.name)
         suffix = _identifier(descriptor.name)
@@ -1740,7 +1952,15 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 f"static void merlo_drop_{suffix}({ctype} *value) {{",
             ]
         )
-        if descriptor.kind == "text":
+        if descriptor.kind == "closure":
+            lines.extend([
+                "    if (value->environment == NULL) return;",
+                "    if (value->release != NULL) value->release(value->environment);",
+                "    value->call = NULL; value->environment = NULL;",
+                "    value->retain = NULL; value->release = NULL;",
+                "    ++merlo_drop_calls;",
+            ])
+        elif descriptor.kind == "text":
             lines.extend([
                 "    if (value->data == NULL) return;",
                 "    free(value->data);",
@@ -1850,7 +2070,17 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 "    ++merlo_ast_nodes_freed; ++merlo_drop_calls;",
             ])
         lines.append("}")
-        if descriptor.kind == "text":
+        if descriptor.kind == "closure":
+            lines.extend([
+                f"static {ctype} merlo_clone_{suffix}(const {ctype} *value) {{",
+                f"    {ctype} result = *value;",
+                "    if (result.environment != NULL && result.retain != NULL) {",
+                "        result.retain(result.environment);",
+                "    }",
+                "    return result;",
+                "}",
+            ])
+        elif descriptor.kind == "text":
             lines.extend([
                 f"static {ctype} merlo_clone_{suffix}(const {ctype} *value) {{",
                 "    return merlo_text_clone(value);",
@@ -3249,7 +3479,10 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         descriptor = self.descriptors.get(type_name)
         if descriptor is None or not _is_owner(descriptor):
             return False
-        if isinstance(node, (ast.Call, ast.Constant, ast.List, ast.Tuple, ast.BinOp)):
+        if isinstance(
+            node,
+            (ast.Call, ast.Constant, ast.List, ast.Tuple, ast.BinOp, ast.Lambda),
+        ):
             return True
         return (
             isinstance(node, ast.Attribute)
@@ -3344,6 +3577,16 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             return "0"
         if isinstance(node, ast.Name):
             if node.id in self.functions and node.id not in self.env_types:
+                descriptor = self.descriptors.get(expected or "")
+                if (
+                    descriptor is not None
+                    and descriptor.kind in {"callback", "closure"}
+                ):
+                    value = (
+                        f"({_c_name(expected or '')}){{ "
+                        f"merlo_closure_adapter_{node.id}, NULL, NULL, NULL }}"
+                    )
+                    return f"&({value})" if want_pointer else value
                 return f"merlo_fn_{node.id}"
             if node.id in self.pointer_values:
                 if want_pointer:
@@ -3352,6 +3595,36 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     return f"(*{node.id})"
                 return node.id
             return f"&{node.id}" if want_pointer else node.id
+        if isinstance(node, ast.Lambda):
+            metadata = getattr(node, "_merlo_closure_metadata", None)
+            if metadata is None:
+                raise RepresentationCBackendError(
+                    "capturing closure metadata is required"
+                )
+            closure_id, _parameters, _return_type, captures, _owner = metadata
+            arguments = []
+            for name, type_name, ownership in captures:
+                capture = ast.Name(id=name, ctx=ast.Load())
+                for attribute in (
+                    "lineno",
+                    "col_offset",
+                    "end_lineno",
+                    "end_col_offset",
+                    "_merlo_path",
+                ):
+                    if hasattr(node, attribute):
+                        setattr(capture, attribute, getattr(node, attribute))
+                arguments.append(
+                    self._expression(
+                        capture,
+                        expected=type_name,
+                        want_pointer=ownership == "owned",
+                    )
+                )
+            return (
+                f"merlo_closure_make_{closure_id}"
+                f"({', '.join(arguments)})"
+            )
         if isinstance(node, ast.Constant):
             if node.value is None and expected:
                 descriptor = self.descriptors.get(expected)
@@ -3590,7 +3863,12 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                         strict=True,
                     )
                 )
-                return f"{name}({arguments})"
+                operator = "->" if name in self.pointer_values else "."
+                prefix = f"{name}{operator}"
+                forwarded = f", {arguments}" if arguments else ""
+                return (
+                    f"{prefix}call({prefix}environment{forwarded})"
+                )
             if name not in self.functions and name in {
                 "wrapping_add",
                 "wrapping_sub",
@@ -4229,6 +4507,14 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
     def _expression_type(self, node: ast.AST) -> str | None:
         if isinstance(node, ast.Name):
             return self.env_types.get(node.id)
+        if isinstance(node, ast.Lambda):
+            metadata = getattr(node, "_merlo_closure_metadata", None)
+            if metadata is None:
+                return None
+            _closure_id, parameters, return_type, _captures, _owner = metadata
+            return "Fn[" + ",".join(
+                (*[type_name for _name, type_name in parameters], return_type)
+            ) + "]"
         if isinstance(node, ast.Constant):
             return (
                 "Bool"

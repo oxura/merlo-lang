@@ -7,6 +7,8 @@ from typing import Iterable
 from merlo.canonical_ast import (
     CanonicalBinding,
     CanonicalCallable,
+    CanonicalCapture,
+    CanonicalClosure,
     CanonicalEnum,
     CanonicalFunction,
     CanonicalProgram,
@@ -43,6 +45,7 @@ from merlo.surface_ast import (
     SurfaceEnum,
     SurfaceIndex,
     SurfaceList,
+    SurfaceLambda,
     SurfaceLiteral,
     SurfaceMember,
     SurfaceMatch,
@@ -60,6 +63,7 @@ from merlo.surface_ast import (
     SurfaceWhile,
 )
 from merlo.type_parser import generic_parts
+from merlo.type_properties import TypePropertyResolver
 from merlo.intrinsics import (
     CONTRACT_GRAPH,
     INSTANCE_METHOD_NAMES,
@@ -89,6 +93,7 @@ class _Elaborator:
             for declaration in program.declarations
             if isinstance(declaration, SurfaceEnum)
         }
+        self.type_properties = TypePropertyResolver({**self.records, **self.enums})
         self.functions: dict[str, _Function] = {}
         for declaration in program.declarations:
             if not isinstance(declaration, SurfaceFunction):
@@ -792,6 +797,107 @@ class _Elaborator:
                 context=f"collection {operation} result",
             )
         return term
+    def _lambda(
+        self,
+        expression: SurfaceLambda,
+        function: _Function,
+        expected: str | None,
+    ) -> str:
+        callback = _generic_parts(expected or "", "Fn")
+        if callback is None or len(callback) != len(expression.parameters) + 1:
+            raise SurfaceElaborationError(
+                f"ClosureTypeAnnotationRequired: {function.source.name}"
+            )
+        parameter_types = callback[:-1]
+        return_type = callback[-1]
+        parameter_names = frozenset(expression.parameters)
+        captures: list[CanonicalCapture] = []
+        captured_names: set[str] = set()
+        for node in expression.body.walk():
+            if not isinstance(node, SurfaceName) or node.name in parameter_names:
+                continue
+            if node.name in captured_names:
+                continue
+            if not self._local_visible(function, node.name, node.span):
+                continue
+            if node.name not in function.parameters and node.name not in function.locals:
+                continue
+            first_binding = function.first_bindings.get(node.name)
+            if (
+                (
+                    first_binding is not None
+                    and first_binding.explicit_kind == "var"
+                )
+                or function.assignments.get(node.name, 0) > 1
+            ):
+                raise SurfaceElaborationError(
+                    f"MutableClosureCaptureForbidden: {node.name}"
+                )
+            type_name = self.types.resolve(
+                self._lookup(function, node.name),
+                name=f"{function.source.name}.closure_capture.{node.name}",
+            )
+            properties = self.type_properties.resolve(type_name)
+            if properties.contains_borrow:
+                raise SurfaceElaborationError(
+                    f"BorrowedClosureCaptureEscapes: {node.name}"
+                )
+            if properties.is_resource:
+                raise SurfaceElaborationError(
+                    f"ResourceClosureCaptureForbidden: {node.name}"
+                )
+            captures.append(
+                CanonicalCapture(
+                    node.name,
+                    type_name,
+                    "owned" if properties.needs_drop else "copy",
+                )
+            )
+            captured_names.add(node.name)
+
+        previous = {
+            name: function.locals.get(name)
+            for name in expression.parameters
+        }
+        try:
+            for name, type_name in zip(
+                expression.parameters,
+                parameter_types,
+                strict=True,
+            ):
+                function.locals[name] = self.types.typed(type_name)
+            body = self._expression(
+                expression.body,
+                function,
+                return_type,
+            )
+            self.types.unify(
+                body,
+                self.types.typed(return_type),
+                context=f"{function.source.name} closure return",
+            )
+        finally:
+            for name, value in previous.items():
+                if value is None:
+                    function.locals.pop(name, None)
+                else:
+                    function.locals[name] = value
+        digest_input = (
+            f"{function.source.name}\0{expression.span.path}\0"
+            f"{expression.span.start_line}\0{expression.span.start_column}\0"
+            + ",".join(callback)
+        )
+        closure_id = hashlib.sha256(digest_input.encode()).hexdigest()[:16]
+        function.closures[closure_id] = CanonicalClosure(
+            closure_id,
+            tuple(zip(expression.parameters, parameter_types, strict=True)),
+            return_type,
+            _emit_expression(expression.body),
+            tuple(captures),
+            expression.span,
+        )
+        return self.types.typed(expected)
+
     def _expression(
         self,
         expression: SurfaceExpression,
@@ -1529,6 +1635,8 @@ class _Elaborator:
                     )
             else:
                 raise SurfaceElaborationError("UnsupportedCall")
+        elif isinstance(expression, SurfaceLambda):
+            term = self._lambda(expression, function, expected)
         elif isinstance(expression, SurfaceIndex):
             self._expression(expression.index, function, "UInt64")
             owner = self._expression(expression.receiver, function)
@@ -2265,6 +2373,7 @@ class _Elaborator:
                     tuple(function.implicit_callables.values()),
                     tuple(function.option_fallbacks.values()),
                     self._canonical_lines(statements, function),
+                    tuple(function.closures.values()),
                 )
             )
         canonical = CanonicalProgram(records, tuple(functions), enums)
@@ -2299,6 +2408,11 @@ def _emit_expression(expression: SurfaceExpression | None) -> str | None:
         if expression.kind == "Bool":
             return "true" if expression.value else "false"
         return repr(expression.value)
+    if isinstance(expression, SurfaceLambda):
+        return (
+            f"{', '.join(expression.parameters)} => "
+            f"{_emit_expression(expression.body)}"
+        )
     if isinstance(expression, SurfaceImplicitReceiver):
         return f".{expression.field}"
     if isinstance(expression, SurfaceMember):

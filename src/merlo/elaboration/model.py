@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 from merlo.canonical_ast import (
     CanonicalCallable,
+    CanonicalClosure,
     CanonicalOptionFallback,
     CanonicalProgram,
 )
@@ -42,6 +43,7 @@ class FunctionState:
     errors: set[str] = field(default_factory=set)
     implicit_callables: dict[str, CanonicalCallable] = field(default_factory=dict)
     option_fallbacks: dict[str, CanonicalOptionFallback] = field(default_factory=dict)
+    closures: dict[str, CanonicalClosure] = field(default_factory=dict)
     read_counts: dict[str, int] = field(default_factory=dict)
 
 

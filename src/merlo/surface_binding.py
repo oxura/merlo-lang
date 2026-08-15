@@ -206,6 +206,12 @@ def bind_module(
             return node
         if isinstance(node, surface.SurfaceList):
             return replace(node, items=tuple(expression(item, locals_) for item in node.items))
+        if isinstance(node, surface.SurfaceLambda):
+            parameters = frozenset(node.parameters)
+            return replace(
+                node,
+                body=expression(node.body, locals_ | parameters),
+            )
         if isinstance(node, surface.SurfaceMember):
             parts = _expression_parts(node)
             if parts is not None:

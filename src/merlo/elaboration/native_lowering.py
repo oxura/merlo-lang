@@ -22,6 +22,7 @@ from merlo.surface_ast import (
     SurfaceImplicitReceiver,
     SurfaceIndex,
     SurfaceList,
+    SurfaceLambda,
     SurfaceLiteral,
     SurfaceMatch,
     SurfaceMember,
@@ -84,6 +85,7 @@ class _SurfaceNativeBuilder:
             item.name: item for item in canonical.functions
         }
         self.callable_index = 0
+        self.closure_index = 0
         self.current_function = ""
         self.local_types: dict[str, str] = {}
 
@@ -136,6 +138,45 @@ class _SurfaceNativeBuilder:
                 ),
                 expression.span,
             )
+        if isinstance(expression, SurfaceLambda):
+            closures = self.canonical_functions[self.current_function].closures
+            if self.closure_index >= len(closures):
+                raise SurfaceElaborationError("MissingClosureMetadata")
+            metadata = closures[self.closure_index]
+            self.closure_index += 1
+            arguments = ast.arguments(
+                posonlyargs=[],
+                args=[
+                    self._loc(
+                        ast.arg(
+                            arg=name,
+                            annotation=self._annotation(type_name, expression.span),
+                        ),
+                        expression.span,
+                    )
+                    for name, type_name in metadata.parameters
+                ],
+                kwonlyargs=[],
+                kw_defaults=[],
+                defaults=[],
+                vararg=None,
+                kwarg=None,
+            )
+            result = self._loc(
+                ast.Lambda(args=arguments, body=self._expr(expression.body)),
+                expression.span,
+            )
+            result._merlo_closure_metadata = (
+                metadata.closure_id,
+                metadata.parameters,
+                metadata.return_type,
+                tuple(
+                    (item.name, item.type_name, item.ownership)
+                    for item in metadata.captures
+                ),
+                self.current_function,
+            )
+            return result
         if isinstance(expression, SurfaceList):
             return self._loc(
                 ast.List(elts=[self._expr(item) for item in expression.items], ctx=ast.Load()),
@@ -587,6 +628,7 @@ class _SurfaceNativeBuilder:
             canonical = self.canonical_functions[declaration.name]
             self.current_function = declaration.name
             self.callable_index = 0
+            self.closure_index = 0
             self.local_types = dict(canonical.parameters)
             args = [
                 self._loc(

@@ -30,6 +30,7 @@ from merlo.surface_ast import (
     SurfaceImplicitReceiver,
     SurfaceIndex,
     SurfaceList,
+    SurfaceLambda,
     SurfaceLiteral,
     SurfaceMatch,
     SurfaceMember,
@@ -235,6 +236,19 @@ class _ExpressionParser:
         return text, precedence, 1
 
     def _expression(self, minimum: int) -> SurfaceExpression:
+        if (
+            minimum == 0
+            and self.current.kind == "identifier"
+            and self._peek().text == "=>"
+        ):
+            parameter = self._take()
+            self._take("=>")
+            body = self._expression(0)
+            return SurfaceLambda(
+                self._span(parameter.start, body.span.end_column - self.line.indent - self.base_column - 1),
+                (parameter.text,),
+                body,
+            )
         left = self._prefix()
         comparisons: list[SurfaceBinary] = []
         while True:
@@ -1071,7 +1085,7 @@ class _Parser:
         if match := re.fullmatch(
             r"(?:(let|var)\s+)?([A-Za-z_]\w*)"
             r"(?:\s*:\s*([^=]+))?\s*"
-            r"(\+=|-=|\*=|/=|(?<![=!<>])=(?!=))\s*(.+)",
+            r"(\+=|-=|\*=|/=|(?<![=!<>])=(?![=>]))\s*(.+)",
             line.text,
         ):
             self.index += 1

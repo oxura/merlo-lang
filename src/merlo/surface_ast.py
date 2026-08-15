@@ -108,6 +108,12 @@ class SurfaceTry(SurfaceNode):
     expression: SurfaceExpression
 
 
+@dataclass(frozen=True)
+class SurfaceLambda(SurfaceNode):
+    parameters: tuple[str, ...]
+    body: SurfaceExpression
+
+
 SurfaceExpression: TypeAlias = (
     SurfaceName
     | SurfaceLiteral
@@ -119,6 +125,7 @@ SurfaceExpression: TypeAlias = (
     | SurfaceUnary
     | SurfaceBinary
     | SurfaceTry
+    | SurfaceLambda
 )
 
 

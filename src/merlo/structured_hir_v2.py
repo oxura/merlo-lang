@@ -709,6 +709,8 @@ class _OwnershipChecker:
             vec_parts = generic_parts(owner, "Vec", arity=1)
             if vec_parts is not None:
                 return vec_parts[0]
+        if isinstance(node, ast.Lambda):
+            return expected
         return expected
 
     @staticmethod
@@ -846,6 +848,13 @@ class _OwnershipChecker:
             result_type = self._expr_type(node, expected)
             self._borrow_result(node.func.value if receiver is not None else node, result_type, state)
             return result_type
+        if isinstance(node, ast.Lambda):
+            metadata = getattr(node, "_merlo_closure_metadata", None)
+            if metadata is None:
+                self._error("CapturingClosureUnsupported")
+            for name, _type_name_, _ownership in metadata[3]:
+                self._check_name(name, state)
+            return expected
     def _merge(self, before: _OwnershipState, branches: tuple[_OwnershipState, ...]) -> _OwnershipState:
         live = tuple(branch for branch in branches if not branch.terminal)
         if not live:
@@ -1292,9 +1301,46 @@ class _HIRBuilder:
                 children=(owner, self.expression(node.slice)),
             )
         if isinstance(node, ast.Lambda):
-            raise StructuredHIRCompileError(
-                f"{self.path}:{node.lineno}: CapturingClosureUnsupported; "
-                "use a named non-capturing fn"
+            metadata = getattr(node, "_merlo_closure_metadata", None)
+            if metadata is None:
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: CapturingClosureUnsupported; "
+                    "use a typed Surface closure"
+                )
+            closure_id, parameters, return_type, captures, owner = metadata
+            callback_type = expected or (
+                "Fn["
+                + ",".join(
+                    (*[type_name for _, type_name in parameters], return_type)
+                )
+                + "]"
+            )
+            capture_nodes = []
+            for name, _type_name_, _ownership in captures:
+                capture = ast.Name(id=name, ctx=ast.Load())
+                for attribute in (
+                    "lineno",
+                    "col_offset",
+                    "end_lineno",
+                    "end_col_offset",
+                    "_merlo_path",
+                ):
+                    if hasattr(node, attribute):
+                        setattr(capture, attribute, getattr(node, attribute))
+                capture_nodes.append(self.expression(capture))
+            return self._new_node(
+                node,
+                "ClosureCreate",
+                type_name=callback_type,
+                ownership="owned",
+                attributes={
+                    "closure_id": closure_id,
+                    "parameters": parameters,
+                    "return_type": return_type,
+                    "captures": captures,
+                    "owner": owner,
+                },
+                children=capture_nodes,
             )
         raise StructuredHIRCompileError(
             f"{self.path}:{getattr(node, 'lineno', 1)}: unsupported expression {type(node).__name__}"

@@ -23,6 +23,7 @@ from merlo.surface_ast import (
     SurfaceIf,
     SurfaceIndex,
     SurfaceList,
+    SurfaceLambda,
     SurfaceLiteral,
     SurfaceMatch,
     SurfaceMember,
@@ -322,6 +323,22 @@ class _Monomorphizer:
             return replace(
                 expression,
                 items=tuple(self._expression(item, environment) for item in expression.items),
+            )
+        if isinstance(expression, SurfaceLambda):
+            nested = dict(environment)
+            parameter_types: tuple[str, ...] = ()
+            return_type = None
+            if expected is not None:
+                parsed = _parsed(expected)
+                if parsed.name == "Fn" and len(parsed.args) == len(expression.parameters) + 1:
+                    parameter_types = tuple(
+                        item.canonical for item in parsed.args[:-1]
+                    )
+                    return_type = parsed.args[-1].canonical
+            nested.update(zip(expression.parameters, parameter_types, strict=False))
+            return replace(
+                expression,
+                body=self._expression(expression.body, nested, return_type),
             )
         if isinstance(expression, SurfaceMember):
             return replace(

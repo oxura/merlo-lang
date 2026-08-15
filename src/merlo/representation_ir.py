@@ -597,13 +597,13 @@ class _DescriptorBuilder:
             resolved = tuple(self.get(item) for item in dependencies)
             descriptor = CallbackDesc(
                 type_name,
-                "callback",
+                "closure",
+                32,
                 8,
-                8,
-                "pointer",
-                "trivial",
-                "copy",
-                "trivial",
+                "aggregate",
+                "refcounted",
+                "move_then_invalidate",
+                "closure_environment",
                 (),
                 dependencies,
                 _stable_id(
@@ -1026,6 +1026,7 @@ _HIR_TO_RIR = {
     "While": "while",
     "For": "for",
     "CallbackCall": "callback_call",
+    "ClosureCreate": "closure_create",
     "Literal": "const",
     "Name": "load_name",
     "Binary": "binary",
