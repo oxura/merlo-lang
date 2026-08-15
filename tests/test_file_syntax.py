@@ -27,6 +27,18 @@ def test_full_file_lexer_is_lossless_and_emits_layout_tokens() -> None:
     assert "comment" in kinds
 
 
+def test_file_lexer_preserves_line_endings_and_terminal_text() -> None:
+    sources = (
+        "module sample",
+        "module sample\r\n\r\nfn marker() -> Text:\r\n    \"# literal\"\r\n",
+    )
+
+    for source in sources:
+        result = lex_file(source, path="sample.mlo")
+        assert result.to_source() == source
+        assert not result.diagnostics
+
+
 def test_cst_groups_declarations_and_keeps_stable_ids_across_trivia_changes() -> None:
     first = parse_file_cst(SOURCE, path="sample.mlo")
     changed = parse_file_cst(
