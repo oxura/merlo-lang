@@ -172,14 +172,21 @@ def bind_module(
             fail(span, f"UnresolvedName {name!r}")
         return name
 
-    def type_name(name: str | None, span: surface.SourceSpan) -> str | None:
+    def type_name(
+        name: str | None,
+        span: surface.SourceSpan,
+        type_parameters: frozenset[str] = frozenset(),
+    ) -> str | None:
         if name is None:
             return None
 
         def visit(expression: TypeExpr) -> TypeExpr:
-            renamed = qualified(expression.name, span)
-            if renamed is None:
-                renamed = unqualified(expression.name, span, frozenset())
+            if expression.name in type_parameters:
+                renamed = expression.name
+            else:
+                renamed = qualified(expression.name, span)
+                if renamed is None:
+                    renamed = unqualified(expression.name, span, frozenset())
             return TypeExpr(renamed, tuple(visit(argument) for argument in expression.args))
 
         return visit(parse_type(name)).canonical
@@ -262,6 +269,7 @@ def bind_module(
     def statements(
         nodes: tuple[surface.SurfaceStatement, ...],
         locals_: frozenset[str],
+        type_parameters: frozenset[str] = frozenset(),
     ) -> tuple[surface.SurfaceStatement, ...]:
         result: list[surface.SurfaceStatement] = []
         for node in nodes:
@@ -270,11 +278,24 @@ def bind_module(
                     replace(
                         node,
                         value=expression(node.value, locals_),
-                        type_name=type_name(node.type_name, node.span),
+                        type_name=type_name(
+                            node.type_name,
+                            node.span,
+                            type_parameters,
+                        ),
                     )
                 )
             elif isinstance(node, surface.SurfaceAnnotation):
-                result.append(replace(node, type_name=type_name(node.type_name, node.span)))
+                result.append(
+                    replace(
+                        node,
+                        type_name=type_name(
+                            node.type_name,
+                            node.span,
+                            type_parameters,
+                        ),
+                    )
+                )
             elif isinstance(node, surface.SurfaceAssignment):
                 result.append(
                     replace(
@@ -303,7 +324,7 @@ def bind_module(
                     replace(
                         node,
                         iterable=expression(node.iterable, locals_),
-                        body=statements(node.body, locals_),
+                        body=statements(node.body, locals_, type_parameters),
                     )
                 )
             elif isinstance(node, surface.SurfaceIf):
@@ -311,8 +332,12 @@ def bind_module(
                     replace(
                         node,
                         condition=expression(node.condition, locals_),
-                        body=statements(node.body, locals_),
-                        otherwise=statements(node.otherwise, locals_),
+                        body=statements(node.body, locals_, type_parameters),
+                        otherwise=statements(
+                            node.otherwise,
+                            locals_,
+                            type_parameters,
+                        ),
                     )
                 )
             elif isinstance(node, surface.SurfaceWhile):
@@ -320,7 +345,7 @@ def bind_module(
                     replace(
                         node,
                         condition=expression(node.condition, locals_),
-                        body=statements(node.body, locals_),
+                        body=statements(node.body, locals_, type_parameters),
                     )
                 )
             elif isinstance(node, surface.SurfaceMatch):
@@ -332,7 +357,11 @@ def bind_module(
                             replace(
                                 case,
                                 pattern=pattern(case.pattern, case.pattern_span or case.span),
-                                body=statements(case.body, locals_),
+                                body=statements(
+                                    case.body,
+                                    locals_,
+                                    type_parameters,
+                                ),
                             )
                             for case in node.cases
                         ),
@@ -369,8 +398,11 @@ def bind_module(
             )
         else:
             locals_ = _function_locals(declaration)
+            generic_names = frozenset(
+                parameter.name for parameter in declaration.type_parameters
+            )
             body = (
-                statements(declaration.body, locals_)
+                statements(declaration.body, locals_, generic_names)
                 if isinstance(declaration.body, tuple)
                 else expression(declaration.body, locals_)
             )
@@ -381,11 +413,19 @@ def bind_module(
                     parameters=tuple(
                         replace(
                             parameter,
-                            type_name=type_name(parameter.type_name, parameter.span),
+                            type_name=type_name(
+                                parameter.type_name,
+                                parameter.span,
+                                generic_names,
+                            ),
                         )
                         for parameter in declaration.parameters
                     ),
-                    return_type=type_name(declaration.return_type, declaration.span),
+                    return_type=type_name(
+                        declaration.return_type,
+                        declaration.span,
+                        generic_names,
+                    ),
                     body=body,
                 )
             )

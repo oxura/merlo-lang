@@ -129,6 +129,12 @@ class SurfaceParameter(SurfaceNode):
 
 
 @dataclass(frozen=True)
+class SurfaceTypeParameter(SurfaceNode):
+    name: str
+    constraints: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class SurfaceField(SurfaceNode):
     name: str
     type_name: str
@@ -276,6 +282,7 @@ class SurfaceFunction(SurfaceNode):
     exported: bool
     declared_kind: str | None = None
     return_type: str | None = None
+    type_parameters: tuple[SurfaceTypeParameter, ...] = ()
 
     def __init__(
         self,
@@ -287,6 +294,7 @@ class SurfaceFunction(SurfaceNode):
         span: SourceSpan,
         declared_kind: str | None = None,
         return_type: str | None = None,
+        type_parameters: tuple[SurfaceTypeParameter, ...] = (),
     ) -> None:
         object.__setattr__(self, "span", span)
         object.__setattr__(self, "name", name)
@@ -296,6 +304,7 @@ class SurfaceFunction(SurfaceNode):
         object.__setattr__(self, "exported", exported)
         object.__setattr__(self, "declared_kind", declared_kind)
         object.__setattr__(self, "return_type", return_type)
+        object.__setattr__(self, "type_parameters", type_parameters)
 
 
 SurfaceDeclaration: TypeAlias = SurfaceRecord | SurfaceEnum | SurfaceFunction

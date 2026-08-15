@@ -42,6 +42,7 @@ from merlo.surface_ast import (
     SurfaceReturn,
     SurfaceStatement,
     SurfaceTry,
+    SurfaceTypeParameter,
     SurfaceUnary,
     SurfaceUses,
     SurfaceWhile,
@@ -639,7 +640,7 @@ class _Parser:
         if record_match:
             return self._record(record_match.group(1), exported)
         function_match = re.fullmatch(
-            r"(?:(fn|task)\s+)?([A-Za-z_]\w*)\((.*)\)\s*(?:->\s*([^:=]+))?\s*([:=])\s*(.*)",
+            r"(?:(fn|task)\s+)?([A-Za-z_]\w*)(?:\[([^\]]+)\])?\((.*)\)\s*(?:->\s*([^:=]+))?\s*([:=])\s*(.*)",
             raw,
         )
         if function_match:
@@ -727,11 +728,16 @@ class _Parser:
 
     def _function(self, match: re.Match[str], exported: bool) -> SurfaceFunction:
         start = self.lines[self.index]
-        kind, name, raw_parameters, raw_return, delimiter, inline = match.groups()
+        kind, name, raw_type_parameters, raw_parameters, raw_return, delimiter, inline = match.groups()
+        type_parameters = self._type_parameters(
+            raw_type_parameters,
+            start,
+            base_column=match.start(3) if raw_type_parameters is not None else 0,
+        )
         parameters = self._parameters(
             raw_parameters,
             start,
-            base_column=match.start(3),
+            base_column=match.start(4),
         )
         return_type = _type_name(raw_return) if raw_return else None
         self.index += 1
@@ -741,11 +747,11 @@ class _Parser:
                 inline.strip(),
                 self.path,
                 start,
-                base_column=match.start(6) + leading,
+                base_column=match.start(7) + leading,
             )
             return SurfaceFunction(
                 name, parameters, expression, "expression", exported,
-                _span(self.path, start), kind, return_type,
+                _span(self.path, start), kind, return_type, type_parameters,
             )
         if delimiter == "=":
             self._skip_blank()
@@ -774,6 +780,7 @@ class _Parser:
                 _span(self.path, start, end_line=expression_line),
                 kind,
                 return_type,
+                type_parameters,
             )
         statements = self._block(start.indent + 4)
         if not statements:
@@ -792,7 +799,68 @@ class _Parser:
             _span(self.path, start, end_line=end_line),
             kind,
             return_type,
+            type_parameters,
         )
+
+    def _type_parameters(
+        self,
+        source: str | None,
+        line: _Line,
+        *,
+        base_column: int,
+    ) -> tuple[SurfaceTypeParameter, ...]:
+        if source is None:
+            return ()
+        result: list[SurfaceTypeParameter] = []
+        cursor = 0
+        for raw in _split_top_level_commas(source):
+            start = source.find(raw, cursor)
+            cursor = start + len(raw)
+            text = raw.strip()
+            name, separator, constraints_text = text.partition(":")
+            name = name.strip()
+            if re.fullmatch(r"[A-Z][A-Za-z0-9_]*", name) is None:
+                raise SurfaceSyntaxError(
+                    "InvalidTypeParameter",
+                    f"generic type parameter must start with an uppercase letter: {name!r}",
+                    _span(self.path, line),
+                )
+            constraints = tuple(
+                item.strip()
+                for item in constraints_text.split("+")
+                if item.strip()
+            ) if separator else ()
+            if separator and (
+                not constraints
+                or any(re.fullmatch(r"[A-Z][A-Za-z0-9_]*", item) is None for item in constraints)
+            ):
+                raise SurfaceSyntaxError(
+                    "InvalidTypeConstraint",
+                    text,
+                    _span(self.path, line),
+                )
+            lexical_start = base_column + start + (len(raw) - len(raw.lstrip()))
+            lexical_end = base_column + start + len(raw.rstrip())
+            result.append(
+                SurfaceTypeParameter(
+                    SourceSpan(
+                        self.path,
+                        line.number,
+                        line.indent + lexical_start + 1,
+                        line.number,
+                        line.indent + lexical_end + 1,
+                    ),
+                    name,
+                    constraints,
+                )
+            )
+        if len({item.name for item in result}) != len(result):
+            raise SurfaceSyntaxError(
+                "DuplicateTypeParameter",
+                "generic type parameters must be unique",
+                _span(self.path, line),
+            )
+        return tuple(result)
 
     def _block(self, indent: int) -> tuple[SurfaceStatement, ...]:
         statements = []
