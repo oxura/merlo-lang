@@ -31,6 +31,12 @@ generated C names or allocation order. RIR does not contain `StoragePolicy`
 values; the `storage_policy_matrix()` helper is not a production lowering
 stage. The backend checks predecessor identity before emission.
 
+Recursive records and enums must cross an owning `Box[T]` or `Vec[T]`
+indirection; inline layout cycles are rejected with their minimal cycle path.
+Generated drop glue follows active enum tags, initialized vector elements, and
+boxed payloads recursively before releasing their storage. Mutual recursion
+uses forward C declarations and the same finite, type-directed drop plans.
+
 ## Failure modes
 
 `RepresentationCompileError` rejects unsupported ownership/layout combinations,

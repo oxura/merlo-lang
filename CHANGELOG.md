@@ -22,6 +22,9 @@
 - Fuses eligible copy-scalar collection chains into one native loop, removing
   every intermediate vector allocation while preserving ordered callback and
   bounds semantics.
+- Locks recursive record and enum values through `Box`/`Vec` indirection,
+  including mutually recursive native layouts and active-payload,
+  initialized-element, and boxed-payload drop glue.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.
