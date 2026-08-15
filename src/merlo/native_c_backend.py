@@ -1346,7 +1346,8 @@ class NativeBuildResult:
 
 
 def find_c_compiler(preferred: str | None = None) -> str | None:
-    candidates = (preferred,) if preferred else ("clang", "gcc", "cc")
+    requested = preferred or os.environ.get("MERLO_C_COMPILER")
+    candidates = (requested,) if requested else ("clang", "gcc", "cc")
     for candidate in candidates:
         if candidate and shutil.which(candidate):
             return str(shutil.which(candidate))

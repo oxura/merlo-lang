@@ -538,6 +538,14 @@ class _DescriptorBuilder:
             )
             self.descriptors[type_name] = descriptor
             return descriptor
+        if type_name == "FileWriter":
+            descriptor = RecordDesc(
+                "FileWriter", "file_writer", 16, 8, "aggregate", "forbidden",
+                "bitwise_then_invalidate", "file_close", (), (),
+                _stable_id("type", "builtin", "FileWriter"),
+            )
+            self.descriptors[type_name] = descriptor
+            return descriptor
         if type_name == "FileLines":
             self.get("FileReader")
             descriptor = BorrowDesc(
