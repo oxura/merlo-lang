@@ -130,6 +130,9 @@ def test_project_compile_reuses_the_validated_module_graph(
     assert compilation.artifacts["property-evidence"].content == (
         compilation.property_evidence.to_json()
     )
+    assert compilation.artifacts["verification-metrics"].content == (
+        compilation.verification_metrics.to_json()
+    )
     assert compilation.smt.backend == "disabled"
     assert {
         item.obligation_id
@@ -162,6 +165,9 @@ def test_each_example_uses_production_compile_world_index_and_inspect(name: str,
     assert world.data["smt"] == compilation.smt.to_dict()
     assert world.data["property_evidence"] == (
         compilation.property_evidence.to_dict()
+    )
+    assert world.data["verification_metrics"] == (
+        compilation.verification_metrics.to_dict()
     )
     inspected = world.inspect("main.main")
     assert inspected["symbol"]["qualified_name"] == "main.main"

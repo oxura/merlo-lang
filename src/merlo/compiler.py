@@ -32,6 +32,10 @@ from merlo.representation_mir import (
     lower_rir_to_performance_mir,
     optimize_general_mir,
 )
+from merlo.verification_metrics import (
+    VerificationMetricsReport,
+    measure_verification_metrics,
+)
 from merlo.smt_backend import SMTReport, verify_smt
 from merlo.structured_hir_v2 import (
     StructuredHIRProgram,
@@ -74,6 +78,7 @@ class ProjectCompilation:
     bounded_symbolic: BoundedSymbolicReport
     smt: SMTReport
     property_evidence: PropertyEvidenceReport
+    verification_metrics: VerificationMetricsReport
     representation: RepresentationProgram
     mir: GeneralPerformanceMIR
     optimized_mir: GeneralPerformanceMIR
@@ -159,6 +164,23 @@ class ProjectCompilation:
                 ),
                 "counterexample_count": len(
                     self.property_evidence.counterexamples
+                ),
+            },
+            "verification_metrics": {
+                "digest": self.verification_metrics.digest,
+                "total_obligations": (
+                    self.verification_metrics.total_obligations
+                ),
+                "automatically_closed": (
+                    self.verification_metrics.automatically_closed
+                ),
+                "refuted": self.verification_metrics.refuted,
+                "runtime_guarded": (
+                    self.verification_metrics.runtime_guarded
+                ),
+                "unresolved": self.verification_metrics.unresolved,
+                "closed_rate_basis_points": (
+                    self.verification_metrics.closed_rate_basis_points
                 ),
             },
             "native": self.native.to_dict() if self.native is not None else None,
@@ -266,6 +288,11 @@ def compile_project(
             bounded_symbolic,
             smt,
         )
+        verification_metrics = measure_verification_metrics(
+            obligations,
+            bounded_symbolic,
+            smt,
+        )
         mir = lower_rir_to_performance_mir(hir, representation)
         optimized = optimize_general_mir(mir)
         generated = emit_general_c(hir, representation, optimized)
@@ -343,6 +370,13 @@ def compile_project(
         property_evidence.to_json(),
         obligation_artifact,
     )
+    metrics_artifact = _artifact(
+        "verification-metrics",
+        verification_metrics.contract,
+        verification_metrics.schema_version,
+        verification_metrics.to_json(),
+        obligation_artifact,
+    )
     rir_artifact = _artifact(
         "rir",
         representation.contract,
@@ -383,6 +417,7 @@ def compile_project(
             symbolic_artifact,
             smt_artifact,
             property_artifact,
+            metrics_artifact,
             rir_artifact,
             mir_artifact,
             optimized_artifact,
@@ -436,6 +471,7 @@ def compile_project(
         bounded_symbolic=bounded_symbolic,
         smt=smt,
         property_evidence=property_evidence,
+        verification_metrics=verification_metrics,
         representation=representation,
         mir=mir,
         optimized_mir=optimized,

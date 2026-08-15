@@ -71,6 +71,12 @@ marked separately from bounded boundary samples. Preconditions remain attached
 to each property, and concrete bounded/SMT refutations are normalized with
 typed inputs and engine provenance.
 
+The `verification-metrics` artifact measures automatic closure without
+double-counting obligations proven by multiple engines. Static, exhaustive
+bounded, and SMT proofs count as closed; refutations take precedence over any
+conflicting proof. Counts, per-category/per-engine provenance, and an exact
+integer basis-points rate are serialized canonically.
+
 ## Failure modes
 
 A missing retained Surface tree, unsupported expressions, invalid map

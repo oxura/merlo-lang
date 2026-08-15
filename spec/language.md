@@ -81,6 +81,11 @@ typed parameter domains, explicit preconditions, a bounded deterministic case
 set, and an exhaustive/sampled marker. Real bounded or SMT refutations become
 typed replay evidence. Generated samples alone never discharge an obligation.
 
+Automatic closure metrics count only static, exhaustive bounded, or SMT proofs.
+Refuted, runtime-guarded, unresolved, deferred, sampled, unsupported,
+unavailable, and solver-unknown results do not count as closed. Conflicting
+proof/refutation evidence is classified as refuted.
+
 Canonical source is a deterministic diagnostic projection of the typed tree.
 Its semantic hash includes types, authority, errors, and desugared operations;
 formatting whitespace and source spans do not change that hash.

@@ -65,6 +65,9 @@
   default-build dependency.
 - Generates canonical postcondition property domains/cases and normalizes real
   bounded/SMT counterexamples with typed inputs and replay provenance.
+- Measures automatically closed obligations with deduplicated engine
+  provenance, conservative refutation precedence, per-category counts, and an
+  exact integer closure rate.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.
