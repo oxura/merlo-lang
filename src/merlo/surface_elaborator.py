@@ -2352,7 +2352,9 @@ def _emit_implicit_expression(expression: SurfaceExpression) -> str:
         f"CannotEmitImplicitExpression: {type(expression).__name__}"
     )
 def elaborate_surface(program: SurfaceProgram) -> SurfaceElaboration:
-    return _Elaborator(program).result()
+    from merlo.monomorphization import monomorphize_surface
+
+    return _Elaborator(monomorphize_surface(program)).result()
 
 
 __all__ = [
