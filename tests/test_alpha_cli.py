@@ -35,6 +35,20 @@ def test_parser_has_project_namespace() -> None:
     }
     for command, arguments in cases.items():
         assert parser.parse_args(arguments).command == command
+    options = parser.parse_args(
+        [
+            "check",
+            "--smt",
+            "z3",
+            "--smt-timeout-ms",
+            "25",
+            "--smt-max-paths",
+            "12",
+        ]
+    )
+    assert options.smt == "z3"
+    assert options.smt_timeout_ms == 25
+    assert options.smt_max_paths == 12
 
 
 def test_new_json_is_deterministic_and_discovers_source_project(tmp_path: Path, capsys) -> None:
@@ -47,6 +61,36 @@ def test_new_json_is_deterministic_and_discovers_source_project(tmp_path: Path, 
     checked = json.loads(capsys.readouterr().out)
     assert checked["ok"] is True
     assert checked["entry_path"] == str(source)
+
+
+def test_check_exposes_optional_smt_outcome(tmp_path: Path, capsys) -> None:
+    project = Project.create(tmp_path / "smt", name="smt")
+    source = project.source_dir / "main.mlo"
+    original = source.read_text(encoding="utf-8")
+    module, body = original.split("\n", 1)
+    source.write_text(
+        module
+        + "\n\nfn identity(value: Byte) -> Byte:\n"
+        "    ensure result == value\n"
+        "    value\n\n"
+        + body,
+        encoding="utf-8",
+    )
+
+    assert main(
+        ["check", str(source), "--smt", "z3", "--json"]
+    ) == EXIT_OK
+    checked = json.loads(capsys.readouterr().out)
+    smt = checked["compiler"]["smt"]
+    assert smt["backend"] == "z3"
+    assert smt["result_count"] == 1
+    assert smt["timeout_ms"] == 1000
+    assert smt["max_paths"] == 256
+    assert "backend_version" in smt
+    assert smt["results"][0]["status"] in {
+        "proven",
+        "unavailable",
+    }
 
 
 def test_editing_application_source_keeps_lock_fresh_for_check_and_build(tmp_path: Path, capsys) -> None:

@@ -60,6 +60,9 @@
 - Adds deterministic bounded symbolic execution for pure postconditions over
   finite primitive domains, with explicit proof, counterexample, inconclusive,
   and unsupported results.
+- Adds an opt-in Z3 backend with canonical SMT-LIB queries, deterministic
+  solver settings, model counterexamples, timeout/unknown handling, and no
+  default-build dependency.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

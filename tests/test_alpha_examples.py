@@ -124,6 +124,10 @@ def test_project_compile_reuses_the_validated_module_graph(
     assert compilation.artifacts["bounded-symbolic"].content == (
         compilation.bounded_symbolic.to_json()
     )
+    assert compilation.artifacts["smt"].content == (
+        compilation.smt.to_json()
+    )
+    assert compilation.smt.backend == "disabled"
     assert {
         item.obligation_id
         for item in compilation.range_analysis.obligations
@@ -152,6 +156,7 @@ def test_each_example_uses_production_compile_world_index_and_inspect(name: str,
     assert world.data["bounded_symbolic"] == (
         compilation.bounded_symbolic.to_dict()
     )
+    assert world.data["smt"] == compilation.smt.to_dict()
     inspected = world.inspect("main.main")
     assert inspected["symbol"]["qualified_name"] == "main.main"
     assert world.search("main")

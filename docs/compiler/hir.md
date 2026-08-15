@@ -58,6 +58,13 @@ the HIR executor. Complete domains may be proven; concrete failures retain
 deterministic input/result counterexamples. Truncated domains are inconclusive,
 and unsupported operations or checked traps are reported without a proof.
 
+Optional `merlo check --smt z3` translates supported pure postcondition paths
+to canonical SMT-LIB, asks Z3 for a counterexample to each postcondition, and
+records solver version, timeout, query digest/text, and model inputs. The
+default report is disabled and does not import a solver. Missing packages,
+unsupported HIR, timeout, and solver `unknown` remain explicit non-proofs.
+Path expansion is bounded by `--smt-max-paths`; exceeding it is unsupported.
+
 ## Failure modes
 
 A missing retained Surface tree, unsupported expressions, invalid map

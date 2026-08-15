@@ -14,6 +14,7 @@ class CompilerVersions:
     obligation_ir: int
     range_analysis: int
     bounded_symbolic: int
+    smt: int
     rir: int
     mir: int
     runtime_abi: int
@@ -34,10 +35,11 @@ VERSIONS = CompilerVersions(
     obligation_ir=1,
     range_analysis=1,
     bounded_symbolic=1,
+    smt=1,
     rir=2,
     mir=2,
     runtime_abi=2,
-    semantic_world=7,
+    semantic_world=8,
     manifest=1,
     lockfile=1,
 )

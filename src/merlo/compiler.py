@@ -28,6 +28,7 @@ from merlo.representation_mir import (
     lower_rir_to_performance_mir,
     optimize_general_mir,
 )
+from merlo.smt_backend import SMTReport, verify_smt
 from merlo.structured_hir_v2 import (
     StructuredHIRProgram,
     compile_canonical_hir,
@@ -67,6 +68,7 @@ class ProjectCompilation:
     obligations: ObligationProgram
     range_analysis: RangeAnalysisResult
     bounded_symbolic: BoundedSymbolicReport
+    smt: SMTReport
     representation: RepresentationProgram
     mir: GeneralPerformanceMIR
     optimized_mir: GeneralPerformanceMIR
@@ -125,6 +127,21 @@ class ProjectCompilation:
                     item.status.value == "proven"
                     for item in self.bounded_symbolic.results
                 ),
+            },
+            "smt": {
+                "digest": self.smt.digest,
+                "backend": self.smt.backend,
+                "backend_version": self.smt.backend_version,
+                "timeout_ms": self.smt.timeout_ms,
+                "max_paths": self.smt.max_paths,
+                "result_count": len(self.smt.results),
+                "proven_count": sum(
+                    item.status.value == "proven"
+                    for item in self.smt.results
+                ),
+                "results": [
+                    item.to_dict() for item in self.smt.results
+                ],
             },
             "native": self.native.to_dict() if self.native is not None else None,
         }
@@ -189,6 +206,9 @@ def compile_project(
     emit_native: bool = False,
     release: bool = False,
     output: str | Path | None = None,
+    smt_backend: str | None = None,
+    smt_timeout_ms: int = 1000,
+    smt_max_paths: int = 256,
     require_interface_lock: bool = True,
 ) -> ProjectCompilation:
     _validate_project_lock(path)
@@ -214,6 +234,13 @@ def compile_project(
             range_analysis.obligations,
         )
         bounded_symbolic = verify_bounded(hir, obligations)
+        smt = verify_smt(
+            hir,
+            obligations,
+            backend=smt_backend,
+            timeout_ms=smt_timeout_ms,
+            max_paths=smt_max_paths,
+        )
         representation = lower_structured_hir_to_rir(hir)
         mir = lower_rir_to_performance_mir(hir, representation)
         optimized = optimize_general_mir(mir)
@@ -278,6 +305,13 @@ def compile_project(
         bounded_symbolic.to_json(),
         obligation_artifact,
     )
+    smt_artifact = _artifact(
+        "smt",
+        smt.contract,
+        smt.schema_version,
+        smt.to_json(),
+        obligation_artifact,
+    )
     rir_artifact = _artifact(
         "rir",
         representation.contract,
@@ -316,6 +350,7 @@ def compile_project(
             obligation_artifact,
             range_artifact,
             symbolic_artifact,
+            smt_artifact,
             rir_artifact,
             mir_artifact,
             optimized_artifact,
@@ -367,6 +402,7 @@ def compile_project(
         obligations=obligations,
         range_analysis=range_analysis,
         bounded_symbolic=bounded_symbolic,
+        smt=smt,
         representation=representation,
         mir=mir,
         optimized_mir=optimized,

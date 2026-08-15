@@ -70,6 +70,12 @@ inconclusive, and unsupported results. Refutations include concrete typed
 inputs and the returned value; a sampled or truncated domain is never promoted
 to a proof.
 
+SMT solving is opt-in through `merlo check --smt z3`; it is never part of a
+default build. Supported pure integer/Boolean paths are translated to canonical
+SMT-LIB and checked by negating each postcondition. `unsat` proves that
+obligation; `sat` records model inputs; unavailable, unsupported, timeout, and
+`unknown` results never become proofs.
+
 Canonical source is a deterministic diagnostic projection of the typed tree.
 Its semantic hash includes types, authority, errors, and desugared operations;
 formatting whitespace and source spans do not change that hash.
