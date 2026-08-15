@@ -5,7 +5,7 @@ export Line:
     quantity: UInt64
     taxable: Bool
 
-line_total(line: Line) -> UInt64:
+line_total(line):
     line.unit_cents * line.quantity
 
 export render() -> Text:

@@ -4,7 +4,7 @@ export enum Tree:
     Leaf: UInt64
     Branch: Box[Tree]
 
-score(value: Tree) -> UInt64:
+score(value: Tree):
     match value:
         case Tree.Leaf(number):
             return number

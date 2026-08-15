@@ -6,7 +6,7 @@ export Item:
     reorder_at: UInt64
     unit_cents: UInt64
 
-needs_reorder(item: Item) -> Bool:
+needs_reorder(item):
     item.stock < item.reorder_at
 
 export report() -> Text:

@@ -31,6 +31,9 @@
 - Expands the native example corpus from nine to fifteen complete projects,
   adding invoicing, access-log analysis, byte statistics, inventory, task-board,
   and recursive-tree workloads with checked fixtures.
+- Measures private function boundaries structurally across all fifteen
+  applications: 6 of 19 parameter and return slots remain explicit (31.58%),
+  below the locked one-third gate.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

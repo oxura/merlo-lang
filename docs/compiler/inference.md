@@ -49,11 +49,22 @@ and cannot be inferred from a mutable flag alone.
 
 ## Experimental boundary
 
-The alpha's inference implementation still accepts a CPython-compatible
-expression representation in transitional paths and is not a standalone public
-`infer()` module API. Generics, subtyping, implicit conversions, traits,
-overloads, and the RFC 0001 bound-node typed-error model are outside the
-published alpha contract.
+The alpha inference pass consumes the native Surface AST. It is not a
+standalone public `infer()` API. Subtyping, implicit conversions, overloads,
+and the RFC 0001 bound-node typed-error model remain outside the published
+alpha contract.
+
+## Corpus measurement
+
+`python3 -m tools.benchmarks.merlo.private_annotations` parses every production
+source in the fifteen checked-in examples and counts explicit parameter and
+return types only on private functions. Public contracts are excluded because
+their annotations are mandatory.
+
+The checked corpus has 6 explicit annotations across 19 private boundary
+slots, a rate of 31.58%. The report includes the ordered source digest and fails
+its gate above one third. `tests/test_private_annotations.py` locks the corpus,
+measurement definition, and threshold.
 
 ## Verification commands
 
