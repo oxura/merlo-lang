@@ -7,7 +7,6 @@ Vec, Box, Bytes/Text primitives, and the permitted host I/O shim.
 
 from __future__ import annotations
 
-import ast
 import copy
 import hashlib
 import re
@@ -15,6 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from merlo import native_syntax as ast
 from merlo.ffi import pointer_type, validate_ffi
 from merlo.representation_ir import RepresentationProgram, TypeDescriptor
 from merlo.intrinsics import (

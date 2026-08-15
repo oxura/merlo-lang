@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import ast
-
 from merlo.canonical_ast import CanonicalProgram
 from merlo.elaboration.diagnostics import SurfaceElaborationError
+from merlo import native_syntax as ast
 from merlo.surface_ast import (
     SurfaceAnnotation,
     SurfaceAssignment,
@@ -41,7 +40,7 @@ from merlo.surface_ast import (
 from merlo.type_parser import parse_type
 
 class _SurfaceNativeBuilder:
-    """Project typed Surface nodes into the production Python AST contract."""
+    """Project typed Surface nodes into Merlo-owned native syntax nodes."""
 
     _BINOPS = {
         "+": ast.Add,
@@ -637,10 +636,7 @@ class _SurfaceNativeBuilder:
                         )
         module = self._loc(ast.Module(body=body, type_ignores=[]), self.program.span)
         ast.fix_missing_locations(module)
-        try:
-            compile(module, self.program.span.path, "exec")
-        except (TypeError, ValueError, SyntaxError) as error:
-            raise SurfaceElaborationError(f"InvalidNativeAST: {error}") from error
+        ast.validate_module(module)
         return module, tuple(declaration_kinds), tuple(sorted(binding_kinds.items()))
 
 def surface_lowering_module(

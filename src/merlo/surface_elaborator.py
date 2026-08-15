@@ -15,7 +15,7 @@ from merlo.canonical_ast import (
     CanonicalOptionFallback,
 )
 from merlo.elaboration.calls import bind_call_arguments as _bind_call_arguments
-from merlo.elaboration.cpython_adapter import surface_lowering_module
+from merlo.elaboration.native_lowering import surface_lowering_module
 from merlo.elaboration.constraints import TypeConstraints as _Types
 from merlo.elaboration.diagnostics import (
     SurfaceElaborationError,
