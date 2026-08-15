@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from merlo.frontend.file_syntax import FileToken, SyntaxNode, parse_file_cst
 from merlo.semantic_world import SemanticWorld, StaleWorldError, UnsupportedMigration, WorldError
 
 
@@ -18,9 +19,22 @@ class RefactorEdit:
     replacement: str
     symbol_id: str
     kind: str
+    syntax_id: str
+    token_id: str
+    token_ordinal: int
 
     def to_dict(self) -> dict[str, Any]:
-        return {"path": self.path, "start": self.start, "end": self.end, "replacement": self.replacement, "symbol_id": self.symbol_id, "kind": self.kind}
+        return {
+            "path": self.path,
+            "start": self.start,
+            "end": self.end,
+            "replacement": self.replacement,
+            "symbol_id": self.symbol_id,
+            "kind": self.kind,
+            "syntax_id": self.syntax_id,
+            "token_id": self.token_id,
+            "token_ordinal": self.token_ordinal,
+        }
 
 
 def _line_offsets(source: str) -> list[int]:
@@ -30,8 +44,33 @@ def _line_offsets(source: str) -> list[int]:
     return offsets
 
 
+def _syntax_identity(
+    declarations: tuple[SyntaxNode, ...],
+    token: FileToken,
+) -> tuple[str, int]:
+    for declaration in declarations:
+        if declaration.start <= token.start and token.end <= declaration.end:
+            significant = tuple(
+                item
+                for item in declaration.tokens
+                if item.kind not in {"whitespace", "comment", "newline", "indent", "dedent", "eof"}
+            )
+            for ordinal, item in enumerate(significant):
+                if item.token_id == token.token_id:
+                    return declaration.syntax_id, ordinal
+    raise UnsupportedMigration(
+        f"UnsupportedMigration: token {token.token_id} has no stable syntax owner"
+    )
+
+
 def _identifier_edit(path: Path, span: dict[str, Any], old: str, new: str, symbol_id: str, kind: str) -> RefactorEdit:
     source = path.read_text(encoding="utf-8")
+    cst = parse_file_cst(source, path=str(path))
+    if cst.diagnostics:
+        codes = ",".join(item.code for item in cst.diagnostics)
+        raise UnsupportedMigration(
+            f"UnsupportedMigration: cannot refactor recovered syntax in {path}: {codes}"
+        )
     offsets = _line_offsets(source)
     line = int(span.get("line", 1))
     start_line = max(0, line - 1)
@@ -47,8 +86,14 @@ def _identifier_edit(path: Path, span: dict[str, Any], old: str, new: str, symbo
     if kind == "definition":
         start = offsets[start_line]
         end = offsets[min(start_line + 1, len(offsets) - 1)]
-    segment = source[start:end]
-    matches = list(re.finditer(rf"(?<![A-Za-z0-9_]){re.escape(old)}(?![A-Za-z0-9_])", segment))
+    matches = [
+        token
+        for token in cst.tokens
+        if token.kind == "identifier"
+        and token.text == old
+        and start <= token.start
+        and token.end <= end
+    ]
     if not matches:
         raise UnsupportedMigration(
             f"UnsupportedMigration: semantic span does not contain exact {kind} for {symbol_id}"
@@ -62,7 +107,18 @@ def _identifier_edit(path: Path, span: dict[str, Any], old: str, new: str, symbo
     # inner call has its own narrower span. Never fall back to another location
     # in the file, because that can silently edit a different symbol.
     match = matches[0]
-    return RefactorEdit(path=str(path), start=start + match.start(), end=start + match.end(), replacement=new, symbol_id=symbol_id, kind=kind)
+    syntax_id, token_ordinal = _syntax_identity(cst.declarations, match)
+    return RefactorEdit(
+        path=str(path),
+        start=match.start,
+        end=match.end,
+        replacement=new,
+        symbol_id=symbol_id,
+        kind=kind,
+        syntax_id=syntax_id,
+        token_id=match.token_id,
+        token_ordinal=token_ordinal,
+    )
 
 
 def preview_rename(world: SemanticWorld, target: str, new_name: str) -> "RefactorTransaction":
@@ -113,7 +169,29 @@ class RefactorTransaction:
                 original = path.read_bytes()
                 originals[path_name] = original
                 text = original.decode("utf-8")
+                cst = parse_file_cst(text, path=path_name)
+                syntax = {item.syntax_id: item for item in cst.declarations}
                 for edit in sorted(edits, key=lambda item: item.start, reverse=True):
+                    declaration = syntax.get(edit.syntax_id)
+                    significant = tuple(
+                        item
+                        for item in declaration.tokens
+                        if item.kind not in {"whitespace", "comment", "newline", "indent", "dedent", "eof"}
+                    ) if declaration is not None else ()
+                    token = (
+                        significant[edit.token_ordinal]
+                        if edit.token_ordinal < len(significant)
+                        else None
+                    )
+                    if (
+                        token is None
+                        or token.token_id != edit.token_id
+                        or token.start != edit.start
+                        or token.end != edit.end
+                    ):
+                        raise UnsupportedMigration(
+                            f"UnsupportedMigration: syntax identity changed at {path}:{edit.start}"
+                        )
                     if text[edit.start:edit.end] != self.metadata.get("old_name", text[edit.start:edit.end]):
                         raise UnsupportedMigration(f"UnsupportedMigration: source changed at {path}:{edit.start}")
                     text = text[:edit.start] + edit.replacement + text[edit.end:]

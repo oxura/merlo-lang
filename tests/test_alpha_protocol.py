@@ -34,6 +34,9 @@ def test_protocol_rename_preview_is_exact_and_apply_is_transactional(tmp_path: P
     preview = protocol.call("refactor.rename", {"target": "app.main.helper", "new_name": "assist", "mode": "preview"})
     assert preview["operation"] == "rename"
     assert preview["edits"]
+    assert all(edit["syntax_id"] for edit in preview["edits"])
+    assert all(edit["token_id"] for edit in preview["edits"])
+    assert all(isinstance(edit["token_ordinal"], int) for edit in preview["edits"])
     result = protocol.call("refactor.rename", {"target": "app.main.helper", "new_name": "assist", "mode": "apply"})
     assert result["committed"] is True
     assert "assist" in source.read_text(encoding="utf-8")
@@ -89,6 +92,7 @@ def test_protocol_rename_uses_only_semantic_spans_for_nested_calls(tmp_path: Pat
     edits = preview["edits"]
     assert len(edits) == 3
     assert len({(item["start"], item["end"]) for item in edits}) == 3
+    assert len({item["token_id"] for item in edits}) == 3
 
     result = protocol.call(
         "refactor.rename",
