@@ -227,6 +227,66 @@ def test_unit_tail_expression_runs_before_native_return(
     assert completed.stdout == "tail\n"
 
 
+def test_bytes_literal_survives_project_artifacts_and_native_roundtrip(
+    tmp_path: Path,
+) -> None:
+    import json
+    import subprocess
+
+    from merlo.compiler import compile_project
+
+    source = tmp_path / "main.mlo"
+    output = tmp_path / "roundtrip.bin"
+    source.write_text(
+        "module main\n\n"
+        "export enum AppError:\n"
+        "    FileFailure\n"
+        "    InvalidUtf8\n\n"
+        "export main(path: Path) -> Result[Text, AppError]:\n"
+        "    writer = fs.open_write(path)?\n"
+        '    payload = b"bytes-roundtrip\\n"\n'
+        "    fs.write_chunk(writer, payload.view())?\n"
+        "    fs.close_write(writer)?\n"
+        "    reader = fs.open_read(path)?\n"
+        "    stored = fs.read_chunk(reader, 4096)?\n"
+        "    fs.close_read(reader)?\n"
+        "    message = stored.to_text()\n"
+        "    console.write(message)\n"
+        "    Ok(message)\n",
+        encoding="utf-8",
+    )
+
+    compilation = compile_project(
+        source,
+        emit_native=True,
+        output=tmp_path / "app",
+        require_interface_lock=False,
+    )
+    literal = next(
+        node
+        for node in compilation.hir.function("main").walk()
+        if node.kind == "Literal" and node.type_name == "Bytes"
+    )
+    assert literal.attribute_map == {
+        "literal_encoding": "bytes",
+        "value": list(b"bytes-roundtrip\n"),
+    }
+    json.loads(compilation.hir.to_json())
+    assert "merlo_bytes_literal(" in compilation.generated_c
+
+    completed = subprocess.run(
+        [str(compilation.native.binary_path), str(output)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout == "bytes-roundtrip\n"
+    assert completed.stderr == ""
+    assert output.read_bytes() == b"bytes-roundtrip\n"
+
+
 
 def test_surface_controls_reach_c_through_production_project_handoff(
     tmp_path: Path,

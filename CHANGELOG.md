@@ -10,6 +10,8 @@
   generated C under GCC and Clang strict-aliasing optimization.
 - Defines byte and text escape semantics, rejecting Unicode escapes in bytes,
   invalid Unicode scalar values, malformed escapes, and unknown escapes.
+- Carries bytes literals through deterministic HIR/RIR artifacts and emits
+  owned native byte storage, including file writer/reader round trips.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.
