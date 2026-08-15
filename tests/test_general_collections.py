@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
+import pytest
 
 from merlo.collection_protocol import collection_shape
 from merlo.native_c_backend import compile_c_source
@@ -12,7 +13,10 @@ from merlo.representation_mir import (
     optimize_general_mir,
 )
 from merlo.structured_hir_v2 import compile_canonical_hir
-from merlo.surface_elaborator import elaborate_surface
+from merlo.surface_elaborator import (
+    SurfaceElaborationError,
+    elaborate_surface,
+)
 from merlo.surface_parser import parse_surface
 
 
@@ -262,6 +266,35 @@ def test_owned_element_pipeline_remains_unfused() -> None:
         "collection_operation",
     ]
     assert "__merlo_fused_collection_" not in generated.source
+
+
+def test_inferred_pure_collection_callback_is_accepted() -> None:
+    source = (
+        "above(value: UInt64) -> Bool:\n"
+        "    value > 1\n"
+        "main(values: Array[UInt64,2]) -> UInt64:\n"
+        "    values.count(above)\n"
+    )
+
+    canonical = elaborate(source).canonical
+    assert canonical.function("main").return_type == "UInt64"
+    assert canonical.function("above").effects == ()
+
+
+def test_inferred_effectful_collection_callback_is_rejected() -> None:
+    source = (
+        "noisy(value: UInt64) -> Bool:\n"
+        "    print \"checked\"\n"
+        "    true\n"
+        "main(values: Array[UInt64,2]) -> UInt64:\n"
+        "    values.count(noisy)\n"
+    )
+
+    with pytest.raises(
+        SurfaceElaborationError,
+        match="EffectInCollectionCallable",
+    ):
+        elaborate(source)
 
 
 def test_text_and_bytes_are_indexable_general_collections(

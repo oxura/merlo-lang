@@ -203,6 +203,11 @@ class _Elaborator:
                     raise SurfaceElaborationError(
                         f"TryRequiresResult: {callee} has no error row"
                     )
+            for callee in function.collection_callbacks:
+                if self.functions[callee].effects:
+                    raise SurfaceElaborationError(
+                        f"EffectInCollectionCallable: {callee}"
+                    )
 
     @staticmethod
     def _body(function: SurfaceFunction) -> tuple[SurfaceStatement, ...]:
@@ -787,7 +792,7 @@ class _Elaborator:
                     "OwnedCollectionCallableRequiresImplicitExpression: "
                     f"{argument.name}"
                 )
-            if target.source.declared_kind != "fn":
+            if target.source.declared_kind == "task":
                 raise SurfaceElaborationError(
                     f"EffectInCollectionCallable: {argument.name}"
                 )
@@ -804,6 +809,7 @@ class _Elaborator:
             callable_term = target.return_term
             callable_expression = f"{argument.name}(__item)"
             function.calls.add(argument.name)
+            function.collection_callbacks.add(argument.name)
         else:
             callable_term = self._implicit_expression(
                 argument,

@@ -1,0 +1,11 @@
+module main
+
+use board
+
+export enum AppError:
+    InvalidPath: Text
+
+export main(path: Path) -> Result[Text, AppError]:
+    result: Text = board.report()
+    console.write(result)
+    Ok(result)

@@ -1,0 +1,22 @@
+module tree
+
+export enum Tree:
+    Leaf: UInt64
+    Branch: Box[Tree]
+
+score(value: Tree) -> UInt64:
+    match value:
+        case Tree.Leaf(number):
+            return number
+        case Tree.Branch(child):
+            return 1 + score(child.get())
+
+export report() -> Text:
+    leaf: Tree = Tree.Leaf(7)
+    inner: Tree = Tree.Branch(Box.new(leaf))
+    root: Tree = Tree.Branch(Box.new(inner))
+    output: TextBuilder = TextBuilder.new()
+    output.append_text("tree-walk\nnodes=3\ndepth_score=")
+    output.append_uint64(score(root))
+    output.append_byte(10)
+    output.finish()

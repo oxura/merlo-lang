@@ -1,0 +1,19 @@
+module metrics
+
+export summarize(data: Bytes) -> Text:
+    newline: Byte = 10
+    checksum: UInt64 = 0
+    lines: UInt64 = 0
+    for value in data:
+        checksum = checksum + UInt64(value)
+        if value == newline:
+            lines = lines + 1
+    output: TextBuilder = TextBuilder.new()
+    output.append_text("byte-stats\nbytes=")
+    output.append_uint64(data.len())
+    output.append_text("\nchecksum=")
+    output.append_uint64(checksum)
+    output.append_text("\nlines=")
+    output.append_uint64(lines)
+    output.append_byte(10)
+    output.finish()

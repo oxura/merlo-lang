@@ -28,6 +28,9 @@
 - Defines complete core numeric behavior across Surface, typed HIR, and C:
   checked integer division, floor division, remainder, shifts, unary negation,
   literal ranges and casts, with explicit zero, shift, and overflow traps.
+- Expands the native example corpus from nine to fifteen complete projects,
+  adding invoicing, access-log analysis, byte statistics, inventory, task-board,
+  and recursive-tree workloads with checked fixtures.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

@@ -26,6 +26,12 @@ EXAMPLE_NAMES = (
     "ffi",
     "capacity-ledger",
     "packages",
+    "invoice-report",
+    "access-log",
+    "byte-stats",
+    "inventory",
+    "task-board",
+    "tree-walk",
 )
 
 _INPUTS = {
@@ -38,6 +44,12 @@ _INPUTS = {
     "ffi": "input.txt",
     "packages": "input.txt",
     "capacity-ledger": "input.txt",
+    "invoice-report": "input.txt",
+    "access-log": "input.log",
+    "byte-stats": "input.bin",
+    "inventory": "input.txt",
+    "task-board": "input.txt",
+    "tree-walk": "input.txt",
 }
 
 
@@ -49,7 +61,7 @@ def _sources(project: Path) -> tuple[Path, ...]:
     return tuple(sorted(project.rglob("*.mlo")))
 
 
-def test_exactly_nine_independent_projects_have_complete_contract() -> None:
+def test_exactly_fifteen_independent_projects_have_complete_contract() -> None:
     names = tuple(sorted(path.name for path in EXAMPLES.iterdir() if path.is_dir()))
     assert names == tuple(sorted(EXAMPLE_NAMES))
     for name in EXAMPLE_NAMES:
@@ -86,6 +98,12 @@ def test_manifests_locks_imports_and_business_source_audit() -> None:
     packages_manifest = (_project("packages") / "merlo.toml").read_text(encoding="utf-8")
     assert 'greeting = { path = "vendor/greeting"' in packages_manifest
     assert 'use greeting' in (_project("packages") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use billing' in (_project("invoice-report") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use analytics' in (_project("access-log") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use metrics' in (_project("byte-stats") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use catalog' in (_project("inventory") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use board' in (_project("task-board") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use tree' in (_project("tree-walk") / "src/main.mlo").read_text(encoding="utf-8")
 
 
 def test_project_compile_reuses_the_validated_module_graph(

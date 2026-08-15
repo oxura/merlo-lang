@@ -1,0 +1,13 @@
+module main
+
+use analytics
+
+export enum AppError:
+    InvalidPath: Text
+    ReadFailure: Text
+
+export main(path: Path) -> Result[Text, AppError]:
+    file: FileReader = fs.open_read(path)?
+    result: Text = analytics.summarize(file.lines())
+    console.write(result)
+    Ok(result)

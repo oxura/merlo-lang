@@ -37,6 +37,7 @@ class FunctionState:
     first_bindings: dict[str, SurfaceBinding]
     evidence: dict[str, set[str]]
     calls: set[str] = field(default_factory=set)
+    collection_callbacks: set[str] = field(default_factory=set)
     error_calls: set[str] = field(default_factory=set)
     effects: set[str] = field(default_factory=set)
     capabilities: set[str] = field(default_factory=set)

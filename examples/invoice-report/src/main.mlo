@@ -1,0 +1,11 @@
+module main
+
+use billing
+
+export enum AppError:
+    InvalidPath: Text
+
+export main(path: Path) -> Result[Text, AppError]:
+    result: Text = billing.render()
+    console.write(result)
+    Ok(result)

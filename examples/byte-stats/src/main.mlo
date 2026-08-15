@@ -1,0 +1,13 @@
+module main
+
+use metrics
+
+export enum AppError:
+    InvalidPath: Text
+    ReadFailure: Text
+
+export main(path: Path) -> Result[Text, AppError]:
+    data: Bytes = fs.read(path)?
+    result: Text = metrics.summarize(data)
+    console.write(result)
+    Ok(result)
