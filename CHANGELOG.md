@@ -12,6 +12,9 @@
   invalid Unicode scalar values, malformed escapes, and unknown escapes.
 - Carries bytes literals through deterministic HIR/RIR artifacts and emits
   owned native byte storage, including file writer/reader round trips.
+- Adds the lossless full-file token/CST boundary and replaces the production
+  CPython AST compatibility adapter with Merlo-owned native syntax nodes shared
+  by HIR and the C backend.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.
@@ -26,10 +29,8 @@
   `FileWriter` resources with mode-correct close effects.
 - Reuses the validated module graph instead of reading and traversing modules
   a second time during application elaboration.
-- Splits elaboration constraints, call binding, diagnostics, state, and the
-  CPython compatibility adapter into owned modules. Surface expression parsing
-  now consumes a standalone token stream with an optional lossless trivia view;
-  a full-file lossless lexer/CST remains an alpha.3 gate.
+- Splits elaboration constraints, call binding, diagnostics, state, and native
+  lowering into owned modules.
 - Makes AlphaProtocol rename edits span-exact, including nested calls, and
   documents unsupported move and signature migrations.
 - Restores the wheel boundary promised by RFC 0001: only the compiler/runtime

@@ -6,13 +6,13 @@ flags, and pointer arithmetic belong to lower layers.
 
 from __future__ import annotations
 
-import ast
 import hashlib
 import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
+from merlo import native_syntax as ast
 from merlo.ffi import FFICompileError, FFIProgram, validate_ffi
 from merlo.canonical_ast import CanonicalProgram
 from merlo.surface_ast import SurfaceProgram
@@ -541,7 +541,7 @@ def _preprocess(source: str) -> _Preprocessed:
     return _Preprocessed("\n".join(output) + "\n", declaration_kinds, binding_kinds)
 
 def _preprocess_ffi_surface(source: str) -> str:
-    """Erase declarations that are parsed by :mod:`merlo.ffi` before Python AST parsing."""
+    """Erase declarations parsed by :mod:`merlo.ffi` before legacy syntax parsing."""
     output: list[str] = []
     extern_block = False
     for line in source.splitlines():

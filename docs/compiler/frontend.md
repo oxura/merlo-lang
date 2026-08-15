@@ -52,11 +52,12 @@ records and their spans, not rediscover declarations with regular expressions.
 
 ## Experimental boundary
 
-The Surface parser owns expression tokenization, module declarations, types,
-statements, and comments. Module binding transforms those nodes structurally;
-it does not rename source text. The internal HIR implementation still adapts
-Surface nodes to CPython AST objects after the semantic boundary, but no
-canonical or module source is reparsed on the production frontend path.
+The full-file lexer/CST owns lossless tokens, indentation, trivia, and recovery.
+The Surface parser owns semantic declarations, types, statements, and
+expressions. Module binding transforms those nodes structurally; it does not
+rename source text. HIR lowering projects the retained Surface tree into
+Merlo-owned native syntax nodes, so no canonical or module source is reparsed
+and no CPython AST is created on the production frontend path.
 
 ## Verification commands
 
