@@ -34,6 +34,9 @@
 - Measures private function boundaries structurally across all fifteen
   applications: 6 of 19 parameter and return slots remain explicit (31.58%),
   below the locked one-third gate.
+- Recomputes the frozen 48-program paired-source corpus at a median
+  concise-Merlo/Python lexical-token ratio of 0.5455, with a module CLI and
+  explicit source-surface-only claim boundary.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

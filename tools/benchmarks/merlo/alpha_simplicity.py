@@ -114,7 +114,7 @@ def _check_expected(record: AlphaRecord) -> None:
         raise CorpusError(f"{record.id}: expected stdout must be newline terminated text")
     if expected["returncode"] != 0:
         raise CorpusError(f"{record.id}: only successful standalone examples are admissible")
-    if f'print(main())' not in record.python or "__main__" not in record.python:
+    if "print(main())" not in record.python or "__main__" not in record.python:
         raise CorpusError(f"{record.id}: Python arm is not independently executable")
     if "int main" not in record.native:
         raise CorpusError(f"{record.id}: native arm is not independently executable")
@@ -308,3 +308,12 @@ def validate_observation_digest(report: Mapping[str, Any], records: tuple[AlphaR
     if report.get("corpus_sha256") != corpus_digest(records):
         raise CorpusError("post-observation corpus mutation detected")
     return True
+
+
+def main() -> int:
+    print(json.dumps(build_report(), indent=2, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

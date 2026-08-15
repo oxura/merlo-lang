@@ -66,6 +66,13 @@ slots, a rate of 31.58%. The report includes the ordered source digest and fails
 its gate above one third. `tests/test_private_annotations.py` locks the corpus,
 measurement definition, and threshold.
 
+`python3 -m tools.benchmarks.merlo.alpha_simplicity` recomputes the independent
+paired-source measurement over 48 frozen programs in eight categories. Its
+median concise-Merlo/Python lexical-token ratio is 0.5455 (54.55%). This is a
+source-surface measurement, not a general productivity or readability claim.
+The corpus digest, per-arm hashes, output parity, distribution, and 0.80 gate
+are validated by `tools/benchmarks/merlo/tests/test_alpha_simplicity.py`.
+
 ## Verification commands
 
 ```console
