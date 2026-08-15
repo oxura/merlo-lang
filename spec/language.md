@@ -26,6 +26,13 @@ closed error rows. Tail expressions become explicit canonical returns.
 Unresolved or conflicting constraints are errors. Implicit `.field` callables
 exist only in typed `where`, `map`, and `count` argument positions.
 
+`require Bool` and `ensure Bool` clauses form a contiguous prefix of a statement
+function. They are pure. `require` may use parameters; `ensure` may additionally
+use the reserved `result` value. The runtime checks requirements on entry and
+ensures on every return. A false clause terminates native execution with
+`MerloContractViolation:<kind>:<function>:<line>`. Contracts remain typed
+canonical and HIR data rather than comments.
+
 Canonical source is a deterministic diagnostic projection of the typed tree.
 Its semantic hash includes types, authority, errors, and desugared operations;
 formatting whitespace and source spans do not change that hash.

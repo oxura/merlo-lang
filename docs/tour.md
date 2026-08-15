@@ -21,6 +21,20 @@ last expression is the result. Local bindings omit `let`, `var`, and their type:
 the compiler counts assignments across the whole function and materializes the
 canonical form.
 
+Function contracts are pure Boolean clauses at the start of a statement body:
+
+```merlo
+withdraw(balance: UInt64, amount: UInt64) -> UInt64:
+    require amount <= balance
+    ensure result <= balance
+    balance - amount
+```
+
+`require` is checked on entry. `ensure` is checked on every return and may refer
+to the returned value as `result`. Clauses cannot be nested, follow executable
+statements, or perform effects. A failed native check terminates with a
+`MerloContractViolation` diagnostic.
+
 `or` is boolean OR only for `Bool`; for `Option[T] or T` it is a strict typed
 fallback. Other truthiness is rejected. `.field` is an implicit callable only
 inside `where`, `map`, and `count`; it cannot capture locals or appear at an

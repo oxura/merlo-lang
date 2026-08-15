@@ -13,6 +13,7 @@ from merlo.canonical_ast import (
     CanonicalBinding,
     CanonicalCallable,
     CanonicalCapture,
+    CanonicalContract,
     CanonicalClosure,
     CanonicalEnum,
     CanonicalFunction,
@@ -47,6 +48,7 @@ from merlo.surface_ast import (
     SurfaceFor,
     SurfaceFunction,
     SurfaceIf,
+    SurfaceEnsure,
     SurfaceEnum,
     SurfaceIndex,
     SurfaceList,
@@ -60,6 +62,7 @@ from merlo.surface_ast import (
     SurfacePrint,
     SurfaceProgram,
     SurfaceRecord,
+    SurfaceRequire,
     SurfaceReturn,
     SurfaceStatement,
     SurfaceTry,
@@ -100,6 +103,7 @@ def _generic_parts(type_name: str, constructor: str) -> tuple[str, ...] | None:
 class _Elaborator:
     def __init__(self, program: SurfaceProgram) -> None:
         self._active_binding: str | None = None
+        self._active_contract_result: _Function | None = None
         self.program = program
         self.types = _Types()
         self.records = {
@@ -165,6 +169,7 @@ class _Elaborator:
                     function.errors.add(result_parts[1])
         for function in self.functions.values():
             body = self._body(function.source)
+            self._validate_contract_layout(function)
             self._validate_function_flow(function)
             self._count(body, function)
         for _ in range(max(1, len(self.functions) * 4)):
@@ -175,6 +180,22 @@ class _Elaborator:
                 break
         for function in self.functions.values():
             self._validate_function_return(function)
+            if any(
+                isinstance(statement, SurfaceEnsure)
+                and any(
+                    isinstance(node, SurfaceName)
+                    and node.name == "result"
+                    for node in statement.condition.walk()
+                )
+                for statement in self._body(function.source)
+            ) and self.types.resolve(
+                function.return_term,
+                name=f"{function.source.name}.return",
+            ) == "Unit":
+                raise SurfaceElaborationError(
+                    "UnitEnsureResultForbidden: "
+                    f"{function.source.name}"
+                )
         for _ in range(max(1, len(self.functions) * 2)):
             changed = False
             for function in self.functions.values():
@@ -208,6 +229,11 @@ class _Elaborator:
                     raise SurfaceElaborationError(
                         f"EffectInCollectionCallable: {callee}"
                     )
+            for callee in function.contract_calls:
+                if self.functions[callee].effects:
+                    raise SurfaceElaborationError(
+                        f"EffectInContract: {callee}"
+                    )
 
     @staticmethod
     def _body(function: SurfaceFunction) -> tuple[SurfaceStatement, ...]:
@@ -216,6 +242,38 @@ class _Elaborator:
                 SurfaceExpressionStatement(function.body.span, function.body),  # type: ignore[union-attr]
             )
         return function.body  # type: ignore[return-value]
+    @staticmethod
+    def _validate_contract_layout(function: _Function) -> None:
+        body = _Elaborator._body(function.source)
+        executable_seen = False
+        for statement in body:
+            if isinstance(statement, (SurfaceComment, SurfaceUses)):
+                continue
+            if isinstance(statement, (SurfaceRequire, SurfaceEnsure)):
+                if executable_seen:
+                    raise SurfaceElaborationError(
+                        "ContractClauseAfterBody: "
+                        f"{function.source.name}"
+                    )
+                if isinstance(statement, SurfaceRequire) and any(
+                    isinstance(node, SurfaceName) and node.name == "result"
+                    for node in statement.condition.walk()
+                ):
+                    raise SurfaceElaborationError(
+                        "RequireResultForbidden: "
+                        f"{function.source.name}"
+                    )
+                continue
+            executable_seen = True
+            if any(
+                isinstance(node, (SurfaceRequire, SurfaceEnsure))
+                for node in statement.walk()
+                if node is not statement
+            ):
+                raise SurfaceElaborationError(
+                    "NestedContractClauseForbidden: "
+                    f"{function.source.name}"
+                )
     @staticmethod
     def _literal_true(expression: SurfaceExpression) -> bool:
         return (
@@ -353,7 +411,22 @@ class _Elaborator:
         for statement in statements:
             if not reachable:
                 break
-            if isinstance(statement, (SurfaceUses, SurfaceComment, SurfacePass)):
+            if isinstance(
+                statement,
+                (SurfaceUses, SurfaceComment, SurfacePass),
+            ):
+                continue
+            if isinstance(statement, (SurfaceRequire, SurfaceEnsure)):
+                contract_assigned = set(assigned)
+                contract_declared = set(declared)
+                if isinstance(statement, SurfaceEnsure):
+                    contract_assigned.add("result")
+                    contract_declared.add("result")
+                self._validate_expression_reads(
+                    statement.condition,
+                    contract_assigned,
+                    contract_declared,
+                )
                 continue
             if isinstance(statement, SurfaceBinding):
                 self._validate_expression_reads(
@@ -980,7 +1053,12 @@ class _Elaborator:
             else:
                 term = self.types.typed(expression.kind)
         elif isinstance(expression, SurfaceName):
-            if expression.name == "Unit":
+            if (
+                expression.name == "result"
+                and self._active_contract_result is function
+            ):
+                term = function.return_term
+            elif expression.name == "Unit":
                 term = self.types.typed("Unit")
             elif self._local_visible(
                 function,
@@ -1968,6 +2046,27 @@ class _Elaborator:
                         context=f"{function.source.name} return",
                     )
                 self._note(function, "$return", "explicit_return")
+            elif isinstance(statement, (SurfaceRequire, SurfaceEnsure)):
+                calls_before = set(function.calls)
+                effects_before = set(function.effects)
+                capabilities_before = set(function.capabilities)
+                previous_contract = self._active_contract_result
+                self._active_contract_result = (
+                    function if isinstance(statement, SurfaceEnsure) else None
+                )
+                try:
+                    self._expression(statement.condition, function, "Bool")
+                finally:
+                    self._active_contract_result = previous_contract
+                function.contract_calls.update(function.calls - calls_before)
+                if (
+                    function.effects != effects_before
+                    or function.capabilities != capabilities_before
+                ):
+                    raise SurfaceElaborationError(
+                        "EffectInContract: "
+                        f"{function.source.name}"
+                    )
             elif isinstance(statement, SurfaceBreak):
                 if loop_depth == 0:
                     raise SurfaceElaborationError("BreakOutsideLoop")
@@ -2274,6 +2373,16 @@ class _Elaborator:
                 lines.append(f"{prefix}return{suffix}")
             elif isinstance(statement, SurfaceBreak):
                 lines.append(f"{prefix}break")
+            elif isinstance(statement, SurfaceRequire):
+                lines.append(
+                    f"{prefix}require "
+                    f"{_emit_expression(statement.condition)}"
+                )
+            elif isinstance(statement, SurfaceEnsure):
+                lines.append(
+                    f"{prefix}ensure "
+                    f"{_emit_expression(statement.condition)}"
+                )
             elif isinstance(statement, SurfaceContinue):
                 lines.append(f"{prefix}continue")
             elif isinstance(statement, SurfacePass):
@@ -2456,6 +2565,24 @@ class _Elaborator:
                     )
                 )
             statements = self._body(function.source)
+            requirements = tuple(
+                CanonicalContract(
+                    "require",
+                    _emit_expression(statement.condition),
+                    statement.span,
+                )
+                for statement in statements
+                if isinstance(statement, SurfaceRequire)
+            )
+            ensures = tuple(
+                CanonicalContract(
+                    "ensure",
+                    _emit_expression(statement.condition),
+                    statement.span,
+                )
+                for statement in statements
+                if isinstance(statement, SurfaceEnsure)
+            )
             tail = statements[-1]
             if isinstance(tail, SurfaceExpressionStatement):
                 body.append(
@@ -2498,6 +2625,8 @@ class _Elaborator:
                     tuple(sorted(function.effects)),
                     tuple(sorted(function.capabilities)),
                     tuple(sorted(function.errors)),
+                    requirements,
+                    ensures,
                     tuple(body),
                     function.source.span,
                     function.source.exported,

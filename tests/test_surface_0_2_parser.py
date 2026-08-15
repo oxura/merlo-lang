@@ -98,11 +98,11 @@ def test_surface_nodes_are_frozen_and_canonical_hash_is_semantic() -> None:
 
     left = CanonicalProgram(
         (),
-        (CanonicalFunction("double", (("x", "UInt64"),), "UInt64", "fn", (), (), (), (CanonicalReturn("x * 2", span),), span),),
+        (CanonicalFunction("double", (("x", "UInt64"),), "UInt64", "fn", (), (), (), (), (), (CanonicalReturn("x * 2", span),), span),),
     )
     right = CanonicalProgram(
         (),
-        (CanonicalFunction("double", (("x", "UInt64"),), "UInt64", "fn", (), (), (), (CanonicalReturn("x * 3", span),), span),),
+        (CanonicalFunction("double", (("x", "UInt64"),), "UInt64", "fn", (), (), (), (), (), (CanonicalReturn("x * 3", span),), span),),
     )
     assert left.semantic_hash != right.semantic_hash
     assert CanonicalProgram.from_payload(left.to_payload()).semantic_hash == left.semantic_hash

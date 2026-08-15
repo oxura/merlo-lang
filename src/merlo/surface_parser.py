@@ -19,6 +19,7 @@ from merlo.surface_ast import (
     SurfaceCase,
     SurfaceDeclaration,
     SurfaceEnum,
+    SurfaceEnsure,
     SurfaceEnumVariant,
     SurfaceContinue,
     SurfaceExpression,
@@ -43,6 +44,7 @@ from merlo.surface_ast import (
     SurfacePrint,
     SurfaceRecord,
     SurfaceProgram,
+    SurfaceRequire,
     SurfaceReturn,
     SurfaceStatement,
     SurfaceTry,
@@ -1203,6 +1205,28 @@ class _Parser:
         if line.text == "pass":
             self.index += 1
             return SurfacePass(_span(self.path, line))
+        if match := re.fullmatch(r"require\s+(.+)", line.text):
+            self.index += 1
+            return SurfaceRequire(
+                _span(self.path, line),
+                _parse_expression(
+                    match.group(1),
+                    self.path,
+                    line,
+                    base_column=match.start(1),
+                ),
+            )
+        if match := re.fullmatch(r"ensure\s+(.+)", line.text):
+            self.index += 1
+            return SurfaceEnsure(
+                _span(self.path, line),
+                _parse_expression(
+                    match.group(1),
+                    self.path,
+                    line,
+                    base_column=match.start(1),
+                ),
+            )
         if match := re.fullmatch(r"return(?:\s+(.+))?", line.text):
             self.index += 1
             return SurfaceReturn(

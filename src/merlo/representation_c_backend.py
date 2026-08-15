@@ -237,6 +237,8 @@ class GeneralCEmitter:
         self.expression_context = "statement"
         self.returning_borrowed = False
         self.assigning_borrowed = False
+        self.current_ensures: tuple[ast.AST, ...] = ()
+        self.contract_result_name: str | None = None
         self.frozen_general_json = (
             hashlib.sha256(hir.source.encode()).hexdigest()
             == _FROZEN_GENERAL_JSON_SHA256
@@ -402,6 +404,20 @@ static uint64_t merlo_map_lookup_key_copies = 0;
 """ + metric_aliases + """
 static void merlo_overflow_trap(const char *message) {
     fprintf(stderr, "MerloOverflow:%s\\n", message);
+    abort();
+}
+static void merlo_contract_trap(
+    const char *kind,
+    const char *function_name,
+    uint64_t line
+) {
+    fprintf(
+        stderr,
+        "MerloContractViolation:%s:%s:%" PRIu64 "\\n",
+        kind,
+        function_name,
+        line
+    );
     abort();
 }
 static void merlo_division_by_zero_trap(const char *type_name) {
@@ -2545,6 +2561,10 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         function: HIRFunction,
     ) -> str:
         self.current_function = function
+        self.current_ensures = tuple(
+            getattr(node, "_merlo_ensures", ())
+        )
+        self.contract_result_name = None
         self.env_types = {
             item.name: item.type_name for item in function.parameters
         }
@@ -2614,6 +2634,20 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         body = []
         for statement in node.body:
             body.extend(self._statement(statement))
+        if (
+            function.return_type == "Unit"
+            and not any(
+                isinstance(item, ast.Return)
+                for item in ast.walk(node)
+            )
+        ):
+            body.extend(
+                self._contract_checks(
+                    self.current_ensures,
+                    "ensure",
+                    "    ",
+                )
+            )
         if function.return_type == "Unit" and not any(isinstance(item, ast.Return) for item in ast.walk(node)):
             body.extend(self._drop_owned_lines("    "))
             body.append("    return;")
@@ -2940,6 +2974,49 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             self.owned_locals[target] = ok_type
         return lines
 
+    def _contract_checks(
+        self,
+        conditions: tuple[ast.AST, ...],
+        kind: str,
+        pad: str,
+    ) -> list[str]:
+        if self.current_function is None:
+            raise RepresentationCBackendError(
+                "contract emitted outside a function"
+            )
+        if kind not in {"require", "ensure"}:
+            raise RepresentationCBackendError(
+                f"unsupported contract kind: {kind}"
+            )
+        previous_result_type = self.env_types.get("result")
+        if (
+            kind == "ensure"
+            and self.current_function.return_type != "Unit"
+        ):
+            self.env_types["result"] = self.current_function.return_type
+        lines = []
+        try:
+            for condition in conditions:
+                expression = self._expression_in_context(
+                    condition,
+                    context="control_flow",
+                    expected="Bool",
+                )
+                line = getattr(condition, "lineno", 0)
+                lines.append(
+                    f'{pad}if (!({expression})) '
+                    f'merlo_contract_trap("{kind}", '
+                    f'"{self.current_function.name}", '
+                    f"UINT64_C({line}));"
+                )
+        finally:
+            if previous_result_type is None:
+                self.env_types.pop("result", None)
+            else:
+                self.env_types["result"] = previous_result_type
+        return lines
+
+
     def _statement(self, node: ast.stmt) -> list[str]:
         start = len(self.pending_expression_lines)
         drop_start = len(self.pending_expression_drops)
@@ -2971,6 +3048,12 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         ):
             return self._try_binding(None, node.value, "Unit")
         pad = self._pad()
+        if isinstance(node, ast.Contract):
+            return self._contract_checks(
+                (node.condition,),
+                node.kind,
+                pad,
+            )
         if (
             isinstance(node, ast.Expr)
             and isinstance(node.value, ast.Call)
@@ -3411,7 +3494,21 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 expression = self._move_expression(node.value, return_type)
             else:
                 expression = self._expression(node.value, expected=return_type)
-            lines.append(f"{pad}{_c_name(self.current_function.return_type)} {result_name} = {expression};")
+            lines.append(
+                f"{pad}{_c_name(return_type)} "
+                f"{result_name} = {expression};"
+            )
+            self.contract_result_name = result_name
+        try:
+            lines.extend(
+                self._contract_checks(
+                    self.current_ensures,
+                    "ensure",
+                    pad,
+                )
+            )
+        finally:
+            self.contract_result_name = None
         for name, type_name in reversed(tuple(self.owned_locals.items())):
             lines.append(f"{pad}merlo_drop_{_identifier(type_name)}(&{name});")
         self.returning_borrowed = False
@@ -3803,6 +3900,15 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         if node is None:
             return "0"
         if isinstance(node, ast.Name):
+            if (
+                node.id == "result"
+                and self.contract_result_name is not None
+            ):
+                return (
+                    f"&{self.contract_result_name}"
+                    if want_pointer
+                    else self.contract_result_name
+                )
             if node.id in self.functions and node.id not in self.env_types:
                 descriptor = self.descriptors.get(expected or "")
                 if (

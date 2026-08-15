@@ -17,11 +17,11 @@ tree is rejected; serialized projections are not compiler input.
 ## Outputs
 
 The function returns `StructuredHIRProgram`, contract
-`merlo.structured-typed-hir.v2`, schema version `2`. It contains source
+`merlo.structured-typed-hir.v3`, schema version `3`. It contains source
 text/digest, `HIRTypeDecl`/`HIRField`/`HIRVariant` values, `HIRFunction`
-records, typed parameters, an entry function, and tree-shaped `HIRNode`
-bodies. `HIRNode.walk()` is the traversal used by current source-map
-projection.
+records, typed parameters, typed `HIRContract` requirements and ensures, an
+entry function, and tree-shaped `HIRNode` bodies. `HIRNode.walk()` traverses
+contract conditions as well as executable nodes for source-map projection.
 
 ## Invariants
 
@@ -30,6 +30,8 @@ optional symbol/revision IDs, attributes, and children. Names, node IDs, and the
 entry function are unique. HIR is a tree: CFG blocks, gotos, allocation, raw
 pointers, and drop flags are rejected here. Stable JSON includes source and
 semantic identity for every function and node.
+Requirements and ensures are Boolean, source-spanned HIR expressions. Their
+revision IDs contribute to the enclosing function revision.
 
 ## Failure modes
 

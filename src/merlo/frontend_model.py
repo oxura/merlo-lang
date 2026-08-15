@@ -10,7 +10,7 @@ from merlo.runtime_contract import ALPHA_EFFECTS
 from merlo.version import VERSIONS
 
 CONCISE_APPLICATION_SCHEMA_VERSION = VERSIONS.frontend
-CONCISE_APPLICATION_CONTRACT = "merlo.concise-application.v2"
+CONCISE_APPLICATION_CONTRACT = "merlo.concise-application.v3"
 CONCISE_SURFACE_VERSION = VERSIONS.language
 _ALLOWED_EFFECTS = ALPHA_EFFECTS
 _OWNERS = frozenset({"Text", "Bytes", "TextBuilder"})
@@ -73,6 +73,8 @@ class TaskBoundary:
     return_type: str
     effects: tuple[str, ...]
     capabilities: tuple[str, ...]
+    requirements: tuple[str, ...]
+    ensures: tuple[str, ...]
     path: str
     line: int
     public: bool
@@ -86,6 +88,8 @@ class TaskBoundary:
                 "return_type": self.return_type,
                 "effects": self.effects,
                 "capabilities": self.capabilities,
+                "requirements": self.requirements,
+                "ensures": self.ensures,
             }
         )
 
@@ -96,6 +100,8 @@ class TaskBoundary:
             "return_type": self.return_type,
             "effects": list(self.effects),
             "capabilities": list(self.capabilities),
+            "requirements": list(self.requirements),
+            "ensures": list(self.ensures),
             "path": self.path,
             "line": self.line,
             "public": self.public,
@@ -112,6 +118,8 @@ class PublicInterface:
     return_type: str | None
     effects: tuple[str, ...]
     capabilities: tuple[str, ...]
+    requirements: tuple[str, ...]
+    ensures: tuple[str, ...]
 
     @property
     def revision_id(self) -> str:
@@ -124,6 +132,8 @@ class PublicInterface:
                 "return_type": self.return_type,
                 "effects": self.effects,
                 "capabilities": self.capabilities,
+                "requirements": self.requirements,
+                "ensures": self.ensures,
             }
         )
 
@@ -136,6 +146,8 @@ class PublicInterface:
             "return_type": self.return_type,
             "effects": list(self.effects),
             "capabilities": list(self.capabilities),
+            "requirements": list(self.requirements),
+            "ensures": list(self.ensures),
             "revision_id": self.revision_id,
         }
 

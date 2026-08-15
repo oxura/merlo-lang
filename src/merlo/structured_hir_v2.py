@@ -1,4 +1,4 @@
-"""Structured Typed HIR v2 for Merlo's general representation milestone.
+"""Structured Typed HIR v3 for Merlo's general representation milestone.
 
 The HIR is deliberately a tree. Control-flow graphs, allocation primitives, drop
 flags, and pointer arithmetic belong to lower layers.
@@ -26,8 +26,8 @@ from merlo.intrinsics import contextual_result_type, format_intrinsic_arity, int
 from merlo.type_properties import TypePropertyResolver
 
 
-STRUCTURED_HIR_SCHEMA_VERSION = 2
-STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v2"
+STRUCTURED_HIR_SCHEMA_VERSION = 3
+STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v3"
 _SCALAR_TYPES = frozenset(
     {
         "Bool",
@@ -209,11 +209,29 @@ class HIRNode:
 
 
 @dataclass(frozen=True)
+class HIRContract:
+    kind: str
+    expression: str
+    condition: HIRNode
+    source: SourceSpan
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "expression": self.expression,
+            "condition": self.condition.to_dict(),
+            "source": self.source.to_dict(),
+        }
+
+
+@dataclass(frozen=True)
 class HIRFunction:
     name: str
     parameters: tuple[HIRParameter, ...]
     return_type: str
     effects: tuple[str, ...]
+    requirements: tuple[HIRContract, ...]
+    ensures: tuple[HIRContract, ...]
     body: tuple[HIRNode, ...]
     source: SourceSpan
     scope_id: str
@@ -221,6 +239,8 @@ class HIRFunction:
     revision_id: str
 
     def walk(self) -> Iterable[HIRNode]:
+        for contract in (*self.requirements, *self.ensures):
+            yield from contract.condition.walk()
         for node in self.body:
             yield from node.walk()
 
@@ -230,6 +250,10 @@ class HIRFunction:
             "parameters": [item.to_dict() for item in self.parameters],
             "return_type": self.return_type,
             "effects": list(self.effects),
+            "requirements": [
+                item.to_dict() for item in self.requirements
+            ],
+            "ensures": [item.to_dict() for item in self.ensures],
             "body": [item.to_dict() for item in self.body],
             "source": self.source.to_dict(),
             "scope_id": self.scope_id,
@@ -923,6 +947,9 @@ class _OwnershipChecker:
                 continue
             if isinstance(node, ast.Expr):
                 self._check_expr(node.value, state)
+                continue
+            if isinstance(node, ast.Contract):
+                self._check_expr(node.condition, state)
                 continue
             if isinstance(node, ast.Return):
                 result_type = _type_name(self.current.returns if self.current else None)
@@ -2301,6 +2328,25 @@ class _HIRBuilder:
                 f"{self.path}:{node.lineno}: NonExhaustiveMatch {enum_name}: {missing}"
             )
 
+    def _contract(self, node: ast.Contract) -> HIRContract:
+        source_node = (
+            node
+            if hasattr(node, "lineno")
+            else node.condition
+        )
+        condition = self.expression(node.condition, expected="Bool")
+        if condition.type_name != "Bool":
+            raise StructuredHIRCompileError(
+                f"{self.path}:{source_node.lineno}: ContractRequiresBool"
+            )
+        return HIRContract(
+            node.kind,
+            ast.unparse(node.condition),
+            condition,
+            _span(self.path, source_node),
+        )
+
+
     def function(self, node: ast.FunctionDef) -> HIRFunction:
         self.current_function = node.name
         self.ordinal = 0
@@ -2339,11 +2385,34 @@ class _HIRBuilder:
                     _stable_id("rev", node.name, argument.arg, type_name, ownership),
                 )
             )
-        body = tuple(self.statement(item) for item in node.body)
+        requirements = tuple(
+            self._contract(item)
+            for item in node.body
+            if isinstance(item, ast.Contract)
+            and item.kind == "require"
+        )
+        body = tuple(
+            self.statement(item)
+            for item in node.body
+            if not isinstance(item, ast.Contract)
+        )
+        return_type = _type_name(node.returns)
+        self.local_types["result"] = return_type
+        try:
+            ensures = tuple(
+                self._contract(
+                    ast.Contract(
+                        condition=condition,
+                        kind="ensure",
+                    )
+                )
+                for condition in getattr(node, "_merlo_ensures", ())
+            )
+        finally:
+            del self.local_types["result"]
         effects = tuple(sorted({effect for item in body for nested in item.walk() for effect in nested.effects}))
         source = _span(self.path, node)
         symbol_id = self.function_symbols[node.name]
-        return_type = _type_name(node.returns)
         revision_id = _stable_id(
             "rev",
             node.name,
@@ -2351,12 +2420,16 @@ class _HIRBuilder:
             return_type,
             effects,
             [item.revision_id for item in body],
+            [item.condition.revision_id for item in requirements],
+            [item.condition.revision_id for item in ensures],
         )
         return HIRFunction(
             node.name,
             tuple(parameters),
             return_type,
             effects,
+            requirements,
+            ensures,
             body,
             source,
             self._scope(),

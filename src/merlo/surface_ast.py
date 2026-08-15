@@ -183,6 +183,16 @@ class SurfaceReturn(SurfaceNode):
     expression: SurfaceExpression | None
 
 
+@dataclass(frozen=True)
+class SurfaceRequire(SurfaceNode):
+    condition: SurfaceExpression
+
+
+@dataclass(frozen=True)
+class SurfaceEnsure(SurfaceNode):
+    condition: SurfaceExpression
+
+
 
 @dataclass(frozen=True)
 class SurfaceContinue(SurfaceNode):
@@ -248,6 +258,8 @@ SurfaceStatement: TypeAlias = (
     | SurfaceComment
     | SurfaceExpressionStatement
     | SurfaceReturn
+    | SurfaceRequire
+    | SurfaceEnsure
     | SurfaceContinue
     | SurfaceBreak
     | SurfacePass

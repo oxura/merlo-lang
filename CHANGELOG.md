@@ -41,6 +41,9 @@
   frozen checksums and source hashes; the measured geometric-mean ratio to each
   workload's faster native baseline is 1.091, with shared allocation called out
   as the 1.821 outlier.
+- Adds pure, typed `require` and `ensure` function contracts, preserves them in
+  canonical and Structured HIR identities, and emits entry/all-return native
+  checks with source-located `MerloContractViolation` diagnostics.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

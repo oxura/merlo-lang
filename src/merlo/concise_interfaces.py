@@ -57,10 +57,30 @@ def _interfaces(
                     _public_type_name(function.return_type, public_names),
                     (),
                     (),
+                    tuple(
+                        item.expression
+                        for item in function.requirements
+                    ),
+                    tuple(
+                        item.expression
+                        for item in function.ensures
+                    ),
                 )
             )
         elif kind != "task":
-            result.append(PublicInterface(module, name, kind, (), None, (), ()))
+            result.append(
+                PublicInterface(
+                    module,
+                    name,
+                    kind,
+                    (),
+                    None,
+                    (),
+                    (),
+                    (),
+                    (),
+                )
+            )
     task_modules = {
         (public, path): module
         for public, path, module in assembly.task_modules
@@ -78,6 +98,8 @@ def _interfaces(
                 task.return_type,
                 task.effects,
                 task.capabilities,
+                task.requirements,
+                task.ensures,
             )
         )
     return tuple(sorted(result, key=lambda item: (item.module, item.kind, item.name)))

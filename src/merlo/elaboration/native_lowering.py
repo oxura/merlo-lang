@@ -14,6 +14,7 @@ from merlo.surface_ast import (
     SurfaceCase,
     SurfaceComment,
     SurfaceContinue,
+    SurfaceEnsure,
     SurfaceEnum,
     SurfaceExpression,
     SurfaceExpressionStatement,
@@ -32,6 +33,7 @@ from merlo.surface_ast import (
     SurfacePrint,
     SurfaceProgram,
     SurfaceRecord,
+    SurfaceRequire,
     SurfaceReturn,
     SurfaceStatement,
     SurfaceTry,
@@ -446,6 +448,14 @@ class _SurfaceNativeBuilder:
                 ast.Return(value=self._expr(statement.expression) if statement.expression else None),
                 statement.span,
             )
+        if isinstance(statement, SurfaceRequire):
+            return self._loc(
+                ast.Contract(
+                    condition=self._expr(statement.condition),
+                    kind="require",
+                ),
+                statement.span,
+            )
         if isinstance(statement, SurfaceBreak):
             return self._loc(ast.Break(), statement.span)
         if isinstance(statement, SurfaceContinue):
@@ -551,7 +561,10 @@ class _SurfaceNativeBuilder:
         executable = tuple(
             statement
             for statement in statements
-            if not isinstance(statement, (SurfaceUses, SurfaceComment))
+            if not isinstance(
+                statement,
+                (SurfaceUses, SurfaceComment, SurfaceEnsure),
+            )
         )
         return [
             self._statement(
@@ -675,6 +688,15 @@ class _SurfaceNativeBuilder:
                     type_comment=None,
                 ),
                 declaration.span,
+            )
+            function._merlo_ensures = tuple(
+                self._expr(statement.condition)
+                for statement in (
+                    declaration.body
+                    if declaration.body_kind == "block"
+                    else ()
+                )
+                if isinstance(statement, SurfaceEnsure)
             )
             body.append(function)
             for statement in declaration.body if declaration.body_kind == "block" else ():

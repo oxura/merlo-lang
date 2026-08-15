@@ -132,6 +132,7 @@ Call = _define("Call", expr, ("func", "args", "keywords"))
 Lambda = _define("Lambda", expr, ("args", "body"))
 Expr = _define("Expr", stmt, ("value",))
 Return = _define("Return", stmt, ("value",))
+Contract = _define("Contract", stmt, ("condition", "kind"))
 Assign = _define("Assign", stmt, ("targets", "value", "type_comment"))
 AnnAssign = _define("AnnAssign", stmt, ("target", "annotation", "value", "simple"))
 AugAssign = _define("AugAssign", stmt, ("target", "op", "value"))
@@ -258,6 +259,8 @@ def unparse(node: AST | None) -> str:
         return unparse(node.value)
     if isinstance(node, Return):
         return "return" + (f" {unparse(node.value)}" if node.value is not None else "")
+    if isinstance(node, Contract):
+        return f"{node.kind} {unparse(node.condition)}"
     if isinstance(node, Assign):
         return f"{unparse(node.targets[0])} = {unparse(node.value)}"
     if isinstance(node, AnnAssign):

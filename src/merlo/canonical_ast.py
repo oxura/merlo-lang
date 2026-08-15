@@ -126,6 +126,21 @@ class CanonicalOptionFallback:
             "span": _span_payload(self.span),
         }
 
+@dataclass(frozen=True)
+class CanonicalContract:
+    kind: str
+    expression: str
+    span: SourceSpan
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "node": "contract",
+            "kind": self.kind,
+            "expression": self.expression,
+            "span": _span_payload(self.span),
+        }
+
+
 CanonicalStatement = CanonicalReturn | CanonicalBinding
 
 
@@ -138,6 +153,8 @@ class CanonicalFunction:
     effects: tuple[str, ...]
     capabilities: tuple[str, ...]
     error_types: tuple[str, ...]
+    requirements: tuple[CanonicalContract, ...]
+    ensures: tuple[CanonicalContract, ...]
     body: tuple[CanonicalStatement, ...]
     span: SourceSpan
     exported: bool = False
@@ -157,6 +174,10 @@ class CanonicalFunction:
             "effects": list(self.effects),
             "capabilities": list(self.capabilities),
             "error_types": list(self.error_types),
+            "requirements": [
+                item.to_payload() for item in self.requirements
+            ],
+            "ensures": [item.to_payload() for item in self.ensures],
             "body": [item.to_payload() for item in self.body],
             "span": _span_payload(self.span),
             "exported": self.exported,
@@ -240,7 +261,7 @@ class CanonicalProgram:
 
     def to_payload(self) -> dict[str, Any]:
         return {
-            "schema": "merlo.canonical-typed-ast.v2",
+            "schema": "merlo.canonical-typed-ast.v3",
             "records": [item.to_payload() for item in self.records],
             "functions": [item.to_payload() for item in self.functions],
             "enums": [item.to_payload() for item in self.enums],
@@ -340,6 +361,22 @@ class CanonicalProgram:
                 )
                 for value in item.get("option_fallbacks", ())
             )
+            requirements = tuple(
+                CanonicalContract(
+                    value["kind"],
+                    value["expression"],
+                    span(value["span"]),
+                )
+                for value in item.get("requirements", ())
+            )
+            ensures = tuple(
+                CanonicalContract(
+                    value["kind"],
+                    value["expression"],
+                    span(value["span"]),
+                )
+                for value in item.get("ensures", ())
+            )
             closures = tuple(
                 CanonicalClosure(
                     value["closure_id"],
@@ -370,6 +407,8 @@ class CanonicalProgram:
                     tuple(item["effects"]),
                     tuple(item["capabilities"]),
                     tuple(item["error_types"]),
+                    requirements,
+                    ensures,
                     tuple(body),
                     span(item["span"]),
                     bool(item.get("exported", False)),

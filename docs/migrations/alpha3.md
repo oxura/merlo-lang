@@ -1,8 +1,9 @@
 # Migrating from alpha.2 to alpha.3
 
-Alpha.3 intentionally changes the filesystem resource contract. The compiler
-reports language `0.3`, frontend `4`, and runtime ABI `2`; alpha.2 lockfiles must
-be regenerated with the alpha.3 compiler.
+Alpha.3 intentionally changes the filesystem and function-contract models. The
+compiler reports language `0.3`, frontend `5`, canonical `3`, HIR `3`, runtime
+ABI `2`, and SemanticWorld `2`; earlier lockfiles must be regenerated with the
+alpha.3 compiler.
 
 ## File handles
 
@@ -30,3 +31,10 @@ Byte literals decode `\xNN` and octal escapes into one byte. Unicode escapes
 inside byte literals are errors. Text literals accept valid Unicode scalar
 escapes and reject surrogates, values above `U+10FFFF`, malformed escapes, and
 unknown escapes.
+
+## Function contracts
+
+Move preconditions and postconditions to the leading `require` and `ensure`
+clauses of a statement function. Contract expressions must be pure and Boolean;
+postconditions use `result` for the returned value. Canonical, HIR, interface,
+and SemanticWorld revisions now include these clauses.
