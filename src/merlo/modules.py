@@ -7,7 +7,13 @@ from pathlib import Path
 from typing import Iterable, Mapping
 
 from merlo.module_syntax import ModuleSyntaxError, parse_module_prelude
-from merlo.surface_ast import SurfaceEnum, SurfaceFunction, SurfaceRecord
+from merlo.surface_ast import (
+    SurfaceEnum,
+    SurfaceFunction,
+    SurfaceImplementation,
+    SurfaceInterface,
+    SurfaceRecord,
+)
 from merlo.surface_parser import SurfaceSyntaxError, parse_surface
 
 
@@ -145,6 +151,8 @@ def _module(source: str, *, path: str, expected_name: str | None = None) -> Modu
     symbols: list[ModuleSymbol] = []
     seen: set[str] = set()
     for declaration in program.declarations:
+        if isinstance(declaration, SurfaceImplementation):
+            continue
         symbol_name = declaration.name
         line_number = declaration.span.start_line
         if symbol_name in seen:
@@ -156,6 +164,8 @@ def _module(source: str, *, path: str, expected_name: str | None = None) -> Modu
             kind = "enum"
         elif isinstance(declaration, SurfaceFunction):
             kind = declaration.declared_kind or "fn"
+        elif isinstance(declaration, SurfaceInterface):
+            kind = "interface"
         else:
             raise AssertionError(type(declaration).__name__)
         header = lines[line_number - 1].strip()

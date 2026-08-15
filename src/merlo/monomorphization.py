@@ -21,6 +21,8 @@ from merlo.surface_ast import (
     SurfaceFor,
     SurfaceFunction,
     SurfaceIf,
+    SurfaceImplementation,
+    SurfaceInterface,
     SurfaceIndex,
     SurfaceList,
     SurfaceLambda,
@@ -127,10 +129,10 @@ def _collection_element(type_name: str | None) -> str | None:
 class _Monomorphizer:
     def __init__(self, program: SurfaceProgram) -> None:
         self.program = program
-        self.templates = {
+        self.interfaces = {
             item.name: item
             for item in program.declarations
-            if isinstance(item, SurfaceFunction) and item.type_parameters
+            if isinstance(item, SurfaceInterface)
         }
         self.records = {
             item.name: item
@@ -142,10 +144,23 @@ class _Monomorphizer:
             for item in program.declarations
             if isinstance(item, SurfaceEnum)
         }
-        self.functions = {
+        (
+            self.implementation_functions,
+            self.dispatch,
+        ) = self._prepare_implementations()
+        source_functions = {
             item.name: item
             for item in program.declarations
             if isinstance(item, SurfaceFunction)
+        }
+        self.functions = {
+            **source_functions,
+            **{item.name: item for item in self.implementation_functions},
+        }
+        self.templates = {
+            item.name: item
+            for item in source_functions.values()
+            if item.type_parameters
         }
         self.returns = {
             item.name: item.return_type
@@ -155,6 +170,100 @@ class _Monomorphizer:
         self.instances: dict[tuple[str, tuple[str, ...]], str] = {}
         self.instance_returns: dict[str, str | None] = {}
         self.pending: deque[tuple[SurfaceFunction, dict[str, str], str]] = deque()
+
+    def _prepare_implementations(
+        self,
+    ) -> tuple[
+        tuple[SurfaceFunction, ...],
+        dict[tuple[str, str, str], str],
+    ]:
+        functions: list[SurfaceFunction] = []
+        dispatch: dict[tuple[str, str, str], str] = {}
+        seen: set[tuple[str, str]] = set()
+        for implementation in (
+            item
+            for item in self.program.declarations
+            if isinstance(item, SurfaceImplementation)
+        ):
+            interface = self.interfaces.get(implementation.interface_name)
+            if interface is None:
+                raise SurfaceElaborationError(
+                    f"UnknownInterface: {implementation.interface_name}"
+                )
+            pair = (implementation.interface_name, implementation.type_name)
+            if pair in seen:
+                raise SurfaceElaborationError(
+                    f"DuplicateImplementation: {pair[0]} for {pair[1]}"
+                )
+            seen.add(pair)
+            expected_methods = {item.name: item for item in interface.methods}
+            actual_methods = {item.name: item for item in implementation.methods}
+            if expected_methods.keys() != actual_methods.keys():
+                missing = sorted(expected_methods.keys() - actual_methods.keys())
+                extra = sorted(actual_methods.keys() - expected_methods.keys())
+                raise SurfaceElaborationError(
+                    f"ImplementationMethodMismatch: {interface.name} for "
+                    f"{implementation.type_name}: missing={missing}, extra={extra}"
+                )
+            for method_name, expected in expected_methods.items():
+                actual = actual_methods[method_name]
+                if (
+                    not expected.parameters
+                    or expected.parameters[0].type_name != "Self"
+                ):
+                    raise SurfaceElaborationError(
+                        f"InterfaceReceiverRequired: {interface.name}.{method_name}"
+                    )
+                expected_parameters = tuple(
+                    _substitute(
+                        item.type_name,
+                        {"Self": implementation.type_name},
+                    )
+                    for item in expected.parameters
+                )
+                actual_parameters = tuple(
+                    item.type_name for item in actual.parameters
+                )
+                expected_return = _substitute(
+                    expected.return_type,
+                    {"Self": implementation.type_name},
+                )
+                if (
+                    actual.type_parameters
+                    or None in actual_parameters
+                    or actual.return_type is None
+                    or actual_parameters != expected_parameters
+                    or actual.return_type != expected_return
+                ):
+                    raise SurfaceElaborationError(
+                        f"ImplementationSignatureMismatch: "
+                        f"{interface.name}.{method_name} for "
+                        f"{implementation.type_name}"
+                    )
+                digest_input = (
+                    f"{interface.name}\0{implementation.type_name}\0"
+                    f"{method_name}"
+                )
+                digest = hashlib.sha256(
+                    digest_input.encode("utf-8")
+                ).hexdigest()[:12]
+                name = f"__merlo_impl_{method_name}_{digest}"
+                functions.append(
+                    replace(
+                        actual,
+                        name=name,
+                        exported=False,
+                        type_parameters=(),
+                    )
+                )
+                dispatch[
+                    (
+                        interface.name,
+                        implementation.type_name,
+                        method_name,
+                    )
+                ] = name
+        return tuple(functions), dispatch
 
     def _validate_boundaries(self) -> None:
         for template in self.templates.values():
@@ -170,7 +279,10 @@ class _Monomorphizer:
                 )
             for type_parameter in template.type_parameters:
                 for constraint in type_parameter.constraints:
-                    if constraint not in SUPPORTED_CONSTRAINTS:
+                    if (
+                        constraint not in SUPPORTED_CONSTRAINTS
+                        and constraint not in self.interfaces
+                    ):
                         raise SurfaceElaborationError(
                             f"UnknownTypeConstraint: {constraint}"
                         )
@@ -284,12 +396,21 @@ class _Monomorphizer:
         for type_parameter in template.type_parameters:
             concrete = mapping[type_parameter.name]
             for constraint in type_parameter.constraints:
-                if not satisfies_constraint(
-                    constraint,
-                    concrete,
-                    records=self.records,
-                    enums=self.enums,
-                ):
+                satisfied = (
+                    any(
+                        interface_name == constraint
+                        and type_name == concrete
+                        for interface_name, type_name, _method in self.dispatch
+                    )
+                    if constraint in self.interfaces
+                    else satisfies_constraint(
+                        constraint,
+                        concrete,
+                        records=self.records,
+                        enums=self.enums,
+                    )
+                )
+                if not satisfied:
                     raise SurfaceElaborationError(
                         f"UnsatisfiedTypeConstraint: {template.name}."
                         f"{type_parameter.name}: {concrete} does not satisfy "
@@ -302,6 +423,59 @@ class _Monomorphizer:
         return replace(
             expression,
             callee=SurfaceName(name, expression.callee.span),
+            arguments=arguments,
+        )
+
+    def _interface_call(
+        self,
+        expression: SurfaceCall,
+        environment: dict[str, str],
+    ) -> SurfaceCall:
+        assert isinstance(expression.callee, SurfaceMember)
+        assert isinstance(expression.callee.receiver, SurfaceName)
+        interface_name = expression.callee.receiver.name
+        method_name = expression.callee.field
+        interface = self.interfaces[interface_name]
+        method = next(
+            (
+                item
+                for item in interface.methods
+                if item.name == method_name
+            ),
+            None,
+        )
+        if method is None:
+            raise SurfaceElaborationError(
+                f"UnknownInterfaceMethod: {interface_name}.{method_name}"
+            )
+        if len(expression.arguments) != len(method.parameters):
+            raise SurfaceElaborationError(
+                f"ArityMismatch: {interface_name}.{method_name}"
+            )
+        arguments = tuple(
+            replace(
+                argument,
+                value=self._expression(argument.value, environment),
+            )
+            for argument in expression.arguments
+        )
+        receiver_type = self._infer(arguments[0].value, environment)
+        if receiver_type is None:
+            raise SurfaceElaborationError(
+                f"StaticDispatchTypeRequired: "
+                f"{interface_name}.{method_name}"
+            )
+        target = self.dispatch.get(
+            (interface_name, receiver_type, method_name)
+        )
+        if target is None:
+            raise SurfaceElaborationError(
+                f"MissingImplementation: {interface_name} for "
+                f"{receiver_type}"
+            )
+        return replace(
+            expression,
+            callee=SurfaceName(target, expression.callee.span),
             arguments=arguments,
         )
 
@@ -357,10 +531,20 @@ class _Monomorphizer:
                 operand=self._expression(expression.operand, environment, expected),
             )
         if isinstance(expression, SurfaceBinary):
+            operand_expected = (
+                None
+                if expression.operator
+                in {"==", "!=", "<", "<=", ">", ">=", "and", "or"}
+                else expected
+            )
             return replace(
                 expression,
-                left=self._expression(expression.left, environment, expected),
-                right=self._expression(expression.right, environment, expected),
+                left=self._expression(
+                    expression.left, environment, operand_expected
+                ),
+                right=self._expression(
+                    expression.right, environment, operand_expected
+                ),
             )
         if isinstance(expression, SurfaceTry):
             return replace(
@@ -368,6 +552,12 @@ class _Monomorphizer:
                 expression=self._expression(expression.expression, environment),
             )
         if isinstance(expression, SurfaceCall):
+            if (
+                isinstance(expression.callee, SurfaceMember)
+                and isinstance(expression.callee.receiver, SurfaceName)
+                and expression.callee.receiver.name in self.interfaces
+            ):
+                return self._interface_call(expression, environment)
             if isinstance(expression.callee, SurfaceName):
                 template = self.templates.get(expression.callee.name)
                 if template is not None:
@@ -546,14 +736,27 @@ class _Monomorphizer:
         )
 
     def run(self) -> SurfaceProgram:
-        if not self.templates:
+        if (
+            not self.templates
+            and not self.interfaces
+            and not self.implementation_functions
+        ):
             return self.program
         self._validate_boundaries()
         declarations = [
-            self._function(item) if isinstance(item, SurfaceFunction) else item
+            self._function(item)
             for item in self.program.declarations
-            if not isinstance(item, SurfaceFunction) or not item.type_parameters
+            if isinstance(item, SurfaceFunction) and not item.type_parameters
         ]
+        data_declarations = [
+            item
+            for item in self.program.declarations
+            if isinstance(item, (SurfaceRecord, SurfaceEnum))
+        ]
+        declarations.extend(
+            self._function(item)
+            for item in self.implementation_functions
+        )
         specializations: list[SurfaceFunction] = []
         while self.pending:
             template, mapping, name = self.pending.popleft()
@@ -561,7 +764,9 @@ class _Monomorphizer:
         specializations.sort(key=lambda item: item.name)
         return replace(
             self.program,
-            declarations=tuple((*declarations, *specializations)),
+            declarations=tuple(
+                (*data_declarations, *declarations, *specializations)
+            ),
         )
 
 

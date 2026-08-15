@@ -314,7 +314,34 @@ class SurfaceFunction(SurfaceNode):
         object.__setattr__(self, "type_parameters", type_parameters)
 
 
-SurfaceDeclaration: TypeAlias = SurfaceRecord | SurfaceEnum | SurfaceFunction
+@dataclass(frozen=True)
+class SurfaceInterfaceMethod(SurfaceNode):
+    name: str
+    parameters: tuple[SurfaceParameter, ...]
+    return_type: str
+
+
+@dataclass(frozen=True)
+class SurfaceInterface(SurfaceNode):
+    name: str
+    methods: tuple[SurfaceInterfaceMethod, ...]
+    exported: bool = False
+
+
+@dataclass(frozen=True)
+class SurfaceImplementation(SurfaceNode):
+    interface_name: str
+    type_name: str
+    methods: tuple[SurfaceFunction, ...]
+
+
+SurfaceDeclaration: TypeAlias = (
+    SurfaceRecord
+    | SurfaceEnum
+    | SurfaceFunction
+    | SurfaceInterface
+    | SurfaceImplementation
+)
 
 
 @dataclass(frozen=True)

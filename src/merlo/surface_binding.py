@@ -42,6 +42,10 @@ def declaration_kind(declaration: surface.SurfaceDeclaration) -> str:
         return "record"
     if isinstance(declaration, surface.SurfaceEnum):
         return "enum"
+    if isinstance(declaration, surface.SurfaceInterface):
+        return "interface"
+    if isinstance(declaration, surface.SurfaceImplementation):
+        return "implementation"
     return declaration.declared_kind or "fn"
 
 
@@ -54,6 +58,8 @@ def module_symbols(
     for module, program in zip(modules, parsed_programs, strict=True):
         declarations: dict[str, tuple[str, bool, str]] = {}
         for declaration in program.declarations:
+            if isinstance(declaration, surface.SurfaceImplementation):
+                continue
             name = declaration.name
             kind = declaration_kind(declaration)
             if name in declarations:
@@ -377,8 +383,68 @@ def bind_module(
                 result.append(node)
         return tuple(result)
 
+    def bound_function(
+        declaration: surface.SurfaceFunction,
+        *,
+        name: str,
+    ) -> surface.SurfaceFunction:
+        locals_ = _function_locals(declaration)
+        generic_names = frozenset(
+            parameter.name for parameter in declaration.type_parameters
+        )
+        body = (
+            statements(declaration.body, locals_, generic_names)
+            if isinstance(declaration.body, tuple)
+            else expression(declaration.body, locals_)
+        )
+        return replace(
+            declaration,
+            name=name,
+            parameters=tuple(
+                replace(
+                    parameter,
+                    type_name=type_name(
+                        parameter.type_name,
+                        parameter.span,
+                        generic_names,
+                    ),
+                )
+                for parameter in declaration.parameters
+            ),
+            return_type=type_name(
+                declaration.return_type,
+                declaration.span,
+                generic_names,
+            ),
+            body=body,
+        )
+
     declarations: list[surface.SurfaceDeclaration] = []
     for declaration in program.declarations:
+        if isinstance(declaration, surface.SurfaceImplementation):
+            interface_name = qualified(
+                declaration.interface_name,
+                declaration.span,
+            ) or unqualified(
+                declaration.interface_name,
+                declaration.span,
+                frozenset(),
+            )
+            declarations.append(
+                replace(
+                    declaration,
+                    interface_name=interface_name,
+                    type_name=type_name(
+                        declaration.type_name,
+                        declaration.span,
+                    ),
+                    methods=tuple(
+                        bound_function(method, name=method.name)
+                        for method in declaration.methods
+                    ),
+                )
+            )
+            continue
         internal = current[declaration.name][2]
         if isinstance(declaration, surface.SurfaceRecord):
             declarations.append(
@@ -402,39 +468,41 @@ def bind_module(
                     ),
                 )
             )
-        else:
-            locals_ = _function_locals(declaration)
-            generic_names = frozenset(
-                parameter.name for parameter in declaration.type_parameters
-            )
-            body = (
-                statements(declaration.body, locals_, generic_names)
-                if isinstance(declaration.body, tuple)
-                else expression(declaration.body, locals_)
-            )
+        elif isinstance(declaration, surface.SurfaceInterface):
             declarations.append(
                 replace(
                     declaration,
                     name=internal,
-                    parameters=tuple(
+                    methods=tuple(
                         replace(
-                            parameter,
-                            type_name=type_name(
-                                parameter.type_name,
-                                parameter.span,
-                                generic_names,
+                            method,
+                            parameters=tuple(
+                                replace(
+                                    parameter,
+                                    type_name=type_name(
+                                        parameter.type_name,
+                                        parameter.span,
+                                        frozenset({"Self"}),
+                                    ),
+                                )
+                                for parameter in method.parameters
+                            ),
+                            return_type=type_name(
+                                method.return_type,
+                                method.span,
+                                frozenset({"Self"}),
                             ),
                         )
-                        for parameter in declaration.parameters
+                        for method in declaration.methods
                     ),
-                    return_type=type_name(
-                        declaration.return_type,
-                        declaration.span,
-                        generic_names,
-                    ),
-                    body=body,
                 )
             )
+        elif isinstance(declaration, surface.SurfaceFunction):
+            declarations.append(
+                bound_function(declaration, name=internal)
+            )
+        else:
+            raise AssertionError(type(declaration).__name__)
     return replace(program, declarations=tuple(declarations))
 
 

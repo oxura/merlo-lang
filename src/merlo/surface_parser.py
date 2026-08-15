@@ -27,6 +27,9 @@ from merlo.surface_ast import (
     SurfaceFor,
     SurfaceFunction,
     SurfaceIf,
+    SurfaceImplementation,
+    SurfaceInterface,
+    SurfaceInterfaceMethod,
     SurfaceImplicitReceiver,
     SurfaceIndex,
     SurfaceList,
@@ -128,6 +131,12 @@ def _split_top_level_commas(source: str) -> tuple[str, ...]:
             start = index + 1
     parts.append(source[start:])
     return tuple(parts)
+
+
+_FUNCTION_HEADER = re.compile(
+    r"(?:(fn|task)\s+)?([A-Za-z_]\w*)(?:\[([^\]]+)\])?"
+    r"\((.*)\)\s*(?:->\s*([^:=]+))?\s*([:=])\s*(.*)"
+)
 
 class _ExpressionParser:
     _INFIX_PRECEDENCE = {
@@ -647,19 +656,154 @@ class _Parser:
         raw = line.text
         exported = bool(re.match(r"export\s+", raw))
         raw = re.sub(r"^export\s+", "", raw)
+        interface_match = re.fullmatch(r"interface\s+([A-Z]\w*)\s*:", raw)
+        if interface_match:
+            return self._interface(interface_match.group(1), exported)
+        implementation_match = re.fullmatch(
+            r"impl\s+([A-Z]\w*)\s+for\s+(.+)\s*:",
+            raw,
+        )
+        if implementation_match:
+            if exported:
+                raise SurfaceSyntaxError(
+                    "ExportedImplementationForbidden",
+                    raw,
+                    _span(self.path, line),
+                )
+            return self._implementation(
+                implementation_match.group(1),
+                _type_name(implementation_match.group(2)),
+            )
         enum_match = re.fullmatch(r"enum\s+([A-Z]\w*)\s*:", raw)
         if enum_match:
             return self._enum(enum_match.group(1), exported)
         record_match = re.fullmatch(r"(?:record\s+)?([A-Z]\w*)\s*:", raw)
         if record_match:
             return self._record(record_match.group(1), exported)
-        function_match = re.fullmatch(
-            r"(?:(fn|task)\s+)?([A-Za-z_]\w*)(?:\[([^\]]+)\])?\((.*)\)\s*(?:->\s*([^:=]+))?\s*([:=])\s*(.*)",
-            raw,
-        )
+        function_match = _FUNCTION_HEADER.fullmatch(raw)
         if function_match:
             return self._function(function_match, exported)
         raise SurfaceSyntaxError("ExpectedDeclaration", raw, _span(self.path, line))
+    def _interface(self, name: str, exported: bool) -> SurfaceInterface:
+        start = self.lines[self.index]
+        self.index += 1
+        methods: list[SurfaceInterfaceMethod] = []
+        while self.index < len(self.lines):
+            line = self.lines[self.index]
+            if _trivia(line):
+                self.index += 1
+                continue
+            if line.indent <= start.indent:
+                break
+            if line.indent != start.indent + 4:
+                raise SurfaceSyntaxError(
+                    "InvalidIndentation",
+                    "interface method expected",
+                    _span(self.path, line),
+                )
+            match = re.fullmatch(
+                r"(?:fn\s+)?([A-Za-z_]\w*)\((.*)\)\s*->\s*(.+)",
+                line.text,
+            )
+            if match is None:
+                raise SurfaceSyntaxError(
+                    "ExpectedInterfaceMethod",
+                    line.text,
+                    _span(self.path, line),
+                )
+            parameters = self._parameters(
+                match.group(2),
+                line,
+                base_column=match.start(2),
+            )
+            if any(item.type_name is None for item in parameters):
+                raise SurfaceSyntaxError(
+                    "InterfaceBoundaryAnnotationRequired",
+                    match.group(1),
+                    _span(self.path, line),
+                )
+            methods.append(
+                SurfaceInterfaceMethod(
+                    _span(self.path, line),
+                    match.group(1),
+                    parameters,
+                    _type_name(match.group(3)),
+                )
+            )
+            self.index += 1
+        if not methods:
+            raise SurfaceSyntaxError(
+                "EmptyInterface",
+                name,
+                _span(self.path, start),
+            )
+        if len({item.name for item in methods}) != len(methods):
+            raise SurfaceSyntaxError(
+                "DuplicateInterfaceMethod",
+                name,
+                _span(self.path, start),
+            )
+        return SurfaceInterface(
+            _span(self.path, start, end_line=self.lines[self.index - 1]),
+            name,
+            tuple(methods),
+            exported,
+        )
+
+    def _implementation(
+        self,
+        interface_name: str,
+        type_name: str,
+    ) -> SurfaceImplementation:
+        start = self.lines[self.index]
+        self.index += 1
+        methods: list[SurfaceFunction] = []
+        while self.index < len(self.lines):
+            line = self.lines[self.index]
+            if _trivia(line):
+                self.index += 1
+                continue
+            if line.indent <= start.indent:
+                break
+            if line.indent != start.indent + 4:
+                raise SurfaceSyntaxError(
+                    "InvalidIndentation",
+                    "implementation method expected",
+                    _span(self.path, line),
+                )
+            match = _FUNCTION_HEADER.fullmatch(line.text)
+            if match is None:
+                raise SurfaceSyntaxError(
+                    "ExpectedImplementationMethod",
+                    line.text,
+                    _span(self.path, line),
+                )
+            if match.group(1) not in {None, "fn"} or match.group(3) is not None:
+                raise SurfaceSyntaxError(
+                    "InvalidImplementationMethod",
+                    line.text,
+                    _span(self.path, line),
+                )
+            methods.append(self._function(match, False))
+        if not methods:
+            raise SurfaceSyntaxError(
+                "EmptyImplementation",
+                f"{interface_name} for {type_name}",
+                _span(self.path, start),
+            )
+        if len({item.name for item in methods}) != len(methods):
+            raise SurfaceSyntaxError(
+                "DuplicateImplementationMethod",
+                interface_name,
+                _span(self.path, start),
+            )
+        return SurfaceImplementation(
+            _span(self.path, start, end_line=self.lines[self.index - 1]),
+            interface_name,
+            type_name,
+            tuple(methods),
+        )
+
 
     def _record(self, name: str, exported: bool) -> SurfaceRecord:
         start = self.lines[self.index]
