@@ -65,17 +65,17 @@ export fs_write_text(path: Path, value: Text) -> Result[Unit,FsError]:
 export fs_open_read(path: Path) -> Result[FileReader,FsError]:
     fs.open_read(path)
 
-export fs_open_write(path: Path) -> Result[FileReader,FsError]:
+export fs_open_write(path: Path) -> Result[FileWriter,FsError]:
     fs.open_write(path)
 
 export fs_read_chunk(stream: FileReader, size: UInt64) -> Result[Bytes,FsError]:
     fs.read_chunk(stream, size)
 
-export fs_write_chunk(stream: FileReader, value: BytesView) -> Result[Unit,FsError]:
+export fs_write_chunk(stream: FileWriter, value: BytesView) -> Result[Unit,FsError]:
     fs.write_chunk(stream, value)
 
 export fs_close_read(stream: FileReader) -> Result[Unit,FsError]:
-    fs.close(stream)
+    fs.close_read(stream)
 
-export fs_close_write(stream: FileReader) -> Result[Unit,FsError]:
-    fs.close(stream)
+export fs_close_write(stream: FileWriter) -> Result[Unit,FsError]:
+    fs.close_write(stream)

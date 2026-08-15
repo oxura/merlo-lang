@@ -6,64 +6,12 @@ from dataclasses import replace
 
 from merlo import surface_ast as surface
 from merlo.frontend_model import ConciseApplicationError
+from merlo.intrinsics import BUILTIN_FUNCTIONS, BUILTIN_RECEIVERS
 from merlo.module_loader import _Module
 from merlo.surface_parser import SurfaceSyntaxError, parse_surface
 from merlo.type_parser import TypeExpr, parse_type
 
 SymbolTable = dict[str, dict[str, tuple[str, bool, str]]]
-
-_INTRINSIC_CALLS = frozenset(
-    {
-        "Path",
-        "Unit",
-        "Ok",
-        "Err",
-        "Some",
-        "None",
-        "not",
-        "and",
-        "or",
-        "drop",
-        "move",
-        "map",
-        "filter",
-        "fold",
-        "len",
-        "release",
-        "wrapping_add",
-        "wrapping_sub",
-        "wrapping_mul",
-        "checked_add",
-        "checked_sub",
-        "checked_mul",
-        "__merlo_try__",
-        "Byte",
-        "UInt64",
-        "Int64",
-        "Float32",
-        "Float64",
-    }
-)
-_INTRINSIC_RECEIVERS = frozenset(
-    {
-        "console",
-        "clock",
-        "env",
-        "fs",
-        "network",
-        "process",
-        "random",
-        "Text",
-        "Bytes",
-        "TextBuilder",
-        "Vec",
-        "Map",
-        "Box",
-        "Option",
-        "Result",
-    }
-)
-
 
 def internal_symbol(module: str, name: str, kind: str) -> str:
     """Give every declaration a stable identity independent of assembly order."""
@@ -220,7 +168,7 @@ def bind_module(
                 span,
                 f"PrivateSymbol: {dependencies}.{name} is not exported",
             )
-        if reject_unknown_calls and call and name not in _INTRINSIC_CALLS:
+        if reject_unknown_calls and call and name not in BUILTIN_FUNCTIONS:
             fail(span, f"UnresolvedName {name!r}")
         return name
 
@@ -265,7 +213,7 @@ def bind_module(
                 and receiver.name
                 and receiver.name[0].islower()
                 and receiver.name not in locals_
-                and receiver.name not in _INTRINSIC_RECEIVERS
+                and receiver.name not in BUILTIN_RECEIVERS
                 and receiver.name not in current
             ):
                 fail(node.span, f"UnresolvedImport {receiver.name}.{node.field}")
