@@ -814,6 +814,17 @@ static MerloText merlo_text_literal(const uint8_t *data, uint64_t length) {
     }
     return result;
 }
+static MerloBytes merlo_bytes_literal(const uint8_t *data, uint64_t length) {
+    MerloBytes result = { NULL, length };
+    if (length != 0) {
+        result.data = (uint8_t *)malloc((size_t)length);
+        if (result.data == NULL) merlo_allocation_trap();
+        memcpy(result.data, data, (size_t)length);
+        ++merlo_allocations;
+        merlo_bytes_copied += length;
+    }
+    return result;
+}
 static bool merlo_text_equal_values(MerloText left, MerloText right) {
     return left.length == right.length
         && (left.length == 0
@@ -3376,6 +3387,16 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     f"(const uint8_t[]){{{values}}}, "
                     f"UINT64_C({len(payload)}))"
                 )
+            if isinstance(node.value, bytes):
+                values = (
+                    ", ".join(f"UINT8_C({byte})" for byte in node.value)
+                    or "UINT8_C(0)"
+                )
+                return (
+                    "merlo_bytes_literal("
+                    f"(const uint8_t[]){{{values}}}, "
+                    f"UINT64_C({len(node.value)}))"
+                )
         if isinstance(node, (ast.List, ast.Tuple)):
             expected_type = expected or self._expression_type(node)
             array = _array_parts(expected_type or "")
@@ -4216,6 +4237,8 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 if isinstance(node.value, int)
                 else "Float64"
                 if isinstance(node.value, float)
+                else "Bytes"
+                if isinstance(node.value, bytes)
                 else "Text"
             )
         if isinstance(node, ast.Attribute):

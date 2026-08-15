@@ -1134,13 +1134,21 @@ class _HIRBuilder:
                 if isinstance(node.value, float)
                 else "Text"
                 if isinstance(node.value, str)
+                else "Bytes"
+                if isinstance(node.value, bytes)
                 else "Unit"
             )
+            attributes: dict[str, Any] = {"value": node.value}
+            if isinstance(node.value, bytes):
+                attributes = {
+                    "literal_encoding": "bytes",
+                    "value": list(node.value),
+                }
             return self._new_node(
                 node,
                 "Literal",
                 type_name=type_name,
-                attributes={"value": node.value},
+                attributes=attributes,
             )
         if isinstance(node, ast.Attribute):
             owner = self.expression(node.value)
