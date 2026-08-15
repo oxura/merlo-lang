@@ -404,6 +404,16 @@ static void merlo_overflow_trap(const char *message) {
     fprintf(stderr, "MerloOverflow:%s\\n", message);
     abort();
 }
+static void merlo_division_by_zero_trap(const char *type_name) {
+    fprintf(stderr, "MerloDivisionByZero:%s\\n", type_name);
+    abort();
+}
+
+static void merlo_invalid_shift_trap(const char *type_name) {
+    fprintf(stderr, "MerloInvalidShift:%s\\n", type_name);
+    abort();
+}
+
 static uint8_t merlo_checked_byte_add(uint8_t left, uint8_t right) {
     if (left > UINT8_MAX - right) merlo_overflow_trap("ByteAdd");
     return (uint8_t)(left + right);
@@ -464,6 +474,120 @@ static int64_t merlo_checked_int64_mult(int64_t left, int64_t right) {
     }
     return left * right;
 }
+static uint8_t merlo_checked_byte_div(uint8_t left, uint8_t right) {
+    if (right == 0) merlo_division_by_zero_trap("Byte");
+    return (uint8_t)(left / right);
+}
+
+static uint8_t merlo_checked_byte_mod(uint8_t left, uint8_t right) {
+    if (right == 0) merlo_division_by_zero_trap("Byte");
+    return (uint8_t)(left % right);
+}
+
+static uint64_t merlo_checked_uint64_div(uint64_t left, uint64_t right) {
+    if (right == 0) merlo_division_by_zero_trap("UInt64");
+    return left / right;
+}
+
+static uint64_t merlo_checked_uint64_mod(uint64_t left, uint64_t right) {
+    if (right == 0) merlo_division_by_zero_trap("UInt64");
+    return left % right;
+}
+
+static int64_t merlo_checked_int64_div(int64_t left, int64_t right) {
+    if (right == 0) merlo_division_by_zero_trap("Int64");
+    if (left == INT64_MIN && right == -1) {
+        merlo_overflow_trap("Int64Div");
+    }
+    return left / right;
+}
+
+static int64_t merlo_checked_int64_floor_div(
+    int64_t left,
+    int64_t right
+) {
+    int64_t quotient = merlo_checked_int64_div(left, right);
+    int64_t remainder = left % right;
+    if (remainder != 0 && ((remainder < 0) != (right < 0))) {
+        --quotient;
+    }
+    return quotient;
+}
+
+static int64_t merlo_checked_int64_mod(int64_t left, int64_t right) {
+    (void)merlo_checked_int64_div(left, right);
+    int64_t remainder = left % right;
+    if (remainder != 0 && ((remainder < 0) != (right < 0))) {
+        remainder += right;
+    }
+    return remainder;
+}
+
+static uint8_t merlo_checked_byte_lshift(uint8_t value, uint8_t shift) {
+    if (shift >= 8) merlo_invalid_shift_trap("Byte");
+    if (value > (uint8_t)(UINT8_MAX >> shift)) {
+        merlo_overflow_trap("ByteShift");
+    }
+    return (uint8_t)(value << shift);
+}
+
+static uint8_t merlo_checked_byte_rshift(uint8_t value, uint8_t shift) {
+    if (shift >= 8) merlo_invalid_shift_trap("Byte");
+    return (uint8_t)(value >> shift);
+}
+
+static uint64_t merlo_checked_uint64_lshift(
+    uint64_t value,
+    uint64_t shift
+) {
+    if (shift >= 64) merlo_invalid_shift_trap("UInt64");
+    if (value > (UINT64_MAX >> shift)) {
+        merlo_overflow_trap("UInt64Shift");
+    }
+    return value << shift;
+}
+
+static uint64_t merlo_checked_uint64_rshift(
+    uint64_t value,
+    uint64_t shift
+) {
+    if (shift >= 64) merlo_invalid_shift_trap("UInt64");
+    return value >> shift;
+}
+
+static int64_t merlo_checked_int64_lshift(int64_t value, int64_t shift) {
+    if (shift < 0 || shift >= 64) merlo_invalid_shift_trap("Int64");
+    if (shift == 0) return value;
+    if (shift == 63) {
+        if (value == 0) return 0;
+        if (value == -1) return INT64_MIN;
+        merlo_overflow_trap("Int64Shift");
+    }
+    int64_t factor = (int64_t)(UINT64_C(1) << (uint64_t)shift);
+    if (
+        (value > 0 && value > INT64_MAX / factor) ||
+        (value < 0 && value < INT64_MIN / factor)
+    ) {
+        merlo_overflow_trap("Int64Shift");
+    }
+    return value * factor;
+}
+
+static int64_t merlo_checked_int64_rshift(int64_t value, int64_t shift) {
+    if (shift < 0 || shift >= 64) merlo_invalid_shift_trap("Int64");
+    if (shift == 0) return value;
+    if (shift == 63) return value < 0 ? -1 : 0;
+    int64_t factor = (int64_t)(UINT64_C(1) << (uint64_t)shift);
+    int64_t quotient = value / factor;
+    if (value % factor < 0) --quotient;
+    return quotient;
+}
+
+static int64_t merlo_checked_int64_neg(int64_t value) {
+    if (value == INT64_MIN) merlo_overflow_trap("Int64Neg");
+    return -value;
+}
+
 
 static uint8_t merlo_cast_byte(uint64_t value) {
     if (value > UINT8_MAX) merlo_overflow_trap("ByteCast");
@@ -3428,6 +3552,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             ast.Sub: "-",
             ast.Mult: "*",
             ast.Div: "/",
+            ast.FloorDiv: "/",
             ast.Mod: "%",
             ast.BitXor: "^",
             ast.BitAnd: "&",
@@ -3450,16 +3575,31 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 ast.Add: "merlo_checked_byte_add",
                 ast.Sub: "merlo_checked_byte_sub",
                 ast.Mult: "merlo_checked_byte_mult",
+                ast.Div: "merlo_checked_byte_div",
+                ast.FloorDiv: "merlo_checked_byte_div",
+                ast.Mod: "merlo_checked_byte_mod",
+                ast.LShift: "merlo_checked_byte_lshift",
+                ast.RShift: "merlo_checked_byte_rshift",
             },
             "UInt64": {
                 ast.Add: "merlo_checked_uint64_add",
                 ast.Sub: "merlo_checked_uint64_sub",
                 ast.Mult: "merlo_checked_uint64_mult",
+                ast.Div: "merlo_checked_uint64_div",
+                ast.FloorDiv: "merlo_checked_uint64_div",
+                ast.Mod: "merlo_checked_uint64_mod",
+                ast.LShift: "merlo_checked_uint64_lshift",
+                ast.RShift: "merlo_checked_uint64_rshift",
             },
             "Int64": {
                 ast.Add: "merlo_checked_int64_add",
                 ast.Sub: "merlo_checked_int64_sub",
                 ast.Mult: "merlo_checked_int64_mult",
+                ast.Div: "merlo_checked_int64_div",
+                ast.FloorDiv: "merlo_checked_int64_floor_div",
+                ast.Mod: "merlo_checked_int64_mod",
+                ast.LShift: "merlo_checked_int64_lshift",
+                ast.RShift: "merlo_checked_int64_rshift",
             },
         }.get(arithmetic_type or "", {}).get(type(operation))
         frozen_fnv_multiply = (
@@ -3935,14 +4075,52 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 return piece[1:-1] if piece.startswith("(") and piece.endswith(")") else piece
             return "(" + " && ".join(pieces) + ")"
         if isinstance(node, ast.UnaryOp):
-            operator = (
-                "!"
-                if isinstance(node.op, ast.Not)
-                else "-"
-                if isinstance(node.op, ast.USub)
-                else "+"
+            operand_type = (
+                expected
+                if expected in {
+                    "Byte",
+                    "UInt64",
+                    "Int64",
+                    "Float32",
+                    "Float64",
+                }
+                else self._expression_type(node.operand)
             )
-            return f"({operator}({self._expression(node.operand)}))"
+            if isinstance(node.op, ast.Not):
+                return f"(!({self._expression(node.operand, expected='Bool')}))"
+            if isinstance(node.op, ast.Invert):
+                if operand_type not in {"Byte", "UInt64", "Int64"}:
+                    raise RepresentationCBackendError(
+                        f"bitwise invert requires an integer, got {operand_type}"
+                    )
+                operand = self._expression(
+                    node.operand,
+                    expected=operand_type,
+                )
+                return f"(({_c_name(operand_type)})~({operand}))"
+            if isinstance(node.op, ast.USub):
+                if (
+                    operand_type == "Int64"
+                    and isinstance(node.operand, ast.Constant)
+                    and node.operand.value == 9223372036854775808
+                ):
+                    return "INT64_MIN"
+                operand = self._expression(
+                    node.operand,
+                    expected=operand_type,
+                )
+                if operand_type == "Int64":
+                    return f"merlo_checked_int64_neg({operand})"
+                if operand_type in {"Float32", "Float64"}:
+                    return f"(-({operand}))"
+                raise RepresentationCBackendError(
+                    f"unsigned negation forbidden: {operand_type}"
+                )
+            operand = self._expression(
+                node.operand,
+                expected=operand_type,
+            )
+            return f"(+({operand}))"
         if isinstance(node, ast.Call):
             return self._call_expression(node, expected=expected, want_pointer=want_pointer)
         raise RepresentationCBackendError(f"unsupported C expression: {type(node).__name__}@{getattr(node, 'lineno', 0)}")

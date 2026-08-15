@@ -15,6 +15,16 @@ The alpha has these scalar descriptors:
 checked overflow produces a diagnostic rather than silently changing the
 source contract. Wrapping operations are distinct operations.
 
+Core integer `+`, `-`, `*`, unary negation, division, remainder, and left
+shift trap on overflow instead of relying on C undefined behavior. Integer
+division by zero and invalid shift counts have distinct traps. `/` truncates
+signed integers toward zero; `//` rounds toward negative infinity; `%` has the
+divisor's sign. Signed right shift also rounds toward negative infinity.
+`wrapping_add`, `wrapping_sub`, and `wrapping_mul` are the explicit modular
+alternatives. Floating-point arithmetic follows IEEE 754; `//`, `%`, and
+bitwise operators require integer operands. Numeric casts are explicit and
+checked when converting to an integer range.
+
 Structured values include:
 
 - `Text`, `Bytes`, and `Path` values;

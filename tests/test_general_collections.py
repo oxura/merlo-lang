@@ -273,7 +273,7 @@ def test_text_and_bytes_are_indexable_general_collections(
         "    value != zero\n"
         "fn main(input: BytesView) -> UInt64:\n"
         "    let first: Byte = input[0]\n"
-        "    input.count(nonzero) + (first + 0)\n"
+        "    input.count(nonzero) + UInt64(first)\n"
     )
     hir = compile_canonical_hir(elaborate(source).canonical)
     index = next(node for node in hir.function("main").walk() if node.kind == "Index")

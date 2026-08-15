@@ -79,6 +79,20 @@ _HOST_CALLS = {
     name: (signature.parameters, signature.result_type, signature.effect, signature.capability)
     for name, signature in CONTRACT_GRAPH.intrinsics.items()
 }
+_NUMERIC_TYPES = frozenset(
+    {"Byte", "UInt64", "Int64", "Float32", "Float64"}
+)
+_INTEGER_TYPES = frozenset({"Byte", "UInt64", "Int64"})
+_INTEGER_ONLY_OPERATORS = frozenset(
+    {"//", "%", "|", "^", "&", "<<", ">>"}
+)
+_INTEGER_BOUNDS = {
+    "Byte": (0, 255),
+    "UInt64": (0, 18446744073709551615),
+    "Int64": (-9223372036854775808, 9223372036854775807),
+}
+
+
 
 def _generic_parts(type_name: str, constructor: str) -> tuple[str, ...] | None:
     return generic_parts(type_name, constructor)
@@ -942,8 +956,18 @@ class _Elaborator:
         expected: str | None = None,
     ) -> str:
         if isinstance(expression, SurfaceLiteral):
-            numeric = {"Byte", "UInt64", "Int64", "Float32", "Float64"}
-            if expected in numeric and expression.kind in numeric:
+            if (
+                expected in _INTEGER_BOUNDS
+                and isinstance(expression.value, int)
+                and not isinstance(expression.value, bool)
+            ):
+                lower, upper = _INTEGER_BOUNDS[expected]
+                if not lower <= expression.value <= upper:
+                    raise SurfaceElaborationError(
+                        "NumericLiteralOutOfRange: "
+                        f"{expression.value} for {expected}"
+                    )
+            if expected in _NUMERIC_TYPES and expression.kind in _NUMERIC_TYPES:
                 term = self.types.typed(expected)
             elif expression.kind == "None" and expected and expected.startswith("Option["):
                 term = self.types.typed(expected)
@@ -981,7 +1005,34 @@ class _Elaborator:
             expected = None
         elif isinstance(expression, SurfaceUnary):
             required = "Bool" if expression.operator == "not" else expected
-            term = self._expression(expression.operand, function, required)
+            if (
+                expression.operator == "-"
+                and expected == "Int64"
+                and isinstance(expression.operand, SurfaceLiteral)
+                and expression.operand.value == 9223372036854775808
+            ):
+                term = self.types.typed("Int64")
+            else:
+                term = self._expression(
+                    expression.operand,
+                    function,
+                    required,
+                )
+            operand_type = self.types.concrete.get(self.types.find(term))
+            if expression.operator in {"+", "-", "~"}:
+                if operand_type not in _NUMERIC_TYPES:
+                    raise SurfaceElaborationError(
+                        "numeric unary operator requires a numeric operand, "
+                        f"got {operand_type or 'unresolved'}"
+                    )
+                if expression.operator == "~" and operand_type not in _INTEGER_TYPES:
+                    raise SurfaceElaborationError(
+                        f"IntegerOperatorRequired: ~ for {operand_type}"
+                    )
+                if expression.operator == "-" and operand_type in {"Byte", "UInt64"}:
+                    raise SurfaceElaborationError(
+                        f"UnsignedNegationForbidden: {operand_type}"
+                    )
         elif isinstance(expression, SurfaceBinary):
             if expression.operator in {"==", "!=", "<", "<=", ">", ">="}:
                 left = self._expression(expression.left, function)
@@ -1031,11 +1082,14 @@ class _Elaborator:
                         f"TruthinessForbidden: {left_type or 'unresolved'}"
                     )
             else:
-                numeric = {"Byte", "UInt64", "Int64", "Float32", "Float64"}
-                contextual = expected if expected in numeric else None
-                left = self._expression(expression.left, function)
+                contextual = expected if expected in _NUMERIC_TYPES else None
+                left = self._expression(
+                    expression.left,
+                    function,
+                    contextual,
+                )
                 left_type = self.types.concrete.get(self.types.find(left))
-                if left_type is not None and left_type not in numeric:
+                if left_type is not None and left_type not in _NUMERIC_TYPES:
                     raise SurfaceElaborationError(
                         "numeric operator requires numeric operands, "
                         f"got {left_type}"
@@ -1048,10 +1102,20 @@ class _Elaborator:
                     expression.right, function, operand_type
                 )
                 right_type = self.types.concrete.get(self.types.find(right))
-                if right_type is not None and right_type not in numeric:
+                if right_type is not None and right_type not in _NUMERIC_TYPES:
                     raise SurfaceElaborationError(
                         "numeric operator requires numeric operands, "
                         f"got {right_type}"
+                    )
+                operation_type = contextual or left_type or right_type
+                if (
+                    expression.operator in _INTEGER_ONLY_OPERATORS
+                    and operation_type not in _INTEGER_TYPES
+                ):
+                    raise SurfaceElaborationError(
+                        "IntegerOperatorRequired: "
+                        f"{expression.operator} for "
+                        f"{operation_type or 'unresolved'}"
                     )
                 self.types.unify(left, right, context="numeric operator")
                 if expected:
@@ -1064,7 +1128,27 @@ class _Elaborator:
         elif isinstance(expression, SurfaceCall):
             if isinstance(expression.callee, SurfaceName):
                 name = expression.callee.name
-                if name == "sqrt":
+                if name in _NUMERIC_TYPES:
+                    if (
+                        len(expression.arguments) != 1
+                        or expression.arguments[0].name is not None
+                    ):
+                        raise SurfaceElaborationError(
+                            f"ArityMismatch: {name}"
+                        )
+                    source_term = self._expression(
+                        expression.arguments[0].value,
+                        function,
+                    )
+                    source_type = self.types.concrete.get(
+                        self.types.find(source_term)
+                    )
+                    if source_type not in _NUMERIC_TYPES:
+                        raise SurfaceElaborationError(
+                            f"NumericCastRequired: {source_type or 'unresolved'}"
+                        )
+                    term = self.types.typed(name)
+                elif name == "sqrt":
                     for argument in expression.arguments:
                         self._expression(argument.value, function, "Float64")
                     term = self.types.typed("Float64")

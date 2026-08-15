@@ -25,6 +25,9 @@
 - Locks recursive record and enum values through `Box`/`Vec` indirection,
   including mutually recursive native layouts and active-payload,
   initialized-element, and boxed-payload drop glue.
+- Defines complete core numeric behavior across Surface, typed HIR, and C:
+  checked integer division, floor division, remainder, shifts, unary negation,
+  literal ranges and casts, with explicit zero, shift, and overflow traps.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

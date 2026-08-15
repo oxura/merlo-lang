@@ -45,6 +45,18 @@ _SCALAR_TYPES = frozenset(
     }
 )
 _INTEGER_TYPES = frozenset({"Byte", "Int8", "UInt8", "Int16", "UInt16", "Int32", "UInt32", "Int64", "UInt64"})
+_LANGUAGE_NUMERIC_TYPES = frozenset(
+    {"Byte", "Int64", "UInt64", "Float32", "Float64"}
+)
+_INTEGER_BINARY_OPERATORS = (
+    ast.FloorDiv,
+    ast.Mod,
+    ast.BitOr,
+    ast.BitAnd,
+    ast.BitXor,
+    ast.LShift,
+    ast.RShift,
+)
 _TYPE_ALIASES = {"Int": "Int64", "UInt": "UInt64", "Float": "Float64"}
 
 def _type_leaf(type_name: str) -> str:
@@ -1145,7 +1157,7 @@ class _HIRBuilder:
                 attributes={"name": node.id},
             )
         if isinstance(node, ast.Constant):
-            type_name = (
+            inferred_type = (
                 "Bool"
                 if isinstance(node.value, bool)
                 else "UInt64"
@@ -1157,6 +1169,12 @@ class _HIRBuilder:
                 else "Bytes"
                 if isinstance(node.value, bytes)
                 else "Unit"
+            )
+            type_name = (
+                expected
+                if expected in _LANGUAGE_NUMERIC_TYPES
+                and inferred_type in _LANGUAGE_NUMERIC_TYPES
+                else inferred_type
             )
             attributes: dict[str, Any] = {"value": node.value}
             if isinstance(node.value, bytes):
@@ -1220,13 +1238,19 @@ class _HIRBuilder:
                 )
             return self._call(node, arguments, expected=expected)
         if isinstance(node, ast.BinOp):
-            children = (self.expression(node.left), self.expression(node.right))
+            children = (
+                self.expression(node.left, expected=expected),
+                self.expression(node.right, expected=expected),
+            )
             numeric = {
                 item.type_name
                 for item in children
                 if item.type_name is not None
             }
-            if "Bool" in numeric or not numeric <= _SCALAR_TYPES - {"Bool"}:
+            if (
+                "Bool" in numeric
+                or not numeric <= _LANGUAGE_NUMERIC_TYPES
+            ):
                 raise StructuredHIRCompileError(
                     f"{self.path}:{node.lineno}: NumericOperandsRequired "
                     f"{tuple(item.type_name for item in children)}"
@@ -1236,15 +1260,76 @@ class _HIRBuilder:
                 for item in children
                 if item.kind != "Literal" and item.type_name is not None
             }
-            type_name = next(
-                iter(non_literals),
-                next(iter(numeric), "UInt64"),
+            if len(non_literals) > 1:
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: NumericTypeMismatch "
+                    f"{tuple(sorted(non_literals))}"
+                )
+            type_name = (
+                expected
+                if expected in _LANGUAGE_NUMERIC_TYPES
+                else next(
+                    iter(non_literals),
+                    next(iter(numeric), "UInt64"),
+                )
             )
+            if (
+                isinstance(node.op, _INTEGER_BINARY_OPERATORS)
+                and type_name not in _INTEGER_TYPES
+            ):
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: IntegerOperatorRequired "
+                    f"{type(node.op).__name__} for {type_name}"
+                )
+            operator = type(node.op).__name__
+            attributes: dict[str, Any] = {"operator": operator}
+            if isinstance(node.op, (ast.Add, ast.Sub, ast.Mult)):
+                attributes["overflow"] = (
+                    "checked"
+                    if type_name in _INTEGER_TYPES
+                    else "ieee754"
+                )
+            elif isinstance(node.op, ast.Div):
+                attributes.update(
+                    division_by_zero=(
+                        "trap"
+                        if type_name in _INTEGER_TYPES
+                        else "ieee754"
+                    ),
+                    rounding=(
+                        "toward_zero"
+                        if type_name in _INTEGER_TYPES
+                        else "ieee754"
+                    ),
+                )
+                if type_name == "Int64":
+                    attributes["signed_overflow"] = "checked"
+            elif isinstance(node.op, ast.FloorDiv):
+                attributes.update(
+                    division_by_zero="trap",
+                    rounding="toward_negative_infinity",
+                    signed_overflow="checked",
+                )
+            elif isinstance(node.op, ast.Mod):
+                attributes.update(
+                    division_by_zero="trap",
+                    remainder_sign="divisor",
+                    signed_overflow="checked",
+                )
+            elif isinstance(node.op, (ast.LShift, ast.RShift)):
+                attributes.update(
+                    shift_range="checked",
+                    overflow=(
+                        "checked"
+                        if isinstance(node.op, ast.LShift)
+                        else "not_applicable"
+                    ),
+                )
             return self._new_node(
                 node,
                 "Binary",
                 type_name=type_name,
-                attributes={"operator": type(node.op).__name__, "overflow": "checked"},
+                attributes=attributes,
                 children=children,
             )
         if isinstance(node, ast.BoolOp):
@@ -1277,12 +1362,40 @@ class _HIRBuilder:
                 children=children,
             )
         if isinstance(node, ast.UnaryOp):
-            child = self.expression(node.operand)
+            child = self.expression(node.operand, expected=expected)
+            type_name = (
+                "Bool"
+                if isinstance(node.op, ast.Not)
+                else expected
+                if expected in _LANGUAGE_NUMERIC_TYPES
+                else child.type_name
+            )
+            if (
+                isinstance(node.op, ast.Invert)
+                and type_name not in _INTEGER_TYPES
+            ):
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: IntegerOperatorRequired "
+                    f"Invert for {type_name}"
+                )
+            if (
+                isinstance(node.op, ast.USub)
+                and type_name in {"Byte", "UInt64"}
+            ):
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: "
+                    f"UnsignedNegationForbidden: {type_name}"
+                )
+            attributes: dict[str, Any] = {
+                "operator": type(node.op).__name__
+            }
+            if isinstance(node.op, ast.USub) and type_name == "Int64":
+                attributes["overflow"] = "checked"
             return self._new_node(
                 node,
                 "Unary",
-                type_name="Bool" if isinstance(node.op, ast.Not) else child.type_name,
-                attributes={"operator": type(node.op).__name__},
+                type_name=type_name,
+                attributes=attributes,
                 children=(child,),
             )
         if isinstance(node, (ast.List, ast.Tuple)):
