@@ -54,6 +54,43 @@ def test_protocol_rename_preview_is_exact_and_apply_is_transactional(tmp_path: P
     assert 'return Ok("helper")' in updated
 
 
+
+def test_protocol_computes_change_bound_semantic_impact(
+    tmp_path: Path,
+) -> None:
+    from merlo.alpha_protocol import AlphaProtocol
+    from merlo.semantic_world import SemanticWorld
+
+    source = _source(tmp_path)
+    protocol = AlphaProtocol(
+        SemanticWorld.build(
+            source,
+            require_interface_lock=False,
+        )
+    )
+    change = protocol.call(
+        "refactor.rename",
+        {
+            "target": "app.main.helper",
+            "new_name": "assist",
+        },
+    )
+
+    impact = protocol.call(
+        "impact.change",
+        {"change": change},
+    )
+
+    assert impact["contract"] == (
+        "merlo.semantic-impact.v1"
+    )
+    assert impact["change_digest"] == change["digest"]
+    assert impact["target_symbol_id"] == (
+        change["target"]["symbol_id"]
+    )
+    assert impact["status"] == "ready"
+    assert impact["directly_changed"]
+
 def test_protocol_rejects_stale_and_unsupported_migrations_without_partial_write(tmp_path: Path) -> None:
     from merlo.alpha_protocol import AlphaProtocol
     from merlo.semantic_world import SemanticWorld

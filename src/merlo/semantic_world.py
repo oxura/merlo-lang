@@ -6,7 +6,7 @@ import os
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, TYPE_CHECKING
 
 from merlo.semantic_capsule import (
     SemanticCapsule,
@@ -15,8 +15,14 @@ from merlo.semantic_capsule import (
 from merlo.modules import ModuleGraph
 from merlo.version import VERSIONS
 
+if TYPE_CHECKING:
+    from merlo.refactor import ChangeIR
+    from merlo.semantic_impact import (
+        SemanticImpactReport,
+    )
+
 WORLD_SCHEMA_VERSION = VERSIONS.semantic_world
-WORLD_CONTRACT = "merlo.semantic-world.v12"
+WORLD_CONTRACT = "merlo.semantic-world.v13"
 
 
 class WorldError(ValueError):
@@ -475,6 +481,20 @@ class SemanticWorld:
         interface = symbol["interface_revision_id"] if symbol["exported"] else None
         tests = tuple(self.data.get("tests", ())) if symbol["exported"] else ()
         return {"target": symbol, "references": list(refs), "callers": list(callers), "callees": list(self.callees(identifier)), "dependencies": list(self.dependencies(identifier)), "interface_impact": {"exported": symbol["exported"], "interface_revision_id": interface}, "tests": list(tests), "files": sorted({item["source"]["path"] for item in refs} | {symbol["source"]["path"]})}
+
+    def change_impact(
+        self,
+        change_ir: ChangeIR,
+    ) -> SemanticImpactReport:
+        from merlo.semantic_impact import (
+            compute_semantic_impact,
+        )
+
+        return compute_semantic_impact(
+            self,
+            change_ir,
+        )
+
 
     def map(self, projection: str = "text") -> str | dict[str, Any]:
         if projection == "json":

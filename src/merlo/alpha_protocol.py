@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from merlo.refactor import preview_change_signature, preview_move, preview_rename
+from merlo.refactor import (
+    ChangeIR,
+    preview_change_signature,
+    preview_move,
+    preview_rename,
+)
 from merlo.semantic_capsule import SemanticCapsule
 from merlo.semantic_world import SemanticWorld, WorldError
 
@@ -52,6 +57,22 @@ class AlphaProtocol:
     def impact(self, target: str) -> dict[str, Any]:
         return self.world.impact(target)
 
+    def change_impact(
+        self,
+        change: ChangeIR | Mapping[str, Any],
+    ) -> dict[str, Any]:
+        bound = (
+            change
+            if isinstance(change, ChangeIR)
+            else ChangeIR.from_dict(
+                change,
+                world=self.world,
+            )
+        )
+        return self.world.change_impact(
+            bound
+        ).to_dict()
+
     def diagnostics_explain(self, diagnostic: str | Mapping[str, Any]) -> dict[str, Any]:
         return self.world.diagnostics_explain(diagnostic)
 
@@ -82,6 +103,13 @@ class AlphaProtocol:
             return self.compile_context(self._target(values), goal=str(values.get("goal", ""))).to_dict()
         if operation in {"impact.analyze", "impact"}:
             return self.impact(self._target(values))
+        if operation == "impact.change":
+            change = values.get("change")
+            if not isinstance(change, (ChangeIR, Mapping)):
+                raise WorldError(
+                    "MissingChangeIR: impact.change requires change"
+                )
+            return self.change_impact(change)
         if operation in {"diagnostics.explain", "diagnostic.explain"}:
             return self.diagnostics_explain(values.get("diagnostic", values.get("code", "")))
         if operation in {"refactor.rename", "refactor.rename.preview", "refactor.rename.apply"}:

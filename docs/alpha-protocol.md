@@ -8,6 +8,11 @@ dependencies, impact, compile context, and diagnostic explanations.
 world and target revision. It contains only the target's source, dependencies,
 authority, contracts, holes, obligations, public tests, and filtered
 verification/property evidence; unrelated global evidence is excluded.
+`impact.change` accepts a canonical ChangeIR and returns a
+`merlo.semantic-impact.v1` report. The report partitions directly edited and
+transitively affected symbols and records callers, references, dependencies,
+files, interfaces, and relevant tests without changing source.
+
 
 Refactors are explicit and can be previewed before applying:
 

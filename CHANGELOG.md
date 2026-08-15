@@ -74,6 +74,9 @@
 - Replaces ad hoc task context maps with immutable, revision-bound semantic
   capsules containing only target-relevant code, authority, obligations,
   tests, and filtered verification evidence.
+- Adds canonical ChangeIR-bound semantic impact reports covering direct and
+  transitive symbols, reference/call/dependency edges, interfaces, files, and
+  tests before a change is applied.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.
