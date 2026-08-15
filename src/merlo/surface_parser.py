@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 
 from merlo.frontend.lexer import ExpressionLexError, ExpressionToken, lex_expression
+from merlo.frontend.file_syntax import parse_file_cst
 from merlo.module_syntax import ModuleSyntaxError, parse_module_prelude
 from merlo.surface_ast import (
     SourceSpan,
@@ -1067,6 +1068,20 @@ def parse_surface(
             "EmptySource",
             "source is empty",
             SourceSpan(path, line, 1, line, 1),
+        )
+    cst = parse_file_cst(source, path=path)
+    if cst.diagnostics:
+        diagnostic = cst.diagnostics[0]
+        raise SurfaceSyntaxError(
+            diagnostic.code,
+            diagnostic.message,
+            SourceSpan(
+                path,
+                diagnostic.line + line_offset,
+                diagnostic.column,
+                diagnostic.line + line_offset,
+                diagnostic.column + max(1, diagnostic.end - diagnostic.start),
+            ),
         )
     return _Parser(source, path, line_offset=line_offset).parse()
 
