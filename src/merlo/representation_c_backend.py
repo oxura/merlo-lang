@@ -17,7 +17,12 @@ from typing import Any
 
 from merlo.ffi import pointer_type, validate_ffi
 from merlo.representation_ir import RepresentationProgram, TypeDescriptor
-from merlo.intrinsics import INTRINSIC_SIGNATURES, format_intrinsic_arity, intrinsic_signature
+from merlo.intrinsics import (
+    CONTRACT_GRAPH,
+    INTRINSIC_SIGNATURES,
+    format_intrinsic_arity,
+    intrinsic_signature,
+)
 from merlo.representation_mir import GeneralPerformanceMIR
 from merlo.structured_hir_v2 import (
     HIRFunction,
@@ -32,7 +37,7 @@ from merlo.type_parser import generic_parts, parse_type
 C_BACKEND_SCHEMA_VERSION = 1
 C_BACKEND_CONTRACT = "merlo.general-representation-c11.v1"
 RUNTIME_ABI_VERSION = VERSIONS.runtime_abi
-RUNTIME_ABI_CONTRACT = "merlo.runtime-abi.v1"
+RUNTIME_ABI_CONTRACT = "merlo.runtime-abi.v2"
 _FROZEN_GENERAL_JSON_SHA256 = (
     "0b696f9a6653ea5fa20124d239db37fe6853ff798abe0cbcdcb703dd9c66ff04"
 )
@@ -148,6 +153,7 @@ def _c_name(type_name: str) -> str:
         "TextBuilder": "MerloTextBuilder",
         "Bytes": "MerloBytes",
         "FileReader": "MerloFileReader",
+        "FileWriter": "MerloFileWriter",
         "FileLines": "MerloFileLines",
     }
     if type_name in aliases:
@@ -519,7 +525,21 @@ typedef struct {
     uint64_t byte_offset;
     bool eof;
 } MerloFileReader;
-typedef struct { MerloFileReader *owner; uint64_t generation; } MerloFileLines;"""
+typedef struct {
+    FILE *stream;
+    uint64_t generation;
+} MerloFileWriter;
+typedef struct { MerloFileReader *owner; uint64_t generation; } MerloFileLines;
+
+static MerloTextView merlo_text_as_view(const MerloText *value) {
+    MerloTextView result = { value->data, value->length };
+    return result;
+}
+
+static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
+    MerloBytesView result = { value->data, value->length };
+    return result;
+}"""
 
     def _vec_box_types(self) -> str:
         lines = []
@@ -693,6 +713,11 @@ typedef struct { MerloFileReader *owner; uint64_t generation; } MerloFileLines;"
     return view->data[index];
 }
 
+static uint8_t merlo_text_view_load(const MerloTextView *view, uint64_t index) {
+    if (index >= view->length) merlo_bounds_trap(index, view->length);
+    return view->data[index];
+}
+
 static uint8_t merlo_text_load(const MerloText *text, uint64_t index) {
     if (index >= text->length) merlo_bounds_trap(index, text->length);
     return text->data[index];
@@ -725,7 +750,8 @@ static MerloText merlo_text_from_view(const MerloTextView *view) {
     return result;
 }
 static MerloText merlo_text_clone(const MerloText *text) {
-    return merlo_text_from_view((const MerloTextView *)text);
+    MerloTextView view = merlo_text_as_view(text);
+    return merlo_text_from_view(&view);
 }
 static MerloBytes merlo_bytes_concat(MerloBytes left, MerloBytes right) {
     if (right.length > UINT64_MAX - left.length) merlo_allocation_trap();
@@ -1012,9 +1038,14 @@ static MerloText merlo_console_read_all(void) {
     return result;
 }''')
         if "console.write" in self.used_effects:
-            sections.append(r'''static void merlo_console_write(const MerloText *value) {
+            sections.append(r'''static void merlo_console_write_view(MerloTextView value) {
     merlo_require_capability(MERLO_EFFECT_CONSOLE_WRITE);
-    fwrite(value->data, 1, (size_t)value->length, stdout);
+    if (value.length != 0) {
+        fwrite(value.data, 1, (size_t)value.length, stdout);
+    }
+}
+static void merlo_console_write(const MerloText *value) {
+    merlo_console_write_view(merlo_text_as_view(value));
 }''')
         if "clock.now" in self.used_effects:
             sections.append(r'''static uint64_t merlo_clock_now(void) {
@@ -1404,6 +1435,10 @@ static uint64_t merlo_file_write_all(const MerloText *path, const MerloBytesView
     int close_status = fclose(stream);
     if (written != (size_t)data->length || close_status != 0) merlo_file_write_error = 1;
     return merlo_file_write_error;
+}
+static uint64_t merlo_file_write_text(const MerloText *path, const MerloTextView *data) {
+    MerloBytesView bytes = { data->data, data->length };
+    return merlo_file_write_all(path, &bytes);
 }''')
         return "\n".join(sections)
 
@@ -1411,6 +1446,7 @@ static uint64_t merlo_file_write_all(const MerloText *path, const MerloBytesView
         if (
             not self.used_effects & {"fs.read", "fs.write"}
             and "FileReader" not in self.descriptors
+            and "FileWriter" not in self.descriptors
         ):
             return ""
         return r'''static uint32_t merlo_file_error = 0;
@@ -1442,14 +1478,27 @@ static uint64_t merlo_file_close(MerloFileReader *reader) {
     ++reader->generation;
     return status;
 }
-static MerloFileReader merlo_file_open_write(const MerloText *path) {
+static uint64_t merlo_file_close_writer(MerloFileWriter *writer) {
+    uint64_t status = 0;
+    if (writer == NULL) return 1;
+    if (writer->stream != NULL) {
+        if (fclose(writer->stream) != 0) {
+            merlo_file_error = UINT32_C(5);
+            status = 1;
+        }
+        writer->stream = NULL;
+    }
+    ++writer->generation;
+    return status;
+}
+static MerloFileWriter merlo_file_open_write(const MerloText *path) {
     merlo_require_capability(MERLO_EFFECT_FS_WRITE);
     merlo_file_error = 0;
     if (!merlo_path_allowed(path)) {
         merlo_file_error = UINT32_C(4);
-        return (MerloFileReader){ NULL, NULL, 0, 0, 1, 0, 0, false };
+        return (MerloFileWriter){ NULL, 1 };
     }
-    MerloFileReader result = { NULL, NULL, 0, 0, 1, 0, 0, false };
+    MerloFileWriter result = { NULL, 1 };
     char *name = (char *)malloc((size_t)path->length + 1);
     if (name == NULL) merlo_allocation_trap();
     memcpy(name, path->data, (size_t)path->length);
@@ -1481,14 +1530,16 @@ static MerloBytes merlo_file_read_chunk(MerloFileReader *reader, uint64_t limit)
     if (count != 0) ++merlo_allocations;
     return result;
 }
-static uint64_t merlo_file_write_chunk(MerloFileReader *reader, const MerloBytesView *data) {
+static uint64_t merlo_file_write_chunk(MerloFileWriter *writer, const MerloBytesView *data) {
     merlo_require_capability(MERLO_EFFECT_FS_WRITE);
     merlo_file_error = 0;
-    if (reader == NULL || reader->stream == NULL || data == NULL) {
+    if (writer == NULL || writer->stream == NULL || data == NULL) {
         merlo_file_error = UINT32_C(5);
         return 1;
     }
-    size_t written = fwrite(data->data, 1, (size_t)data->length, reader->stream);
+    size_t written = data->length == 0
+        ? 0
+        : fwrite(data->data, 1, (size_t)data->length, writer->stream);
     if (written != (size_t)data->length) {
         merlo_file_error = UINT32_C(2);
         return 1;
@@ -1598,9 +1649,8 @@ static MerloText merlo_file_read_text(const MerloText *path) {
         merlo_file_error = UINT32_C(3);
         return (MerloText){ NULL, 0 };
     }
-    MerloText result = merlo_text_from_bytes(
-        (const MerloBytesView *)&bytes, 0, bytes.length
-    );
+    MerloBytesView view = merlo_bytes_as_view(&bytes);
+    MerloText result = merlo_text_from_bytes(&view, 0, bytes.length);
     free(bytes.data);
     ++merlo_frees;
     return result;
@@ -1750,6 +1800,11 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         elif descriptor.kind == "file_reader":
             lines.extend([
                 "    merlo_file_close(value);",
+                "    ++merlo_drop_calls;",
+            ])
+        elif descriptor.kind == "file_writer":
+            lines.extend([
+                "    merlo_file_close_writer(value);",
                 "    ++merlo_drop_calls;",
             ])
         elif descriptor.kind == "array":
@@ -2125,8 +2180,6 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 binding_name = hir_node.attribute_map.get("name")
                 if isinstance(binding_name, str) and hir_node.type_name:
                     self.env_types[binding_name] = hir_node.type_name
-                    if _is_owner(self.descriptors[hir_node.type_name]):
-                        self.owned_locals.setdefault(binding_name, hir_node.type_name)
         for child in ast.walk(node):
             if isinstance(child, ast.Assign) and isinstance(child.targets[0], ast.Name):
                 binding_name = child.targets[0].id
@@ -2147,8 +2200,6 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     self.owned_locals.pop(child.target.id, None)
                     if _is_owner(self.descriptors[type_name]):
                         self.borrowed_owner_bindings.add(child.target.id)
-                elif _is_owner(self.descriptors[type_name]):
-                    self.owned_locals.setdefault(child.target.id, type_name)
         declarations = []
         parameter_names = {item.name for item in function.parameters}
         for name, type_name in self.env_types.items():
@@ -2385,7 +2436,8 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 clears.append("merlo_file_write_error = 0")
         clear_expression = ", ".join(clears)
         return (
-            f"(({evaluate}), ({result_temporary} = ({failure_condition}) "
+            f"(({clear_expression}), ({evaluate}), "
+            f"({result_temporary} = ({failure_condition}) "
             f"? {failure} : {success_value}), {clear_expression}, "
             f"merlo_move_{_identifier(expected)}(&{result_temporary}))"
         )
@@ -2456,6 +2508,8 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             lines.append(f"{pad}}}")
             lines.append(f"{pad}merlo_file_error = 0;")
             lines.append(f"{pad}{target} = {temporary};")
+            if target is not None and _is_owner(self.descriptors[ok_type]):
+                self.owned_locals[target] = ok_type
             return lines
         result_ctype = _c_name(result_type or "")
         lines.append(
@@ -2485,6 +2539,8 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             return lines
         lines.append(f"{pad}{target} = {temporary}.payload.Ok;")
         lines.append(f"{pad}{temporary}.tag = MERLO_{_identifier(result_type or '')}_MOVED_TAG;")
+        if _is_owner(self.descriptors[ok_type]):
+            self.owned_locals[target] = ok_type
         return lines
 
     def _statement(self, node: ast.stmt) -> list[str]:
@@ -2548,12 +2604,17 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             self.assigning_borrowed = (
                 self._contains_borrow(expected)
             )
+            live_owner = node.target.id in self.owned_locals
+            owning_binding = (
+                node.target.id not in self.pointer_values
+                and _is_owner(self.descriptors[expected])
+            )
             try:
                 value = (
                     self._move_expression(node.value, expected)
                     if (
                         node.value is not None
-                        and node.target.id in self.owned_locals
+                        and owning_binding
                     )
                     else self._expression(
                         node.value,
@@ -2566,12 +2627,14 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             finally:
                 self.assigning_borrowed = previous_borrowed
             lines = []
-            if node.target.id in self.owned_locals:
+            if live_owner:
                 lines.append(
                     f"{pad}merlo_drop_{_identifier(self.owned_locals[node.target.id])}"
                     f"(&{node.target.id});"
                 )
             lines.append(f"{pad}{node.target.id} = {value};")
+            if node.value is not None and owning_binding:
+                self.owned_locals[node.target.id] = expected
             return lines
         if isinstance(node, ast.Assign):
             target = self._lvalue(node.targets[0])
@@ -2587,14 +2650,22 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             self.assigning_borrowed = (
                 self._contains_borrow(expected or "")
             )
+            named_target = (
+                node.targets[0].id
+                if isinstance(node.targets[0], ast.Name)
+                else None
+            )
+            live_owner = named_target in self.owned_locals
+            owning_binding = (
+                expected is not None
+                and named_target is not None
+                and named_target not in self.pointer_values
+                and _is_owner(self.descriptors[expected])
+            )
             try:
                 value = (
                     self._move_expression(node.value, expected)
-                    if (
-                        expected is not None
-                        and isinstance(node.targets[0], ast.Name)
-                        and node.targets[0].id in self.owned_locals
-                    )
+                    if owning_binding
                     else self._expression(
                         node.value,
                         expected=expected,
@@ -2605,16 +2676,15 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             finally:
                 self.assigning_borrowed = previous_borrowed
             lines = []
-            if (
-                isinstance(node.targets[0], ast.Name)
-                and node.targets[0].id in self.owned_locals
-            ):
+            if live_owner and named_target is not None:
                 lines.append(
                     f"{pad}merlo_drop_"
-                    f"{_identifier(self.owned_locals[node.targets[0].id])}"
-                    f"(&{node.targets[0].id});"
+                    f"{_identifier(self.owned_locals[named_target])}"
+                    f"(&{named_target});"
                 )
             lines.append(f"{pad}{target} = {value};")
+            if owning_binding and named_target is not None and expected is not None:
+                self.owned_locals[named_target] = expected
             return lines
         if isinstance(node, ast.AugAssign):
             target = self._lvalue(node.target)
@@ -3207,15 +3277,30 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         view_type = {"Text": "TextView", "Bytes": "BytesView"}.get(actual)
         if view_type != expected:
             return None
-        source = self._expression(argument, expected=actual)
-        ctype = _c_name(expected)
-        if want_pointer:
-            if self._expression_is_pointer(argument):
-                return f"(({ctype} *){self._expression(argument, want_pointer=True)})"
-            if isinstance(argument, (ast.Name, ast.Attribute, ast.Subscript)):
-                return f"(({ctype} *)&({source}))"
-            return None
-        return f"({ctype}){{ ({source}).data, ({source}).length }}"
+        if self._is_owning_temporary(argument, actual or ""):
+            argument = ast.Name(
+                id=self._materialize_owned_argument(argument, actual or ""),
+                ctx=ast.Load(),
+            )
+        address = self._address_expression(argument)
+        return self._view_from_owner_address(
+            address,
+            actual or "",
+            expected,
+            want_pointer=want_pointer,
+        )
+
+    @staticmethod
+    def _view_from_owner_address(
+        address: str,
+        owner_type: str,
+        view_type: str,
+        *,
+        want_pointer: bool,
+    ) -> str:
+        owner = f"((const {_c_name(owner_type)} *){address})"
+        descriptor = f"({_c_name(view_type)}){{ {owner}->data, {owner}->length }}"
+        return f"&({descriptor})" if want_pointer else descriptor
 
     def _enum_tag_expression(self, node: ast.AST) -> str:
         expression = self._expression(node)
@@ -3680,25 +3765,49 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     failure_condition="merlo_file_error != 0",
                 )
             if receiver_text == "fs" and method in {"write", "write_text"}:
-                data_type = self._expression_type(node.args[1])
-                data = self._address_expression(node.args[1])
-                if data_type == "Text":
-                    data = f"(const MerloBytesView *){data}"
+                expected_view = "TextView" if method == "write_text" else "BytesView"
+                data = self._borrow_view_argument(
+                    node.args[1], expected_view, want_pointer=True
+                )
+                if data is None:
+                    data = self._address_expression(node.args[1])
+                write_helper = (
+                    "merlo_file_write_text"
+                    if method == "write_text"
+                    else "merlo_file_write_all"
+                )
                 return self._wrap_host_result(
-                    f"merlo_file_write_all({self._address_expression(node.args[0])}, {data})",
+                    f"{write_helper}({self._address_expression(node.args[0])}, {data})",
                     expected,
                     failure_condition="merlo_file_error != 0 || merlo_file_write_error != 0",
                     error_code="(merlo_file_error != 0 ? merlo_file_error : merlo_file_write_error)",
                 )
             if receiver_text == "fs" and method == "write_chunk":
+                data = self._borrow_view_argument(
+                    node.args[1], "BytesView", want_pointer=True
+                )
+                if data is None:
+                    data = self._address_expression(node.args[1])
                 return self._wrap_host_result(
-                    f"merlo_file_write_chunk({self._address_expression(node.args[0])}, {self._address_expression(node.args[1])})",
+                    f"merlo_file_write_chunk({self._address_expression(node.args[0])}, {data})",
                     expected,
                     failure_condition="merlo_file_error != 0",
                 )
-            if receiver_text == "fs" and method == "close":
+            if receiver_text == "fs" and method == "close_read":
+                address = self._address_expression(node.args[0])
+                if isinstance(node.args[0], ast.Name):
+                    self.owned_locals.pop(node.args[0].id, None)
                 return self._wrap_host_result(
-                    f"merlo_file_close({self._address_expression(node.args[0])})",
+                    f"merlo_file_close({address})",
+                    expected,
+                    failure_condition="merlo_file_error != 0",
+                )
+            if receiver_text == "fs" and method == "close_write":
+                address = self._address_expression(node.args[0])
+                if isinstance(node.args[0], ast.Name):
+                    self.owned_locals.pop(node.args[0].id, None)
+                return self._wrap_host_result(
+                    f"merlo_file_close_writer({address})",
                     expected,
                     failure_condition="merlo_file_error != 0",
                 )
@@ -3708,10 +3817,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 )
                 if value is None:
                     value = self._expression(node.args[0], expected="TextView")
-                return (
-                    f"(merlo_require_capability(MERLO_EFFECT_CONSOLE_WRITE), "
-                    f"fwrite(({value}).data, 1, (size_t)({value}).length, stdout), 0)"
-                )
+                return f"(merlo_console_write_view({value}), 0)"
             if receiver_text == "console" and method == "read":
                 return "merlo_console_read()"
             if receiver_text == "console" and method == "read_line":
@@ -3754,7 +3860,12 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     error_code="merlo_network_error",
                 )
             if receiver_text == "network" and method == "tcp_send":
-                call = f"merlo_network_tcp_send({self._expression(node.args[0])}, {self._address_expression(node.args[1])})"
+                data = self._borrow_view_argument(
+                    node.args[1], "BytesView", want_pointer=True
+                )
+                if data is None:
+                    data = self._address_expression(node.args[1])
+                call = f"merlo_network_tcp_send({self._expression(node.args[0])}, {data})"
                 return self._wrap_host_result(
                     call,
                     expected,
@@ -3801,10 +3912,11 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     )
                 return f"merlo_{_identifier(expected or '')}_new()"
             if receiver_text == "Text" and method == "from_bytes":
-                source_type = self._expression_type(node.args[0])
-                source = self._address_expression(node.args[0])
-                if source_type == "Bytes":
-                    source = f"(const MerloBytesView *){source}"
+                source = self._borrow_view_argument(
+                    node.args[0], "BytesView", want_pointer=True
+                )
+                if source is None:
+                    source = self._address_expression(node.args[0])
                 return (
                     f"merlo_text_from_bytes({source}, "
                     f"{self._expression(node.args[1])}, "
@@ -3943,10 +4055,14 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 if method == "len":
                     return f"({receiver})->length"
                 if method == "view":
-                    view = f"(MerloBytesView *){receiver}"
-                    return view if want_pointer else f"(*{view})"
+                    return self._view_from_owner_address(
+                        receiver, "Bytes", "BytesView", want_pointer=want_pointer
+                    )
                 if method == "to_text":
-                    return f"merlo_text_from_view((const MerloTextView *){receiver})"
+                    view = self._view_from_owner_address(
+                        receiver, "Bytes", "BytesView", want_pointer=True
+                    )
+                    return f"merlo_text_from_bytes({view}, UINT64_C(0), ({receiver})->length)"
             if receiver_type == "BytesView":
                 if method == "len":
                     return f"({receiver})->length"
@@ -3956,14 +4072,14 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     start = self._expression(node.args[0])
                     length = self._expression(node.args[1])
                     return (
-                        f"(MerloBytesView){{ ((MerloBytesView *){receiver})->data + ({start}), "
+                        f"(MerloBytesView){{ ({receiver})->data + ({start}), "
                         f"({length}) }}"
                     )
             if receiver_type == "TextView":
                 if method == "len":
                     return f"({receiver})->length"
                 if method == "byte":
-                    return f"merlo_bytes_load((const MerloBytesView *){receiver}, {self._expression(node.args[0])})"
+                    return f"merlo_text_view_load({receiver}, {self._expression(node.args[0])})"
                 if method == "contains":
                     return f"merlo_text_view_contains({receiver}, {self._address_expression(node.args[0])}, false)"
                 if method == "contains_ascii_case_insensitive":
@@ -3979,7 +4095,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     ):
                         source = self._address_expression(sliced.func.value)
                         return f"merlo_text_from_view_slice({source}, {self._expression(sliced.args[0])}, {self._expression(sliced.args[1])})"
-                    return f"merlo_text_from_view((const MerloTextView *){receiver})"
+                    return f"merlo_text_from_view({receiver})"
                     inner = node.func.value
                     if (
                         isinstance(inner.func, ast.Attribute)
@@ -3998,14 +4114,26 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 if method == "byte":
                     return f"merlo_text_load({receiver}, {self._expression(node.args[0])})"
                 if method == "contains":
-                    return f"merlo_text_view_contains((const MerloTextView *){receiver}, {self._address_expression(node.args[0])}, false)"
+                    view = self._view_from_owner_address(
+                        receiver, "Text", "TextView", want_pointer=True
+                    )
+                    return f"merlo_text_view_contains({view}, {self._address_expression(node.args[0])}, false)"
                 if method == "contains_ascii_case_insensitive":
-                    return f"merlo_text_view_contains((const MerloTextView *){receiver}, {self._address_expression(node.args[0])}, true)"
+                    view = self._view_from_owner_address(
+                        receiver, "Text", "TextView", want_pointer=True
+                    )
+                    return f"merlo_text_view_contains({view}, {self._address_expression(node.args[0])}, true)"
                 if method in {"starts_with", "ends_with"}:
                     suffix = "true" if method == "ends_with" else "false"
-                    return f"merlo_text_view_prefix_suffix((const MerloTextView *){receiver}, {self._address_expression(node.args[0])}, {suffix})"
+                    view = self._view_from_owner_address(
+                        receiver, "Text", "TextView", want_pointer=True
+                    )
+                    return f"merlo_text_view_prefix_suffix({view}, {self._address_expression(node.args[0])}, {suffix})"
                 if method == "slice_bytes":
-                    return f"merlo_text_view_slice_bytes((const MerloTextView *){receiver}, {self._expression(node.args[0])}, {self._expression(node.args[1])})"
+                    view = self._view_from_owner_address(
+                        receiver, "Text", "TextView", want_pointer=True
+                    )
+                    return f"merlo_text_view_slice_bytes({view}, {self._expression(node.args[0])}, {self._expression(node.args[1])})"
                 if method in {"as_view", "view"}:
                     sliced = node.func.value
                     if (
@@ -4017,8 +4145,9 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     ):
                         source = self._address_expression(sliced.func.value)
                         return f"(MerloTextView){{ ({source})->data, ({source})->length }}"
-                    view = f"(MerloTextView *){receiver}"
-                    return view if want_pointer else f"(*{view})"
+                    return self._view_from_owner_address(
+                        receiver, "Text", "TextView", want_pointer=want_pointer
+                    )
                 if method == "clone":
                     return f"merlo_text_clone({receiver})"
             if receiver_type == "TextBuilder" and method == "finish":
@@ -4665,22 +4794,9 @@ __MERLO_CAPS__
             )
         entries = normalized_entries
         implementations = {
-            "console.read_line": "merlo_console_read_line",
-            "console.read_all": "merlo_console_read_all",
-            "fs.open_read": "merlo_file_open_read",
-            "fs.read_text": "merlo_file_read_text",
-            "fs.read_chunk": "merlo_file_read_chunk",
-            "fs.open_write": "merlo_file_open_write",
-            "fs.write_text": "merlo_file_write_all",
-            "fs.write_chunk": "merlo_file_write_chunk",
-            "fs.close": "merlo_file_close",
-            "env.get": "merlo_env_read",
-            "network.tcp_connect": "merlo_network_tcp_connect",
-            "network.tcp_send": "merlo_network_tcp_send",
-            "network.tcp_receive": "merlo_network_tcp_receive",
-            "network.tcp_close": "merlo_network_tcp_close",
-            "network.http_request": "merlo_network_http_request",
-            "process.arg": "merlo_process_arg",
+            name: lowering
+            for name in INTRINSIC_SIGNATURES
+            if (lowering := CONTRACT_GRAPH.abi_lowering(name)) is not None
         }
         present = {entry[0] for entry in normalized_entries}
         for name, intrinsic in INTRINSIC_SIGNATURES.items():

@@ -56,7 +56,7 @@ enum AppError:
     FileWrite
 
 fn main(path: Path) -> Result[Text, AppError]:
-    let file: FileReader = fs.open_write(path)?
+    let file: FileWriter = fs.open_write(path)?
     return Ok("ok")
 """
 
@@ -300,6 +300,74 @@ def test_native_output_close_failure_is_observable(tmp_path: Path) -> None:
     assert completed.returncode == 74
     assert completed.stdout == b""
     assert completed.stderr == f"AppError.FileWrite:{output}\n".encode()
+
+
+def test_resource_cleanup_is_emitted_for_normal_early_and_try_paths() -> None:
+    sources = {
+        "reader-normal": (
+            "enum AppError:\n    FileOpen\n"
+            "task main(path: Path) -> Result[Unit,AppError]:\n"
+            "    uses fs.read\n"
+            "    let reader: FileReader = fs.open_read(path)?\n"
+            "    return Ok(Unit())\n",
+            ("merlo_drop_FileReader(&reader);",),
+        ),
+        "writer-normal": (
+            "enum AppError:\n    FileOpen\n"
+            "task main(path: Path) -> Result[Unit,AppError]:\n"
+            "    uses fs.write\n"
+            "    let writer: FileWriter = fs.open_write(path)?\n"
+            "    return Ok(Unit())\n",
+            ("merlo_drop_FileWriter(&writer);",),
+        ),
+        "early-return": (
+            "enum AppError:\n    FileOpen\n"
+            "task main(path: Path) -> Result[Unit,AppError]:\n"
+            "    uses fs.read\n"
+            "    let reader: FileReader = fs.open_read(path)?\n"
+            "    if true:\n"
+            "        return Ok(Unit())\n"
+            "    return Ok(Unit())\n",
+            ("merlo_drop_FileReader(&reader);",),
+        ),
+        "two-handles": (
+            "enum AppError:\n    FileOpen\n"
+            "task main(path: Path) -> Result[Unit,AppError]:\n"
+            "    uses fs.read\n"
+            "    let first: FileReader = fs.open_read(path)?\n"
+            "    let second: FileReader = fs.open_read(path)?\n"
+            "    return Ok(Unit())\n",
+            (
+                "merlo_drop_FileReader(&first);",
+                "merlo_drop_FileReader(&second);",
+            ),
+        ),
+    }
+    for name, (source, required) in sources.items():
+        hir = compile_structured_hir(source, path=f"{name}.mlo", entry_function="main")
+        rir = lower_structured_hir_to_rir(hir)
+        mir = lower_rir_to_performance_mir(hir, rir)
+        generated = emit_general_c(hir, rir, mir).source
+        function_body = generated.split("merlo_fn_main(", 1)[1]
+        for cleanup in required:
+            assert cleanup in function_body
+
+
+def test_explicit_close_consumes_handle_without_scope_double_close() -> None:
+    source = (
+        "enum AppError:\n    FileOpen\n    Closed\n"
+        "task main(path: Path) -> Result[Unit,AppError]:\n"
+        "    uses fs.read\n"
+        "    let reader: FileReader = fs.open_read(path)?\n"
+        "    fs.close_read(reader)?\n"
+        "    return Ok(Unit())\n"
+    )
+    hir = compile_structured_hir(source, path="explicit-close.mlo", entry_function="main")
+    rir = lower_structured_hir_to_rir(hir)
+    mir = lower_rir_to_performance_mir(hir, rir)
+    function_body = emit_general_c(hir, rir, mir).source.split("merlo_fn_main(", 1)[1]
+    assert "merlo_file_close(&(reader))" in function_body
+    assert "merlo_drop_FileReader(&reader);" not in function_body
 
 
 def test_pure_file_read_and_missing_capability_are_rejected() -> None:

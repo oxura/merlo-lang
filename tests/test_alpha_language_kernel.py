@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -7,7 +10,7 @@ import pytest
 
 from merlo.frontend_model import ConciseApplicationError
 from merlo.concise_services import elaborate_concise_core
-from merlo.native_c_backend import compile_c_source
+from merlo.native_c_backend import compile_c_source, find_c_compiler
 from merlo.representation_c_backend import (
     RepresentationCBackendError,
     emit_general_c,
@@ -446,6 +449,52 @@ def test_owned_text_reborrows_as_text_view_for_native_calls(tmp_path: Path) -> N
     assert b"OK result=5" in completed.stdout
 
 
+def test_generated_c_uses_real_view_descriptors_under_strict_aliasing(
+    tmp_path: Path,
+) -> None:
+    source = (
+        "fn consume(view: TextView) -> UInt64:\n"
+        "    return view.len() + view.byte(0)\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let text: Text = Text.from_bytes(input, 0, input.len())\n"
+        "    return consume(text)\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    forbidden = (
+        r"\(const MerloTextView \*\)\s*&?\(?[A-Za-z_]",
+        r"\(const MerloBytesView \*\)\s*&?\(?[A-Za-z_]",
+        r"\(MerloTextView \*\)",
+        r"\(MerloBytesView \*\)",
+    )
+    assert all(re.search(pattern, generated.source) is None for pattern in forbidden)
+
+    source_path = tmp_path / "strict-aliasing.c"
+    source_path.write_text(generated.source, encoding="utf-8")
+    compilers = tuple(
+        path
+        for name in ("clang", "gcc")
+        if (path := shutil.which(name)) is not None
+    )
+    assert compilers
+    for compiler in compilers:
+        command = [
+            compiler,
+            "-std=c11",
+            "-O3",
+            "-fstrict-aliasing",
+        ]
+        if Path(compiler).name == "gcc":
+            command.append("-Wstrict-aliasing=2")
+        completed = subprocess.run(
+            [*command, str(source_path), "-o", str(tmp_path / Path(compiler).name)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert completed.returncode == 0, completed.stderr
+
+
 def test_nested_owned_record_call_temporary_has_one_drop(tmp_path: Path) -> None:
     source = (
         "record Change:\n"
@@ -571,7 +620,12 @@ def test_branch_move_keeps_zeroed_source_cleanup_on_false_path() -> None:
     )
     hir, rir, _mir, optimized = _layers(source)
     generated = emit_general_c(hir, rir, optimized)
-    assert generated.source.count("merlo_drop_Change(&source);") == 3
+    function_body = generated.source.split("merlo_fn_main(", 1)[1]
+    assignment = function_body.index("source = merlo_make_Change(")
+    first_cleanup = function_body.index("merlo_drop_Change(&source);")
+    assert assignment < first_cleanup
+    assert function_body.count("merlo_drop_Change(&source);") == 2
+    assert function_body.count("merlo_drop_Change(&moved);") == 2
 
 
 def test_loop_body_borrow_temporary_is_dropped_at_each_iteration() -> None:
@@ -890,3 +944,91 @@ def test_owner_array_subscript_from_borrow_is_cloned(tmp_path: Path) -> None:
     completed = subprocess.run([str(binary)], input=b"", capture_output=True, check=False)
     assert completed.returncode == 0, completed.stderr.decode()
     assert b"OK result=6" in completed.stdout
+
+
+def test_owner_array_parameter_is_borrowed_but_scalar_array_is_value() -> None:
+    hir = compile_structured_hir(
+        "fn owner(values: Array[Text,1]) -> UInt64:\n"
+        "    return values[0].len()\n"
+        "fn scalar(values: Array[UInt64,1]) -> UInt64:\n"
+        "    return values[0]\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    return 0\n",
+        path="array-ownership.mlo",
+    )
+
+    assert hir.function("owner").parameters[0].ownership == "borrow"
+    assert hir.function("scalar").parameters[0].ownership == "value"
+
+
+def test_owner_array_projection_is_clean_under_address_and_undefined_sanitizers(
+    tmp_path: Path,
+) -> None:
+    source = (
+        "fn extract(values: Array[Text,1]) -> Text:\n"
+        "    return values[0]\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        '    let values: Array[Text,1] = ["abc"]\n'
+        "    let copied: Text = extract(values)\n"
+        "    return copied.len() + values[0].len()\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    source_path = tmp_path / "array-owner-sanitized.c"
+    binary = tmp_path / "array-owner-sanitized"
+    source_path.write_text(generated.source, encoding="utf-8")
+    compiler = find_c_compiler()
+    assert compiler is not None
+    built = subprocess.run(
+        [
+            compiler,
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined",
+            str(source_path),
+            "-o",
+            str(binary),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert built.returncode == 0, built.stderr
+    environment = dict(os.environ)
+    environment.update(
+        {
+            "ASAN_OPTIONS": "detect_leaks=0:halt_on_error=1",
+            "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1",
+        }
+    )
+    completed = subprocess.run(
+        [str(binary)],
+        input=b"",
+        capture_output=True,
+        check=False,
+        env=environment,
+    )
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=6" in completed.stdout
+
+
+def test_empty_console_write_builds_without_null_fwrite(tmp_path: Path) -> None:
+    binary = _native(
+        "fn main(input: BytesView) -> UInt64:\n"
+        '    console.write("")\n'
+        "    return 0\n",
+        tmp_path,
+        "empty-console-write",
+    )
+    assert binary.is_file()
+
+
+def test_native_compiler_environment_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    default = find_c_compiler()
+    assert default is not None
+    monkeypatch.setenv("MERLO_C_COMPILER", default)
+    assert find_c_compiler() == default
+    monkeypatch.setenv("MERLO_C_COMPILER", "merlo-compiler-that-does-not-exist")
+    assert find_c_compiler() is None
