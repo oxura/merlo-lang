@@ -3,8 +3,8 @@
 Alpha.3 intentionally changes the filesystem and verification models. The
 compiler reports language `0.3`, frontend `7`, canonical `5`, HIR `5`,
 Obligation IR `1`, range analysis `1`, bounded symbolic execution `1`, optional
-SMT `1`, RIR/MIR `2`, runtime ABI `2`, and SemanticWorld `8`; earlier lockfiles
-must be regenerated with the alpha.3 compiler.
+SMT `1`, property evidence `1`, RIR/MIR `2`, runtime ABI `2`, and SemanticWorld
+`9`; earlier lockfiles must be regenerated with the alpha.3 compiler.
 
 SemanticWorld now includes the canonical constant-range analysis payload.
 Compiler results expose the same payload and merge its checked-arithmetic and
@@ -15,6 +15,9 @@ counterexamples, incomplete bounds, and unsupported HIR.
 Z3 remains optional (`pip install merlo[verify]`) and is loaded only for
 `merlo check --smt z3`. Normal checks and builds remain dependency-free and
 emit a deterministic disabled SMT report.
+Compiler and SemanticWorld payloads now include generated property cases and
+normalized typed counterexamples. Consumers must honor each property's
+`exhaustive` flag and requirements before replay.
 
 
 ## File handles

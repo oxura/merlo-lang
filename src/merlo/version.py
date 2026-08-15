@@ -15,6 +15,7 @@ class CompilerVersions:
     range_analysis: int
     bounded_symbolic: int
     smt: int
+    property_evidence: int
     rir: int
     mir: int
     runtime_abi: int
@@ -36,10 +37,11 @@ VERSIONS = CompilerVersions(
     range_analysis=1,
     bounded_symbolic=1,
     smt=1,
+    property_evidence=1,
     rir=2,
     mir=2,
     runtime_abi=2,
-    semantic_world=8,
+    semantic_world=9,
     manifest=1,
     lockfile=1,
 )

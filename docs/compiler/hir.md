@@ -65,6 +65,12 @@ default report is disabled and does not import a solver. Missing packages,
 unsupported HIR, timeout, and solver `unknown` remain explicit non-proofs.
 Path expansion is bounded by `--smt-max-paths`; exceeding it is unsupported.
 
+The `property-evidence` artifact derives replayable parameter domains and
+Cartesian cases for each typed postcondition. Exhaustive finite domains are
+marked separately from bounded boundary samples. Preconditions remain attached
+to each property, and concrete bounded/SMT refutations are normalized with
+typed inputs and engine provenance.
+
 ## Failure modes
 
 A missing retained Surface tree, unsupported expressions, invalid map

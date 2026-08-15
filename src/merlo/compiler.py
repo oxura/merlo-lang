@@ -20,6 +20,10 @@ from merlo.obligation_ir import (
     build_obligation_ir,
     extend_obligations,
 )
+from merlo.property_evidence import (
+    PropertyEvidenceReport,
+    generate_property_evidence,
+)
 from merlo.range_analysis import RangeAnalysisResult, analyze_constant_ranges
 from merlo.representation_c_backend import GeneratedC, emit_general_c
 from merlo.representation_ir import RepresentationProgram, lower_structured_hir_to_rir
@@ -69,6 +73,7 @@ class ProjectCompilation:
     range_analysis: RangeAnalysisResult
     bounded_symbolic: BoundedSymbolicReport
     smt: SMTReport
+    property_evidence: PropertyEvidenceReport
     representation: RepresentationProgram
     mir: GeneralPerformanceMIR
     optimized_mir: GeneralPerformanceMIR
@@ -142,6 +147,19 @@ class ProjectCompilation:
                 "results": [
                     item.to_dict() for item in self.smt.results
                 ],
+            },
+            "property_evidence": {
+                "digest": self.property_evidence.digest,
+                "property_count": len(
+                    self.property_evidence.properties
+                ),
+                "exhaustive_count": sum(
+                    item.exhaustive
+                    for item in self.property_evidence.properties
+                ),
+                "counterexample_count": len(
+                    self.property_evidence.counterexamples
+                ),
             },
             "native": self.native.to_dict() if self.native is not None else None,
         }
@@ -242,6 +260,12 @@ def compile_project(
             max_paths=smt_max_paths,
         )
         representation = lower_structured_hir_to_rir(hir)
+        property_evidence = generate_property_evidence(
+            hir,
+            obligations,
+            bounded_symbolic,
+            smt,
+        )
         mir = lower_rir_to_performance_mir(hir, representation)
         optimized = optimize_general_mir(mir)
         generated = emit_general_c(hir, representation, optimized)
@@ -312,6 +336,13 @@ def compile_project(
         smt.to_json(),
         obligation_artifact,
     )
+    property_artifact = _artifact(
+        "property-evidence",
+        property_evidence.contract,
+        property_evidence.schema_version,
+        property_evidence.to_json(),
+        obligation_artifact,
+    )
     rir_artifact = _artifact(
         "rir",
         representation.contract,
@@ -351,6 +382,7 @@ def compile_project(
             range_artifact,
             symbolic_artifact,
             smt_artifact,
+            property_artifact,
             rir_artifact,
             mir_artifact,
             optimized_artifact,
@@ -403,6 +435,7 @@ def compile_project(
         range_analysis=range_analysis,
         bounded_symbolic=bounded_symbolic,
         smt=smt,
+        property_evidence=property_evidence,
         representation=representation,
         mir=mir,
         optimized_mir=optimized,

@@ -76,6 +76,11 @@ SMT-LIB and checked by negating each postcondition. `unsat` proves that
 obligation; `sat` records model inputs; unavailable, unsupported, timeout, and
 `unknown` results never become proofs.
 
+Every function postcondition also has a generated property specification:
+typed parameter domains, explicit preconditions, a bounded deterministic case
+set, and an exhaustive/sampled marker. Real bounded or SMT refutations become
+typed replay evidence. Generated samples alone never discharge an obligation.
+
 Canonical source is a deterministic diagnostic projection of the typed tree.
 Its semantic hash includes types, authority, errors, and desugared operations;
 formatting whitespace and source spans do not change that hash.

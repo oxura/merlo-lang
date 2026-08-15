@@ -63,6 +63,8 @@
 - Adds an opt-in Z3 backend with canonical SMT-LIB queries, deterministic
   solver settings, model counterexamples, timeout/unknown handling, and no
   default-build dependency.
+- Generates canonical postcondition property domains/cases and normalizes real
+  bounded/SMT counterexamples with typed inputs and replay provenance.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.
