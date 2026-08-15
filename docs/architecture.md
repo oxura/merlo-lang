@@ -26,11 +26,18 @@ separate compiler and binary metadata but is not part of that provenance
 chain. `compiler.py` coordinates compilation; the CLI, LSP, and SemanticWorld
 consume its results.
 
-The project frontend still contains transitional regex and text-rewrite logic.
-Merlo is therefore converging on, rather than already possessing, one clean
-semantic core. RFC 0001 replaces that path with a Merlo lexer, immutable
-Surface AST, bound symbols, structural inference, and direct canonical
-lowering.
+Production expression parsing uses a standalone Merlo token stream, immutable
+Surface AST, bound symbols, and structural inference. Module declarations,
+indentation, and type declarations still use the transitional file parser;
+Merlo does not yet claim a unified lossless file lexer or CST. Elaboration constraints, call binding,
+diagnostics, inference state, and the CPython compatibility adapter have
+separate owners under `merlo/elaboration`; the token stream lives under
+`merlo/frontend`. Tooling can request a lossless trivia view for expressions
+while production expression parsing consumes semantic tokens only.
+
+The current HIR and C backend still consume the isolated CPython AST adapter.
+It is a compatibility boundary, not a second source parser, but direct typed
+Surface-to-HIR lowering is not complete and must not be claimed yet.
 
 ## Ownership and runtime
 

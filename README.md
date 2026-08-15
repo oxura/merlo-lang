@@ -15,8 +15,10 @@ ownership, inferred effects, capabilities, and stable semantic representations.
 The current prerelease is `0.1.0-alpha.2`: a bootstrap compiler requiring
 Python 3.11 or newer with no third-party Python runtime dependencies, a C11
 native backend, project tooling, an LSP server, a standard library, and
-executable examples. The packaged compiler, archive, benchmark, and
-release-tool boundaries are explicit. No PyPI availability is claimed.
+executable source-checkout examples. The wheel contains the compiler and its
+runtime standard library; documentation, specifications, research, RFCs,
+editor assets, and examples remain in the source archive. No PyPI availability
+is claimed.
 Research and development began privately on 2026-03-19. The first public
 research alpha was released on 2026-08-14.
 

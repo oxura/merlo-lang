@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from merlo import concise_services
 from merlo.compiler import compile_project
 from merlo.project import Project
 from merlo.semantic_world import SemanticWorld
@@ -85,6 +86,20 @@ def test_manifests_locks_imports_and_business_source_audit() -> None:
     packages_manifest = (_project("packages") / "merlo.toml").read_text(encoding="utf-8")
     assert 'greeting = { path = "vendor/greeting"' in packages_manifest
     assert 'use greeting' in (_project("packages") / "src/main.mlo").read_text(encoding="utf-8")
+
+
+def test_project_compile_reuses_the_validated_module_graph(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def duplicate_loader(_entry: Path) -> tuple[object, ...]:
+        raise AssertionError("compile_project traversed the module graph twice")
+
+    monkeypatch.setattr(concise_services, "_load_modules", duplicate_loader)
+    compilation = compile_project(
+        _project("automation"),
+        require_interface_lock=False,
+    )
+    assert compilation.module_graph.modules
 
 
 @pytest.mark.parametrize("name", EXAMPLE_NAMES)

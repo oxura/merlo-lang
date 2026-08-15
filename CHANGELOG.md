@@ -2,10 +2,38 @@
 
 ## Unreleased
 
+- Starts the `0.1.0-alpha.3-dev` compatibility line with language contract
+  `0.3`, frontend contract `4`, and runtime ABI `2`. The mode-specific file
+  resource API is intentionally incompatible with alpha.2; see the migration
+  guide.
+- Replaces owner/view pointer punning with real view descriptors and locks the
+  generated C under GCC and Clang strict-aliasing optimization.
+- Defines byte and text escape semantics, rejecting Unicode escapes in bytes,
+  invalid Unicode scalar values, malformed escapes, and unknown escapes.
+
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.
 - Rejects serialized canonical projections as compiler input while preserving
   exact module source spans through HIR and SemanticWorld indexing.
+- Fixes owned `Array` projection cleanup that could double-free nested owner
+  values, and makes empty text writes valid under GCC's strict diagnostics.
+- Adds full production-suite Clang/GCC gates and a focused ASan/UBSan ownership
+  regression, while honoring `MERLO_C_COMPILER` in native test paths.
+- Derives binder names and monomorphic method signatures from the immutable
+  builtin contract registry. Files now use distinct `FileReader` and
+  `FileWriter` resources with mode-correct close effects.
+- Reuses the validated module graph instead of reading and traversing modules
+  a second time during application elaboration.
+- Splits elaboration constraints, call binding, diagnostics, state, and the
+  CPython compatibility adapter into owned modules. Surface expression parsing
+  now consumes a standalone token stream with an optional lossless trivia view;
+  a full-file lossless lexer/CST remains an alpha.3 gate.
+- Makes AlphaProtocol rename edits span-exact, including nested calls, and
+  documents unsupported move and signature migrations.
+- Restores the wheel boundary promised by RFC 0001: only the compiler/runtime
+  package and standard library ship in the wheel; source-only assets stay in
+  the source archive.
+- Updates official GitHub Actions to Node 24-compatible major versions.
 
 ## 0.1.0-alpha.2 — 2026-08-14
 
