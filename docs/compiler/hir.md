@@ -48,11 +48,13 @@ specification.
 
 ## Experimental boundary
 
-The current HIR builder internally adapts typed Surface nodes to
-CPython-compatible AST objects so the established ownership and representation
-lowerers remain shared. This adapter is implementation-local: Python AST is not
-the frontend stage contract, and no projected source is reparsed. HIR
-intentionally does not model low-level CFG or drop flags.
+The HIR builder and representation backend share Merlo-owned structured syntax
+nodes emitted directly from the typed Surface tree. The node vocabulary keeps
+the old bootstrap shape where that preserves audited lowering rules, but the
+objects, traversal, source locations, and rendering are owned by Merlo. The
+legacy direct-source helper may parse canonical snippets through Python before
+converting them; production project compilation does not. HIR intentionally
+does not model low-level CFG or drop flags.
 
 ## Verification commands
 

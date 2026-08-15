@@ -26,18 +26,19 @@ separate compiler and binary metadata but is not part of that provenance
 chain. `compiler.py` coordinates compilation; the CLI, LSP, and SemanticWorld
 consume its results.
 
-Production expression parsing uses a standalone Merlo token stream, immutable
-Surface AST, bound symbols, and structural inference. Module declarations,
-indentation, and type declarations still use the transitional file parser;
-Merlo does not yet claim a unified lossless file lexer or CST. Elaboration constraints, call binding,
-diagnostics, inference state, and the CPython compatibility adapter have
-separate owners under `merlo/elaboration`; the token stream lives under
-`merlo/frontend`. Tooling can request a lossless trivia view for expressions
-while production expression parsing consumes semantic tokens only.
+Production parsing starts with a lossless full-file Merlo token stream and CST,
+then builds an immutable Surface AST with bound symbols and structural
+inference. The semantic declaration parser remains transitional, but every
+production file first passes the same indentation, trivia, token, and recovery
+boundary. Elaboration constraints, call binding, diagnostics, inference state,
+and native lowering have separate owners under `merlo/elaboration` and
+`merlo/frontend`.
 
-The current HIR and C backend still consume the isolated CPython AST adapter.
-It is a compatibility boundary, not a second source parser, but direct typed
-Surface-to-HIR lowering is not complete and must not be claimed yet.
+Typed Surface nodes lower directly into Merlo-owned native syntax nodes. HIR and
+the C backend share that representation without constructing or compiling
+CPython AST objects. Python parsing survives only behind the legacy
+`compile_structured_hir(source)` test boundary; project compilation never uses
+it.
 
 ## Ownership and runtime
 
