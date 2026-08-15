@@ -184,3 +184,62 @@ def test_change_ir_roundtrip_tamper_and_apply_status(
     )
     with pytest.raises(UnsupportedMigration):
         unsupported.apply()
+
+
+def test_change_ir_rejects_operation_spoofing_and_unrelated_tokens(
+    tmp_path: Path,
+) -> None:
+    from merlo.refactor import ChangeIR, preview_rename
+    from merlo.semantic_world import SemanticWorld, WorldError
+
+    source = _source(tmp_path)
+    world = SemanticWorld.build(source, require_interface_lock=False)
+    helper = preview_rename(
+        world,
+        "app.main.helper",
+        "assist",
+    )
+
+    with pytest.raises(WorldError, match="ChangeIRInvalidOperation"):
+        replace(
+            helper,
+            operation="move",
+            digest="",
+        )
+    with pytest.raises(
+        WorldError,
+        match="non-finite numbers",
+    ):
+        replace(
+            helper,
+            metadata={"value": float("nan")},
+            digest="",
+        )
+
+    main = preview_rename(
+        world,
+        "app.main.main",
+        "entry",
+    )
+    unrelated = replace(
+        main.edits[0],
+        symbol_id=helper.target.symbol_id,
+        replacement="assist",
+    )
+    spoofed = ChangeIR(
+        operation="rename",
+        status="ready",
+        target=helper.target,
+        expected_world_digest=world.digest,
+        metadata={
+            "old_name": "helper",
+            "new_name": "assist",
+        },
+        edits=(unrelated,),
+        world=world,
+    )
+    with pytest.raises(
+        WorldError,
+        match="ChangeIRSemanticEditMismatch",
+    ):
+        spoofed.apply()

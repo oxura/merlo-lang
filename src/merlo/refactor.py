@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 import tempfile
@@ -19,7 +20,13 @@ CHANGE_IR_CONTRACT = "merlo.change-ir.v1"
 
 
 def _json(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+        allow_nan=False,
+    )
 
 
 def _digest(value: Any) -> str:
@@ -33,6 +40,10 @@ def _freeze(value: Any) -> Any:
         return tuple(_freeze(item) for item in value)
     if isinstance(value, set):
         return tuple(sorted((_freeze(item) for item in value), key=repr))
+    if isinstance(value, float) and not math.isfinite(value):
+        raise WorldError(
+            "ChangeIRInvalidMetadata: non-finite numbers are forbidden"
+        )
     return value
 
 
@@ -269,6 +280,13 @@ class ChangeIR:
             raise WorldError("ChangeIRVersionMismatch")
         if not isinstance(self.operation, str) or not isinstance(self.status, str) or self.status not in {"ready", "unsupported"}:
             raise WorldError("ChangeIRInvalidStatus")
+        expected_status = {
+            "rename": "ready",
+            "move": "unsupported",
+            "change_signature": "unsupported",
+        }.get(self.operation)
+        if expected_status is None or self.status != expected_status:
+            raise WorldError("ChangeIRInvalidOperation")
         if not isinstance(self.expected_world_digest, str) or not self.operation or not self.expected_world_digest:
             raise WorldError("ChangeIRInvalidEnvelope")
         if not isinstance(self.target, ChangeTarget):
@@ -399,6 +417,58 @@ class ChangeIR:
         for key in ("symbol_id", "revision_id", "interface_revision_id", "implementation_revision_id"):
             if str(current.get(key, "")) != str(getattr(self.target, key)):
                 raise StaleWorldError(f"StaleWorld: target identity changed ({key})")
+        if self.operation == "rename":
+            old_name = self.metadata.get("old_name")
+            new_name = self.metadata.get("new_name")
+            if (
+                old_name != current.get("name")
+                or not isinstance(new_name, str)
+                or not re.fullmatch(
+                    r"[A-Za-z_][A-Za-z0-9_]*",
+                    new_name,
+                )
+            ):
+                raise WorldError(
+                    "ChangeIRInvalidRenameMetadata"
+                )
+            semantic_edits = [
+                _identifier_edit(
+                    Path(current["source"]["path"]).resolve(),
+                    current["source"],
+                    old_name,
+                    new_name,
+                    current["symbol_id"],
+                    "definition",
+                )
+            ]
+            for reference in world.references(current["symbol_id"]):
+                semantic_edits.append(
+                    _identifier_edit(
+                        Path(reference["source"]["path"]).resolve(),
+                        reference["source"],
+                        old_name,
+                        new_name,
+                        current["symbol_id"],
+                        "reference",
+                    )
+                )
+            expected_edits = tuple(
+                sorted(
+                    {
+                        (item.path, item.start, item.end): item
+                        for item in semantic_edits
+                    }.values(),
+                    key=lambda item: (
+                        item.path,
+                        item.start,
+                        item.end,
+                    ),
+                )
+            )
+            if self.edits != expected_edits:
+                raise WorldError(
+                    "ChangeIRSemanticEditMismatch"
+                )
         root = world.root.resolve()
         source_hashes = world.data.get("source_hashes", {})
         for edit in self.edits:
