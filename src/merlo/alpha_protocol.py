@@ -1,41 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Mapping
 
 from merlo.refactor import preview_change_signature, preview_move, preview_rename
+from merlo.semantic_capsule import SemanticCapsule
 from merlo.semantic_world import SemanticWorld, WorldError
-
-
-@dataclass(frozen=True)
-class TaskCapsule:
-    goal: str
-    target: dict[str, Any]
-    source: str
-    signature: str
-    dependent_types: tuple[str, ...]
-    callers: tuple[str, ...]
-    dependencies: tuple[str, ...]
-    effects: tuple[str, ...]
-    capabilities: tuple[str, ...]
-    public_boundary: bool
-    tests: tuple[str, ...]
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "kind": "TaskCapsule",
-            "goal": self.goal,
-            "target": self.target,
-            "source": self.source,
-            "signature": self.signature,
-            "dependent_types": list(self.dependent_types),
-            "callers": list(self.callers),
-            "dependencies": list(self.dependencies),
-            "effects": list(self.effects),
-            "capabilities": list(self.capabilities),
-            "public_boundary": self.public_boundary,
-            "tests": list(self.tests),
-        }
 
 
 class AlphaProtocol:
@@ -77,13 +46,8 @@ class AlphaProtocol:
     def source(self, target: str) -> str:
         return self.world.source(target)
 
-    def compile_context(self, target: str, *, goal: str = "") -> TaskCapsule:
-        payload = self.world.compile_context(target, goal=goal)
-        return TaskCapsule(
-            goal=payload["goal"], target=payload["target"], source=payload["source"], signature=payload["signature"],
-            dependent_types=tuple(payload["dependent_types"]), callers=tuple(payload["callers"]), dependencies=tuple(payload["dependencies"]),
-            effects=tuple(payload["effects"]), capabilities=tuple(payload["capabilities"]), public_boundary=bool(payload["public_boundary"]), tests=tuple(payload["tests"]),
-        )
+    def compile_context(self, target: str, *, goal: str = "") -> SemanticCapsule:
+        return self.world.compile_context(target, goal=goal)
 
     def impact(self, target: str) -> dict[str, Any]:
         return self.world.impact(target)
@@ -139,4 +103,4 @@ class AlphaProtocol:
         raise WorldError(f"UnknownOperation: {operation}")
 
 
-__all__ = ["AlphaProtocol", "TaskCapsule"]
+__all__ = ["AlphaProtocol", "SemanticCapsule"]

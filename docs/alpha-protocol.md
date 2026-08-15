@@ -4,6 +4,11 @@
 Production operations include inspection, references, callers/callees,
 dependencies, impact, compile context, and diagnostic explanations.
 
+`context.compile` returns a canonical `merlo.semantic-capsule.v1` bound to the
+world and target revision. It contains only the target's source, dependencies,
+authority, contracts, holes, obligations, public tests, and filtered
+verification/property evidence; unrelated global evidence is excluded.
+
 Refactors are explicit and can be previewed before applying:
 
 ```console

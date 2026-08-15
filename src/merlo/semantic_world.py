@@ -8,11 +8,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 
+from merlo.semantic_capsule import (
+    SemanticCapsule,
+    extract_semantic_capsule,
+)
 from merlo.modules import ModuleGraph
 from merlo.version import VERSIONS
 
 WORLD_SCHEMA_VERSION = VERSIONS.semantic_world
-WORLD_CONTRACT = "merlo.semantic-world.v11"
+WORLD_CONTRACT = "merlo.semantic-world.v12"
 
 
 class WorldError(ValueError):
@@ -490,16 +494,13 @@ class SemanticWorld:
                 lines.append(f"  {self._symbols[identifier]['qualified_name']} {self._symbols[identifier]['signature']}")
         return "\n".join(lines)
 
-    def compile_context(self, target: str, *, goal: str = "") -> dict[str, Any]:
-        symbol = self.resolve(target)
-        impact = self.impact(symbol["symbol_id"])
-        obligation_ids = set(symbol["obligations"])
-        obligations = [
-            item
-            for item in self.data.get("obligations", ())
-            if item["obligation_id"] in obligation_ids
-        ]
-        return {"kind": "TaskCapsule", "goal": goal, "target": {"symbol_id": symbol["symbol_id"], "qualified_name": symbol["qualified_name"], "module": symbol["module"], "name": symbol["name"]}, "source": self.source(symbol["symbol_id"]), "signature": symbol["signature"], "dependent_types": symbol["types"], "callers": [item["symbol_id"] for item in impact["callers"]], "dependencies": [item["symbol_id"] for item in impact["dependencies"]], "effects": list(symbol["effects"]), "capabilities": list(symbol["capabilities"]), "requirements": list(symbol["requirements"]), "ensures": list(symbol["ensures"]), "invariants": list(symbol["invariants"]), "holes": list(symbol["holes"]), "obligations": obligations, "public_boundary": symbol["exported"], "tests": [item["path"] for item in self.data.get("tests", ())] if symbol["exported"] else []}
+    def compile_context(
+        self,
+        target: str,
+        *,
+        goal: str = "",
+    ) -> SemanticCapsule:
+        return extract_semantic_capsule(self, target, goal=goal)
 
     def diagnostics_explain(self, diagnostic: str | Mapping[str, Any]) -> dict[str, Any]:
         code = diagnostic.get("code") if isinstance(diagnostic, Mapping) else str(diagnostic).split(":", 1)[0]

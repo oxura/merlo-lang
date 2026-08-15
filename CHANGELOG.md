@@ -71,6 +71,9 @@
 - Replaces unversioned refactor transactions and ad hoc unsupported responses
   with canonical, digest-bound `ChangeIR`, revision/world validation, and one
   preview/apply envelope across protocol, CLI, and LSP.
+- Replaces ad hoc task context maps with immutable, revision-bound semantic
+  capsules containing only target-relevant code, authority, obligations,
+  tests, and filtered verification evidence.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

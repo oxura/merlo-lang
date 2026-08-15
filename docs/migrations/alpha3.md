@@ -3,9 +3,9 @@
 Alpha.3 intentionally changes the filesystem and verification models. The
 compiler reports language `0.3`, frontend `7`, canonical `5`, HIR `5`,
 Obligation IR `1`, range analysis `1`, bounded symbolic execution `1`, optional
-SMT `1`, property evidence `1`, verification metrics `1`, ChangeIR `1`, RIR/MIR
-`2`, runtime ABI `2`, and SemanticWorld `11`; earlier lockfiles must be
-regenerated with the alpha.3 compiler.
+SMT `1`, property evidence `1`, verification metrics `1`, ChangeIR `1`,
+semantic capsule `1`, RIR/MIR `2`, runtime ABI `2`, and SemanticWorld `12`;
+earlier lockfiles must be regenerated with the alpha.3 compiler.
 
 SemanticWorld now includes the canonical constant-range analysis payload.
 Compiler results expose the same payload and merge its checked-arithmetic and
@@ -26,6 +26,9 @@ Semantic refactor previews now use the versioned `merlo.change-ir.v1` envelope
 with target revisions, world binding, immutable metadata, canonical edit
 identities, and a digest. Unsupported operations use the same envelope and
 cannot be applied.
+The old ad hoc `TaskCapsule` mapping is removed. `context.compile` now returns
+the digest-bound `merlo.semantic-capsule.v1` contract with target-scoped
+verification evidence.
 
 
 ## File handles

@@ -206,5 +206,5 @@ def test_public_interfaces_and_semantic_world_expose_contracts(
     assert symbol["requirements"] == ["value > 0"]
     assert symbol["ensures"] == ["result >= value"]
     capsule = world.compile_context("main.checked")
-    assert capsule["requirements"] == ["value > 0"]
-    assert capsule["ensures"] == ["result >= value"]
+    assert capsule.requirements == ("value > 0",)
+    assert capsule.ensures == ("result >= value",)

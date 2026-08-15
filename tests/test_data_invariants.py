@@ -173,6 +173,6 @@ def test_semantic_world_exposes_record_invariants(
 
     symbol = world.resolve("main.Positive")
     assert symbol["invariants"] == ["value > 0"]
-    assert world.compile_context("main.Positive")["invariants"] == [
-        "value > 0"
-    ]
+    assert world.compile_context("main.Positive").invariants == (
+        "value > 0",
+    )
