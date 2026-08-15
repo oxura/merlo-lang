@@ -14,6 +14,7 @@ def _source(tmp_path: Path) -> Path:
         "    Failed\n\n"
         "task helper(path: Path) -> Result[Text, AppError]:\n"
         "    uses console.write\n"
+        "    # helper remains documentation\n"
         "    console.write(\"helper\")\n"
         "    return Ok(\"helper\")\n\n"
         "export task main(path: Path) -> Result[Text, AppError]:\n"
@@ -39,7 +40,12 @@ def test_protocol_rename_preview_is_exact_and_apply_is_transactional(tmp_path: P
     assert all(isinstance(edit["token_ordinal"], int) for edit in preview["edits"])
     result = protocol.call("refactor.rename", {"target": "app.main.helper", "new_name": "assist", "mode": "apply"})
     assert result["committed"] is True
-    assert "assist" in source.read_text(encoding="utf-8")
+    updated = source.read_text(encoding="utf-8")
+    assert "task assist" in updated
+    assert "return assist(path)" in updated
+    assert "# helper remains documentation" in updated
+    assert 'console.write("helper")' in updated
+    assert 'return Ok("helper")' in updated
 
 
 def test_protocol_rejects_stale_and_unsupported_migrations_without_partial_write(tmp_path: Path) -> None:
