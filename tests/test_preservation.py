@@ -17,11 +17,11 @@ def _world(tmp_path: Path) -> SemanticWorld:
     root.mkdir()
     source.write_text(
         "module app.main\n\n"
-        "fn identity(value: Byte) -> Byte:\n"
+        "fn identity(identity: Byte) -> Byte:\n"
         "    # identity stays documentation\n"
-        "    require value >= Byte(0)\n"
-        "    ensure result == value\n"
-        "    value\n\n"
+        "    require identity >= Byte(0)\n"
+        "    ensure result == identity\n"
+        "    identity\n\n"
         "export task main(path: Path) -> Result[Text, Text]:\n"
         "    uses console.write\n"
         "    console.write(\"main\")\n"
@@ -49,6 +49,7 @@ def test_rename_preservation_is_canonical_and_roundtrips(tmp_path: Path) -> None
     assert report.findings[0].status == "authorized_change"
     assert report.findings[1].status == "authorized_change"
     assert "# identity stays documentation" in after.source
+    assert "fn same(identity: Byte)" in after.source
     assert report.to_json() == report.to_json()
     assert PreservationReport.from_json(report.to_json()).to_dict() == report.to_dict()
 

@@ -206,10 +206,6 @@ def _identifier_edit(path: Path, span: dict[str, Any], old: str, new: str, symbo
         raise UnsupportedMigration(
             f"UnsupportedMigration: semantic span does not contain exact {kind} for {symbol_id}"
         )
-    if kind == "definition" and len(matches) != 1:
-        raise UnsupportedMigration(
-            f"UnsupportedMigration: declaration header is ambiguous for {symbol_id}"
-        )
     match = matches[0]
     syntax_id, token_ordinal = _syntax_identity(cst.declarations, match)
     return RefactorEdit(
@@ -222,6 +218,197 @@ def _identifier_edit(path: Path, span: dict[str, Any], old: str, new: str, symbo
         syntax_id=syntax_id,
         token_id=match.token_id,
         token_ordinal=token_ordinal,
+    )
+
+
+def _hole_payload(
+    symbol: Mapping[str, Any],
+    hole_id: str,
+) -> Mapping[str, Any]:
+    holes = symbol.get("holes")
+    if not isinstance(holes, (list, tuple)):
+        raise WorldError("FillHoleMalformedTarget")
+    matches = tuple(
+        item
+        for item in holes
+        if isinstance(item, Mapping)
+        and item.get("hole_id") == hole_id
+    )
+    if len(matches) != 1:
+        raise WorldError("FillHoleNotOwned")
+    hole = matches[0]
+    required = {
+        "hole_id",
+        "expected_type",
+        "source",
+        "node_id",
+        "context",
+        "callables",
+        "effects",
+        "capabilities",
+    }
+    if (
+        set(hole) != required
+        or type(hole["expected_type"]) is not str
+        or not hole["expected_type"]
+        or not isinstance(hole["source"], Mapping)
+    ):
+        raise WorldError("FillHoleMalformedTarget")
+    return hole
+
+
+def _hole_edit(
+    symbol: Mapping[str, Any],
+    hole: Mapping[str, Any],
+    replacement: str,
+) -> RefactorEdit:
+    source_span = hole["source"]
+    if set(source_span) != {
+        "path",
+        "line",
+        "column",
+        "end_line",
+        "end_column",
+    }:
+        raise WorldError("FillHoleMalformedSource")
+    path = Path(source_span["path"]).resolve()
+    source = path.read_text(encoding="utf-8")
+    cst = parse_file_cst(source, path=str(path))
+    if cst.diagnostics:
+        codes = ",".join(
+            item.code
+            for item in cst.diagnostics
+        )
+        raise UnsupportedMigration(
+            "UnsupportedMigration: cannot fill "
+            f"recovered syntax in {path}: {codes}"
+        )
+    offsets = _line_offsets(source)
+    line = source_span["line"]
+    end_line = source_span["end_line"]
+    column = source_span["column"]
+    end_column = source_span["end_column"]
+    if (
+        any(
+            type(value) is not int
+            for value in (
+                line,
+                end_line,
+                column,
+                end_column,
+            )
+        )
+        or line < 1
+        or end_line != line
+        or column < 1
+        or end_column <= column
+        or line >= len(offsets)
+    ):
+        raise WorldError("FillHoleMalformedSource")
+    start = offsets[line - 1] + column - 1
+    end = offsets[end_line - 1] + end_column - 1
+    matches = tuple(
+        token
+        for token in cst.tokens
+        if token.text == "?"
+        and start <= token.start
+        and token.end <= end
+    )
+    if len(matches) != 1:
+        raise UnsupportedMigration(
+            "UnsupportedMigration: typed hole "
+            "source identity is ambiguous"
+        )
+    token = matches[0]
+    syntax_id, ordinal = _syntax_identity(
+        cst.declarations,
+        token,
+    )
+    return RefactorEdit(
+        path=str(path),
+        start=token.start,
+        end=token.end,
+        replacement=replacement,
+        symbol_id=str(symbol["symbol_id"]),
+        kind="hole",
+        syntax_id=syntax_id,
+        token_id=token.token_id,
+        token_ordinal=ordinal,
+    )
+
+
+def _validate_hole_replacement(
+    replacement: str,
+    expected_type: str,
+) -> None:
+    from merlo.surface_parser import (
+        SurfaceSyntaxError,
+        parse_surface,
+    )
+
+    source = (
+        "fn __merlo_fill__() -> "
+        f"{expected_type}:\n"
+        f"    {replacement}\n"
+    )
+    try:
+        parse_surface(
+            source,
+            path="<fill-hole>",
+        )
+    except (SurfaceSyntaxError, ValueError) as exc:
+        raise WorldError(
+            "FillHoleInvalidReplacement"
+        ) from exc
+
+
+def preview_fill_hole(
+    world: SemanticWorld,
+    target: str,
+    hole_id: str,
+    replacement: str,
+) -> "ChangeIR":
+    if not isinstance(world, SemanticWorld):
+        raise WorldError("FillHoleWorldRequired")
+    world.require_fresh()
+    if (
+        type(target) is not str
+        or not target
+        or type(hole_id) is not str
+        or not hole_id
+        or type(replacement) is not str
+        or not replacement.strip()
+        or replacement != replacement.strip()
+        or "\n" in replacement
+        or "\r" in replacement
+        or replacement == "?"
+    ):
+        raise WorldError("FillHoleInvalidArguments")
+    symbol = world.resolve(target)
+    hole = _hole_payload(symbol, hole_id)
+    _validate_hole_replacement(
+        replacement,
+        hole["expected_type"],
+    )
+    edit = _hole_edit(
+        symbol,
+        hole,
+        replacement,
+    )
+    return ChangeIR(
+        operation="fill_hole",
+        status="ready",
+        target=_target(symbol),
+        expected_world_digest=world.digest,
+        edits=(edit,),
+        metadata={
+            "hole_id": hole_id,
+            "expected_type": hole[
+                "expected_type"
+            ],
+            "replacement": replacement,
+        },
+        world=world,
     )
 
 
@@ -282,6 +469,7 @@ class ChangeIR:
             "rename": "ready",
             "move": "unsupported",
             "change_signature": "unsupported",
+            "fill_hole": "ready",
         }.get(self.operation)
         if expected_status is None or self.status != expected_status:
             raise WorldError("ChangeIRInvalidOperation")
@@ -486,6 +674,48 @@ class ChangeIR:
                 raise WorldError(
                     "ChangeIRSemanticEditMismatch"
                 )
+        elif self.operation == "fill_hole":
+            if set(self.metadata) != {
+                "hole_id",
+                "expected_type",
+                "replacement",
+            }:
+                raise WorldError(
+                    "ChangeIRInvalidFillHoleMetadata"
+                )
+            hole_id = self.metadata["hole_id"]
+            replacement = self.metadata[
+                "replacement"
+            ]
+            if (
+                type(hole_id) is not str
+                or not hole_id
+                or type(replacement) is not str
+                or not replacement.strip()
+                or replacement != replacement.strip()
+                or "\n" in replacement
+                or "\r" in replacement
+                or replacement == "?"
+            ):
+                raise WorldError(
+                    "ChangeIRInvalidFillHoleMetadata"
+                )
+            hole = _hole_payload(current, hole_id)
+            if (
+                self.metadata["expected_type"]
+                != hole["expected_type"]
+                or self.edits
+                != (
+                    _hole_edit(
+                        current,
+                        hole,
+                        replacement,
+                    ),
+                )
+            ):
+                raise WorldError(
+                    "ChangeIRSemanticEditMismatch"
+                )
         root = world.root.resolve()
         source_hashes = world.data.get("source_hashes", {})
         for edit in self.edits:
@@ -577,13 +807,18 @@ class ChangeIR:
                         "syntax identity changed at "
                         f"{path}:{edit.start}"
                     )
-                old_name = self.metadata.get(
-                    "old_name",
-                    text[edit.start:edit.end],
+                expected_source = (
+                    self.metadata["old_name"]
+                    if self.operation == "rename"
+                    else "?"
+                    if self.operation == "fill_hole"
+                    else text[
+                        edit.start:edit.end
+                    ]
                 )
                 if (
                     text[edit.start:edit.end]
-                    != old_name
+                    != expected_source
                 ):
                     raise UnsupportedMigration(
                         "UnsupportedMigration: "
@@ -652,6 +887,7 @@ def preview_change_signature(world: SemanticWorld, target: str, signature: str) 
 
 
 __all__ = [
+    "preview_fill_hole",
     "CHANGE_IR_CONTRACT",
     "CHANGE_IR_SCHEMA_VERSION",
     "ChangeDiagnostic",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -62,6 +63,48 @@ def test_emit_rename_carries_structural_evidence(tmp_path: Path) -> None:
     assert not any("test" in claim.name or "contract" in claim.name or "capabilit" in claim.name for claim in bundle.claims)
 
 
+def test_evidence_handles_multiple_variable_length_edits(
+    tmp_path: Path,
+) -> None:
+    source = _source(tmp_path)
+    before = SemanticWorld.build(
+        source,
+        require_interface_lock=False,
+    )
+    change = preview_rename(
+        before,
+        "app.main.helper",
+        "assistance",
+    )
+    before_capsule = extract_semantic_capsule(
+        before,
+        "app.main.helper",
+    )
+    receipt = change.apply()
+    after = SemanticWorld.build(
+        source,
+        require_interface_lock=False,
+    )
+    after_capsule = extract_semantic_capsule(
+        after,
+        "app.main.assistance",
+    )
+
+    bundle = emit_patch_evidence(
+        change,
+        before,
+        after,
+        receipt,
+        before_capsule,
+        after_capsule,
+    )
+
+    assert len(bundle.files[0].edits) == 2
+    assert "task assistance" in source.read_text(
+        encoding="utf-8"
+    )
+
+
 def test_patch_evidence_roundtrip_and_digest_tamper_rejection(tmp_path: Path) -> None:
     source = _source(tmp_path)
     before = SemanticWorld.build(source, require_interface_lock=False)
@@ -97,3 +140,49 @@ def test_emit_rejects_uncommitted_or_mismatched_receipts(tmp_path: Path) -> None
     bad["files"] = []
     with pytest.raises(ValueError, match="ChangedFilesMismatch"):
         emit_patch_evidence(change, before, after, bad, capsule, after_capsule)
+
+    forged = dict(receipt)
+    forged_transaction = dict(
+        forged["transaction"]
+    )
+    forged_transaction["files"] = [
+        *forged_transaction["files"],
+        "unrelated.mlo",
+    ]
+    forged_hashes = dict(
+        forged_transaction["resulting_hashes"]
+    )
+    forged_hashes["unrelated.mlo"] = "0" * 64
+    forged_transaction[
+        "resulting_hashes"
+    ] = forged_hashes
+    forged["transaction"] = forged_transaction
+    with pytest.raises(
+        ValueError,
+        match="TransactionHashMismatch",
+    ):
+        emit_patch_evidence(
+            change,
+            before,
+            after,
+            forged,
+            capsule,
+            after_capsule,
+        )
+
+    tampered_capsule = replace(
+        after_capsule,
+        effects=("network.http",),
+    )
+    with pytest.raises(
+        ValueError,
+        match="CapsuleExtractionMismatch",
+    ):
+        emit_patch_evidence(
+            change,
+            before,
+            after,
+            receipt,
+            capsule,
+            tampered_capsule,
+        )

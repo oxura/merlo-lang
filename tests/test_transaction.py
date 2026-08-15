@@ -144,6 +144,39 @@ def test_mixed_or_stale_sources_reject_without_partial_edit(tmp_path: Path) -> N
     assert (tmp_path / "two.mlo").read_text(encoding="utf-8") == before[tmp_path / "two.mlo"]
 
 
+def test_rollback_and_replay_recover_mixed_crash_states(
+    tmp_path: Path,
+) -> None:
+    transaction, before, after = _transaction(
+        tmp_path
+    )
+    first = tmp_path / "one.mlo"
+    first.write_text(
+        after[first],
+        encoding="utf-8",
+    )
+
+    recovered = rollback(transaction)
+    assert recovered.changed is True
+    assert all(
+        path.read_text(encoding="utf-8")
+        == content
+        for path, content in before.items()
+    )
+
+    first.write_text(
+        after[first],
+        encoding="utf-8",
+    )
+    replayed = replay(transaction)
+    assert replayed.changed is True
+    assert all(
+        path.read_text(encoding="utf-8")
+        == content
+        for path, content in after.items()
+    )
+
+
 def test_path_escape_and_symlink_escape_are_rejected(tmp_path: Path) -> None:
     outside = tmp_path.parent / (tmp_path.name + "-outside")
     outside.mkdir()
@@ -221,6 +254,31 @@ def test_silent_write_failure_is_verified_and_restored(
     with pytest.raises(
         TransactionError,
         match="WriteFailed",
+    ):
+        commit(transaction)
+    assert all(
+        path.read_text(encoding="utf-8")
+        == content
+        for path, content in before.items()
+    )
+
+
+def test_journal_symlink_escape_is_rejected(
+    tmp_path: Path,
+) -> None:
+    transaction, before, _ = _transaction(tmp_path)
+    outside = tmp_path.parent / (
+        tmp_path.name + "-journal-outside"
+    )
+    outside.mkdir()
+    (tmp_path / ".merlo").symlink_to(
+        outside,
+        target_is_directory=True,
+    )
+
+    with pytest.raises(
+        TransactionError,
+        match="JournalPathEscape",
     ):
         commit(transaction)
     assert all(

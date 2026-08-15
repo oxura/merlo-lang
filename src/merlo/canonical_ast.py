@@ -200,6 +200,149 @@ class CanonicalHole:
         }
 
 
+@dataclass(frozen=True)
+class CanonicalPolicy:
+    kind: str
+    value: str
+    error_type: str | None = None
+    expression: str | None = None
+    span: SourceSpan | None = None
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "value": self.value,
+            "error_type": self.error_type,
+            "expression": self.expression,
+            "span": _span_payload(self.span) if self.span else None,
+        }
+
+
+@dataclass(frozen=True)
+class CanonicalFlowStep:
+    node_id: str
+    name: str
+    value: str
+    type_name: str
+    policies: tuple[CanonicalPolicy, ...]
+    span: SourceSpan
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "node": "flow_step",
+            "id": self.node_id,
+            "name": self.name,
+            "value": self.value,
+            "type_name": self.type_name,
+            "policies": [item.to_payload() for item in self.policies],
+            "span": _span_payload(self.span),
+        }
+
+
+@dataclass(frozen=True)
+class CanonicalParallel:
+    node_id: str
+    branches: tuple[CanonicalFlowStep, ...]
+    span: SourceSpan
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "node": "parallel",
+            "id": self.node_id,
+            "branches": [item.to_payload() for item in self.branches],
+            "span": _span_payload(self.span),
+        }
+
+
+@dataclass(frozen=True)
+class CanonicalFlow:
+    name: str
+    parameters: tuple[tuple[str, str], ...]
+    return_type: str
+    durable: bool
+    effects: tuple[str, ...]
+    capabilities: tuple[str, ...]
+    body: tuple[CanonicalFlowStep | CanonicalParallel | CanonicalStatement, ...]
+    span: SourceSpan
+    exported: bool = False
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "node": "flow",
+            "name": self.name,
+            "parameters": [list(item) for item in self.parameters],
+            "return_type": self.return_type,
+            "durable": self.durable,
+            "effects": list(self.effects),
+            "capabilities": list(self.capabilities),
+            "body": [item.to_payload() for item in self.body],
+            "span": _span_payload(self.span),
+            "exported": self.exported,
+        }
+
+
+@dataclass(frozen=True)
+class CanonicalMachineState:
+    name: str
+    fields: tuple[tuple[str, str], ...]
+    span: SourceSpan
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "fields": [list(item) for item in self.fields],
+            "span": _span_payload(self.span),
+        }
+
+
+@dataclass(frozen=True)
+class CanonicalTransition:
+    node_id: str
+    name: str
+    sources: tuple[str, ...]
+    target: str
+    effects: tuple[str, ...]
+    body: tuple[CanonicalStatement, ...]
+    span: SourceSpan
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "node": "transition",
+            "id": self.node_id,
+            "name": self.name,
+            "sources": list(self.sources),
+            "target": self.target,
+            "effects": list(self.effects),
+            "body": [item.to_payload() for item in self.body],
+            "span": _span_payload(self.span),
+        }
+
+
+@dataclass(frozen=True)
+class CanonicalMachine:
+    name: str
+    parameters: tuple[tuple[str, str], ...]
+    states: tuple[CanonicalMachineState, ...]
+    initial: str | None
+    invariant: str | None
+    transitions: tuple[CanonicalTransition, ...]
+    span: SourceSpan
+    exported: bool = False
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "node": "machine",
+            "name": self.name,
+            "parameters": [list(item) for item in self.parameters],
+            "states": [item.to_payload() for item in self.states],
+            "initial": self.initial,
+            "invariant": self.invariant,
+            "transitions": [item.to_payload() for item in self.transitions],
+            "span": _span_payload(self.span),
+            "exported": self.exported,
+        }
+
+
 CanonicalStatement = CanonicalReturn | CanonicalBinding
 
 
@@ -260,7 +403,6 @@ class CanonicalFunction:
     def binding(self, name: str) -> CanonicalBinding:
         return next(item for item in self.bindings if item.name == name)
 
-
 @dataclass(frozen=True)
 class CanonicalRecord:
     name: str
@@ -303,33 +445,21 @@ class CanonicalProgram:
     records: tuple[CanonicalRecord, ...]
     functions: tuple[CanonicalFunction, ...]
     enums: tuple[CanonicalEnum, ...] = ()
-    surface_program: SurfaceProgram | None = field(
-        default=None,
-        repr=False,
-        compare=False,
-    )
-    projection_source: str | None = field(
-        default=None,
-        repr=False,
-        compare=False,
-    )
-    source_path: str | None = field(
-        default=None,
-        repr=False,
-        compare=False,
-    )
-    source_sha256: str | None = field(
-        default=None,
-        repr=False,
-        compare=False,
-    )
+    flows: tuple[CanonicalFlow, ...] = ()
+    machines: tuple[CanonicalMachine, ...] = ()
+    surface_program: SurfaceProgram | None = field(default=None, repr=False, compare=False)
+    projection_source: str | None = field(default=None, repr=False, compare=False)
+    source_path: str | None = field(default=None, repr=False, compare=False)
+    source_sha256: str | None = field(default=None, repr=False, compare=False)
 
     def to_payload(self) -> dict[str, Any]:
         return {
-            "schema": "merlo.canonical-typed-ast.v5",
+            "schema": "merlo.canonical-typed-ast.v6",
             "records": [item.to_payload() for item in self.records],
             "functions": [item.to_payload() for item in self.functions],
             "enums": [item.to_payload() for item in self.enums],
+            "flows": [item.to_payload() for item in self.flows],
+            "machines": [item.to_payload() for item in self.machines],
         }
 
     @property
@@ -358,6 +488,16 @@ class CanonicalProgram:
                 closure.pop("span", None)
             for hole in function["holes"]:
                 hole.pop("span", None)
+        def strip_spans(value: object) -> None:
+            if isinstance(value, dict):
+                value.pop("span", None)
+                for child in value.values():
+                    strip_spans(child)
+            elif isinstance(value, list):
+                for child in value:
+                    strip_spans(child)
+        strip_spans(payload["flows"])
+        strip_spans(payload["machines"])
         return hashlib.sha256(
             json.dumps(
                 payload,

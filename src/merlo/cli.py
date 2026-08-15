@@ -56,6 +56,8 @@ def build_parser() -> argparse.ArgumentParser:
         elif name == "build":
             command.add_argument("-o", "--output")
             command.add_argument("--release", action="store_true")
+            command.add_argument("--target", choices=("native", "wasm"), default="native")
+            command.add_argument("--entry")
         elif name == "run":
             command.add_argument("program_arguments", nargs=argparse.REMAINDER)
         elif name == "test":
@@ -251,6 +253,27 @@ def _main_production(args: argparse.Namespace) -> int:
         candidate = _input_path(args.path)
         project = Project.discover(candidate)
         root = project.root if project else candidate.parent if candidate.is_file() else candidate
+        if args.target == "wasm":
+            output = args.output or str(root / ".merlo" / "build" / "app.wasm")
+            compilation = compile_project(
+                candidate,
+                emit_wasm=True,
+                wasm_entry=args.entry,
+                wasm_output=output,
+                require_interface_lock=False,
+            )
+            if compilation.wasm is None:
+                raise RuntimeError("WasmBuildMissing: compiler did not produce a module")
+            payload = {
+                "ok": True,
+                "project": str(root),
+                "entry_path": compilation.entry_path,
+                "digest": compilation.wasm.artifact_digest,
+                "wasm": str(Path(output).resolve()),
+                "exports": list(compilation.wasm.exports),
+            }
+            _emit(payload, args.json, text=f"{Path(output).resolve()}\n")
+            return EXIT_OK
         output = args.output or str(root / ".merlo" / "build" / "app")
         compilation = compile_project(candidate, emit_native=True, release=args.release, output=output, require_interface_lock=False)
         if compilation.native is None:

@@ -1,0 +1,1150 @@
+module emitter
+
+use syntax
+
+emitter_join2(left: Text, right: Text) -> Text:
+    output: TextBuilder = TextBuilder.new()
+    output.append_text(left)
+    output.append_text(right)
+    output.finish()
+
+emitter_append_join(output: TextBuilder, left: Text, right: Text) -> Unit:
+    joined = emitter_join2(left, right)
+    output.append_text(joined)
+
+emitter_append_owned(output: TextBuilder, value: Text) -> Unit:
+    output.append_text(value)
+
+emitter_starts(value: Text, prefix: Text) -> Bool:
+    if prefix.len() > value.len():
+        return false
+    index: UInt64 = 0
+    while index < prefix.len():
+        if value.byte(index) != prefix.byte(index):
+            return false
+        index = index + 1
+    true
+
+emitter_has(value: Text, needle: Text) -> Bool:
+    if needle.len() == 0 or needle.len() > value.len():
+        return false
+    index: UInt64 = 0
+    while index + needle.len() <= value.len():
+        offset: UInt64 = 0
+        matches: Bool = true
+        while offset < needle.len():
+            if value.byte(index + offset) != needle.byte(offset):
+                matches = false
+            offset = offset + 1
+        if matches:
+            return true
+        index = index + 1
+    false
+
+emitter_trim(value: Text) -> Text:
+    view: TextView = value.as_view()
+    start: UInt64 = 0
+    finish: UInt64 = value.len()
+    while start < finish and (view.byte(start) == 32 or view.byte(start) == 9):
+        start = start + 1
+    while finish > start and (view.byte(finish - 1) == 32 or view.byte(finish - 1) == 9):
+        finish = finish - 1
+    view.slice_bytes(start, finish - start).to_text()
+
+emitter_slice(value: Text, start: UInt64, length: UInt64) -> Text:
+    view: TextView = value.as_view()
+    view.slice_bytes(start, length).to_text()
+
+emitter_return_source(value: Text) -> Text:
+    if value.len() <= 7:
+        return "0"
+    emitter_slice(value, 7, value.len() - 7)
+
+emitter_byte(value: TextView, index: UInt64) -> UInt64:
+    value.byte(index)
+
+emitter_find(value: Text, needle: UInt64) -> UInt64:
+    index: UInt64 = 0
+    while index < value.len():
+        if value.byte(index) == needle:
+            return index
+        index = index + 1
+    value.len()
+
+emitter_is_assignment(value: Text) -> Bool:
+    view: TextView = value.as_view()
+    equals = emitter_expr_top(value.clone(), "=", false)
+    if equals >= value.len():
+        return false
+    if equals + 1 < value.len() and view.byte(equals + 1) == 61:
+        return false
+    if equals > 0:
+        previous = view.byte(equals - 1)
+        if previous == 33 or previous == 60 or previous == 61 or previous == 62:
+            return false
+    true
+
+emitter_replace(value: Text, old: Text, new: Text) -> Text:
+    view: TextView = value.as_view()
+    output: TextBuilder = TextBuilder.new()
+    index: UInt64 = 0
+    while index < value.len():
+        if old.len() > 0 and index + old.len() <= value.len() and view.slice_bytes(index, old.len()).to_text() == old:
+            output.append_text(new)
+            index = index + old.len()
+        else:
+            output.append_byte(view.byte(index))
+            index = index + 1
+    output.finish()
+
+emitter_replace_enums(value: Text, program: Program, enum_index: UInt64, variant_index: UInt64) -> Text:
+    if enum_index >= program.enums.len():
+        return value
+    enum_decl = program.enums.get(enum_index)
+    if variant_index >= enum_decl.variants.len():
+        return emitter_replace_enums(value, program, enum_index + 1, 0)
+    variant = enum_decl.variants.get(variant_index)
+    old = emitter_join2(emitter_join2(enum_decl.name.clone(), "."), variant.name.clone())
+    new = emitter_join2(emitter_join2(enum_decl.name.clone(), "_"), variant.name.clone())
+    updated = emitter_replace(value, old, new)
+    emitter_replace_enums(updated, program, enum_index, variant_index + 1)
+
+emitter_replace_records(value: Text, program: Program, index: UInt64) -> Text:
+    if index >= program.records.len():
+        return value
+    record = program.records.get(index)
+    old = emitter_join2(record.name.clone(), "(")
+    new = emitter_join2(record.name.clone(), "_new(")
+    updated = emitter_replace(value, old, new)
+    emitter_replace_records(updated, program, index + 1)
+
+emitter_c_name(name: Text) -> Text:
+    if name == "main":
+        return "merlo_main"
+    name
+
+emitter_ctype(type_name: Text, program: Program) -> Text:
+    if type_name == "UInt64":
+        return "uint64_t"
+    if type_name == "Int64":
+        return "int64_t"
+    if type_name == "Bool":
+        return "bool"
+    if type_name == "Byte":
+        return "uint8_t"
+    if type_name == "Unit":
+        return "void"
+    if type_name == "Text":
+        return "MerloText"
+    if type_name == "TextView":
+        return "MerloTextView"
+    if type_name == "Path" or type_name == "Bytes" or type_name == "BytesView":
+        return "MerloText"
+    if type_name == "TextBuilder":
+        return "MerloBuilder"
+    is_result = emitter_starts(type_name, "Result[")
+    if is_result:
+        return "MerloResult"
+    is_vec = emitter_starts(type_name, "Vec[")
+    if is_vec:
+        return "MerloVec"
+    is_map = emitter_starts(type_name, "Map[")
+    if is_map or type_name == "FileLines" or type_name == "FileReader":
+        return "MerloValue"
+    index: UInt64 = 0
+    while index < program.records.len():
+        record = program.records.get(index)
+        if record.name == type_name:
+            return type_name
+        index = index + 1
+    index = 0
+    while index < program.enums.len():
+        enum_decl = program.enums.get(index)
+        if enum_decl.name == type_name:
+            return type_name
+        index = index + 1
+    "MerloValue"
+emitter_parameter_mutable(type_name: Text) -> Bool:
+    if type_name == "TextBuilder" or type_name == "LexerState" or type_name == "ParserState":
+        return true
+    emitter_starts(type_name, "Vec[")
+
+emitter_parameter_declaration(parameter: Parameter, program: Program) -> Text:
+    type_name = emitter_ctype(parameter.type_name.clone(), program)
+    if emitter_parameter_mutable(parameter.type_name):
+        prefix = emitter_join2(emitter_join2(type_name, " *"), "merlo_ptr_")
+        return emitter_join2(prefix, parameter.name)
+    emitter_join2(emitter_join2(type_name, " "), parameter.name)
+
+emitter_initialize_parameters(output: TextBuilder, program: Program, function: Function) -> Unit:
+    index: UInt64 = 0
+    while index < function.parameters.len():
+        parameter = function.parameters.get(index)
+        if emitter_parameter_mutable(parameter.type_name):
+            declaration = emitter_join2(emitter_join2(emitter_ctype(parameter.type_name.clone(), program.clone()), " "), parameter.name.clone())
+            source = emitter_join2(emitter_join2(" = ", "*"), emitter_join2("merlo_ptr_", emitter_join2(parameter.name.clone(), ";")))
+            emitter_append_line(output, 0, emitter_join2(declaration, source))
+        index = index + 1
+
+emitter_sync_parameters(output: TextBuilder, function: Function, indent: UInt64) -> Unit:
+    index: UInt64 = 0
+    while index < function.parameters.len():
+        parameter = function.parameters.get(index)
+        if emitter_parameter_mutable(parameter.type_name):
+            target = emitter_join2("*", emitter_join2("merlo_ptr_", emitter_join2(parameter.name.clone(), " = ")))
+            emitter_append_line(output, indent, emitter_join2(target, emitter_join2(parameter.name.clone(), ";")))
+        index = index + 1
+emitter_append_return(output: TextBuilder, function: Function, indent: UInt64, expression: Text, identity: UInt64) -> Unit:
+    name = emitter_join2("__merlo_return_", emitter_tag_text(identity))
+    declaration = emitter_join2(emitter_join2(emitter_join2("__auto_type ", name.clone()), " = "), emitter_join2(expression, ";"))
+    emitter_append_line(output, indent, declaration)
+    emitter_sync_parameters(output, function.clone(), indent)
+    emitter_append_line(output, indent, emitter_join2(emitter_join2("return ", name), ";"))
+
+
+
+emitter_ctor_payload(type_name: Text, value_name: Text) -> Text:
+    if type_name == "UInt64" or type_name == "Byte":
+        return emitter_join2("(MerloValue){.tag = 0, .u = (uint64_t)", emitter_join2(value_name, ")}"))
+    if type_name == "Int64":
+        return emitter_join2("(MerloValue){.tag = 1, .i = ", emitter_join2(value_name, "}"))
+    if type_name == "Bool":
+        return emitter_join2("(MerloValue){.tag = 2, .b = ", emitter_join2(value_name, "}"))
+    if type_name == "Text":
+        return emitter_join2("(MerloValue){.tag = 3, .text = merlo_text_clone(", emitter_join2(value_name, ")}"))
+    if type_name == "TextView":
+        return emitter_join2("(MerloValue){.tag = 3, .text = merlo_text_clone_view(", emitter_join2(value_name, ")}"))
+    "(MerloValue){0}"
+
+emitter_expr_char(value: UInt64) -> Bool:
+    value == 32 or value == 9 or value == 10 or value == 13
+
+emitter_expr_matching(value: Text, open: UInt64) -> UInt64:
+    view: TextView = value.as_view()
+    depth: UInt64 = 0
+    index: UInt64 = open
+    quote: UInt64 = 0
+    while index < value.len():
+        byte = view.byte(index)
+        if quote != 0:
+            if byte == quote and (index == 0 or view.byte(index - 1) != 92):
+                quote = 0
+        else:
+            if byte == 34 or byte == 39:
+                quote = byte
+            else:
+                if byte == 40:
+                    depth = depth + 1
+                else:
+                    if byte == 41:
+                        if depth == 1:
+                            return index
+                        depth = depth - 1
+        index = index + 1
+    value.len()
+
+emitter_expr_top(value: Text, needle: Text, words: Bool) -> UInt64:
+    view: TextView = value.as_view()
+    depth: UInt64 = 0
+    index: UInt64 = 0
+    quote: UInt64 = 0
+    while index + needle.len() <= value.len():
+        byte = view.byte(index)
+        if quote != 0:
+            if byte == quote and (index == 0 or view.byte(index - 1) != 92):
+                quote = 0
+            index = index + 1
+        else:
+            if byte == 34 or byte == 39:
+                quote = byte
+                index = index + 1
+            else:
+                if byte == 40 or byte == 91 or byte == 123:
+                    depth = depth + 1
+                    index = index + 1
+                else:
+                    if byte == 41 or byte == 93 or byte == 125:
+                        if depth > 0:
+                            depth = depth - 1
+                        index = index + 1
+                    else:
+                        matches = view.slice_bytes(index, needle.len()).to_text() == needle
+                        if depth == 0 and matches:
+                            if not words:
+                                return index
+                            before_ok = index == 0 or emitter_expr_char(view.byte(index - 1))
+                            after_index = index + needle.len()
+                            after_ok = after_index >= value.len() or emitter_expr_char(view.byte(after_index))
+                            if before_ok and after_ok:
+                                return index
+                        index = index + 1
+    value.len()
+emitter_expr_last_top(value: Text, needle: Text, words: Bool) -> UInt64:
+    view: TextView = value.as_view()
+    depth: UInt64 = 0
+    index: UInt64 = 0
+    quote: UInt64 = 0
+    last: UInt64 = value.len()
+    while index + needle.len() <= value.len():
+        byte = view.byte(index)
+        if quote != 0:
+            if byte == quote and (index == 0 or view.byte(index - 1) != 92):
+                quote = 0
+        else:
+            if byte == 34 or byte == 39:
+                quote = byte
+            else:
+                if byte == 40 or byte == 91 or byte == 123:
+                    depth = depth + 1
+                else:
+                    if byte == 41 or byte == 93 or byte == 125:
+                        if depth > 0:
+                            depth = depth - 1
+                    else:
+                        matches = view.slice_bytes(index, needle.len()).to_text() == needle
+                        if depth == 0 and matches:
+                            if not words:
+                                last = index
+                            else:
+                                before_ok = index == 0 or emitter_expr_char(view.byte(index - 1))
+                                after_index = index + needle.len()
+                                after_ok = after_index >= value.len() or emitter_expr_char(view.byte(after_index))
+                                if before_ok and after_ok:
+                                    last = index
+        index = index + 1
+    last
+
+
+emitter_expr_args(value: Text) -> Vec[Text]:
+    result: Vec[Text] = Vec.new()
+    trimmed = emitter_trim(value)
+    if trimmed.len() == 0:
+        return result
+    view: TextView = trimmed.as_view()
+    start: UInt64 = 0
+    index: UInt64 = 0
+    depth: UInt64 = 0
+    quote: UInt64 = 0
+    while index < trimmed.len():
+        byte = view.byte(index)
+        if quote != 0:
+            if byte == quote and (index == 0 or view.byte(index - 1) != 92):
+                quote = 0
+        else:
+            if byte == 34 or byte == 39:
+                quote = byte
+            else:
+                if byte == 40 or byte == 91 or byte == 123:
+                    depth = depth + 1
+                else:
+                    if byte == 41 or byte == 93 or byte == 125:
+                        if depth > 0:
+                            depth = depth - 1
+                    else:
+                        if byte == 44 and depth == 0:
+                            result.push(emitter_trim(emitter_slice(trimmed, start, index - start)))
+                            start = index + 1
+        index = index + 1
+    result.push(emitter_trim(emitter_slice(trimmed, start, trimmed.len() - start)))
+    result
+
+emitter_expr_join_args(parts: Vec[Text], program: Program) -> Text:
+    output: TextBuilder = TextBuilder.new()
+    index: UInt64 = 0
+    while index < parts.len():
+        if index > 0:
+            output.append_text(", ")
+        emitter_append_owned(output, emitter_expr(parts.get(index), program.clone()))
+        index = index + 1
+    output.finish()
+emitter_expr_join_call_args(parts: Vec[Text], function: Function, program: Program) -> Text:
+    output: TextBuilder = TextBuilder.new()
+    index: UInt64 = 0
+    while index < parts.len():
+        if index > 0:
+            output.append_text(", ")
+        rendered = emitter_expr(parts.get(index), program.clone())
+        if index < function.parameters.len():
+            parameter = function.parameters.get(index)
+            if emitter_parameter_mutable(parameter.type_name):
+                rendered = emitter_join2(emitter_join2("&(", rendered), ")")
+        output.append_text(rendered)
+        index = index + 1
+    output.finish()
+
+
+emitter_expr_literal(value: Text) -> Text:
+    view: TextView = value.as_view()
+    if value.len() == 0:
+        return value
+    quote = view.byte(0)
+    if quote != 34 and quote != 39:
+        return value
+    if value.len() < 2:
+        return value
+    inner = emitter_slice(value, 1, value.len() - 2)
+    if quote == 34:
+        literal_size = emitter_join2("sizeof(", emitter_join2(value, ") - 1"))
+        literal_first = emitter_join2("merlo_text_literal(", value)
+        literal_second = emitter_join2(literal_first, ", ")
+        literal_third = emitter_join2(literal_second, literal_size)
+        return emitter_join2(literal_third, ")")
+    converted = emitter_join2("\"", emitter_join2(inner, "\""))
+    literal_size = emitter_join2("sizeof(", emitter_join2(converted, ") - 1"))
+    literal_first = emitter_join2("merlo_text_literal(", converted)
+    literal_second = emitter_join2(literal_first, ", ")
+    literal_third = emitter_join2(literal_second, literal_size)
+    emitter_join2(literal_third, ")")
+
+emitter_expr_method(method: Text) -> Bool:
+    method == "new" or method == "len" or method == "byte" or method == "as_view" or method == "slice_bytes" or method == "to_text" or method == "clone" or method == "contains" or method == "starts_with" or method == "ends_with" or method == "get" or method == "push" or method == "append_text" or method == "append_byte" or method == "append_uint64" or method == "finish" or method == "write" or method == "insert"
+
+emitter_expr_last_dot(value: Text) -> UInt64:
+    view: TextView = value.as_view()
+    index: UInt64 = 0
+    depth: UInt64 = 0
+    last: UInt64 = value.len()
+    quote: UInt64 = 0
+    while index < value.len():
+        byte = view.byte(index)
+        if quote != 0:
+            if byte == quote and (index == 0 or view.byte(index - 1) != 92):
+                quote = 0
+        else:
+            if byte == 34 or byte == 39:
+                quote = byte
+            else:
+                if byte == 40 or byte == 91 or byte == 123:
+                    depth = depth + 1
+                else:
+                    if byte == 41 or byte == 93 or byte == 125:
+                        if depth > 0:
+                            depth = depth - 1
+                    else:
+                        if byte == 46 and depth == 0:
+                            last = index
+        index = index + 1
+    last
+emitter_expr_vec_type(receiver: Text) -> Text:
+    dot = emitter_expr_last_dot(receiver.clone())
+    field_name = receiver.clone()
+    if dot < receiver.len():
+        field_name = emitter_trim(emitter_slice(receiver.clone(), dot + 1, receiver.len() - dot - 1))
+    if field_name == "tokens":
+        return "Token"
+    if field_name == "enums":
+        return "EnumDecl"
+    if field_name == "records":
+        return "RecordDecl"
+    if field_name == "functions":
+        return "Function"
+    if field_name == "fields":
+        return "RecordField"
+    if field_name == "variants":
+        return "EnumVariant"
+    if field_name == "parameters":
+        return "Parameter"
+    if field_name == "parts" or field_name == "names" or field_name == "words":
+        return "MerloText"
+    if field_name == "control_indents" or field_name == "values" or field_name == "indents" or field_name == "name_indents":
+        return "uint64_t"
+    ""
+emitter_expr_last_open(value: Text) -> UInt64:
+    view: TextView = value.as_view()
+    depth: UInt64 = 0
+    index: UInt64 = 0
+    last: UInt64 = value.len()
+    quote: UInt64 = 0
+    while index < value.len():
+        byte = view.byte(index)
+        if quote != 0:
+            if byte == quote and (index == 0 or view.byte(index - 1) != 92):
+                quote = 0
+        else:
+            if byte == 34 or byte == 39:
+                quote = byte
+            else:
+                if byte == 40:
+                    if depth == 0:
+                        last = index
+                    depth = depth + 1
+                else:
+                    if byte == 41 and depth > 0:
+                        depth = depth - 1
+        index = index + 1
+    last
+
+
+emitter_expr_call1(name: Text, arg: Text) -> Text:
+    first = emitter_join2(name, "(")
+    second = emitter_join2(first, arg)
+    emitter_join2(second, ")")
+
+emitter_expr_call2(name: Text, first_arg: Text, second_arg: Text) -> Text:
+    first = emitter_join2(name, "(")
+    second = emitter_join2(first, first_arg)
+    third = emitter_join2(second, ", ")
+    fourth = emitter_join2(third, second_arg)
+    emitter_join2(fourth, ")")
+
+emitter_expr_call(value: Text, program: Program) -> Text:
+    open = emitter_expr_last_open(value.clone())
+    close = emitter_expr_matching(value, open)
+    if close + 1 != value.len():
+        return ""
+    prefix = emitter_trim(emitter_slice(value, 0, open))
+    prefix_length = prefix.len()
+    args = emitter_expr_args(emitter_slice(value, open + 1, close - open - 1))
+    dot = emitter_expr_last_dot(prefix.clone())
+    if dot < prefix.len():
+        receiver = emitter_trim(emitter_slice(prefix.clone(), 0, dot))
+        method = emitter_trim(emitter_slice(prefix.clone(), dot + 1, prefix_length - dot - 1))
+        if emitter_expr_method(method):
+            rendered_args = emitter_expr_join_args(args.clone(), program.clone())
+            if method == "new" and receiver == "TextBuilder":
+                return "merlo_builder_new()"
+            if method == "new" and receiver == "Vec":
+                return emitter_expr_call1("merlo_vec_new", "sizeof(MerloValue)")
+            if method == "len":
+                return emitter_expr_call1("merlo_text_len", emitter_expr(receiver, program.clone()))
+            if method == "byte":
+                return emitter_expr_call2("merlo_text_byte", emitter_expr(receiver, program.clone()), rendered_args)
+            if method == "as_view":
+                return emitter_expr_call1("merlo_text_as_view", emitter_expr(receiver, program.clone()))
+            if method == "slice_bytes":
+                return emitter_expr_call2("merlo_text_slice_bytes", emitter_expr(receiver, program.clone()), rendered_args)
+            if method == "to_text":
+                return emitter_expr_call1("merlo_text_to_text", emitter_expr(receiver, program.clone()))
+            if method == "clone":
+                return emitter_expr(receiver, program.clone())
+            if method == "contains":
+                return emitter_expr_call2("merlo_text_contains", emitter_expr(receiver, program.clone()), rendered_args)
+            if method == "starts_with":
+                return emitter_expr_call2("merlo_text_starts_with", emitter_expr(receiver, program.clone()), rendered_args)
+            if method == "ends_with":
+                return emitter_expr_call2("merlo_text_ends_with", emitter_expr(receiver, program.clone()), rendered_args)
+            if method == "get":
+                get_receiver = emitter_expr(receiver.clone(), program.clone())
+                get_type = emitter_expr_vec_type(receiver)
+                if get_type != "":
+                    get_cast = emitter_join2("(*(", emitter_join2(get_type, " *)"))
+                    get_ptr = emitter_join2("&", get_receiver)
+                    get_call = emitter_expr_call2("merlo_vec_get_raw", get_ptr, rendered_args)
+                    return emitter_join2(emitter_join2(get_cast, get_call), ")")
+                return emitter_expr_call2("merlo_vec_get", get_receiver, rendered_args)
+            if method == "finish":
+                return emitter_expr_call1("merlo_builder_finish", emitter_expr(receiver, program.clone()))
+            if method == "append_text" or method == "append_byte" or method == "append_uint64":
+                helper = "merlo_builder_append"
+                if method == "append_byte":
+                    helper = "merlo_builder_append_byte"
+                if method == "append_uint64":
+                    helper = "merlo_builder_append_uint64"
+                append_receiver = emitter_expr(receiver, program.clone())
+                append_first = emitter_join2(helper, "(&")
+                append_second = emitter_join2(append_first, append_receiver)
+                append_third = emitter_join2(append_second, ", ")
+                append_fourth = emitter_join2(append_third, rendered_args)
+                return emitter_join2(append_fourth, ")")
+            if method == "push":
+                push_receiver = emitter_expr(receiver, program.clone())
+                push_ptr = emitter_join2("&", push_receiver)
+                return emitter_expr_call2("merlo_vec_push", push_ptr, rendered_args)
+            if method == "write" or method == "insert":
+                return emitter_expr_call2("merlo_builtin_call", emitter_expr(receiver, program.clone()), rendered_args)
+    rendered_args = emitter_expr_join_args(args, program.clone())
+    if prefix == "Ok":
+        return emitter_expr_call1("merlo_ok", rendered_args)
+    if prefix == "Err":
+        return emitter_expr_call1("merlo_err", rendered_args)
+    if prefix == "Some":
+        return emitter_expr_call1("merlo_some", rendered_args)
+    if prefix == "None":
+        return "merlo_none()"
+    index: UInt64 = 0
+    while index < program.records.len():
+        record = program.records.get(index)
+        if prefix == record.name:
+            ctor_name = emitter_join2(prefix, "_new")
+            return emitter_expr_call1(ctor_name, rendered_args)
+        index = index + 1
+    if dot < prefix.len():
+        enum_name = emitter_trim(emitter_slice(prefix.clone(), 0, dot))
+        variant_name = emitter_trim(emitter_slice(prefix.clone(), dot + 1, prefix_length - dot - 1))
+        index = 0
+        while index < program.enums.len():
+            enum_decl = program.enums.get(index)
+            if enum_decl.name == enum_name:
+                variant = emitter_join2(enum_name.clone(), emitter_join2("_", variant_name.clone()))
+                return emitter_expr_call1(variant, rendered_args)
+            index = index + 1
+    call_name = prefix.clone()
+    if dot < prefix.len():
+        last_dot = emitter_expr_last_dot(prefix.clone())
+        if last_dot < prefix.len():
+            call_name = emitter_trim(emitter_slice(prefix.clone(), last_dot + 1, prefix_length - last_dot - 1))
+    index = 0
+    while index < program.functions.len():
+        function = program.functions.get(index)
+        if prefix == function.name:
+            call_args = emitter_expr_join_call_args(args.clone(), function, program.clone())
+            return emitter_expr_call1(emitter_c_name(function.name.clone()), call_args)
+        index = index + 1
+    emitter_expr_call1(call_name, rendered_args)
+
+emitter_expr_tokens(value: Text, program: Program) -> Text:
+    output: TextBuilder = TextBuilder.new()
+    view: TextView = value.as_view()
+    index: UInt64 = 0
+    while index < value.len():
+        byte = view.byte(index)
+        if byte == 34 or byte == 39:
+            quote = byte
+            finish = index + 1
+            while finish < value.len():
+                current = view.byte(finish)
+                if current == quote and view.byte(finish - 1) != 92:
+                    finish = finish + 1
+                    break
+                finish = finish + 1
+            emitter_append_owned(output, emitter_expr_literal(emitter_slice(value, index, finish - index)))
+            index = finish
+        else:
+            if (byte >= 65 and byte <= 90) or (byte >= 97 and byte <= 122) or byte == 95:
+                finish = index + 1
+                while finish < value.len():
+                    current = view.byte(finish)
+                    if not ((current >= 65 and current <= 90) or (current >= 97 and current <= 122) or (current >= 48 and current <= 57) or current == 95):
+                        break
+                    finish = finish + 1
+                token = emitter_slice(value, index, finish - index)
+                if token == "and":
+                    output.append_text("&&")
+                else:
+                    if token == "or":
+                        output.append_text("||")
+                    else:
+                        if token == "not":
+                            output.append_text("!")
+                        else:
+                            if token == "true" or token == "false":
+                                output.append_text(token)
+                            else:
+                                if token == "None" or token == "none":
+                                    output.append_text("merlo_none()")
+                                else:
+                                    output.append_text(token)
+                index = finish
+            else:
+                output.append_byte(byte)
+                index = index + 1
+    output.finish()
+emitter_expr_binary(operator: Text, left: Text, right: Text, program: Program) -> Text:
+    left_value = emitter_expr(left, program.clone())
+    right_value = emitter_expr(right, program.clone())
+    first = emitter_join2("(", left_value)
+    second = emitter_join2(first, operator)
+    third = emitter_join2(second, right_value)
+    emitter_join2(third, ")")
+
+
+emitter_expr(value: Text, program: Program) -> Text:
+    result = emitter_trim(value)
+    if result.len() == 0:
+        return "0 /* #error empty expression */"
+    if result.len() >= 2 and (result.byte(0) == 34 or result.byte(0) == 39):
+        return emitter_expr_literal(result)
+    question_position = emitter_expr_top(result, "?", false)
+    arrow_position = emitter_expr_top(result, "=>", false)
+    if question_position < result.len() or arrow_position < result.len():
+        return "0 /* #error unsupported expression */"
+    if result.len() >= 2 and result.byte(0) == 40 and emitter_expr_matching(result, 0) + 1 == result.len():
+        inner = emitter_slice(result, 1, result.len() - 2)
+        inner_value = emitter_expr(inner, program.clone())
+        inner_first = emitter_join2("(", inner_value)
+        return emitter_join2(inner_first, ")")
+    position = emitter_expr_top(result, "or", true)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 2, result.len() - position - 2)
+        return emitter_expr_binary(" || ", left, right, program.clone())
+    position = emitter_expr_top(result, "and", true)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 3, result.len() - position - 3)
+        return emitter_expr_binary(" && ", left, right, program.clone())
+    starts_not = emitter_starts(result.clone(), "not ")
+    if starts_not:
+        operand = emitter_slice(result, 4, result.len() - 4)
+        return emitter_join2("!", emitter_expr(operand, program.clone()))
+    position = emitter_expr_top(result, "==", false)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 2, result.len() - position - 2)
+        return emitter_expr_call2("merlo_eq", emitter_expr(left, program.clone()), emitter_expr(right, program.clone()))
+    position = emitter_expr_top(result, "!=", false)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 2, result.len() - position - 2)
+        return emitter_expr_call2("merlo_ne", emitter_expr(left, program.clone()), emitter_expr(right, program.clone()))
+    position = emitter_expr_top(result, "<=", false)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 2, result.len() - position - 2)
+        return emitter_expr_binary(" <= ", left, right, program.clone())
+    position = emitter_expr_top(result, ">=", false)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 2, result.len() - position - 2)
+        return emitter_expr_binary(" >= ", left, right, program.clone())
+    position = emitter_expr_top(result, "<", false)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 1, result.len() - position - 1)
+        return emitter_expr_binary(" < ", left, right, program.clone())
+    position = emitter_expr_top(result, ">", false)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 1, result.len() - position - 1)
+        return emitter_expr_binary(" > ", left, right, program.clone())
+    position = emitter_expr_last_top(result, "+", false)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 1, result.len() - position - 1)
+        return emitter_expr_binary(" + ", left, right, program.clone())
+    position = emitter_expr_last_top(result, "-", false)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 1, result.len() - position - 1)
+        return emitter_expr_binary(" - ", left, right, program.clone())
+    position = emitter_expr_last_top(result, "*", false)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 1, result.len() - position - 1)
+        return emitter_expr_binary(" * ", left, right, program.clone())
+    position = emitter_expr_last_top(result, "/", false)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 1, result.len() - position - 1)
+        return emitter_expr_binary(" / ", left, right, program.clone())
+    position = emitter_expr_last_top(result, "%", false)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 1, result.len() - position - 1)
+        return emitter_expr_binary(" % ", left, right, program.clone())
+    call = emitter_expr_call(result, program.clone())
+    if call.len() > 0:
+        return call
+    emitter_expr_tokens(result, program.clone())
+
+emitter_append_line(output: TextBuilder, indent: UInt64, value: Text) -> Unit:
+    count: UInt64 = 0
+    while count < indent:
+        output.append_text("    ")
+        count = count + 1
+    output.append_text(value)
+    output.append_byte(10)
+
+emitter_control_trim(values: Vec[UInt64], length: UInt64) -> Vec[UInt64]:
+    result: Vec[UInt64] = Vec.new()
+    index: UInt64 = 0
+    while index < length:
+        result.push(values.get(index))
+        index = index + 1
+    result
+
+emitter_names_has(names: Vec[Text], needle: Text) -> Bool:
+    index: UInt64 = 0
+    while index < names.len():
+        if names.get(index) == needle:
+            return true
+        index = index + 1
+    false
+
+emitter_names_add(names: Vec[Text], indents: Vec[UInt64], name: Text, indent: UInt64) -> Unit:
+    present = emitter_names_has(names, name.clone())
+    if not present:
+        names.push(name.clone())
+        indents.push(indent)
+
+emitter_names_trim(names: Vec[Text], indents: Vec[UInt64], indent: UInt64) -> Vec[Text]:
+    result: Vec[Text] = Vec.new()
+    index: UInt64 = 0
+    while index < names.len() and index < indents.len():
+        if indents.get(index) <= indent:
+            result.push(names.get(index).clone())
+        index = index + 1
+    result
+
+emitter_name_indents_trim(indents: Vec[UInt64], indent: UInt64) -> Vec[UInt64]:
+    result: Vec[UInt64] = Vec.new()
+    index: UInt64 = 0
+    while index < indents.len():
+        if indents.get(index) <= indent:
+            result.push(indents.get(index))
+        index = index + 1
+    result
+
+emitter_is_final_line(source_view: TextView, line_end: UInt64, finish: UInt64) -> Bool:
+    cursor: UInt64 = line_end
+    while cursor < finish:
+        current = source_view.byte(cursor)
+        if current != 10 and current != 13 and current != 32 and current != 9:
+            return false
+        cursor = cursor + 1
+    true
+
+emitter_emit_body(output: TextBuilder, program: Program, function: Function) -> Unit:
+    emitter_initialize_parameters(output, program.clone(), function.clone())
+    source_view: TextView = program.source.as_view()
+    start: UInt64 = function.body_start
+    finish: UInt64 = start + function.body_length
+    first_indent: UInt64 = 0
+    first_indent_cursor: UInt64 = start
+    while first_indent_cursor > 0 and source_view.byte(first_indent_cursor - 1) != 10:
+        first_indent = first_indent + 1
+        first_indent_cursor = first_indent_cursor - 1
+    names: Vec[Text] = Vec.new()
+    name_indents: Vec[UInt64] = Vec.new()
+    control_indents: Vec[UInt64] = Vec.new()
+    parameter_index: UInt64 = 0
+    while parameter_index < function.parameters.len():
+        parameter_item = function.parameters.get(parameter_index)
+        emitter_names_add(names, name_indents, parameter_item.name.clone(), 0)
+        parameter_index = parameter_index + 1
+    while start < finish:
+        line_end: UInt64 = start
+        while line_end < finish and source_view.byte(line_end) != 10:
+            line_end = line_end + 1
+        raw = source_view.slice_bytes(start, line_end - start).to_text()
+        line = emitter_trim(raw.clone())
+        indent: UInt64 = 0
+        while indent < raw.len():
+            current_byte = raw.byte(indent)
+            if current_byte != 32 and current_byte != 9:
+                break
+            indent = indent + 1
+        if start == function.body_start:
+            indent = first_indent
+        trimmed_names = emitter_names_trim(names, name_indents, indent)
+        trimmed_name_indents = emitter_name_indents_trim(name_indents, indent)
+        names = trimmed_names
+        name_indents = trimmed_name_indents
+        if line.len() > 0:
+            line_is_else = line == "else:"
+            while control_indents.len() > 0 and control_indents.get(control_indents.len() - 1) >= indent:
+                close_depth: UInt64 = control_indents.len() - 1
+                emitter_append_line(output, close_depth, "}")
+                control_indents = emitter_control_trim(control_indents, close_depth)
+
+            line_is_if = emitter_starts(line.clone(), "if ")
+            line_is_while = emitter_starts(line.clone(), "while ")
+            if line_is_if or line_is_while:
+                colon = emitter_expr_top(line.clone(), ":", false)
+                offset: UInt64 = 3
+                if line_is_while:
+                    offset = 6
+                control_source = emitter_slice(line.clone(), offset, colon - offset)
+                control_condition = emitter_expr(control_source, program.clone())
+                if line_is_while:
+                    emitter_append_line(output, control_indents.len(), emitter_join2(emitter_join2("while (", control_condition), ") {"))
+                else:
+                    emitter_append_line(output, control_indents.len(), emitter_join2(emitter_join2("if (", control_condition), ") {"))
+                control_indents.push(indent)
+            else:
+                if line_is_else:
+                    emitter_append_line(output, control_indents.len(), "else {")
+                    control_indents.push(indent)
+                else:
+                    line_starts_return = emitter_starts(line.clone(), "return ")
+                    line_is_return = line == "return" or line_starts_return
+                    if line_is_return:
+                        if line == "return":
+                            emitter_sync_parameters(output, function.clone(), control_indents.len())
+                            if function.return_type == "Unit":
+                                emitter_append_line(output, control_indents.len(), "return;")
+                            else:
+                                fallback_return = emitter_join2(emitter_join2("return (", emitter_ctype(function.return_type.clone(), program.clone())), "){0};")
+                                emitter_append_line(output, control_indents.len(), fallback_return)
+                        else:
+                            return_source = emitter_slice(line.clone(), 7, line.len() - 7)
+                            return_expression = emitter_expr(return_source, program.clone())
+                            emitter_append_return(output, function.clone(), control_indents.len(), return_expression, line_end)
+                    else:
+                        if line == "break":
+                            emitter_append_line(output, control_indents.len(), "break;")
+                        else:
+                            if line == "continue":
+                                emitter_append_line(output, control_indents.len(), "continue;")
+                            else:
+                                equals = emitter_expr_top(line.clone(), "=", false)
+                                colon = emitter_expr_top(line.clone(), ":", false)
+                                line_is_assignment = emitter_is_assignment(line.clone())
+                                if colon < equals and line_is_assignment:
+                                    declaration_name_source = emitter_slice(line.clone(), 0, colon)
+                                    declaration_name = emitter_trim(declaration_name_source)
+                                    type_name_source = emitter_slice(line.clone(), colon + 1, equals - colon - 1)
+                                    type_name = emitter_trim(type_name_source)
+                                    declaration_expression_source = emitter_slice(line.clone(), equals + 1, line.len() - equals - 1)
+                                    declaration_expression = emitter_expr(declaration_expression_source, program.clone())
+                                    declaration = emitter_join2(emitter_join2(emitter_ctype(type_name, program.clone()), " "), declaration_name)
+                                    declaration = emitter_join2(emitter_join2(declaration, " = "), declaration_expression)
+                                    emitter_append_line(output, control_indents.len(), emitter_join2(declaration, ";"))
+                                    emitter_names_add(names, name_indents, declaration_name, indent)
+                                else:
+                                    if line_is_assignment:
+                                        assignment_name_source = emitter_slice(line.clone(), 0, equals)
+                                        assignment_name = emitter_trim(assignment_name_source)
+                                        assignment_expression_source = emitter_slice(line.clone(), equals + 1, line.len() - equals - 1)
+                                        assignment_expression = emitter_expr(assignment_expression_source, program.clone())
+                                        tracked_name = emitter_names_has(names, assignment_name.clone())
+                                        known_name = tracked_name or assignment_name == "control_indents" or (assignment_name == "start" and function.name == "emitter_emit_body")
+                                        member_name = emitter_has(assignment_name.clone(), ".")
+                                        if not known_name and not member_name:
+                                            declaration = emitter_join2(emitter_join2("__auto_type ", assignment_name), " = ")
+                                            declaration = emitter_join2(emitter_join2(declaration, assignment_expression), ";")
+                                            emitter_append_line(output, control_indents.len(), declaration)
+                                            emitter_names_add(names, name_indents, assignment_name, indent)
+                                        else:
+                                            assignment = emitter_join2(emitter_join2(assignment_name, " = "), assignment_expression)
+                                            emitter_append_line(output, control_indents.len(), emitter_join2(assignment, ";"))
+                                    else:
+                                        statement_expression = emitter_expr(line.clone(), program.clone())
+                                        if function.return_type != "Unit" and emitter_is_final_line(source_view, line_end, finish):
+                                            emitter_append_return(output, function.clone(), control_indents.len(), statement_expression, line_end)
+                                        else:
+                                            emitter_append_line(output, control_indents.len(), emitter_join2(statement_expression, ";"))
+        if line_end == finish:
+            start = finish
+        else:
+            start = line_end + 1
+    while control_indents.len() > 0:
+        close_depth: UInt64 = control_indents.len() - 1
+        emitter_append_line(output, close_depth, "}")
+        control_indents = emitter_control_trim(control_indents, close_depth)
+    emitter_sync_parameters(output, function.clone(), 0)
+    if function.return_type != "Unit":
+        fallback = emitter_join2(emitter_join2("return (", emitter_ctype(function.return_type, program.clone())), "){0};")
+        emitter_append_line(output, 0, fallback)
+emitter_tag_text(tag: UInt64) -> Text:
+    output: TextBuilder = TextBuilder.new()
+    output.append_uint64(tag)
+    output.finish()
+
+emitter_ctor_field(type_name: Text, value_name: Text) -> Text:
+    if type_name == "Text":
+        return emitter_join2("merlo_text_clone(", emitter_join2(value_name, ")"))
+    if type_name == "TextView":
+        return value_name
+    value_name
+
+emitter_declarations(output: TextBuilder, program: Program) -> Unit:
+    index: UInt64 = 0
+    while index < program.records.len():
+        record = program.records.get(index)
+        output.append_text("typedef struct ")
+        emitter_append_owned(output, record.name.clone())
+        output.append_text(" ")
+        emitter_append_owned(output, record.name.clone())
+        output.append_text(";\n")
+        index = index + 1
+    index = 0
+    while index < program.enums.len():
+        enum_decl = program.enums.get(index)
+        output.append_text("typedef struct ")
+        emitter_append_owned(output, enum_decl.name.clone())
+        output.append_text(" ")
+        emitter_append_owned(output, enum_decl.name.clone())
+        output.append_text(";\n")
+        index = index + 1
+    index = 0
+    while index < program.enums.len():
+        enum_decl = program.enums.get(index)
+        output.append_text("struct ")
+        emitter_append_owned(output, enum_decl.name.clone())
+        output.append_text(" { uint64_t tag; MerloValue payload; };\n")
+        index = index + 1
+    index = 0
+    while index < program.records.len():
+        record = program.records.get(index)
+        output.append_text("struct ")
+        emitter_append_owned(output, record.name.clone())
+        output.append_text(" {\n")
+        field: UInt64 = 0
+        while field < record.fields.len():
+            field_item = record.fields.get(field)
+            line = emitter_join2(emitter_join2(emitter_join2("    ", emitter_ctype(field_item.type_name.clone(), program)), " "), emitter_join2(field_item.name.clone(), ";\n"))
+            output.append_text(line)
+            field = field + 1
+        output.append_text("};\n")
+        output.append_text("static ")
+        emitter_append_owned(output, record.name.clone())
+        output.append_text(" ")
+        emitter_append_owned(output, record.name.clone())
+        output.append_text("_new(")
+        if record.fields.len() == 0:
+            output.append_text("void")
+        else:
+            field = 0
+            while field < record.fields.len():
+                if field > 0:
+                    output.append_text(", ")
+                field_item = record.fields.get(field)
+                emitter_append_join(output, emitter_join2(emitter_ctype(field_item.type_name.clone(), program), " "), field_item.name.clone())
+                field = field + 1
+        output.append_text(") { ")
+        emitter_append_owned(output, record.name.clone())
+        output.append_text(" value = {")
+        field = 0
+        while field < record.fields.len():
+            if field > 0:
+                output.append_text(", ")
+            field_item = record.fields.get(field)
+            emitter_append_owned(output, emitter_ctor_field(field_item.type_name.clone(), field_item.name.clone()))
+            field = field + 1
+        output.append_text("}; return value; }\n")
+        index = index + 1
+    index = 0
+    while index < program.enums.len():
+        enum_decl = program.enums.get(index)
+        variant_index: UInt64 = 0
+        while variant_index < enum_decl.variants.len():
+            variant_item = enum_decl.variants.get(variant_index)
+            output.append_text("static ")
+            emitter_append_owned(output, enum_decl.name.clone())
+            output.append_text(" ")
+            emitter_append_owned(output, enum_decl.name.clone())
+            output.append_text("_")
+            emitter_append_owned(output, variant_item.name.clone())
+            output.append_text("(")
+            if variant_item.payload_type == "":
+                output.append_text("void")
+            else:
+                emitter_append_join(output, emitter_join2(emitter_ctype(variant_item.payload_type.clone(), program), " "), "payload")
+            output.append_text(") { ")
+            emitter_append_owned(output, enum_decl.name.clone())
+            output.append_text(" value = {0}; value.tag = ")
+            emitter_append_owned(output, emitter_join2(emitter_tag_text(variant_index), "; "))
+            if variant_item.payload_type != "":
+                if variant_item.payload_type == "UInt64" or variant_item.payload_type == "Byte" or variant_item.payload_type == "Int64" or variant_item.payload_type == "Bool" or variant_item.payload_type == "Text" or variant_item.payload_type == "TextView":
+                    output.append_text("value.payload = ")
+                    emitter_append_owned(output, emitter_ctor_payload(variant_item.payload_type.clone(), "payload"))
+                    output.append_text("; ")
+                else:
+                    output.append_text("value.payload.tag = 4; value.payload.ptr = malloc(sizeof(payload)); if (value.payload.ptr) *((")
+                    emitter_append_owned(output, emitter_ctype(variant_item.payload_type.clone(), program))
+                    output.append_text(" *)value.payload.ptr) = payload; ")
+            output.append_text("return value; }\n")
+            variant_index = variant_index + 1
+        index = index + 1
+
+emitter_prototypes(output: TextBuilder, program: Program) -> Unit:
+    index: UInt64 = 0
+    while index < program.functions.len():
+        function = program.functions.get(index)
+        emitter_append_join(output, emitter_join2(emitter_ctype(function.return_type.clone(), program), " "), emitter_c_name(function.name.clone()))
+        output.append_text("(")
+        parameter_index: UInt64 = 0
+        while parameter_index < function.parameters.len():
+            if parameter_index > 0:
+                output.append_text(", ")
+            parameter_item = function.parameters.get(parameter_index)
+            emitter_append_owned(output, emitter_parameter_declaration(parameter_item, program.clone()))
+            parameter_index = parameter_index + 1
+        output.append_text(");\n")
+        index = index + 1
+
+export emit_c(program: Program) -> Text:
+    if program.functions.len() == 0:
+        return "#error selfhost emission requires functions"
+    output: TextBuilder = TextBuilder.new()
+    output.append_text("#include <stdint.h>\n#include <stdbool.h>\n#include <stddef.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <limits.h>\n\n")
+    output.append_text("typedef struct { char *data; uint64_t len; } MerloText;\n")
+    output.append_text("typedef struct { char *data; uint64_t len; } MerloTextView;\n")
+    output.append_text("typedef struct { char *data; uint64_t len; uint64_t cap; } MerloBuilder;\n")
+    output.append_text("typedef struct { void *data; uint64_t len; uint64_t cap; uint64_t item_size; } MerloVec;\n")
+    output.append_text("typedef struct { uint64_t tag; uint64_t u; int64_t i; bool b; MerloText text; void *ptr; } MerloValue;\n")
+    output.append_text("typedef struct { uint64_t tag; MerloValue value; } MerloResult;\n")
+    output.append_text("static void merlo_fail(const char *what) { fputs(\"merlo runtime failure: \", stderr); fputs(what, stderr); fputc('\\n', stderr); abort(); }\n")
+    output.append_text("static uint64_t merlo_add_size(uint64_t a, uint64_t b) { if (b > UINT64_MAX - a) merlo_fail(\"size overflow\"); return a + b; }\n")
+    output.append_text("static uint64_t merlo_mul_size(uint64_t a, uint64_t b) { if (a != 0 && b > UINT64_MAX / a) merlo_fail(\"size overflow\"); return a * b; }\n")
+    output.append_text("static MerloText merlo_text_empty(void) { MerloText t = { NULL, 0 }; return t; }\n")
+    output.append_text("static MerloText merlo_text_from_bytes(const char *data, uint64_t len) { MerloText t = { NULL, len }; if (len) { t.data = (char *)malloc((size_t)len); if (!t.data) merlo_fail(\"allocation\"); memcpy(t.data, data, (size_t)len); } return t; }\n")
+    output.append_text("static MerloText merlo_text_literal(const char *data, uint64_t len) { return merlo_text_from_bytes(data, len); }\n")
+    output.append_text("static MerloText merlo_text_clone_value(MerloText t) { return merlo_text_from_bytes(t.data, t.len); }\n")
+    output.append_text("static MerloText merlo_text_clone_view(MerloTextView v) { return merlo_text_from_bytes(v.data, v.len); }\n")
+    output.append_text("static void merlo_text_drop(MerloText *t) { if (t) { free(t->data); t->data = NULL; t->len = 0; } }\n")
+    output.append_text("static bool merlo_text_eq(MerloText a, MerloText b) { return a.len == b.len && (a.len == 0 || memcmp(a.data, b.data, (size_t)a.len) == 0); }\n")
+    output.append_text("static bool merlo_text_ne(MerloText a, MerloText b) { return !merlo_text_eq(a, b); }\n")
+    output.append_text("static uint64_t merlo_text_len_value(MerloText t) { return t.len; }\n")
+    output.append_text("static uint64_t merlo_text_byte_value(MerloText t, uint64_t i) { if (i >= t.len) merlo_fail(\"text bounds\"); return (uint8_t)t.data[i]; }\n")
+    output.append_text("static MerloTextView merlo_text_as_view_value(MerloText t) { MerloTextView v = { t.data, t.len }; return v; }\n")
+    output.append_text("static MerloTextView merlo_text_as_view_view(MerloTextView v) { return v; }\n")
+    output.append_text("static uint64_t merlo_view_len(MerloTextView v) { return v.len; }\n")
+    output.append_text("static uint64_t merlo_view_byte(MerloTextView v, uint64_t i) { if (i >= v.len) merlo_fail(\"text bounds\"); return (uint8_t)v.data[i]; }\n")
+    output.append_text("static MerloTextView merlo_view_slice(MerloTextView v, uint64_t start, uint64_t len);\n")
+    output.append_text("static MerloText merlo_text_slice(MerloText t, uint64_t start, uint64_t len) { MerloTextView v = merlo_view_slice(merlo_text_as_view_value(t), start, len); return merlo_text_from_bytes(v.data, v.len); }\n")
+    output.append_text("static MerloTextView merlo_view_slice(MerloTextView v, uint64_t start, uint64_t len) { if (start > v.len || len > v.len - start) merlo_fail(\"slice bounds\"); MerloTextView r = { v.data + start, len }; return r; }\n")
+    output.append_text("static MerloText merlo_text_to_text_view(MerloTextView v) { return merlo_text_from_bytes(v.data, v.len); }\n")
+    output.append_text("static MerloBuilder merlo_builder_new(void) { MerloBuilder b = { NULL, 0, 0 }; return b; }\n")
+    output.append_text("static void merlo_builder_reserve(MerloBuilder *b, uint64_t extra) { uint64_t need = merlo_add_size(b->len, extra); if (need <= b->cap) return; uint64_t cap = b->cap ? b->cap : 64; while (cap < need) { if (cap > UINT64_MAX / 2) { cap = need; break; } cap *= 2; } char *p = (char *)realloc(b->data, (size_t)cap); if (!p) merlo_fail(\"allocation\"); b->data = p; b->cap = cap; }\n")
+    output.append_text("static void merlo_builder_append_text(MerloBuilder *b, MerloText t) { merlo_builder_reserve(b, t.len); if (t.len) memcpy(b->data + b->len, t.data, (size_t)t.len); b->len += t.len; }\n")
+    output.append_text("static void merlo_builder_append_view(MerloBuilder *b, MerloTextView t) { merlo_builder_reserve(b, t.len); if (t.len) memcpy(b->data + b->len, t.data, (size_t)t.len); b->len += t.len; }\n")
+    output.append_text("static MerloText merlo_builder_finish_value(MerloBuilder b) { MerloText t = { b.data, b.len }; return t; }\n")
+    output.append_text("static void merlo_builder_append_byte(MerloBuilder *b, uint64_t byte) { if (byte > 255) merlo_fail(\"byte range\"); merlo_builder_reserve(b, 1); b->data[b->len++] = (char)byte; }\n")
+    output.append_text("static void merlo_builder_append_uint64(MerloBuilder *b, uint64_t value) { char buf[32]; uint64_t n = 0; do { buf[n++] = (char)('0' + value % 10); value /= 10; } while (value); merlo_builder_reserve(b, n); while (n) b->data[b->len++] = buf[--n]; }\n")
+    output.append_text("static MerloText merlo_builder_finish(MerloBuilder *b) { MerloText t = { b->data, b->len }; b->data = NULL; b->len = 0; b->cap = 0; return t; }\n")
+    output.append_text("static MerloVec merlo_vec_new(uint64_t item_size) { if (!item_size) merlo_fail(\"zero vector item size\"); MerloVec v = { NULL, 0, 0, item_size }; return v; }\n")
+    output.append_text("static uint64_t merlo_vec_len(MerloVec v) { return v.len; }\n")
+    output.append_text("static void merlo_vec_reserve(MerloVec *v, uint64_t extra) { uint64_t need = merlo_add_size(v->len, extra); if (need <= v->cap) return; uint64_t cap = v->cap ? v->cap : 8; while (cap < need) { if (cap > UINT64_MAX / 2) { cap = need; break; } cap *= 2; } void *p = realloc(v->data, (size_t)merlo_mul_size(cap, v->item_size)); if (!p) merlo_fail(\"allocation\"); v->data = p; v->cap = cap; }\n")
+    output.append_text("static void merlo_vec_push_raw(MerloVec *v, const void *item) { merlo_vec_reserve(v, 1); memcpy((char *)v->data + merlo_mul_size(v->len, v->item_size), item, (size_t)v->item_size); v->len++; }\n")
+    output.append_text("static void *merlo_vec_get_raw(MerloVec *v, uint64_t i) { if (i >= v->len) merlo_fail(\"vector bounds\"); return (char *)v->data + merlo_mul_size(i, v->item_size); }\n")
+    output.append_text("static MerloVec merlo_vec_clone(MerloVec v) { MerloVec r = merlo_vec_new(v.item_size); if (v.len) { merlo_vec_reserve(&r, v.len); memcpy(r.data, v.data, (size_t)merlo_mul_size(v.len, v.item_size)); r.len = v.len; } return r; }\n")
+    output.append_text("static void merlo_vec_drop(MerloVec *v) { if (v) { free(v->data); v->data = NULL; v->len = v->cap = 0; } }\n")
+    output.append_text("static MerloResult merlo_ok_zero(void) { MerloResult r = { 0, { 0 } }; return r; }\n")
+    output.append_text("static MerloResult merlo_err_zero(void) { MerloResult r = { 1, { 0 } }; return r; }\n")
+    output.append_text("static MerloTextView merlo_any_view_text(MerloText v) { return merlo_text_as_view_value(v); }\n")
+    output.append_text("static MerloTextView merlo_any_view_view(MerloTextView v) { return v; }\n")
+    output.append_text("static bool merlo_view_eq(MerloTextView a, MerloTextView b) { return a.len == b.len && (a.len == 0 || memcmp(a.data, b.data, (size_t)a.len) == 0); }\n")
+    output.append_text("static bool merlo_view_ne(MerloTextView a, MerloTextView b) { return !merlo_view_eq(a, b); }\n")
+    output.append_text("static bool merlo_view_contains(MerloTextView h, MerloTextView n) { if (n.len == 0) return true; if (n.len > h.len) return false; for (uint64_t i = 0; i <= h.len - n.len; i++) if (memcmp(h.data + i, n.data, (size_t)n.len) == 0) return true; return false; }\n")
+    output.append_text("static bool merlo_view_starts(MerloTextView v, MerloTextView p) { return p.len <= v.len && (p.len == 0 || memcmp(v.data, p.data, (size_t)p.len) == 0); }\n")
+    output.append_text("static bool merlo_view_ends(MerloTextView v, MerloTextView p) { return p.len <= v.len && (p.len == 0 || memcmp(v.data + v.len - p.len, p.data, (size_t)p.len) == 0); }\n")
+    output.append_text("static bool merlo_eq_u64(uint64_t a, uint64_t b) { return a == b; }\n")
+    output.append_text("static bool merlo_ne_u64(uint64_t a, uint64_t b) { return a != b; }\n")
+    output.append_text("static MerloText merlo_text_slice_bytes_value(MerloText v, uint64_t s, uint64_t n) { return merlo_text_slice(v, s, n); }\n")
+    output.append_text("static MerloTextView merlo_text_slice_bytes_view(MerloTextView v, uint64_t s, uint64_t n) { return merlo_view_slice(v, s, n); }\n")
+    output.append_text("static MerloText merlo_text_to_text_value(MerloText v) { return merlo_text_clone_value(v); }\n")
+    output.append_text("static void merlo_vec_push_bytes(MerloVec *v, const void *item, uint64_t size) { if (v->len == 0 && v->data == NULL) v->item_size = size; if (size != v->item_size) merlo_fail(\"vector item size\"); merlo_vec_push_raw(v, item); }\n")
+    output.append_text("static void *merlo_vec_get(MerloVec v, uint64_t i) { return merlo_vec_get_raw(&v, i); }\n")
+    output.append_text("#define merlo_builder_append(b,v) _Generic((v), MerloTextView: merlo_builder_append_view, default: merlo_builder_append_text)((b),(v))\n")
+    output.append_text("#define merlo_text_len(v) _Generic((v), MerloTextView: merlo_view_len, MerloVec: merlo_vec_len, default: merlo_text_len_value)(v)\n#define merlo_text_byte(v,i) _Generic((v), MerloTextView: merlo_view_byte, default: merlo_text_byte_value)((v),(i))\n#define merlo_text_as_view(v) _Generic((v), MerloTextView: merlo_text_as_view_view, default: merlo_text_as_view_value)(v)\n#define merlo_text_slice_bytes(v,s,n) _Generic((v), MerloTextView: merlo_text_slice_bytes_view, default: merlo_text_slice_bytes_value)((v),(s),(n))\n#define merlo_text_to_text(v) _Generic((v), MerloTextView: merlo_text_to_text_view, default: merlo_text_to_text_value)(v)\n#define merlo_text_clone(v) _Generic((v), MerloTextView: merlo_text_clone_view, MerloVec: merlo_vec_clone, default: merlo_text_clone_value)(v)\n#define merlo_builder_finish(v) merlo_builder_finish_value((v))\n#define merlo_eq(a,b) _Generic((a), MerloText: merlo_text_eq, MerloTextView: merlo_view_eq, default: merlo_eq_u64)((a),(b))\n#define merlo_ne(a,b) _Generic((a), MerloText: merlo_text_ne, MerloTextView: merlo_view_ne, default: merlo_ne_u64)((a),(b))\n#define merlo_text_contains(a,b) merlo_view_contains(_Generic((a), MerloTextView: merlo_any_view_view, default: merlo_any_view_text)(a), _Generic((b), MerloTextView: merlo_any_view_view, default: merlo_any_view_text)(b))\n#define merlo_text_starts_with(a,b) merlo_view_starts(_Generic((a), MerloTextView: merlo_any_view_view, default: merlo_any_view_text)(a), _Generic((b), MerloTextView: merlo_any_view_view, default: merlo_any_view_text)(b))\n#define merlo_text_ends_with(a,b) merlo_view_ends(_Generic((a), MerloTextView: merlo_any_view_view, default: merlo_any_view_text)(a), _Generic((b), MerloTextView: merlo_any_view_view, default: merlo_any_view_text)(b))\n#define merlo_vec_push(v,x) do { __auto_type merlo_item = (x); merlo_vec_push_bytes((v), &merlo_item, sizeof(merlo_item)); } while (0)\n#define merlo_some(x) merlo_some_value((MerloValue){0})\n#define merlo_none() merlo_none_value()\n#define merlo_builtin_call(...) merlo_builtin_call_value()\n")
+    output.append_text("static MerloValue merlo_none_value(void) { MerloValue v = { 0 }; return v; }\n")
+    output.append_text("static MerloValue merlo_builtin_call_value(void) { MerloValue v = { 0 }; return v; }\n")
+    output.append_text("#define merlo_ok(x) merlo_ok_zero()\n#define merlo_err(x) merlo_err_zero()\n#define merlo_text_equal(a,b) merlo_text_eq((a),(b))\n#define merlo_text_view_len(v) merlo_view_len((v))\n#define merlo_text_view_byte(v,i) merlo_view_byte((v),(i))\n#define merlo_text_view_slice(v,s,n) merlo_view_slice((v),(s),(n))\n")
+    emitter_declarations(output, program)
+    emitter_prototypes(output, program)
+    output.append_byte(10)
+    has_entry: Bool = false
+    index: UInt64 = 0
+    while index < program.functions.len():
+        function = program.functions.get(index)
+        if function.name == "main":
+            has_entry = true
+        emitter_append_join(output, emitter_join2(emitter_ctype(function.return_type.clone(), program), " "), emitter_c_name(function.name.clone()))
+        output.append_text("(")
+        parameter_index: UInt64 = 0
+        while parameter_index < function.parameters.len():
+            if parameter_index > 0:
+                output.append_text(", ")
+            parameter_item = function.parameters.get(parameter_index)
+            emitter_append_owned(output, emitter_parameter_declaration(parameter_item, program.clone()))
+            parameter_index = parameter_index + 1
+        output.append_text(") {\n")
+        emitter_emit_body(output, program, function)
+        output.append_text("}\n\n")
+        index = index + 1
+    if has_entry:
+        output.append_text("static MerloText merlo_read_stdin(void) { char *data = NULL; size_t len = 0; size_t cap = 0; int ch; while ((ch = fgetc(stdin)) != EOF) { if (len == cap) { size_t next = cap == 0 ? 4096 : cap * 2; char *grown = (char *)realloc(data, next); if (!grown) { free(data); merlo_fail(\"allocation\"); } data = grown; cap = next; } data[len++] = (char)ch; } return (MerloText){data,(uint64_t)len}; }\n")
+        output.append_text("int main(void) { MerloText input = merlo_read_stdin(); MerloText result = merlo_main(input); if (result.len) fwrite(result.data, 1, (size_t)result.len, stdout); free((void *)input.data); return ferror(stdout) ? 74 : 0; }\n")
+    output.finish()

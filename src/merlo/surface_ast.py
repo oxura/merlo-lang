@@ -279,6 +279,85 @@ SurfaceStatement: TypeAlias = (
 
 
 @dataclass(frozen=True)
+class SurfacePolicy(SurfaceNode):
+    kind: str
+    value: str
+    error_type: str | None = None
+    expression: SurfaceExpression | None = None
+
+
+@dataclass(frozen=True)
+class SurfaceFlowStep(SurfaceNode):
+    name: str
+    value: SurfaceExpression
+    type_name: str | None = None
+    policies: tuple[SurfacePolicy, ...] = ()
+
+
+@dataclass(frozen=True)
+class SurfaceParallel(SurfaceNode):
+    branches: tuple[SurfaceFlowStep, ...]
+
+
+@dataclass(frozen=True)
+class SurfaceFlow(SurfaceNode):
+    name: str
+    parameters: tuple[SurfaceParameter, ...]
+    return_type: str
+    body: tuple[SurfaceStatement, ...]
+    durable: bool = False
+    exported: bool = False
+
+
+@dataclass(frozen=True)
+class SurfaceState(SurfaceNode):
+    name: str
+    fields: tuple[SurfaceField, ...] = ()
+
+
+@dataclass(frozen=True)
+class SurfaceTransition(SurfaceNode):
+    name: str
+    sources: tuple[str, ...]
+    target: str
+    body: tuple[SurfaceStatement, ...]
+
+
+@dataclass(frozen=True)
+class SurfaceMachine(SurfaceNode):
+    name: str
+    parameters: tuple[SurfaceParameter, ...]
+    states: tuple[SurfaceState, ...]
+    initial: str | None
+    invariant: SurfaceExpression | None
+    transitions: tuple[SurfaceTransition, ...]
+    exported: bool = False
+
+
+SurfaceStatement = (
+    SurfaceBinding
+    | SurfaceAnnotation
+    | SurfaceAssignment
+    | SurfaceComment
+    | SurfaceExpressionStatement
+    | SurfaceReturn
+    | SurfaceRequire
+    | SurfaceEnsure
+    | SurfaceContinue
+    | SurfaceBreak
+    | SurfacePass
+    | SurfaceUses
+    | SurfacePrint
+    | SurfaceFor
+    | SurfaceIf
+    | SurfaceWhile
+    | SurfaceMatch
+    | SurfaceParallel
+    | SurfaceFlowStep
+)
+
+
+@dataclass(frozen=True)
 class SurfaceInvariant(SurfaceNode):
     condition: SurfaceExpression
 
@@ -365,6 +444,8 @@ SurfaceDeclaration: TypeAlias = (
     | SurfaceFunction
     | SurfaceInterface
     | SurfaceImplementation
+    | SurfaceFlow
+    | SurfaceMachine
 )
 
 

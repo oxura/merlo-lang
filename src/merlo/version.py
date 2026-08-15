@@ -25,6 +25,8 @@ class CompilerVersions:
     transaction: int
     rir: int
     mir: int
+    parallel_ir: int
+    wasm_backend: int
     runtime_abi: int
     semantic_world: int
     manifest: int
@@ -37,9 +39,9 @@ class CompilerVersions:
 VERSIONS = CompilerVersions(
     release="0.1.0-alpha.3-dev",
     language="0.3",
-    frontend=7,
-    canonical=5,
-    hir=5,
+    frontend=8,
+    canonical=6,
+    hir=6,
     obligation_ir=1,
     range_analysis=1,
     bounded_symbolic=1,
@@ -54,6 +56,8 @@ VERSIONS = CompilerVersions(
     transaction=1,
     rir=2,
     mir=2,
+    parallel_ir=1,
+    wasm_backend=1,
     runtime_abi=2,
     semantic_world=14,
     manifest=1,

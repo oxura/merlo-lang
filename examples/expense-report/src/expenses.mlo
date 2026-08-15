@@ -1,0 +1,33 @@
+module expenses
+
+export Expense:
+    category: UInt64
+    cents: UInt64
+    reimbursable: Bool
+
+export report() -> Text:
+    entries: Array[Expense,5] = [
+        Expense(1, 1250, true),
+        Expense(2, 899, false),
+        Expense(1, 2400, true),
+        Expense(3, 600, true),
+        Expense(2, 451, false),
+    ]
+    total: UInt64 = 0
+    reimbursable: UInt64 = 0
+    travel: UInt64 = 0
+    for entry in entries:
+        total = total + entry.cents
+        if entry.reimbursable:
+            reimbursable = reimbursable + entry.cents
+        if entry.category == 1:
+            travel = travel + entry.cents
+    output: TextBuilder = TextBuilder.new()
+    output.append_text("expense-report\nentries=5\ntotal_cents=")
+    output.append_uint64(total)
+    output.append_text("\nreimbursable_cents=")
+    output.append_uint64(reimbursable)
+    output.append_text("\ntravel_cents=")
+    output.append_uint64(travel)
+    output.append_byte(10)
+    output.finish()

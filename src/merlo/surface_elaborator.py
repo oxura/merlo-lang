@@ -15,6 +15,13 @@ from merlo.canonical_ast import (
     CanonicalCapture,
     CanonicalContract,
     CanonicalClosure,
+    CanonicalFlow,
+    CanonicalFlowStep,
+    CanonicalParallel,
+    CanonicalPolicy,
+    CanonicalMachine,
+    CanonicalMachineState,
+    CanonicalTransition,
     CanonicalHole,
     CanonicalHoleBinding,
     CanonicalHoleCallable,
@@ -46,27 +53,32 @@ from merlo.surface_ast import (
     SurfaceCall,
     SurfaceComment,
     SurfaceContinue,
+    SurfaceEnum,
+    SurfaceEnsure,
     SurfaceExpression,
     SurfaceExpressionStatement,
+    SurfaceField,
+    SurfaceFlow,
+    SurfaceFlowStep,
     SurfaceFor,
     SurfaceFunction,
-    SurfaceIf,
-    SurfaceEnsure,
-    SurfaceEnum,
     SurfaceHole,
+    SurfaceIf,
     SurfaceIndex,
     SurfaceList,
     SurfaceLambda,
     SurfaceLiteral,
-    SurfaceMember,
+    SurfaceMachine,
     SurfaceMatch,
+    SurfaceMember,
     SurfaceName,
+    SurfaceParallel,
     SurfaceParameter,
     SurfaceImplicitReceiver,
     SurfacePass,
     SurfacePrint,
-    SurfaceProgram,
     SurfaceRecord,
+    SurfaceProgram,
     SurfaceRequire,
     SurfaceReturn,
     SurfaceStatement,
@@ -2556,11 +2568,199 @@ class _Elaborator:
                         self._canonical_block(
                             case.body,
                             function,
+
                             depth=depth + 2,
                             tail_returns=False,
                         )
                     )
         return tuple(lines)
+    @staticmethod
+    def _node_id(kind: str, name: str, span, ordinal: int = 0) -> str:
+        payload = f"{kind}\0{name}\0{span.path}\0{span.start_line}\0{span.start_column}\0{ordinal}"
+        return hashlib.sha256(payload.encode()).hexdigest()[:24]
+
+    def _canonical_flow(self, flow: SurfaceFlow) -> CanonicalFlow:
+        names = {item.name for item in flow.parameters}
+        body: list[CanonicalFlowStep | CanonicalParallel | CanonicalStatement] = []
+        effects: set[str] = set()
+        capabilities: set[str] = set()
+        ordinal = 0
+        for statement in flow.body:
+            if isinstance(statement, SurfaceUses):
+                effects.update(statement.effects)
+                capabilities.update(statement.effects)
+                continue
+            if isinstance(statement, SurfaceParallel):
+                branches: list[CanonicalFlowStep] = []
+                for branch in statement.branches:
+                    if branch.name in names:
+                        raise SurfaceElaborationError(
+                            f"FlowDuplicateBinding: {flow.name}.{branch.name}"
+                        )
+                    names.add(branch.name)
+                    policies = tuple(
+                        CanonicalPolicy(
+                            policy.kind,
+                            policy.value,
+                            policy.error_type,
+                            _emit_expression(policy.expression) if policy.expression else None,
+                            policy.span,
+                        )
+                        for policy in branch.policies
+                    )
+                    self._validate_flow_policies(flow, branch, policies)
+                    branches.append(CanonicalFlowStep(
+                        self._node_id("flow-step", branch.name, branch.span, ordinal),
+                        branch.name,
+                        str(_emit_expression(branch.value)),
+                        branch.type_name or self._flow_value_type(branch.value),
+                        policies,
+                        branch.span,
+                    ))
+                    ordinal += 1
+                body.append(CanonicalParallel(
+                    self._node_id("parallel", flow.name, statement.span, ordinal),
+                    tuple(branches), statement.span,
+                ))
+                continue
+            if isinstance(statement, SurfaceFlowStep):
+                if statement.name in names:
+                    raise SurfaceElaborationError(
+                        f"FlowDuplicateBinding: {flow.name}.{statement.name}"
+                    )
+                names.add(statement.name)
+                policies = tuple(
+                    CanonicalPolicy(
+                        policy.kind,
+                        policy.value,
+                        policy.error_type,
+                        _emit_expression(policy.expression) if policy.expression else None,
+                        policy.span,
+                    )
+                    for policy in statement.policies
+                )
+                self._validate_flow_policies(flow, statement, policies)
+                body.append(CanonicalFlowStep(
+                    self._node_id("flow-step", statement.name, statement.span, ordinal),
+                    statement.name,
+                    str(_emit_expression(statement.value)),
+                    statement.type_name or self._flow_value_type(statement.value),
+                    policies,
+                    statement.span,
+                ))
+                ordinal += 1
+                continue
+            if isinstance(statement, SurfaceReturn) and statement.expression is not None:
+                body.append(CanonicalReturn(str(_emit_expression(statement.expression)), statement.span))
+        return CanonicalFlow(
+            flow.name,
+            tuple((item.name, item.type_name or "Inferred") for item in flow.parameters),
+            flow.return_type,
+            flow.durable,
+            tuple(sorted(effects)),
+            tuple(sorted(capabilities)),
+            tuple(body),
+            flow.span,
+            flow.exported,
+        )
+
+    @staticmethod
+    def _flow_value_type(expression: SurfaceExpression) -> str:
+        if isinstance(expression, SurfaceLiteral):
+            return {"bool": "Bool", "int": "Int64", "float": "Float64", "str": "Text"}.get(
+                type(expression.value).__name__, "Inferred"
+            )
+        return "Inferred"
+
+    @staticmethod
+    def _validate_flow_policies(
+        flow: SurfaceFlow, step: SurfaceFlowStep, policies: tuple[CanonicalPolicy, ...]
+    ) -> None:
+        retry = next((item for item in policies if item.kind == "retry"), None)
+        if retry is not None:
+            if int(retry.value) <= 0:
+                raise SurfaceElaborationError(
+                    f"RetryCountMustBePositive: {flow.name}.{step.name}"
+                )
+            if not any(item.kind == "idempotent" for item in policies):
+                raise SurfaceElaborationError(
+                    f"RetryRequiresIdempotency: {flow.name}.{step.name}"
+                )
+
+    def _canonical_machine(self, machine: SurfaceMachine) -> CanonicalMachine:
+        state_names = [item.name for item in machine.states]
+        if len(state_names) != len(set(state_names)):
+            raise SurfaceElaborationError(f"DuplicateState: {machine.name}")
+        states = tuple(
+            CanonicalMachineState(
+                item.name,
+                tuple((field.name, field.type_name) for field in item.fields),
+                item.span,
+            )
+            for item in machine.states
+        )
+        known = set(state_names)
+        if machine.initial is not None and machine.initial not in known:
+            raise SurfaceElaborationError(f"UnknownInitialState: {machine.name}.{machine.initial}")
+        transitions: list[CanonicalTransition] = []
+        transition_names: set[str] = set()
+        for transition in machine.transitions:
+            if transition.name in transition_names:
+                raise SurfaceElaborationError(f"DuplicateTransition: {machine.name}.{transition.name}")
+            transition_names.add(transition.name)
+            if any(source not in known for source in transition.sources):
+                unknown = next(source for source in transition.sources if source not in known)
+                raise SurfaceElaborationError(f"UnknownState: {machine.name}.{unknown}")
+            if transition.target not in known:
+                raise SurfaceElaborationError(f"IllegalTargetState: {machine.name}.{transition.target}")
+            effects = tuple(sorted(
+                effect
+                for statement in transition.body
+                if isinstance(statement, SurfaceUses)
+                for effect in statement.effects
+            ))
+            body = tuple(
+                CanonicalBinding(
+                    statement.name,
+                    "Inferred",
+                    False,
+                    str(_emit_expression(statement.value)),
+                    statement.span,
+                )
+                for statement in transition.body
+                if isinstance(statement, SurfaceBinding)
+            )
+            transitions.append(CanonicalTransition(
+                self._node_id("transition", transition.name, transition.span),
+                transition.name,
+                transition.sources,
+                transition.target,
+                effects,
+                body,
+                transition.span,
+            ))
+        if machine.initial is not None:
+            reachable = {machine.initial}
+            changed = True
+            while changed:
+                changed = False
+                for transition in transitions:
+                    if set(transition.sources) & reachable and transition.target not in reachable:
+                        reachable.add(transition.target)
+                        changed = True
+            if reachable != known:
+                missing = sorted(known - reachable)[0]
+                raise SurfaceElaborationError(f"UnreachableState: {machine.name}.{missing}")
+        return CanonicalMachine(
+            machine.name,
+            tuple((item.name, item.type_name or "Inferred") for item in machine.parameters),
+            states,
+            machine.initial,
+            _emit_expression(machine.invariant) if machine.invariant else None,
+            tuple(transitions),
+            machine.span,
+            machine.exported,
+        )
     def result(self) -> SurfaceElaboration:
         records = tuple(
             CanonicalRecord(
@@ -2842,7 +3042,17 @@ class _Elaborator:
                     tuple(holes),
                 )
             )
-        canonical = CanonicalProgram(records, tuple(functions), enums)
+        flows = tuple(
+            self._canonical_flow(item)
+            for item in self.program.declarations
+            if isinstance(item, SurfaceFlow)
+        )
+        machines = tuple(
+            self._canonical_machine(item)
+            for item in self.program.declarations
+            if isinstance(item, SurfaceMachine)
+        )
+        canonical = CanonicalProgram(records, tuple(functions), enums, flows, machines)
         canonical = replace(
             canonical,
             surface_program=self.program,

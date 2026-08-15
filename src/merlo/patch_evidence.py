@@ -11,7 +11,10 @@ from types import MappingProxyType
 from typing import Any, Mapping
 
 from merlo.refactor import ChangeIR
-from merlo.semantic_capsule import SemanticCapsule
+from merlo.semantic_capsule import (
+    SemanticCapsule,
+    extract_semantic_capsule,
+)
 from merlo.transaction import load_transaction
 from merlo.semantic_world import (
     WORLD_CONTRACT,
@@ -559,6 +562,8 @@ def emit_patch_evidence(change: ChangeIR, before_world: SemanticWorld, after_wor
         != change.digest
         or transaction.world_digest
         != before_world.digest
+        or Path(transaction.root)
+        != before_world.root.resolve()
         or transaction.digest
         != transaction_result.get(
             "transaction_digest"
@@ -590,6 +595,29 @@ def emit_patch_evidence(change: ChangeIR, before_world: SemanticWorld, after_wor
     after_symbol = _target_after(after_world, before_symbol, new_name)
     if after_capsule.target.symbol_id != after_symbol.get("symbol_id") or after_capsule.target_revision_id != after_symbol.get("revision_id"):
         raise _error("PatchEvidenceAfterCapsuleTargetMismatch")
+    expected_before_capsule = (
+        extract_semantic_capsule(
+            before_world,
+            before_symbol["symbol_id"],
+            goal=before_capsule.goal,
+        )
+    )
+    expected_after_capsule = (
+        extract_semantic_capsule(
+            after_world,
+            after_symbol["symbol_id"],
+            goal=after_capsule.goal,
+        )
+    )
+    if (
+        expected_before_capsule.to_json()
+        != before_capsule.to_json()
+        or expected_after_capsule.to_json()
+        != after_capsule.to_json()
+    ):
+        raise _error(
+            "PatchEvidenceCapsuleExtractionMismatch"
+        )
     before_source = _read_sources(before_world)
     after_source = _read_sources(after_world)
     before_hashes = before_world.data.get("source_hashes", {})
@@ -597,9 +625,15 @@ def emit_patch_evidence(change: ChangeIR, before_world: SemanticWorld, after_wor
     resulting_hashes = transaction_result[
         "resulting_hashes"
     ]
+    expected_transaction_files = tuple(
+        item.path
+        for item in transaction.files
+    )
     if (
-        set(resulting_hashes)
-        != set(transaction_result["files"])
+        tuple(transaction_result["files"])
+        != expected_transaction_files
+        or set(resulting_hashes)
+        != set(expected_transaction_files)
         or any(
             resulting_hashes[item.path]
             != item.after_sha256

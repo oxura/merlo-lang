@@ -115,6 +115,30 @@ def _relative_to_root(path: Any, root: Path) -> str:
         raise TransactionError("TransactionInvalidPath")
     return _normal_relative(relative.as_posix())
 
+def _journal_path(
+    root: Path,
+    transaction_id: str,
+) -> Path:
+    path = (
+        root
+        / ".merlo"
+        / "transactions"
+        / f"{transaction_id}.json"
+    )
+    try:
+        resolved = path.resolve(strict=False)
+        resolved.relative_to(root)
+    except (OSError, ValueError) as exc:
+        raise TransactionError(
+            "TransactionJournalPathEscape"
+        ) from exc
+    if resolved != path:
+        raise TransactionError(
+            "TransactionJournalSymlinkPath"
+        )
+    return path
+
+
 
 def _verified_change(
     change: Any,
@@ -292,7 +316,10 @@ class ChangeTransaction:
 
     @property
     def journal_path(self) -> Path:
-        return Path(self.root) / ".merlo" / "transactions" / f"{self.transaction_id}.json"
+        return _journal_path(
+            Path(self.root),
+            self.transaction_id,
+        )
 
     def save(self, destination: str | os.PathLike[str] | None = None) -> Path:
         return save_transaction(self, destination)
@@ -451,22 +478,49 @@ def save_transaction(transaction: ChangeTransaction, destination: str | os.PathL
     return journal
 
 
-def load_transaction(source: str | os.PathLike[str], transaction_id: str | None = None) -> ChangeTransaction:
+def load_transaction(
+    source: str | os.PathLike[str],
+    transaction_id: str | None = None,
+) -> ChangeTransaction:
     path = Path(source)
     if transaction_id is not None:
         root = _resolved_root(path)
         if not _valid_hash(transaction_id):
-            raise TransactionError("TransactionInvalidId")
-        path = root / ".merlo" / "transactions" / f"{transaction_id}.json"
+            raise TransactionError(
+                "TransactionInvalidId"
+            )
+        path = _journal_path(
+            root,
+            transaction_id,
+        )
     elif path.is_dir():
-        raise TransactionError("TransactionJournalRequired")
+        raise TransactionError(
+            "TransactionJournalRequired"
+        )
     try:
         value = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
-        raise TransactionError("TransactionJournalUnavailable") from exc
-    transaction = ChangeTransaction.from_json(value)
-    if transaction_id is not None and transaction.transaction_id != transaction_id:
-        raise TransactionError("TransactionIdMismatch")
+        raise TransactionError(
+            "TransactionJournalUnavailable"
+        ) from exc
+    transaction = ChangeTransaction.from_json(
+        value
+    )
+    if (
+        path.resolve(strict=False)
+        != transaction.journal_path
+    ):
+        raise TransactionError(
+            "TransactionJournalPathMismatch"
+        )
+    if (
+        transaction_id is not None
+        and transaction.transaction_id
+        != transaction_id
+    ):
+        raise TransactionError(
+            "TransactionIdMismatch"
+        )
     return transaction
 
 
@@ -500,17 +554,36 @@ def _safe_path(
     return path
 
 
-def _validate_state(transaction: ChangeTransaction, root: Path, destination: str) -> tuple[list[tuple[Path, TransactionFile, bytes]], bool]:
+def _validate_state(
+    transaction: ChangeTransaction,
+    root: Path,
+    destination: str,
+    *,
+    allow_mixed: bool = False,
+) -> tuple[
+    list[tuple[Path, TransactionFile, bytes]],
+    bool,
+]:
     if root != Path(transaction.root):
-        raise TransactionError("TransactionRootMismatch")
+        raise TransactionError(
+            "TransactionRootMismatch"
+        )
     states: list[bool] = []
-    rows: list[tuple[Path, TransactionFile, bytes]] = []
+    rows: list[
+        tuple[Path, TransactionFile, bytes]
+    ] = []
     for item in transaction.files:
-        path = _safe_path(transaction, item, root)
+        path = _safe_path(
+            transaction,
+            item,
+            root,
+        )
         try:
             current = path.read_bytes()
         except (OSError, UnicodeError) as exc:
-            raise TransactionError("TransactionSourceUnavailable") from exc
+            raise TransactionError(
+                "TransactionSourceUnavailable"
+            ) from exc
         current_hash = _hash_bytes(current)
         before_bytes = item.before_content.encode(
             "utf-8"
@@ -523,28 +596,44 @@ def _validate_state(transaction: ChangeTransaction, root: Path, destination: str
                 raise TransactionError(
                     "TransactionContentMismatch"
                 )
-            in_destination = destination == "before"
+            in_destination = (
+                destination == "before"
+            )
         elif current_hash == item.after_sha256:
             if current != after_bytes:
                 raise TransactionError(
                     "TransactionContentMismatch"
                 )
-            in_destination = destination == "after"
+            in_destination = (
+                destination == "after"
+            )
         else:
             raise TransactionError(
                 "TransactionStaleSource"
             )
         states.append(in_destination)
         rows.append((path, item, current))
-    if any(states) and not all(states):
-        raise TransactionError("TransactionMixedState")
+    if (
+        any(states)
+        and not all(states)
+        and not allow_mixed
+    ):
+        raise TransactionError(
+            "TransactionMixedState"
+        )
     return rows, not all(states)
 
 
 def _transition(transaction: ChangeTransaction, root: str | os.PathLike[str] | None, action: str, destination: str) -> TransactionResult:
     resolved = _resolved_root(transaction.root if root is None else root)
     _ensure_journal(transaction)
-    rows, changed = _validate_state(transaction, resolved, destination)
+    rows, changed = _validate_state(
+        transaction,
+        resolved,
+        destination,
+        allow_mixed=action
+        in {"rollback", "replay"},
+    )
     if changed:
         touched: list[tuple[Path, bytes]] = []
         try:
@@ -553,6 +642,10 @@ def _transition(transaction: ChangeTransaction, root: str | os.PathLike[str] | N
                 target_bytes = target.encode("utf-8")
                 if current == target_bytes:
                     continue
+                if path.read_bytes() != current:
+                    raise TransactionError(
+                        "TransactionConcurrentModification"
+                    )
                 touched.append((path, current))
                 _atomic_replace(path, target_bytes)
             for path, item, _ in rows:

@@ -1,0 +1,38 @@
+module sensor
+
+export Reading:
+    sequence: UInt64
+    value: UInt64
+
+export report() -> Text:
+    readings: Array[Reading,6] = [
+        Reading(1, 18),
+        Reading(2, 21),
+        Reading(3, 19),
+        Reading(4, 27),
+        Reading(5, 25),
+        Reading(6, 20),
+    ]
+    minimum: UInt64 = 1000
+    maximum: UInt64 = 0
+    total: UInt64 = 0
+    alerts: UInt64 = 0
+    for reading in readings:
+        total = total + reading.value
+        if reading.value < minimum:
+            minimum = reading.value
+        if reading.value > maximum:
+            maximum = reading.value
+        if reading.value > 24:
+            alerts = alerts + 1
+    output: TextBuilder = TextBuilder.new()
+    output.append_text("sensor-window\nreadings=6\nminimum=")
+    output.append_uint64(minimum)
+    output.append_text("\nmaximum=")
+    output.append_uint64(maximum)
+    output.append_text("\ntotal=")
+    output.append_uint64(total)
+    output.append_text("\nalerts=")
+    output.append_uint64(alerts)
+    output.append_byte(10)
+    output.finish()

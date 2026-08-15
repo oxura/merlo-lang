@@ -14,6 +14,10 @@ from merlo.frontend_model import (
 from merlo.concise_services import elaborate_concise_application
 from merlo.modules import ModuleError, ModuleGraph
 from merlo.native_c_backend import NativeBuildResult, compile_c_source
+from merlo.parallel_ir import (
+    ParallelIR,
+    lower_performance_mir,
+)
 from merlo.project import Project
 from merlo.obligation_ir import (
     ObligationProgram,
@@ -42,6 +46,7 @@ from merlo.structured_hir_v2 import (
     compile_canonical_hir,
 )
 from merlo.version import VERSIONS, CompilerVersions
+from merlo.wasm_backend import WasmArtifact, WasmBackend, WasmCompileError
 
 
 @dataclass(frozen=True)
@@ -82,10 +87,12 @@ class ProjectCompilation:
     representation: RepresentationProgram
     mir: GeneralPerformanceMIR
     optimized_mir: GeneralPerformanceMIR
+    parallel_ir: ParallelIR
     generated: GeneratedC
     generated_c: str
     artifacts: Mapping[str, StageArtifact]
     native: NativeBuildResult | None = None
+    wasm: WasmArtifact | None = None
     @property
     def diagnostic_source_map(self) -> tuple[dict[str, Any], ...]:
         result = []
@@ -184,6 +191,7 @@ class ProjectCompilation:
                 ),
             },
             "native": self.native.to_dict() if self.native is not None else None,
+            "wasm": self.wasm.to_dict() if self.wasm is not None else None,
         }
 
 
@@ -246,6 +254,9 @@ def compile_project(
     emit_native: bool = False,
     release: bool = False,
     output: str | Path | None = None,
+    emit_wasm: bool = False,
+    wasm_entry: str | None = None,
+    wasm_output: str | Path | None = None,
     smt_backend: str | None = None,
     smt_timeout_ms: int = 1000,
     smt_max_paths: int = 256,
@@ -295,6 +306,9 @@ def compile_project(
         )
         mir = lower_rir_to_performance_mir(hir, representation)
         optimized = optimize_general_mir(mir)
+        parallel_ir = lower_performance_mir(
+            optimized
+        )
         generated = emit_general_c(hir, representation, optimized)
         generated_c = generated.source
     except (TypeError, ValueError) as exc:
@@ -398,6 +412,13 @@ def compile_project(
         optimized.to_json(),
         mir_artifact,
     )
+    parallel_artifact = _artifact(
+        "parallel_ir",
+        parallel_ir.contract,
+        parallel_ir.schema_version,
+        parallel_ir.to_json(),
+        optimized_artifact,
+    )
     c_artifact = _artifact(
         "c11",
         "merlo.c11.runtime-abi",
@@ -421,11 +442,28 @@ def compile_project(
             rir_artifact,
             mir_artifact,
             optimized_artifact,
+            parallel_artifact,
             c_artifact,
         )
     }
 
     native: NativeBuildResult | None = None
+    wasm = None
+    if emit_wasm:
+        try:
+            wasm = WasmBackend().compile(
+                optimized,
+                source=elaborated.canonical_source,
+                entry=wasm_entry,
+            )
+        except WasmCompileError as exc:
+            raise ConciseApplicationError(
+                f"{entry}: wasm build failed: {exc}"
+            ) from exc
+        if wasm_output is not None:
+            destination = Path(wasm_output).resolve()
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(wasm.wasm)
     if emit_native:
         holes = tuple(
             node
@@ -475,10 +513,12 @@ def compile_project(
         representation=representation,
         mir=mir,
         optimized_mir=optimized,
+        parallel_ir=parallel_ir,
         generated=generated,
         generated_c=generated_c,
         artifacts=artifacts,
         native=native,
+        wasm=wasm,
     )
 
 

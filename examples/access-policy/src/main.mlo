@@ -1,0 +1,11 @@
+module main
+
+use policy
+
+export enum AppError:
+    InvalidPath: Text
+
+export main(path: Path) -> Result[Text, AppError]:
+    result: Text = policy.report()
+    console.write(result)
+    Ok(result)

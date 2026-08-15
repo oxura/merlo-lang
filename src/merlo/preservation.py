@@ -276,25 +276,109 @@ def _canonicalized(value: Any) -> Any:
 
 def _rename_source(
     source: str,
-    old_name: str,
-    new_name: str,
+    change: ChangeIR,
 ) -> str:
+    old_name = change.metadata.get("old_name")
+    new_name = change.metadata.get("new_name")
+    definition_edits = tuple(
+        item
+        for item in change.edits
+        if item.kind == "definition"
+    )
+    if (
+        not isinstance(old_name, str)
+        or not isinstance(new_name, str)
+        or len(definition_edits) != 1
+    ):
+        raise WorldError(
+            "PreservationRenameEditMismatch"
+        )
+    definition_edit = definition_edits[0]
     cst = parse_file_cst(
         source,
         path="<semantic-capsule>",
     )
-    edits = tuple(
-        token
-        for token in cst.tokens
-        if token.kind == "identifier"
-        and token.text == old_name
+    declaration = next(
+        (
+            item
+            for item in cst.declarations
+            if any(
+                token.kind == "identifier"
+                and token.text == old_name
+                for token in item.tokens
+            )
+        ),
+        None,
     )
+    if declaration is None:
+        raise WorldError(
+            "PreservationRenameEditMismatch"
+        )
+    significant = tuple(
+        item
+        for item in declaration.tokens
+        if item.kind
+        not in {
+            "whitespace",
+            "comment",
+            "newline",
+            "indent",
+            "dedent",
+            "eof",
+        }
+    )
+    if (
+        definition_edit.token_ordinal
+        >= len(significant)
+    ):
+        raise WorldError(
+            "PreservationRenameEditMismatch"
+        )
+    definition_token = significant[
+        definition_edit.token_ordinal
+    ]
+    if (
+        definition_token.text != old_name
+        or definition_token.kind != "identifier"
+    ):
+        raise WorldError(
+            "PreservationRenameEditMismatch"
+        )
+    source_offset = (
+        definition_edit.start
+        - definition_token.start
+    )
+    local_edits: list[tuple[int, int, str]] = []
+    source_end = source_offset + len(source)
+    for item in change.edits:
+        if (
+            item.path != definition_edit.path
+            or item.start < source_offset
+            or item.end > source_end
+        ):
+            continue
+        start = item.start - source_offset
+        end = item.end - source_offset
+        if source[start:end] != old_name:
+            raise WorldError(
+                "PreservationRenameEditMismatch"
+            )
+        local_edits.append(
+            (start, end, item.replacement)
+        )
+    if not local_edits:
+        raise WorldError(
+            "PreservationRenameEditMismatch"
+        )
     result = source
-    for token in reversed(edits):
+    for start, end, replacement in sorted(
+        local_edits,
+        reverse=True,
+    ):
         result = (
-            result[:token.start]
-            + new_name
-            + result[token.end:]
+            result[:start]
+            + replacement
+            + result[end:]
         )
     return result
 
@@ -308,8 +392,7 @@ def _rename_authorization(change: ChangeIR, before: SemanticCapsule, after: Sema
     expected_qualified = f"{before.target.module}.{new_name}"
     expected_source = _rename_source(
         before.source,
-        old_name,
-        new_name,
+        change,
     )
     if (
         after.target.name != new_name

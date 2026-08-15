@@ -32,6 +32,11 @@ EXAMPLE_NAMES = (
     "inventory",
     "task-board",
     "tree-walk",
+    "expense-report",
+    "sensor-window",
+    "shipping-batch",
+    "access-policy",
+    "invoice-summary",
 )
 
 _INPUTS = {
@@ -50,6 +55,11 @@ _INPUTS = {
     "inventory": "input.txt",
     "task-board": "input.txt",
     "tree-walk": "input.txt",
+    "expense-report": "input.txt",
+    "sensor-window": "input.txt",
+    "shipping-batch": "input.txt",
+    "access-policy": "input.txt",
+    "invoice-summary": "input.txt",
 }
 
 
@@ -61,7 +71,7 @@ def _sources(project: Path) -> tuple[Path, ...]:
     return tuple(sorted(project.rglob("*.mlo")))
 
 
-def test_exactly_fifteen_independent_projects_have_complete_contract() -> None:
+def test_exactly_twenty_independent_projects_have_complete_contract() -> None:
     names = tuple(sorted(path.name for path in EXAMPLES.iterdir() if path.is_dir()))
     assert names == tuple(sorted(EXAMPLE_NAMES))
     for name in EXAMPLE_NAMES:
@@ -104,6 +114,11 @@ def test_manifests_locks_imports_and_business_source_audit() -> None:
     assert 'use catalog' in (_project("inventory") / "src/main.mlo").read_text(encoding="utf-8")
     assert 'use board' in (_project("task-board") / "src/main.mlo").read_text(encoding="utf-8")
     assert 'use tree' in (_project("tree-walk") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use expenses' in (_project("expense-report") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use sensor' in (_project("sensor-window") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use shipping' in (_project("shipping-batch") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use policy' in (_project("access-policy") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use invoices' in (_project("invoice-summary") / "src/main.mlo").read_text(encoding="utf-8")
 
 
 def test_project_compile_reuses_the_validated_module_graph(

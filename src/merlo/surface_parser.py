@@ -15,16 +15,18 @@ from merlo.surface_ast import (
     SurfaceBinding,
     SurfaceCall,
     SurfaceCallArgument,
-    SurfaceComment,
     SurfaceCase,
+    SurfaceComment,
+    SurfaceContinue,
     SurfaceDeclaration,
     SurfaceEnum,
-    SurfaceEnsure,
     SurfaceEnumVariant,
-    SurfaceContinue,
+    SurfaceEnsure,
     SurfaceExpression,
     SurfaceExpressionStatement,
     SurfaceField,
+    SurfaceFlow,
+    SurfaceFlowStep,
     SurfaceFor,
     SurfaceFunction,
     SurfaceHole,
@@ -35,20 +37,25 @@ from merlo.surface_ast import (
     SurfaceImplicitReceiver,
     SurfaceIndex,
     SurfaceInvariant,
-    SurfaceList,
     SurfaceLambda,
+    SurfaceList,
     SurfaceLiteral,
+    SurfaceMachine,
     SurfaceMatch,
     SurfaceMember,
     SurfaceName,
+    SurfaceParallel,
     SurfaceParameter,
     SurfacePass,
+    SurfacePolicy,
     SurfacePrint,
     SurfaceRecord,
     SurfaceProgram,
     SurfaceRequire,
     SurfaceReturn,
+    SurfaceState,
     SurfaceStatement,
+    SurfaceTransition,
     SurfaceTry,
     SurfaceTypeParameter,
     SurfaceUnary,
@@ -665,27 +672,213 @@ class _Parser:
         raw = line.text
         exported = bool(re.match(r"export\s+", raw))
         raw = re.sub(r"^export\s+", "", raw)
+        flow_match = re.fullmatch(
+            r"(durable\s+)?flow\s+([a-z_]\w*)\((.*)\)\s*->\s*([^:]+)\s*:",
+            raw,
+        )
+        if flow_match:
+            return self._flow(flow_match, exported)
+        machine_match = re.fullmatch(r"machine\s+([A-Z]\w*)\((.*)\)\s*:", raw)
+        if machine_match:
+            return self._machine(machine_match, exported)
         interface_match = re.fullmatch(r"interface\s+([A-Z]\w*)\s*:", raw)
         if interface_match:
             return self._interface(interface_match.group(1), exported)
-        implementation_match = re.fullmatch(
-            r"impl\s+([A-Z]\w*)\s+for\s+(.+)\s*:",
-            raw,
-        )
+        implementation_match = re.fullmatch(r"impl\s+([A-Z]\w*)\s+for\s+(.+)\s*:", raw)
         if implementation_match:
             if exported:
-                raise SurfaceSyntaxError(
-                    "ExportedImplementationForbidden",
-                    raw,
-                    _span(self.path, line),
-                )
-            return self._implementation(
-                implementation_match.group(1),
-                _type_name(implementation_match.group(2)),
-            )
+                raise SurfaceSyntaxError("ExportedImplementationForbidden", raw, _span(self.path, line))
+            return self._implementation(implementation_match.group(1), _type_name(implementation_match.group(2)))
         enum_match = re.fullmatch(r"enum\s+([A-Z]\w*)\s*:", raw)
         if enum_match:
             return self._enum(enum_match.group(1), exported)
+        record_match = re.fullmatch(r"(?:record\s+)?([A-Z]\w*)\s*:", raw)
+        if record_match:
+            return self._record(record_match.group(1), exported)
+        function_match = _FUNCTION_HEADER.fullmatch(raw)
+        if function_match:
+            return self._function(function_match, exported)
+        raise SurfaceSyntaxError("ExpectedDeclaration", raw, _span(self.path, line))
+
+    def _flow_policies(
+        self, source: str, line: _Line, base_column: int
+    ) -> tuple[str, tuple[SurfacePolicy, ...]]:
+        matches = list(re.finditer(
+            r"\s+(timeout\s+\S+|retry\s+\d+\s+on\s+[A-Za-z_]\w*(?:\[[^\]]+\])?|"
+            r"idempotent\s+by\s+.+|compensate\s+.+)$",
+            source,
+        ))
+        if not matches:
+            return source.strip(), ()
+        # Policy clauses are deliberately parsed from the first recognized suffix;
+        # expressions may contain spaces and are retained verbatim.
+        starts = [m.start() for m in re.finditer(
+            r"\s+(?=(?:timeout|retry|idempotent|compensate)\b)", source
+        )]
+        cut = min(starts) if starts else len(source)
+        value = source[:cut].rstrip()
+        suffix = source[cut:].strip()
+        policies: list[SurfacePolicy] = []
+        clause_starts = list(re.finditer(
+            r"(?<!\w)(?:timeout|retry|idempotent|compensate)\b", suffix
+        ))
+        for index, marker in enumerate(clause_starts):
+            end = clause_starts[index + 1].start() if index + 1 < len(clause_starts) else len(suffix)
+            clause = suffix[marker.start():end].strip()
+            if clause.startswith("timeout "):
+                policies.append(SurfacePolicy(_span(self.path, line), "timeout", clause[8:].strip()))
+            elif clause.startswith("retry "):
+                retry = re.fullmatch(r"retry\s+(\d+)\s+on\s+(.+)", clause)
+                if retry is None:
+                    raise SurfaceSyntaxError("InvalidRetryPolicy", clause, _span(self.path, line))
+                policies.append(SurfacePolicy(
+                    _span(self.path, line), "retry", retry.group(1), _type_name(retry.group(2))
+                ))
+            elif clause.startswith("idempotent by "):
+                expression = clause[len("idempotent by "):].strip()
+                policies.append(SurfacePolicy(
+                    _span(self.path, line), "idempotent", expression,
+                    expression= _parse_expression(
+                        expression, self.path, line,
+                        base_column=base_column + source.find(expression),
+                    )
+                ))
+            elif clause.startswith("compensate "):
+                policies.append(SurfacePolicy(
+                    _span(self.path, line), "compensate", clause[len("compensate "):].strip()
+                ))
+        return value, tuple(policies)
+    def _flow_step(self, line: _Line) -> SurfaceFlowStep:
+        match = re.fullmatch(
+            r"(?:(let|var)\s+)?([A-Za-z_]\w*)(?:\s*:\s*([^=]+))?\s*=\s*(.+)",
+            line.text,
+        )
+        if match is None:
+            raise SurfaceSyntaxError("ExpectedFlowStep", line.text, _span(self.path, line))
+        kind, name, type_name, raw_value = match.groups()
+        value, policies = self._flow_policies(raw_value, line, match.start(4))
+        return SurfaceFlowStep(
+            _span(self.path, line), name,
+            _parse_expression(value, self.path, line, base_column=match.start(4)),
+            _type_name(type_name) if type_name else None,
+            policies,
+        )
+    def _flow(self, match: re.Match[str], exported: bool) -> SurfaceFlow:
+        start = self.lines[self.index]
+        durable, name, raw_parameters, raw_return = match.groups()
+        parameters = self._parameters(raw_parameters, start, base_column=match.start(2))
+        self.index += 1
+        body: list[SurfaceStatement] = []
+        while self.index < len(self.lines):
+            line = self.lines[self.index]
+            if _trivia(line):
+                self.index += 1
+                continue
+            if line.indent <= start.indent:
+                break
+            if line.indent != start.indent + 4:
+                raise SurfaceSyntaxError("InvalidIndentation", "flow body expected", _span(self.path, line))
+            if line.text == "parallel:":
+                parallel_start = line
+                self.index += 1
+                branches: list[SurfaceFlowStep] = []
+                while self.index < len(self.lines):
+                    branch = self.lines[self.index]
+                    if _trivia(branch):
+                        self.index += 1
+                        continue
+                    if branch.indent <= parallel_start.indent:
+                        break
+                    if branch.indent != parallel_start.indent + 4:
+                        raise SurfaceSyntaxError("InvalidIndentation", "parallel branch expected", _span(self.path, branch))
+                    branches.append(self._flow_step(branch))
+                    self.index += 1
+                if not branches:
+                    raise SurfaceSyntaxError("EmptyParallel", name, _span(self.path, parallel_start))
+                body.append(SurfaceParallel(
+                    _span(self.path, parallel_start, end_line=self.lines[self.index - 1]),
+                    tuple(branches),
+                ))
+                continue
+            if re.match(r"(?:(?:let|var)\s+)?[A-Za-z_]\w*(?:\s*:\s*[^=]+)?\s*=", line.text):
+                body.append(self._flow_step(line))
+                self.index += 1
+            else:
+                body.append(self._statement())
+        end = self.lines[self.index - 1] if self.index else start
+        return SurfaceFlow(
+            _span(self.path, start, end_line=end), name, parameters,
+            _type_name(raw_return), tuple(body), bool(durable), exported,
+        )
+
+    def _machine(self, match: re.Match[str], exported: bool) -> SurfaceMachine:
+        start = self.lines[self.index]
+        name, raw_parameters = match.groups()
+        parameters = self._parameters(raw_parameters, start, base_column=match.start(2))
+        self.index += 1
+        states: list[SurfaceState] = []
+        transitions: list[SurfaceTransition] = []
+        initial: str | None = None
+        invariant: SurfaceExpression | None = None
+        while self.index < len(self.lines):
+            line = self.lines[self.index]
+            if _trivia(line):
+                self.index += 1
+                continue
+            if line.indent <= start.indent:
+                break
+            if line.indent != start.indent + 4:
+                raise SurfaceSyntaxError("InvalidIndentation", "machine member expected", _span(self.path, line))
+            state_match = re.fullmatch(r"state\s+([A-Z]\w*)(?:\((.*)\))?", line.text)
+            if state_match:
+                fields = self._parameters(
+                    state_match.group(2) or "", line,
+                    base_column=state_match.start(2) if state_match.group(2) else 0,
+                )
+                if any(item.type_name is None for item in fields):
+                    raise SurfaceSyntaxError("StateFieldTypeRequired", state_match.group(1), _span(self.path, line))
+                states.append(SurfaceState(
+                    _span(self.path, line), state_match.group(1),
+                    tuple(SurfaceField(item.span, item.name, item.type_name or "Inferred") for item in fields),
+                ))
+                self.index += 1
+                continue
+            initial_match = re.fullmatch(r"initial\s+([A-Z]\w*)", line.text)
+            if initial_match:
+                initial = initial_match.group(1)
+                self.index += 1
+                continue
+            invariant_match = re.fullmatch(r"invariant\s+(.+)", line.text)
+            if invariant_match:
+                invariant = _parse_expression(
+                    invariant_match.group(1), self.path, line,
+                    base_column=invariant_match.start(1),
+                )
+                self.index += 1
+                continue
+            transition_match = re.fullmatch(
+                r"transition\s+([a-z_]\w*)\s+from\s+(.+?)\s*->\s*([A-Z]\w*)\s*:",
+                line.text,
+            )
+            if transition_match is None:
+                raise SurfaceSyntaxError("ExpectedMachineMember", line.text, _span(self.path, line))
+            transition_start = line
+            sources = tuple(item.strip() for item in transition_match.group(2).split("|"))
+            if not sources or any(re.fullmatch(r"[A-Z]\w*", item) is None for item in sources):
+                raise SurfaceSyntaxError("InvalidTransitionSource", line.text, _span(self.path, line))
+            target = transition_match.group(3)
+            self.index += 1
+            body = self._block(line.indent + 4)
+            transitions.append(SurfaceTransition(
+                _span(self.path, transition_start, end_line=self.lines[self.index - 1]),
+                transition_match.group(1), sources, target, body,
+            ))
+        if not states:
+            raise SurfaceSyntaxError("EmptyMachine", name, _span(self.path, start))
+        return SurfaceMachine(
+            _span(self.path, start, end_line=self.lines[self.index - 1]),
+            name, parameters, tuple(states), initial, invariant, tuple(transitions), exported,
+        )
         record_match = re.fullmatch(r"(?:record\s+)?([A-Z]\w*)\s*:", raw)
         if record_match:
             return self._record(record_match.group(1), exported)

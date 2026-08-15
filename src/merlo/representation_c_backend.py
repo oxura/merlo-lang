@@ -3044,7 +3044,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             return_indices = [
                 index
                 for index, line in enumerate(lines)
-                if line.lstrip().startswith("return")
+                if line.lstrip() == "return;" or line.lstrip().startswith("return ")
             ]
             for index in reversed(return_indices):
                 indent = lines[index][: len(lines[index]) - len(lines[index].lstrip())]
@@ -3122,11 +3122,16 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             finally:
                 self.assigning_borrowed = previous_borrowed
             lines = []
-            if live_owner:
+            if live_owner and owning_binding:
+                self.temporary_ordinal += 1
+                replacement = f"__merlo_replacement_{self.temporary_ordinal}"
+                self.temporary_declarations.append((replacement, expected))
+                lines.append(f"{pad}{replacement} = {value};")
                 lines.append(
                     f"{pad}merlo_drop_{_identifier(self.owned_locals[node.target.id])}"
                     f"(&{node.target.id});"
                 )
+                value = f"merlo_move_{_identifier(expected)}(&{replacement})"
             lines.append(f"{pad}{node.target.id} = {value};")
             if node.value is not None and owning_binding:
                 self.owned_locals[node.target.id] = expected
@@ -3171,12 +3176,17 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             finally:
                 self.assigning_borrowed = previous_borrowed
             lines = []
-            if live_owner and named_target is not None:
+            if live_owner and owning_binding and named_target is not None and expected is not None:
+                self.temporary_ordinal += 1
+                replacement = f"__merlo_replacement_{self.temporary_ordinal}"
+                self.temporary_declarations.append((replacement, expected))
+                lines.append(f"{pad}{replacement} = {value};")
                 lines.append(
                     f"{pad}merlo_drop_"
                     f"{_identifier(self.owned_locals[named_target])}"
                     f"(&{named_target});"
                 )
+                value = f"merlo_move_{_identifier(expected)}(&{replacement})"
             lines.append(f"{pad}{target} = {value};")
             if owning_binding and named_target is not None and expected is not None:
                 self.owned_locals[named_target] = expected

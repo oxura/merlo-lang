@@ -19,8 +19,12 @@ from merlo.collection_protocol import (
     collection_shape,
 )
 from merlo.ffi import FFICompileError, FFIProgram, validate_ffi
-from merlo.canonical_ast import CanonicalProgram
-from merlo.surface_ast import SurfaceProgram
+from merlo.canonical_ast import (
+    CanonicalFlowStep,
+    CanonicalMachine,
+    CanonicalParallel,
+    CanonicalProgram,
+)
 from merlo.type_parser import generic_parts, parse_type, validate_type_expr
 from merlo.intrinsics import contextual_result_type, format_intrinsic_arity, intrinsic_signature
 from merlo.type_properties import TypePropertyResolver
@@ -281,6 +285,69 @@ class HIRFunction:
             "revision_id": self.revision_id,
         }
 
+@dataclass(frozen=True)
+class HIRFlow:
+    name: str
+    parameters: tuple[HIRParameter, ...]
+    return_type: str
+    durable: bool
+    effects: tuple[str, ...]
+    capabilities: tuple[str, ...]
+    body: tuple[HIRNode, ...]
+    source: SourceSpan
+    symbol_id: str
+    revision_id: str
+
+    def walk(self) -> Iterable[HIRNode]:
+        for node in self.body:
+            yield from node.walk()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "parameters": [item.to_dict() for item in self.parameters],
+            "return_type": self.return_type,
+            "durable": self.durable,
+            "effects": list(self.effects),
+            "capabilities": list(self.capabilities),
+            "body": [item.to_dict() for item in self.body],
+            "source": self.source.to_dict(),
+            "symbol_id": self.symbol_id,
+            "revision_id": self.revision_id,
+        }
+
+
+@dataclass(frozen=True)
+class HIRMachine:
+    name: str
+    parameters: tuple[HIRParameter, ...]
+    states: tuple[tuple[str, tuple[tuple[str, str], ...]], ...]
+    initial: str | None
+    invariant: str | None
+    transitions: tuple[HIRNode, ...]
+    source: SourceSpan
+    symbol_id: str
+    revision_id: str
+
+    def walk(self) -> Iterable[HIRNode]:
+        for node in self.transitions:
+            yield from node.walk()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "parameters": [item.to_dict() for item in self.parameters],
+            "states": [
+                {"name": name, "fields": [list(field) for field in fields]}
+                for name, fields in self.states
+            ],
+            "initial": self.initial,
+            "invariant": self.invariant,
+            "transitions": [item.to_dict() for item in self.transitions],
+            "source": self.source.to_dict(),
+            "symbol_id": self.symbol_id,
+            "revision_id": self.revision_id,
+        }
 
 @dataclass(frozen=True)
 class StructuredHIRProgram:
@@ -292,16 +359,10 @@ class StructuredHIRProgram:
     entry_function: str
     schema_version: int = STRUCTURED_HIR_SCHEMA_VERSION
     contract: str = STRUCTURED_HIR_CONTRACT
-    native_module: ast.Module | None = field(
-        default=None,
-        repr=False,
-        compare=False,
-    )
-    surface_program: SurfaceProgram | None = field(
-        default=None,
-        repr=False,
-        compare=False,
-    )
+    native_module: ast.Module | None = field(default=None, repr=False, compare=False)
+    surface_program: SurfaceProgram | None = field(default=None, repr=False, compare=False)
+    flows: tuple[HIRFlow, ...] = ()
+    machines: tuple[HIRMachine, ...] = ()
 
     def __post_init__(self) -> None:
         if self.schema_version != STRUCTURED_HIR_SCHEMA_VERSION:
@@ -312,13 +373,21 @@ class StructuredHIRProgram:
             raise ValueError("duplicate Structured HIR type")
         if len(function_names) != len(set(function_names)):
             raise ValueError("duplicate Structured HIR function")
-        if self.entry_function not in set(function_names):
+        if self.entry_function not in set(function_names) and not (self.flows or self.machines):
             raise ValueError("missing Structured HIR entry function")
-        node_ids = [node.id for function in self.functions for node in function.walk()]
+        node_ids = [
+            node.id
+            for owner in (*self.functions, *self.flows, *self.machines)
+            for node in owner.walk()
+        ]
         if len(node_ids) != len(set(node_ids)):
             raise ValueError("duplicate Structured HIR node id")
         forbidden = {"BasicBlock", "Goto", "Malloc", "Free", "DropFlag", "RawPointer"}
-        actual = {node.kind for function in self.functions for node in function.walk()}
+        actual = {
+            node.kind
+            for owner in (*self.functions, *self.flows, *self.machines)
+            for node in owner.walk()
+        }
         if actual & forbidden:
             raise ValueError("CFG or raw-memory detail escaped into Structured HIR")
 
@@ -341,6 +410,8 @@ class StructuredHIRProgram:
             "entry_function": self.entry_function,
             "types": [item.to_dict() for item in self.types],
             "functions": [item.to_dict() for item in self.functions],
+            "flows": [item.to_dict() for item in self.flows],
+            "machines": [item.to_dict() for item in self.machines],
             "invariants": {
                 "structured_program_tree": True,
                 "cfg_absent": True,
@@ -2562,6 +2633,132 @@ def _parse_type_declarations(
             invariants,
         )
     return result
+def _canonical_span(span: Any) -> SourceSpan:
+    return SourceSpan(span.path, span.start_line, span.start_column, span.end_line, span.end_column)
+
+def _canonical_flow_machine_hir(program: CanonicalProgram) -> tuple[tuple[HIRFlow, ...], tuple[HIRMachine, ...]]:
+    flows: list[HIRFlow] = []
+    for flow in program.flows:
+        symbol = _stable_id("shirs", flow.span.path, "flow", flow.name)
+        revision = _stable_id(
+            "rev",
+            flow.to_payload(),
+        )
+        scope = _stable_id("scope", flow.span.path, flow.name, "flow")
+        body: list[HIRNode] = []
+        for item in flow.body:
+            if isinstance(item, CanonicalParallel):
+                children = tuple(
+                    HIRNode(
+                        _stable_id("node", flow.name, branch.node_id),
+                        "FlowStep",
+                        _canonical_span(branch.span),
+                        scope,
+                        branch.type_name,
+                        "value",
+                        tuple(),
+                        None,
+                        revision,
+                        (("name", branch.name), ("value", branch.value), ("policies", branch.to_payload()["policies"])),
+                    )
+                    for branch in item.branches
+                )
+                body.append(HIRNode(
+                    _stable_id("node", flow.name, item.node_id),
+                    "Parallel",
+                    _canonical_span(item.span),
+                    scope,
+                    None,
+                    "value",
+                    tuple(),
+                    None,
+                    revision,
+                    (),
+                    children,
+                ))
+            elif isinstance(item, CanonicalFlowStep):
+                body.append(HIRNode(
+                    _stable_id("node", flow.name, item.node_id),
+                    "FlowStep",
+                    _canonical_span(item.span),
+                    scope,
+                    item.type_name,
+                    "value",
+                    tuple(),
+                    None,
+                    revision,
+                    (("name", item.name), ("value", item.value), ("policies", item.to_payload()["policies"])),
+                ))
+        parameters = tuple(
+            HIRParameter(
+                name,
+                type_name,
+                "value",
+                _canonical_span(flow.span),
+                _stable_id("symbol", flow.name, name),
+                revision,
+            )
+            for name, type_name in flow.parameters
+        )
+        flows.append(HIRFlow(
+            flow.name,
+            parameters,
+            flow.return_type,
+            flow.durable,
+            flow.effects,
+            flow.capabilities,
+            tuple(body),
+            _canonical_span(flow.span),
+            symbol,
+            revision,
+        ))
+    machines: list[HIRMachine] = []
+    for machine in program.machines:
+        symbol = _stable_id("shirs", machine.span.path, "machine", machine.name)
+        revision = _stable_id(
+            "rev",
+            machine.to_payload(),
+        )
+        scope = _stable_id("scope", machine.span.path, machine.name, "machine")
+        transitions = tuple(
+            HIRNode(
+                _stable_id("node", machine.name, transition.node_id),
+                "Transition",
+                _canonical_span(transition.span),
+                scope,
+                transition.target,
+                "value",
+                transition.effects,
+                None,
+                revision,
+                (("name", transition.name), ("sources", transition.sources), ("target", transition.target)),
+            )
+            for transition in machine.transitions
+        )
+        parameters = tuple(
+            HIRParameter(
+                name,
+                type_name,
+                "value",
+                _canonical_span(machine.span),
+                _stable_id("symbol", machine.name, name),
+                revision,
+            )
+            for name, type_name in machine.parameters
+        )
+        machines.append(HIRMachine(
+            machine.name,
+            parameters,
+            tuple((state.name, state.fields) for state in machine.states),
+            machine.initial,
+            machine.invariant,
+            transitions,
+            _canonical_span(machine.span),
+            symbol,
+            revision,
+        ))
+    return tuple(flows), tuple(machines)
+
 
 
 
@@ -2659,7 +2856,8 @@ def compile_canonical_hir(
         raise StructuredHIRCompileError(
             f"unsupported top-level declarations: {unsupported}"
         )
-    if entry_function not in function_nodes:
+    flows, machines = _canonical_flow_machine_hir(program)
+    if entry_function not in function_nodes and not (flows or machines):
         raise StructuredHIRCompileError(
             f"missing entry function: {entry_function}"
         )
@@ -2683,6 +2881,8 @@ def compile_canonical_hir(
         entry_function,
         native_module=module,
         surface_program=program.surface_program,
+        flows=flows,
+        machines=machines,
     )
 
 

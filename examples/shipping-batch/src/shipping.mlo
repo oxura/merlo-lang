@@ -1,0 +1,43 @@
+module shipping
+
+export enum ShipmentState:
+    Pending
+    Packed
+    Dispatched
+    Delivered
+
+export Shipment:
+    state: ShipmentState
+    weight: UInt64
+
+export report() -> Text:
+    shipments: Array[Shipment,5] = [
+        Shipment(ShipmentState.Pending, 4),
+        Shipment(ShipmentState.Packed, 7),
+        Shipment(ShipmentState.Dispatched, 3),
+        Shipment(ShipmentState.Delivered, 8),
+        Shipment(ShipmentState.Delivered, 2),
+    ]
+    ready: UInt64 = 0
+    delivered: UInt64 = 0
+    delivered_weight: UInt64 = 0
+    for shipment in shipments:
+        match shipment.state:
+            case ShipmentState.Pending:
+                ready = ready
+            case ShipmentState.Packed:
+                ready = ready + 1
+            case ShipmentState.Dispatched:
+                ready = ready + 1
+            case ShipmentState.Delivered:
+                delivered = delivered + 1
+                delivered_weight = delivered_weight + shipment.weight
+    output: TextBuilder = TextBuilder.new()
+    output.append_text("shipping-batch\nshipments=5\nready=")
+    output.append_uint64(ready)
+    output.append_text("\ndelivered=")
+    output.append_uint64(delivered)
+    output.append_text("\ndelivered_weight=")
+    output.append_uint64(delivered_weight)
+    output.append_byte(10)
+    output.finish()

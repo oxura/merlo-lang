@@ -42,12 +42,12 @@ def test_measure_private_annotations_excludes_exported_boundaries(
     assert report["passed"] is False
 
 
-def test_fifteen_application_corpus_meets_private_annotation_gate() -> None:
+def test_twenty_application_corpus_meets_private_annotation_gate() -> None:
     report = measure_private_annotations(ROOT)
 
-    assert report["project_count"] == 15
-    assert report["private_function_count"] == 8
-    assert report["annotation_slots"] == 19
+    assert report["project_count"] == 20
+    assert report["private_function_count"] == 9
+    assert report["annotation_slots"] == 21
     assert report["explicit_annotations"] == 6
-    assert report["annotation_rate"] == 6 / 19
+    assert report["annotation_rate"] == 6 / 21
     assert report["passed"] is True

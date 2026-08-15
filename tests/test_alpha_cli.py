@@ -113,6 +113,35 @@ def test_editing_application_source_keeps_lock_fresh_for_check_and_build(tmp_pat
     assert built["ok"] is True
 
 
+def test_build_wasm_target_writes_selected_pure_entry(tmp_path: Path, capsys) -> None:
+    project = Project.create(tmp_path / "wasm", name="wasm")
+    source = project.source_dir / "main.mlo"
+    module, body = source.read_text(encoding="utf-8").split("\n", 1)
+    source.write_text(
+        module + "\n\nfn value() -> UInt64:\n    7\n\n" + body,
+        encoding="utf-8",
+    )
+    output = tmp_path / "value.wasm"
+
+    assert main(
+        [
+            "build",
+            str(project.root),
+            "--target",
+            "wasm",
+            "--entry",
+            "value",
+            "--output",
+            str(output),
+            "--json",
+        ]
+    ) == EXIT_OK
+    built = json.loads(capsys.readouterr().out)
+    assert built["ok"] is True
+    assert built["exports"] == ["value"]
+    assert output.read_bytes().startswith(b"\0asm\1\0\0\0")
+
+
 def test_legacy_root_content_hash_lock_allows_unchanged_and_edited_check(tmp_path: Path, capsys) -> None:
     root = tmp_path / "legacy"
     project = Project.create(root, name="legacy")

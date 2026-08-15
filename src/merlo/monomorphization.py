@@ -20,6 +20,7 @@ from merlo.surface_ast import (
     SurfaceExpression,
     SurfaceExpressionStatement,
     SurfaceFor,
+    SurfaceFlow,
     SurfaceFunction,
     SurfaceIf,
     SurfaceImplementation,
@@ -28,6 +29,7 @@ from merlo.surface_ast import (
     SurfaceList,
     SurfaceLambda,
     SurfaceLiteral,
+    SurfaceMachine,
     SurfaceMatch,
     SurfaceMember,
     SurfaceName,
@@ -742,7 +744,7 @@ class _Monomorphizer:
         data_declarations = [
             item
             for item in self.program.declarations
-            if isinstance(item, (SurfaceRecord, SurfaceEnum))
+            if isinstance(item, (SurfaceRecord, SurfaceEnum, SurfaceFlow, SurfaceMachine))
         ]
         declarations.extend(
             self._function(item)

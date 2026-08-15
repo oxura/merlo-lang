@@ -1,0 +1,5 @@
+shipping-batch
+shipments=5
+ready=2
+delivered=2
+delivered_weight=10
