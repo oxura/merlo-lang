@@ -13,7 +13,8 @@ from merlo.frontend_model import (
     ConciseApplicationElaboration,
     ConciseApplicationError,
 )
-from merlo.module_loader import _load_modules, _project_root
+from merlo.module_loader import _load_modules, _modules_from_graph, _project_root
+from merlo.modules import ModuleGraph
 def elaborate_concise_core(
     source: str,
     *,
@@ -79,9 +80,14 @@ def elaborate_concise_application(
     entry: str | Path,
     *,
     require_interface_lock: bool = True,
+    module_graph: ModuleGraph | None = None,
 ) -> ConciseApplicationElaboration:
     entry_path = Path(entry).resolve()
-    modules = _load_modules(entry_path)
+    modules = (
+        _modules_from_graph(module_graph)
+        if module_graph is not None
+        else _load_modules(entry_path)
+    )
     assembly, tasks, _ = _assemble_core(modules)
     if not tasks:
         raise ConciseApplicationError(f"{entry_path}: application requires an effectful task boundary")

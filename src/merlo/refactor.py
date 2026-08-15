@@ -35,46 +35,32 @@ def _identifier_edit(path: Path, span: dict[str, Any], old: str, new: str, symbo
     offsets = _line_offsets(source)
     line = int(span.get("line", 1))
     start_line = max(0, line - 1)
-    column = int(span.get("column", 0))
+    raw_column = int(span.get("column", 0))
+    column = raw_column - 1 if raw_column > 0 else 0
     start = offsets[start_line] + column
     end_line = int(span.get("end_line", line))
-    end = offsets[min(end_line, len(offsets) - 1)] + int(span.get("end_column", 0))
+    raw_end_column = int(span.get("end_column", 0))
+    end_column = raw_end_column - 1 if raw_end_column > 0 else 0
+    end_line_index = max(0, end_line - 1)
+    end = offsets[min(end_line_index, len(offsets) - 1)] + end_column
     end = max(start, min(len(source), end))
+    if kind == "definition":
+        start = offsets[start_line]
+        end = offsets[min(start_line + 1, len(offsets) - 1)]
     segment = source[start:end]
     matches = list(re.finditer(rf"(?<![A-Za-z0-9_]){re.escape(old)}(?![A-Za-z0-9_])", segment))
-    if len(matches) != 1:
-        # A call span can start at a receiver or include a nested expression; narrow
-        # only to the exact identifier and reject if the semantic span is ambiguous.
-        matches = list(
-            re.finditer(
-                rf"(?<![A-Za-z0-9_]){re.escape(old)}(?![A-Za-z0-9_])",
-                source,
-            )
+    if not matches:
+        raise UnsupportedMigration(
+            f"UnsupportedMigration: semantic span does not contain exact {kind} for {symbol_id}"
         )
-        if kind == "reference" and matches:
-            match = matches[-1]
-            return RefactorEdit(
-                path=str(path),
-                start=match.start(),
-                end=match.end(),
-                replacement=new,
-                symbol_id=symbol_id,
-                kind=kind,
-            )
-        if kind == "definition" and matches:
-            match = matches[0]
-            return RefactorEdit(
-                path=str(path),
-                start=match.start(),
-                end=match.end(),
-                replacement=new,
-                symbol_id=symbol_id,
-                kind=kind,
-            )
-        if len(matches) != 1:
-            raise UnsupportedMigration(f"UnsupportedMigration: cannot locate exact {kind} for {symbol_id}")
-        match = matches[0]
-        return RefactorEdit(path=str(path), start=offsets[start_line] + match.start(), end=offsets[start_line] + match.end(), replacement=new, symbol_id=symbol_id, kind=kind)
+    if kind == "definition" and len(matches) != 1:
+        raise UnsupportedMigration(
+            f"UnsupportedMigration: declaration header is ambiguous for {symbol_id}"
+        )
+    # Call spans start at the callee. For a nested call such as f(f(x)), the
+    # outer reference is therefore the first exact identifier in its span; the
+    # inner call has its own narrower span. Never fall back to another location
+    # in the file, because that can silently edit a different symbol.
     match = matches[0]
     return RefactorEdit(path=str(path), start=start + match.start(), end=start + match.end(), replacement=new, symbol_id=symbol_id, kind=kind)
 
