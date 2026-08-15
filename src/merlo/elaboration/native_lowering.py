@@ -606,6 +606,62 @@ class _SurfaceNativeBuilder:
                         declaration.span,
                     )
                 )
+                self.current_function = declaration.name
+                self.local_types = {
+                    field.name: field.type_name
+                    for field in declaration.fields
+                }
+                for index, invariant in enumerate(
+                    declaration.invariants
+                ):
+                    invariant_name = (
+                        f"__merlo_invariant_{declaration.name}_{index}"
+                    )
+                    function = self._loc(
+                        ast.FunctionDef(
+                            name=invariant_name,
+                            args=ast.arguments(
+                                posonlyargs=[],
+                                args=[
+                                    self._loc(
+                                        ast.arg(
+                                            arg=field.name,
+                                            annotation=self._annotation(
+                                                field.type_name,
+                                                field.span,
+                                            ),
+                                        ),
+                                        field.span,
+                                    )
+                                    for field in declaration.fields
+                                ],
+                                kwonlyargs=[],
+                                kw_defaults=[],
+                                defaults=[],
+                                vararg=None,
+                                kwarg=None,
+                            ),
+                            body=[
+                                self._loc(
+                                    ast.Return(
+                                        self._expr(
+                                            invariant.condition
+                                        )
+                                    ),
+                                    invariant.span,
+                                )
+                            ],
+                            decorator_list=[],
+                            returns=self._annotation(
+                                "Bool",
+                                invariant.span,
+                            ),
+                            type_comment=None,
+                        ),
+                        invariant.span,
+                    )
+                    function._merlo_invariant_owner = declaration.name
+                    body.append(function)
             elif isinstance(declaration, SurfaceEnum):
                 declaration_kinds.append((declaration.name, "enum"))
                 variants: list[ast.stmt] = []

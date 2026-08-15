@@ -3,8 +3,8 @@
 ## Unreleased
 
 - Starts the `0.1.0-alpha.3-dev` compatibility line with language contract
-  `0.3`, frontend contract `4`, and runtime ABI `2`. The mode-specific file
-  resource API is intentionally incompatible with alpha.2; see the migration
+  `0.3`, frontend `6`, canonical `4`, HIR `4`, runtime ABI `2`, and
+  SemanticWorld `3`. Alpha.2 lockfiles must be regenerated; see the migration
   guide.
 - Replaces owner/view pointer punning with real view descriptors and locks the
   generated C under GCC and Clang strict-aliasing optimization.
@@ -44,6 +44,9 @@
 - Adds pure, typed `require` and `ensure` function contracts, preserves them in
   canonical and Structured HIR identities, and emits entry/all-return native
   checks with source-located `MerloContractViolation` diagnostics.
+- Adds pure, typed record invariants, preserves them through canonical, HIR,
+  representation descriptors, and SemanticWorld, and enforces them at every
+  native record constructor.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

@@ -35,6 +35,17 @@ to the returned value as `result`. Clauses cannot be nested, follow executable
 statements, or perform effects. A failed native check terminates with a
 `MerloContractViolation` diagnostic.
 
+Records use the same pure Boolean model for data invariants:
+
+```merlo
+Positive:
+    value: UInt64
+    invariant value > 0
+```
+
+Every `Positive(...)` construction checks the invariant. Ordinary records are
+immutable; typed machines and transition invariants are not part of this alpha.
+
 `or` is boolean OR only for `Bool`; for `Option[T] or T` it is a strict typed
 fallback. Other truthiness is rejected. `.field` is an implicit callable only
 inside `where`, `map`, and `count`; it cannot capture locals or appear at an

@@ -33,6 +33,7 @@ from merlo.surface_ast import (
     SurfaceInterfaceMethod,
     SurfaceImplicitReceiver,
     SurfaceIndex,
+    SurfaceInvariant,
     SurfaceList,
     SurfaceLambda,
     SurfaceLiteral,
@@ -811,6 +812,7 @@ class _Parser:
         start = self.lines[self.index]
         self.index += 1
         fields = []
+        invariants = []
         while self.index < len(self.lines):
             line = self.lines[self.index]
             if _trivia(line):
@@ -819,15 +821,55 @@ class _Parser:
             if line.indent <= start.indent:
                 break
             if line.indent != start.indent + 4:
-                raise SurfaceSyntaxError("InvalidIndentation", "record field expected", _span(self.path, line))
+                raise SurfaceSyntaxError(
+                    "InvalidIndentation",
+                    "record field or invariant expected",
+                    _span(self.path, line),
+                )
+            if match := re.fullmatch(r"invariant\s+(.+)", line.text):
+                invariants.append(
+                    SurfaceInvariant(
+                        _span(self.path, line),
+                        _parse_expression(
+                            match.group(1),
+                            self.path,
+                            line,
+                            base_column=line.text.index(match.group(1)),
+                        ),
+                    )
+                )
+                self.index += 1
+                continue
             match = re.fullmatch(r"([A-Za-z_]\w*)\s*:\s*(.+)", line.text)
             if match is None:
-                raise SurfaceSyntaxError("ExpectedRecordField", line.text, _span(self.path, line))
-            fields.append(SurfaceField(_span(self.path, line), match.group(1), _type_name(match.group(2))))
+                raise SurfaceSyntaxError(
+                    "ExpectedRecordFieldOrInvariant",
+                    line.text,
+                    _span(self.path, line),
+                )
+            if invariants:
+                raise SurfaceSyntaxError(
+                    "RecordFieldAfterInvariant",
+                    match.group(1),
+                    _span(self.path, line),
+                )
+            fields.append(
+                SurfaceField(
+                    _span(self.path, line),
+                    match.group(1),
+                    _type_name(match.group(2)),
+                )
+            )
             self.index += 1
         if not fields:
             raise SurfaceSyntaxError("EmptyRecord", name, _span(self.path, start))
-        return SurfaceRecord(_span(self.path, start, end_line=self.lines[self.index - 1]), name, tuple(fields), exported)
+        return SurfaceRecord(
+            _span(self.path, start, end_line=self.lines[self.index - 1]),
+            name,
+            tuple(fields),
+            exported,
+            tuple(invariants),
+        )
 
     def _enum(self, name: str, exported: bool) -> SurfaceEnum:
         start = self.lines[self.index]

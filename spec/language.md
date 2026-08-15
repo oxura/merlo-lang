@@ -33,6 +33,14 @@ ensures on every return. A false clause terminates native execution with
 `MerloContractViolation:<kind>:<function>:<line>`. Contracts remain typed
 canonical and HIR data rather than comments.
 
+Record fields may be followed by one or more `invariant Bool` clauses.
+Invariants may read the record fields and call pure functions. They are checked
+by every record constructor; a false clause terminates native execution with
+`MerloContractViolation:invariant:<record>:<line>`. Records have no mutable field
+update syntax, so successful construction establishes the invariant for the
+value's lifetime. Typed machines and transition invariants remain outside this
+alpha contract.
+
 Canonical source is a deterministic diagnostic projection of the typed tree.
 Its semantic hash includes types, authority, errors, and desugared operations;
 formatting whitespace and source spans do not change that hash.

@@ -273,10 +273,16 @@ SurfaceStatement: TypeAlias = (
 
 
 @dataclass(frozen=True)
+class SurfaceInvariant(SurfaceNode):
+    condition: SurfaceExpression
+
+
+@dataclass(frozen=True)
 class SurfaceRecord(SurfaceNode):
     name: str
     fields: tuple[SurfaceField, ...]
     exported: bool = False
+    invariants: tuple[SurfaceInvariant, ...] = ()
 
 
 @dataclass(frozen=True)

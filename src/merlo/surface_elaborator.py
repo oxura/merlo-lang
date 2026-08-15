@@ -57,6 +57,7 @@ from merlo.surface_ast import (
     SurfaceMember,
     SurfaceMatch,
     SurfaceName,
+    SurfaceParameter,
     SurfaceImplicitReceiver,
     SurfacePass,
     SurfacePrint,
@@ -117,10 +118,19 @@ class _Elaborator:
             if isinstance(declaration, SurfaceEnum)
         }
         self.type_properties = TypePropertyResolver({**self.records, **self.enums})
+        invariant_function_names = {
+            f"__merlo_invariant_{record.name}_{index}"
+            for record in self.records.values()
+            for index, _ in enumerate(record.invariants)
+        }
         self.functions: dict[str, _Function] = {}
         for declaration in program.declarations:
             if not isinstance(declaration, SurfaceFunction):
                 continue
+            if declaration.name in invariant_function_names:
+                raise SurfaceElaborationError(
+                    f"ReservedInvariantFunction: {declaration.name}"
+                )
             if declaration.name in self.functions:
                 raise SurfaceElaborationError(f"DuplicateFunction: {declaration.name}")
             parameters = {
@@ -233,6 +243,64 @@ class _Elaborator:
                 if self.functions[callee].effects:
                     raise SurfaceElaborationError(
                         f"EffectInContract: {callee}"
+                    )
+        self._validate_record_invariants()
+
+    def _validate_record_invariants(self) -> None:
+        for record in self.records.values():
+            for index, invariant in enumerate(record.invariants):
+                name = f"__merlo_invariant_{record.name}_{index}"
+                parameters = tuple(
+                    SurfaceParameter(
+                        field.span,
+                        field.name,
+                        field.type_name,
+                    )
+                    for field in record.fields
+                )
+                source = SurfaceFunction(
+                    name,
+                    parameters,
+                    invariant.condition,
+                    "expression",
+                    False,
+                    invariant.span,
+                    "fn",
+                    "Bool",
+                )
+                state = _Function(
+                    source,
+                    {
+                        field.name: self.types.typed(field.type_name)
+                        for field in record.fields
+                    },
+                    self.types.typed("Bool"),
+                    {},
+                    {},
+                    {},
+                    {},
+                )
+                try:
+                    self._expression(
+                        invariant.condition,
+                        state,
+                        "Bool",
+                    )
+                except SurfaceElaborationError as exc:
+                    if str(exc).startswith(
+                        "EffectInPureFunction:"
+                    ):
+                        raise SurfaceElaborationError(
+                            f"EffectInInvariant: {record.name}"
+                        ) from exc
+                    raise
+                if state.effects or any(
+                    self.functions[callee].effects
+                    for callee in state.calls
+                    if callee in self.functions
+                ):
+                    raise SurfaceElaborationError(
+                        f"EffectInInvariant: {record.name}"
                     )
 
     @staticmethod
@@ -2470,6 +2538,14 @@ class _Elaborator:
                 tuple((field.name, field.type_name) for field in record.fields),
                 record.span,
                 record.exported,
+                tuple(
+                    CanonicalContract(
+                        "invariant",
+                        _emit_expression(invariant.condition),
+                        invariant.span,
+                    )
+                    for invariant in record.invariants
+                ),
             )
             for record in self.records.values()
         )

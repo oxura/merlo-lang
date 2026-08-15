@@ -49,6 +49,7 @@ class TypeDescriptor:
     key_type: str | None = None
     value_type: str | None = None
     length: int | None = None
+    invariants: tuple[tuple[str, int], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -77,6 +78,10 @@ class TypeDescriptor:
             "key_type": self.key_type,
             "value_type": self.value_type,
             "length": self.length,
+            "invariants": [
+                {"function": function, "line": line}
+                for function, line in self.invariants
+            ],
         }
 
 
@@ -772,6 +777,13 @@ class _DescriptorBuilder:
                 tuple(sorted(set(indirect))),
                 declaration.symbol_id,
                 fields=tuple(fields),
+                invariants=tuple(
+                    (
+                        invariant.function_name,
+                        invariant.source.line,
+                    )
+                    for invariant in declaration.invariants
+                ),
             )
         else:
             maximum_size = 0

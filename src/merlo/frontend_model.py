@@ -10,7 +10,7 @@ from merlo.runtime_contract import ALPHA_EFFECTS
 from merlo.version import VERSIONS
 
 CONCISE_APPLICATION_SCHEMA_VERSION = VERSIONS.frontend
-CONCISE_APPLICATION_CONTRACT = "merlo.concise-application.v3"
+CONCISE_APPLICATION_CONTRACT = "merlo.concise-application.v4"
 CONCISE_SURFACE_VERSION = VERSIONS.language
 _ALLOWED_EFFECTS = ALPHA_EFFECTS
 _OWNERS = frozenset({"Text", "Bytes", "TextBuilder"})

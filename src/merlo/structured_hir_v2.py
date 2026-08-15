@@ -26,8 +26,8 @@ from merlo.intrinsics import contextual_result_type, format_intrinsic_arity, int
 from merlo.type_properties import TypePropertyResolver
 
 
-STRUCTURED_HIR_SCHEMA_VERSION = 3
-STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v3"
+STRUCTURED_HIR_SCHEMA_VERSION = 4
+STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v4"
 _SCALAR_TYPES = frozenset(
     {
         "Bool",
@@ -128,6 +128,22 @@ class HIRVariant:
 
 
 @dataclass(frozen=True)
+class HIRInvariant:
+    function_name: str
+    expression: str
+    source: SourceSpan
+    revision_id: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "function_name": self.function_name,
+            "expression": self.expression,
+            "source": self.source.to_dict(),
+            "revision_id": self.revision_id,
+        }
+
+
+@dataclass(frozen=True)
 class HIRTypeDecl:
     name: str
     kind: str
@@ -136,6 +152,7 @@ class HIRTypeDecl:
     revision_id: str
     fields: tuple[HIRField, ...] = ()
     variants: tuple[HIRVariant, ...] = ()
+    invariants: tuple[HIRInvariant, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -146,6 +163,9 @@ class HIRTypeDecl:
             "revision_id": self.revision_id,
             "fields": [item.to_dict() for item in self.fields],
             "variants": [item.to_dict() for item in self.variants],
+            "invariants": [
+                item.to_dict() for item in self.invariants
+            ],
         }
 
 
@@ -2452,6 +2472,30 @@ def _parse_type_declarations(
         type_symbol = _stable_id("shirs", path, kind, node.name)
         fields: list[HIRField] = []
         variants: list[HIRVariant] = []
+        invariants = tuple(
+            HIRInvariant(
+                function.name,
+                ast.unparse(function.body[0].value),
+                _span(path, function.body[0]),
+                _stable_id(
+                    "rev",
+                    node.name,
+                    "invariant",
+                    ast.unparse(function.body[0].value),
+                ),
+            )
+            for function in module.body
+            if isinstance(function, ast.FunctionDef)
+            and getattr(
+                function,
+                "_merlo_invariant_owner",
+                None,
+            )
+            == node.name
+            and len(function.body) == 1
+            and isinstance(function.body[0], ast.Return)
+            and function.body[0].value is not None
+        )
         for ordinal, statement in enumerate(node.body):
             if kind == "record":
                 if not isinstance(statement, ast.AnnAssign) or not isinstance(statement.target, ast.Name):
@@ -2479,8 +2523,18 @@ def _parse_type_declarations(
             node.name,
             [(item.name, item.type_name) for item in fields],
             [(item.name, item.payload_type, item.tag) for item in variants],
+            [item.revision_id for item in invariants],
         )
-        result[node.name] = HIRTypeDecl(node.name, kind, source, type_symbol, revision, tuple(fields), tuple(variants))
+        result[node.name] = HIRTypeDecl(
+            node.name,
+            kind,
+            source,
+            type_symbol,
+            revision,
+            tuple(fields),
+            tuple(variants),
+            invariants,
+        )
     return result
 
 
@@ -2613,6 +2667,7 @@ def compile_structured_hir_file(path: str | Path) -> StructuredHIRProgram:
 
 __all__ = [
     "HIRField",
+    "HIRInvariant",
     "HIRFunction",
     "HIRNode",
     "HIRParameter",

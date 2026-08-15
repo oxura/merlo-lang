@@ -206,6 +206,7 @@ class CanonicalRecord:
     fields: tuple[tuple[str, str], ...]
     span: SourceSpan
     exported: bool = False
+    invariants: tuple[CanonicalContract, ...] = ()
 
     def to_payload(self) -> dict[str, Any]:
         return {
@@ -213,6 +214,9 @@ class CanonicalRecord:
             "name": self.name,
             "fields": [list(item) for item in self.fields],
             "span": _span_payload(self.span),
+            "invariants": [
+                item.to_payload() for item in self.invariants
+            ],
             "exported": self.exported,
         }
 
@@ -261,7 +265,7 @@ class CanonicalProgram:
 
     def to_payload(self) -> dict[str, Any]:
         return {
-            "schema": "merlo.canonical-typed-ast.v3",
+            "schema": "merlo.canonical-typed-ast.v4",
             "records": [item.to_payload() for item in self.records],
             "functions": [item.to_payload() for item in self.functions],
             "enums": [item.to_payload() for item in self.enums],
@@ -272,10 +276,17 @@ class CanonicalProgram:
         payload = self.to_payload()
         for record in payload["records"]:
             record.pop("span", None)
+            for invariant in record["invariants"]:
+                invariant.pop("span", None)
         for enum in payload["enums"]:
             enum.pop("span", None)
         for function in payload["functions"]:
             function.pop("span", None)
+            for contract in (
+                *function["requirements"],
+                *function["ensures"],
+            ):
+                contract.pop("span", None)
             for statement in function["body"]:
                 statement.pop("span", None)
             for callable_expression in function["implicit_callables"]:
@@ -303,6 +314,14 @@ class CanonicalProgram:
                 tuple(tuple(field) for field in item["fields"]),
                 span(item["span"]),
                 bool(item.get("exported", False)),
+                tuple(
+                    CanonicalContract(
+                        value["kind"],
+                        value["expression"],
+                        span(value["span"]),
+                    )
+                    for value in item.get("invariants", ())
+                ),
             )
             for item in payload.get("records", ())
         )
@@ -437,6 +456,10 @@ class CanonicalProgram:
                         *(
                             f"    {name}: {type_name}"
                             for name, type_name in record.fields
+                        ),
+                        *(
+                            f"    invariant {item.expression}"
+                            for item in record.invariants
                         ),
                     )
                 )

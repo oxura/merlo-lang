@@ -25,13 +25,13 @@ class CompilerVersions:
 VERSIONS = CompilerVersions(
     release="0.1.0-alpha.3-dev",
     language="0.3",
-    frontend=5,
-    canonical=3,
-    hir=3,
+    frontend=6,
+    canonical=4,
+    hir=4,
     rir=1,
     mir=1,
     runtime_abi=2,
-    semantic_world=2,
+    semantic_world=3,
     manifest=1,
     lockfile=1,
 )

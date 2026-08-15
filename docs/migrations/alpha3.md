@@ -1,8 +1,8 @@
 # Migrating from alpha.2 to alpha.3
 
-Alpha.3 intentionally changes the filesystem and function-contract models. The
-compiler reports language `0.3`, frontend `5`, canonical `3`, HIR `3`, runtime
-ABI `2`, and SemanticWorld `2`; earlier lockfiles must be regenerated with the
+Alpha.3 intentionally changes the filesystem and verification models. The
+compiler reports language `0.3`, frontend `6`, canonical `4`, HIR `4`, runtime
+ABI `2`, and SemanticWorld `3`; earlier lockfiles must be regenerated with the
 alpha.3 compiler.
 
 ## File handles
@@ -38,3 +38,9 @@ Move preconditions and postconditions to the leading `require` and `ensure`
 clauses of a statement function. Contract expressions must be pure and Boolean;
 postconditions use `result` for the returned value. Canonical, HIR, interface,
 and SemanticWorld revisions now include these clauses.
+
+## Record invariants
+
+Place pure Boolean `invariant` clauses after a record's fields. Every record
+constructor checks every clause. Record invariants participate in canonical,
+HIR, descriptor, and SemanticWorld revisions.

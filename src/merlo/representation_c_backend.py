@@ -2332,6 +2332,21 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             if descriptor.kind == "record" and descriptor.name != "TextBuilder":
                 parameters = ", ".join(f"{_c_name(type_name)} {name}" for name, type_name, _ in descriptor.fields) or "void"
                 lines.append(f"static {_c_name(descriptor.name)} merlo_make_{_identifier(descriptor.name)}({parameters}) {{")
+                invariant_arguments = ", ".join(
+                    (
+                        f"&{field_name}"
+                        if _is_owner(self.descriptors[field_type])
+                        else field_name
+                    )
+                    for field_name, field_type, _ in descriptor.fields
+                )
+                for function_name, line in descriptor.invariants:
+                    lines.append(
+                        "    if (!merlo_fn_"
+                        f"{function_name}({invariant_arguments})) "
+                        'merlo_contract_trap("invariant", '
+                        f'"{descriptor.name}", UINT64_C({line}));'
+                    )
                 lines.append(f"    {_c_name(descriptor.name)} result;")
                 for field_name, field_type, _ in descriptor.fields:
                     lines.append(f"    result.{field_name} = {field_name};")
