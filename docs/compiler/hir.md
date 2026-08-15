@@ -52,6 +52,12 @@ arithmetic and narrowing casts contribute typed safety obligations; only
 intervals wholly inside or outside the target domain are proven or refuted.
 Overlapping or otherwise unknown domains remain unresolved.
 
+The `bounded-symbolic` artifact exhaustively enumerates finite primitive input
+domains up to explicit case/value limits and checks typed postconditions against
+the HIR executor. Complete domains may be proven; concrete failures retain
+deterministic input/result counterexamples. Truncated domains are inconclusive,
+and unsupported operations or checked traps are reported without a proof.
+
 ## Failure modes
 
 A missing retained Surface tree, unsupported expressions, invalid map

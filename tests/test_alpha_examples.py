@@ -121,6 +121,9 @@ def test_project_compile_reuses_the_validated_module_graph(
     assert compilation.artifacts["ranges"].content == (
         compilation.range_analysis.to_json()
     )
+    assert compilation.artifacts["bounded-symbolic"].content == (
+        compilation.bounded_symbolic.to_json()
+    )
     assert {
         item.obligation_id
         for item in compilation.range_analysis.obligations
@@ -145,6 +148,9 @@ def test_each_example_uses_production_compile_world_index_and_inspect(name: str,
     assert world.map("json")["modules"]
     assert world.data["range_analysis"] == (
         compilation.range_analysis.to_dict()
+    )
+    assert world.data["bounded_symbolic"] == (
+        compilation.bounded_symbolic.to_dict()
     )
     inspected = world.inspect("main.main")
     assert inspected["symbol"]["qualified_name"] == "main.main"

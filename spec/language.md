@@ -64,6 +64,12 @@ wholly impossible ranges are refuted, and partial/unknown ranges remain
 unresolved. Wrapping intrinsics retain modular semantics and are not reported
 as checked-overflow proofs.
 
+`merlo.bounded-symbolic.v1` evaluates pure, finite HIR function domains for
+postconditions under fixed limits. It distinguishes proven, refuted,
+inconclusive, and unsupported results. Refutations include concrete typed
+inputs and the returned value; a sampled or truncated domain is never promoted
+to a proof.
+
 Canonical source is a deterministic diagnostic projection of the typed tree.
 Its semantic hash includes types, authority, errors, and desugared operations;
 formatting whitespace and source spans do not change that hash.

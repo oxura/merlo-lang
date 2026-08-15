@@ -57,6 +57,9 @@
 - Adds deterministic constant and branch-local integer range refinement,
   unreachable-branch facts, and checked arithmetic/cast safety obligations to
   compiler artifacts and SemanticWorld.
+- Adds deterministic bounded symbolic execution for pure postconditions over
+  finite primitive domains, with explicit proof, counterexample, inconclusive,
+  and unsupported results.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

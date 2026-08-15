@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
+from merlo.bounded_symbolic import BoundedSymbolicReport, verify_bounded
 from merlo.frontend_model import (
     ConciseApplicationElaboration,
     ConciseApplicationError,
@@ -65,6 +66,7 @@ class ProjectCompilation:
     hir: StructuredHIRProgram
     obligations: ObligationProgram
     range_analysis: RangeAnalysisResult
+    bounded_symbolic: BoundedSymbolicReport
     representation: RepresentationProgram
     mir: GeneralPerformanceMIR
     optimized_mir: GeneralPerformanceMIR
@@ -114,6 +116,14 @@ class ProjectCompilation:
                 "fact_count": len(self.range_analysis.facts),
                 "unreachable_branch_count": len(
                     self.range_analysis.unreachable_branch_ids
+                ),
+            },
+            "bounded_symbolic": {
+                "digest": self.bounded_symbolic.digest,
+                "result_count": len(self.bounded_symbolic.results),
+                "proven_count": sum(
+                    item.status.value == "proven"
+                    for item in self.bounded_symbolic.results
                 ),
             },
             "native": self.native.to_dict() if self.native is not None else None,
@@ -203,6 +213,7 @@ def compile_project(
             build_obligation_ir(hir),
             range_analysis.obligations,
         )
+        bounded_symbolic = verify_bounded(hir, obligations)
         representation = lower_structured_hir_to_rir(hir)
         mir = lower_rir_to_performance_mir(hir, representation)
         optimized = optimize_general_mir(mir)
@@ -260,6 +271,13 @@ def compile_project(
         obligations.to_json(),
         hir_artifact,
     )
+    symbolic_artifact = _artifact(
+        "bounded-symbolic",
+        bounded_symbolic.contract,
+        bounded_symbolic.schema_version,
+        bounded_symbolic.to_json(),
+        obligation_artifact,
+    )
     rir_artifact = _artifact(
         "rir",
         representation.contract,
@@ -297,6 +315,7 @@ def compile_project(
             hir_artifact,
             obligation_artifact,
             range_artifact,
+            symbolic_artifact,
             rir_artifact,
             mir_artifact,
             optimized_artifact,
@@ -347,6 +366,7 @@ def compile_project(
         hir=hir,
         obligations=obligations,
         range_analysis=range_analysis,
+        bounded_symbolic=bounded_symbolic,
         representation=representation,
         mir=mir,
         optimized_mir=optimized,
