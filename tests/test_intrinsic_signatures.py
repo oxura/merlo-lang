@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import shutil
 import subprocess
 from dataclasses import FrozenInstanceError
 from pathlib import Path
@@ -128,6 +130,22 @@ def test_binder_and_elaborator_contract_views_are_derived() -> None:
     assert result_predicate.representation_lowering == "result_is_err"
     assert CONTRACT_GRAPH.method("Option[Text]", "is_ok") is None
     assert CONTRACT_GRAPH.method("Result[UInt64,Text]", "is_none") is None
+    option_unwrap = CONTRACT_GRAPH.method("Option[Text]", "unwrap")
+    assert option_unwrap is not None
+    assert option_unwrap.result_type == "Text"
+    assert option_unwrap.result_ownership == "payload_clone"
+    assert option_unwrap.receiver_ownership == "borrow"
+    assert option_unwrap.effects == ("allocate", "copy", "may_fail")
+    assert option_unwrap.representation_lowering == "option_unwrap_clone"
+    result_unwrap_err = CONTRACT_GRAPH.method(
+        "Result[UInt64,Text]",
+        "unwrap_err",
+    )
+    assert result_unwrap_err is not None
+    assert result_unwrap_err.result_type == "Text"
+    assert result_unwrap_err.representation_lowering == (
+        "result_unwrap_err_clone"
+    )
 
 
 def test_static_contracts_drive_hir_type_ownership_effects_and_abi() -> None:
@@ -185,6 +203,31 @@ def test_generic_predicate_contracts_drive_hir_metadata() -> None:
     ] == "Result[UInt64,UInt64].is_ok"
 
 
+def test_generic_unwrap_contracts_derive_payload_ownership_and_effects() -> None:
+    hir = compile_structured_hir(
+        "fn text(option: Option[Text]) -> Text:\n"
+        "    return option.unwrap()\n"
+        "fn scalar(result: Result[UInt64,Text]) -> UInt64:\n"
+        "    return result.unwrap()\n",
+        entry_function="text",
+    )
+    accessors = {
+        node.attribute_map.get("contract_symbol"): node
+        for function in hir.functions
+        for node in function.walk()
+        if node.attribute_map.get("representation_lowering")
+        in {"option_unwrap_clone", "result_unwrap_clone"}
+    }
+    text = accessors["Option[Text].unwrap"]
+    assert text.type_name == "Text"
+    assert text.ownership == "owned"
+    assert set(text.effects) == {"allocate", "copy", "may_fail"}
+    scalar = accessors["Result[UInt64,Text].unwrap"]
+    assert scalar.type_name == "UInt64"
+    assert scalar.ownership == "value"
+    assert scalar.effects == ("may_fail",)
+
+
 def test_generic_predicates_lower_to_native_enum_tags(
     tmp_path: Path,
 ) -> None:
@@ -238,6 +281,189 @@ def test_generic_predicates_lower_to_native_enum_tags(
     assert completed.stdout == "predicates-ok\n"
 
 
+def test_owning_unwrap_clones_payload_without_double_free(
+    tmp_path: Path,
+) -> None:
+    project = Project.create(
+        tmp_path / "owning-unwrap",
+        name="owning_unwrap",
+    )
+    source = project.source_dir / "main.mlo"
+    source.write_text(
+        "module main\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "export enum Problem:\n"
+        "    Message: Text\n\n"
+        "fn make_option() -> Option[Text]:\n"
+        '    return Some("option")\n\n'
+        "fn make_result() -> Result[Text,AppError]:\n"
+        '    return Ok("result")\n\n'
+        "fn make_error() -> Result[UInt64,Problem]:\n"
+        '    return Err(Problem.Message("error"))\n\n'
+        "fn take_twice() -> Text:\n"
+        "    let option = make_option()\n"
+        "    let first: Text = option.unwrap()\n"
+        "    let second: Text = option.unwrap()\n"
+        "    let result = make_result()\n"
+        "    let third: Text = result.unwrap()\n"
+        "    let fourth: Text = result.unwrap()\n"
+        "    return first\n\n"
+        "fn take_error_twice() -> Text:\n"
+        "    let result = make_error()\n"
+        "    let first: Problem = result.unwrap_err()\n"
+        "    let second: Problem = result.unwrap_err()\n"
+        "    match first:\n"
+        "        case Problem.Message(text):\n"
+        "            return text\n\n"
+        "export task main(path: Path) -> Result[Text,AppError]:\n"
+        "    uses console.write\n"
+        "    let value: Text = take_twice()\n"
+        "    let error: Text = take_error_twice()\n"
+        "    console.write(value)\n"
+        "    console.write(error)\n"
+        '    return Ok("done")\n',
+        encoding="utf-8",
+    )
+    compilation = compile_project(
+        project.root,
+        emit_native=True,
+        output=tmp_path / "owning-unwrap-app",
+        require_interface_lock=False,
+    )
+    assert compilation.native is not None
+    assert "option_unwrap_clone" not in compilation.generated.source
+    assert "merlo_clone_Text" in compilation.generated.source
+    completed = subprocess.run(
+        [compilation.native.binary_path, str(project.root)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout == "optionerror\n"
+
+    compiler = shutil.which("clang")
+    if compiler is None:
+        pytest.skip("clang is required for the unwrap sanitizer regression")
+    generated_c = tmp_path / "owning-unwrap.c"
+    sanitized_binary = tmp_path / "owning-unwrap-sanitized"
+    generated_c.write_text(compilation.generated.source, encoding="utf-8")
+    built = subprocess.run(
+        [
+            compiler,
+            "-std=c11",
+            "-O1",
+            "-g",
+            "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined",
+            str(generated_c),
+            "-o",
+            str(sanitized_binary),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert built.returncode == 0, built.stderr
+    environment = dict(os.environ)
+    environment.update(
+        {
+            "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+            "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1",
+        }
+    )
+    sanitized = subprocess.run(
+        [sanitized_binary, str(project.root)],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    assert sanitized.returncode == 0, sanitized.stderr
+    assert sanitized.stdout == "optionerror\n"
+
+
+def test_owning_unwrap_can_be_borrowed_inside_short_circuit_expression(
+    tmp_path: Path,
+) -> None:
+    project = Project.create(
+        tmp_path / "borrowed-unwrap",
+        name="borrowed_unwrap",
+    )
+    source = project.source_dir / "main.mlo"
+    source.write_text(
+        "module main\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "fn matches(message: Text, needle: Option[Text]) -> Bool:\n"
+        "    return needle.is_some() and message.contains(needle.unwrap())\n\n"
+        "export task main(path: Path) -> Result[Text,AppError]:\n"
+        "    uses console.write\n"
+        '    let message: Text = "the needle is here"\n'
+        '    let needle: Option[Text] = Some("needle")\n'
+        "    if matches(message, needle):\n"
+        '        console.write("borrowed-ok")\n'
+        '    return Ok("done")\n',
+        encoding="utf-8",
+    )
+    compilation = compile_project(
+        project.root,
+        emit_native=True,
+        output=tmp_path / "borrowed-unwrap-app",
+        require_interface_lock=False,
+    )
+    assert compilation.native is not None
+    assert "OptionUnwrapWrongVariant" in compilation.generated.source
+    completed = subprocess.run(
+        [compilation.native.binary_path, str(project.root)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout == "borrowed-ok\n"
+
+
+def test_unwrap_wrong_variant_traps_instead_of_reading_inactive_union(
+    tmp_path: Path,
+) -> None:
+    project = Project.create(
+        tmp_path / "wrong-unwrap",
+        name="wrong_unwrap",
+    )
+    source = project.source_dir / "main.mlo"
+    source.write_text(
+        "module main\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "fn invalid() -> UInt64:\n"
+        "    let option: Option[UInt64] = None\n"
+        "    return option.unwrap()\n\n"
+        "export task main(path: Path) -> Result[Text,AppError]:\n"
+        "    uses console.write\n"
+        "    let value: UInt64 = invalid()\n"
+        '    console.write("unreachable")\n'
+        '    return Ok("done")\n',
+        encoding="utf-8",
+    )
+    compilation = compile_project(
+        project.root,
+        emit_native=True,
+        output=tmp_path / "wrong-unwrap-app",
+        require_interface_lock=False,
+    )
+    assert compilation.native is not None
+    completed = subprocess.run(
+        [compilation.native.binary_path, str(project.root)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode != 0
+    assert "MerloOwnership:OptionUnwrapWrongVariant" in completed.stderr
+
+
 @pytest.mark.parametrize(
     "source",
     (
@@ -245,6 +471,8 @@ def test_generic_predicates_lower_to_native_enum_tags(
         "    return value.is_ok()\n",
         "fn bad(value: Result[UInt64,UInt64]) -> Bool:\n"
         "    return value.is_none()\n",
+        "fn bad(value: Option[UInt64]) -> UInt64:\n"
+        "    return value.unwrap_err()\n",
     ),
 )
 def test_generic_predicates_reject_wrong_receiver_family(

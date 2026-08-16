@@ -101,8 +101,11 @@
 - Adds generic ContractGraph receiver matching for the pure
   `Option.is_none/is_some` and `Result.is_ok/is_err` predicates. Surface type
   checking, typed HIR metadata, and native enum-tag lowering now consume the
-  same immutable contracts, while payload-moving unwrap rules remain a
-  separate ownership milestone.
+  same immutable contracts.
+- Centralizes `Option.unwrap`, `Result.unwrap`, and `Result.unwrap_err` with
+  borrow-and-clone payload ownership. Owning payloads are deep-cloned instead
+  of aliasing the enum storage, fixing a reproducible native double-free;
+  incorrect variants now trap before reading inactive C union members.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.
