@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from merlo.frontend.file_syntax import lex_file, parse_file_cst
 
 
@@ -223,3 +225,47 @@ def test_file_lexer_keeps_surface_indentation_diagnostic_codes() -> None:
     assert [item.code for item in odd_width.diagnostics] == [
         "InvalidIndentation"
     ]
+
+
+@pytest.mark.parametrize(
+    ("fragment", "codes"),
+    [
+        ("([)]", ("MismatchedDelimiter", "MismatchedDelimiter")),
+        ("{[)}", ("MismatchedDelimiter",)),
+        (")", ("UnexpectedClosingDelimiter",)),
+        ("([", ("UnclosedDelimiter", "UnclosedDelimiter")),
+    ],
+)
+def test_file_lexer_validates_typed_delimiter_pairs(
+    fragment: str,
+    codes: tuple[str, ...],
+) -> None:
+    source = f"fn bad():\n    value = {fragment}\n"
+    result = lex_file(source, path="delimiters.mlo")
+
+    assert result.to_source() == source
+    assert tuple(item.code for item in result.diagnostics) == codes
+
+
+def test_adversarial_multiline_tokens_keep_exact_offsets_and_trivia() -> None:
+    source = (
+        "fn choose(repeated: UInt64) -> UInt64:\r\n"
+        "    return (\r\n"
+        "        repeated # the same identifier follows on another line\r\n"
+        "        + repeated\r\n"
+        "    )\r\n"
+    )
+    result = parse_file_cst(source, path="offsets.mlo")
+    expression = next(
+        node for node in result.root.walk() if node.kind == "expression"
+    )
+
+    assert not result.diagnostics
+    assert [token.text for token in expression.tokens].count("repeated") == 2
+    assert all(
+        source[token.start:token.end] == token.text
+        for token in expression.tokens
+    )
+    assert [token.start for token in expression.tokens] == sorted(
+        token.start for token in expression.tokens
+    )

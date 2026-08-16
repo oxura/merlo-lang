@@ -122,6 +122,10 @@
   into the Surface expression parser instead of lexing those fragments again.
   Delimited multiline expressions now remain one CST region and do not emit
   indentation layout while `()`, `[]`, or `{}` are open.
+- Replaces delimiter depth counters with typed delimiter stacks and reports
+  mismatched, unexpected, and unclosed delimiters at retained token spans.
+  Statement expressions now rebase exact CST offsets directly, removing the
+  repeated-text `source.find()` reconstruction path.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

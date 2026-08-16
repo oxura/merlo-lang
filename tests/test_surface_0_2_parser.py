@@ -169,6 +169,74 @@ def test_surface_statement_expressions_fail_closed_on_cst_disagreement(
         parse_surface(source, path="expression-region.mlo")
 
 
+def test_surface_statement_expression_rejects_forged_cst_offsets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = "value():\n    return repeated + repeated\n"
+    cst = parse_file_cst(source, path="forged-offset.mlo")
+    declaration = cst.declarations[0]
+    declaration_header, block = declaration.children
+    statement = block.children[0]
+    statement_header = statement.children[0]
+    expression = statement_header.children[0]
+    forged_token = replace(
+        expression.tokens[0],
+        start=expression.tokens[0].start + 1,
+    )
+    forged_expression = replace(
+        expression,
+        tokens=(forged_token,) + expression.tokens[1:],
+    )
+    forged_statement_header = replace(
+        statement_header,
+        children=(forged_expression,),
+    )
+    forged_statement = replace(
+        statement,
+        children=(forged_statement_header,),
+    )
+    forged_block = replace(block, children=(forged_statement,))
+    forged_declaration = replace(
+        declaration,
+        children=(declaration_header, forged_block),
+    )
+    forged = replace(cst, declarations=(forged_declaration,))
+    monkeypatch.setattr(
+        surface_parser_module,
+        "parse_file_cst",
+        lambda _source, *, path: forged,
+    )
+
+    with pytest.raises(SurfaceSyntaxError, match="CSTExpressionMismatch"):
+        parse_surface(source, path="forged-offset.mlo")
+
+
+def test_surface_parser_accepts_repeated_tokens_comments_crlf_and_multiline() -> None:
+    program = parse_surface(
+        "value(repeated: UInt64) -> UInt64:\r\n"
+        "    return (\r\n"
+        "        repeated # retained trivia\r\n"
+        "        + repeated\r\n"
+        "    )\r\n",
+        path="adversarial.mlo",
+    )
+    expression = program.declarations[0].body[0].expression
+
+    assert isinstance(expression, SurfaceBinary)
+    assert expression.operator == "+"
+
+
+@pytest.mark.parametrize("fragment", ["([)]", "{[)}", ")", "(["])
+def test_surface_parser_rejects_malformed_delimiters_before_semantics(
+    fragment: str,
+) -> None:
+    with pytest.raises(
+        SurfaceSyntaxError,
+        match="Delimiter",
+    ):
+        parse_surface(f"value() = {fragment}\n", path="delimiters.mlo")
+
+
 def test_parser_recognizes_records_optional_types_and_tail_expressions() -> None:
     program = parse_surface(
         "User:\n"

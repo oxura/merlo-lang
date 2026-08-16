@@ -8,6 +8,10 @@ from dataclasses import dataclass, field
 from merlo.frontend.lexer import ExpressionLexError, ExpressionToken, lex_expression
 
 
+_OPEN_TO_CLOSE = {"(": ")", "[": "]", "{": "}"}
+_CLOSING_DELIMITERS = frozenset(_OPEN_TO_CLOSE.values())
+
+
 @dataclass(frozen=True)
 class FileDiagnostic:
     code: str
@@ -199,7 +203,7 @@ def lex_file(source: str, *, path: str = "main.mlo") -> FileLexResult:
     tokens: list[FileToken] = []
     diagnostics: list[FileDiagnostic] = []
     indentation = [0]
-    delimiter_depth = 0
+    delimiters: list[FileToken] = []
     offset = 0
     lines = source.splitlines(keepends=True)
     if source and (not lines or sum(len(line) for line in lines) < len(source)):
@@ -223,7 +227,7 @@ def lex_file(source: str, *, path: str = "main.mlo") -> FileLexResult:
                 )
             )
         width = sum(4 if character == "\t" else 1 for character in prefix)
-        continuation = delimiter_depth > 0
+        continuation = bool(delimiters)
         if not blank and not continuation:
             if width > indentation[-1]:
                 if "\t" not in prefix and width % 4:
@@ -285,10 +289,39 @@ def lex_file(source: str, *, path: str = "main.mlo") -> FileLexResult:
             for token in body_tokens:
                 if token.kind != "operator":
                     continue
-                if token.text in {"(", "[", "{"}:
-                    delimiter_depth += 1
-                elif token.text in {")", "]", "}"}:
-                    delimiter_depth = max(0, delimiter_depth - 1)
+                if token.text in _OPEN_TO_CLOSE:
+                    delimiters.append(token)
+                    continue
+                if token.text not in _CLOSING_DELIMITERS:
+                    continue
+                if not delimiters:
+                    diagnostics.append(
+                        FileDiagnostic(
+                            "UnexpectedClosingDelimiter",
+                            f"unexpected closing delimiter {token.text!r}",
+                            token.start,
+                            token.end,
+                            token.line,
+                            token.column,
+                        )
+                    )
+                    continue
+                opening = delimiters.pop()
+                expected = _OPEN_TO_CLOSE[opening.text]
+                if token.text != expected:
+                    diagnostics.append(
+                        FileDiagnostic(
+                            "MismatchedDelimiter",
+                            (
+                                f"closing delimiter {token.text!r} does not match "
+                                f"{opening.text!r}; expected {expected!r}"
+                            ),
+                            token.start,
+                            token.end,
+                            token.line,
+                            token.column,
+                        )
+                    )
         if newline:
             tokens.append(
                 _token(
@@ -302,6 +335,20 @@ def lex_file(source: str, *, path: str = "main.mlo") -> FileLexResult:
             )
         offset += len(raw)
     eof_line = len(lines) + 1 if lines else 1
+    for opening in reversed(delimiters):
+        diagnostics.append(
+            FileDiagnostic(
+                "UnclosedDelimiter",
+                (
+                    f"delimiter {opening.text!r} is not closed; "
+                    f"expected {_OPEN_TO_CLOSE[opening.text]!r}"
+                ),
+                opening.start,
+                opening.end,
+                opening.line,
+                opening.column,
+            )
+        )
     while len(indentation) > 1:
         indentation.pop()
         tokens.append(_token("dedent", "", offset, offset, eof_line, 1, synthetic=True))
@@ -348,7 +395,7 @@ def _logical_lines(tokens: tuple[FileToken, ...]) -> tuple[_LogicalLine, ...]:
     layout_start = 0
     first: int | None = None
     first_depth: int | None = None
-    delimiter_depth = 0
+    delimiters: list[str] = []
     for index, token in enumerate(tokens):
         if token.kind == "indent":
             depth += 1
@@ -357,7 +404,7 @@ def _logical_lines(tokens: tuple[FileToken, ...]) -> tuple[_LogicalLine, ...]:
             depth = max(0, depth - 1)
             continue
         if token.kind == "newline":
-            if first is not None and delimiter_depth == 0:
+            if first is not None and not delimiters:
                 lines.append(
                     _LogicalLine(
                         first_depth if first_depth is not None else depth,
@@ -376,10 +423,12 @@ def _logical_lines(tokens: tuple[FileToken, ...]) -> tuple[_LogicalLine, ...]:
             first = index
             first_depth = depth
         if token.kind == "operator":
-            if token.text in {"(", "[", "{"}:
-                delimiter_depth += 1
-            elif token.text in {")", "]", "}"}:
-                delimiter_depth = max(0, delimiter_depth - 1)
+            if token.text in _OPEN_TO_CLOSE:
+                delimiters.append(token.text)
+            elif token.text in _CLOSING_DELIMITERS and delimiters:
+                # lex_file already owns diagnostics. Pop one opener even on a
+                # mismatch so the recovered CST remains locally bounded.
+                delimiters.pop()
     if first is not None:
         lines.append(
             _LogicalLine(

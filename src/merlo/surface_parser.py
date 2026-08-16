@@ -560,8 +560,7 @@ def _lines(
             )
         physical.append(_Line(number, indent, raw[indent:], raw))
 
-    def delimiter_delta(text: str) -> int:
-        depth = 0
+    def update_delimiters(text: str, stack: list[str]) -> None:
         quote: str | None = None
         escaped = False
         for character in text:
@@ -578,24 +577,29 @@ def _lines(
             elif character == "#":
                 break
             elif character in "([{":
-                depth += 1
-            elif character in ")]}":
-                depth -= 1
-        return depth
+                stack.append(character)
+            elif character in ")]}" and stack:
+                # parse_file_cst rejects mismatches before this transitional
+                # line view is built. The typed stack still prevents an
+                # arbitrary closer from silently balancing another opener.
+                expected = {"(": ")", "[": "]", "{": "}"}[stack[-1]]
+                if character == expected:
+                    stack.pop()
 
     result: list[_Line] = []
     pending: _Line | None = None
     pieces: list[str] = []
-    depth = 0
+    delimiters: list[str] = []
     for line in physical:
         if pending is None:
             pending = line
             pieces = [line.text]
-            depth = delimiter_delta(line.text)
+            delimiters = []
+            update_delimiters(line.text, delimiters)
         else:
             pieces.append(line.text.strip())
-            depth += delimiter_delta(line.text)
-        if depth <= 0:
+            update_delimiters(line.text, delimiters)
+        if not delimiters:
             text = " ".join(piece for piece in pieces if piece)
             result.append(
                 _Line(
@@ -607,7 +611,6 @@ def _lines(
             )
             pending = None
             pieces = []
-            depth = 0
     if pending is not None:
         text = " ".join(piece for piece in pieces if piece)
         result.append(
@@ -1393,39 +1396,48 @@ class _Parser:
                 _span(self.path, line),
             )
         expression = expressions[ordinal]
+        if not expression.tokens:
+            raise SurfaceSyntaxError(
+                "CSTExpressionMismatch",
+                "CST expression region is empty",
+                _span(self.path, line),
+            )
         converted: list[ExpressionToken] = []
-        cursor = 0
+        previous_end = expression.start
         for token in expression.tokens:
-            start = source.find(token.text, cursor)
-            end = start + len(token.text)
             if (
-                start < 0
-                or end > len(source)
-                or source[start:end] != token.text
-                or source[cursor:start].strip()
+                token.start < expression.start
+                or token.end > expression.end
+                or token.start < previous_end
+                or self.cst.source[token.start:token.end] != token.text
             ):
                 raise SurfaceSyntaxError(
                     "CSTExpressionMismatch",
-                    "CST expression tokens disagree with semantic source",
+                    "CST expression tokens have invalid retained offsets",
                     _span(self.path, line),
                 )
+            start = token.start - expression.start
+            end = token.end - expression.start
             converted.append(
                 ExpressionToken(token.kind, token.text, start, end, token.value)
             )
-            cursor = end
-        suffix = source[cursor:]
-        if suffix.strip() and not suffix.lstrip().startswith("#"):
-            raise SurfaceSyntaxError(
-                "CSTExpressionMismatch",
-                "CST expression region does not cover semantic source",
-                _span(self.path, line),
-            )
-        converted.append(ExpressionToken("eof", "", len(source), len(source)))
+            previous_end = token.end
+        retained_source = self.cst.source[expression.start:expression.end]
+        converted.append(
+            ExpressionToken("eof", "", len(retained_source), len(retained_source))
+        )
+        first = expression.tokens[0]
+        retained_line = _Line(
+            first.line + self.line_offset,
+            first.column - 1,
+            retained_source,
+            (" " * (first.column - 1)) + retained_source,
+        )
         return _parse_expression(
-            source,
+            retained_source,
             self.path,
-            line,
-            base_column=base_column,
+            retained_line,
+            base_column=0,
             tokens=tuple(converted),
         )
 
