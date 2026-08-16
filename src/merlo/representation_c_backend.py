@@ -5046,41 +5046,41 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                         return f"({receiver})->tag == MERLO_{suffix}_NoneValue_TAG"
                     if representation_lowering == "option_is_some":
                         return f"({receiver})->tag == MERLO_{suffix}_Some_TAG"
-                    if method == "unwrap":
+                    if representation_lowering == "option_unwrap_clone":
                         payload_type = variants["Some"]
-                        expression = f"(({receiver})->payload.Some)"
-                        if temporary_receiver and payload_type is not None and _is_owner(self.descriptors[payload_type]):
-                            if not self._clone_is_deep(payload_type):
-                                raise RepresentationCBackendError(
-                                    f"cannot clone temporary accessor {payload_type}"
-                                )
-                            return f"merlo_clone_{_identifier(payload_type)}(&{expression})"
-                        return expression
+                        return self._checked_enum_payload_access(
+                            receiver,
+                            suffix,
+                            "Some",
+                            payload_type,
+                            "OptionUnwrapWrongVariant",
+                            want_pointer=want_pointer,
+                        )
                 if "Ok" in variants and "Err" in variants:
                     if representation_lowering == "result_is_err":
                         return f"({receiver})->tag == MERLO_{suffix}_Err_TAG"
                     if representation_lowering == "result_is_ok":
                         return f"({receiver})->tag == MERLO_{suffix}_Ok_TAG"
-                    if method == "unwrap":
+                    if representation_lowering == "result_unwrap_clone":
                         payload_type = variants["Ok"]
-                        expression = f"(({receiver})->payload.Ok)"
-                        if temporary_receiver and payload_type is not None and _is_owner(self.descriptors[payload_type]):
-                            if not self._clone_is_deep(payload_type):
-                                raise RepresentationCBackendError(
-                                    f"cannot clone temporary accessor {payload_type}"
-                                )
-                            return f"merlo_clone_{_identifier(payload_type)}(&{expression})"
-                        return expression
-                    if method == "unwrap_err":
+                        return self._checked_enum_payload_access(
+                            receiver,
+                            suffix,
+                            "Ok",
+                            payload_type,
+                            "ResultUnwrapWrongVariant",
+                            want_pointer=want_pointer,
+                        )
+                    if representation_lowering == "result_unwrap_err_clone":
                         payload_type = variants["Err"]
-                        expression = f"(({receiver})->payload.Err)"
-                        if temporary_receiver and payload_type is not None and _is_owner(self.descriptors[payload_type]):
-                            if not self._clone_is_deep(payload_type):
-                                raise RepresentationCBackendError(
-                                    f"cannot clone temporary accessor {payload_type}"
-                                )
-                            return f"merlo_clone_{_identifier(payload_type)}(&{expression})"
-                        return expression
+                        return self._checked_enum_payload_access(
+                            receiver,
+                            suffix,
+                            "Err",
+                            payload_type,
+                            "ResultUnwrapErrWrongVariant",
+                            want_pointer=want_pointer,
+                        )
             if receiver_type == "FileReader" and method == "lines":
                 return f"merlo_file_lines({receiver})"
             generic = _generic(receiver_type or "")
@@ -5482,6 +5482,18 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             return self._expression(node, want_pointer=True)
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             return f"&{self._borrowed_text_literal(node.value)}"
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            receiver_type = self._expression_type(node.func.value)
+            contract = CONTRACT_GRAPH.method(
+                receiver_type or "",
+                node.func.attr,
+            )
+            if contract is not None and contract.representation_lowering in {
+                "option_unwrap_clone",
+                "result_unwrap_clone",
+                "result_unwrap_err_clone",
+            }:
+                return self._expression(node, want_pointer=True)
         expression = self._expression(node)
         return expression if self._expression_is_pointer(node) else f"&({expression})"
 
@@ -5493,6 +5505,47 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             operator = "->" if self._expression_is_pointer(node.value) else "."
             return f"({base}){operator}{node.attr}"
         raise RepresentationCBackendError(f"unsupported lvalue: {ast.unparse(node)}")
+
+    def _checked_enum_payload_access(
+        self,
+        receiver: str,
+        enum_suffix: str,
+        variant: str,
+        payload_type: str | None,
+        diagnostic: str,
+        *,
+        want_pointer: bool,
+    ) -> str:
+        concrete_type = payload_type or "Unit"
+        zero = self._zero_expression(concrete_type)
+        if payload_type in {None, "Unit"}:
+            payload = zero
+            failure = zero
+        else:
+            expression = f"(({receiver})->payload.{variant})"
+            descriptor = self.descriptors[payload_type]
+            if want_pointer:
+                payload = f"(&{expression})"
+                failure = f"(({_c_name(payload_type)} *)NULL)"
+            elif _is_owner(descriptor):
+                if not self._clone_is_deep(payload_type):
+                    raise RepresentationCBackendError(
+                        f"cannot clone {variant} payload {payload_type}"
+                    )
+                payload = (
+                    f"merlo_clone_{_identifier(payload_type)}"
+                    f"(&{expression})"
+                )
+            else:
+                payload = expression
+            if not want_pointer:
+                failure = zero
+        return (
+            f"(({receiver})->tag == "
+            f"MERLO_{enum_suffix}_{variant}_TAG "
+            f"? ({payload}) : "
+            f"(merlo_ownership_trap(\"{diagnostic}\"), {failure}))"
+        )
 
     def _zero_expression(self, type_name: str) -> str:
         descriptor = self.descriptors[type_name]

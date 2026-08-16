@@ -228,6 +228,15 @@ _INSTANCE_METHOD_ROWS = (
         representation_lowering="option_is_some",
     ),
     InstanceMethodSignature(
+        "Option[T]",
+        "unwrap",
+        (),
+        "T",
+        result_ownership="payload_clone",
+        effects=("allocate", "copy", "may_fail"),
+        representation_lowering="option_unwrap_clone",
+    ),
+    InstanceMethodSignature(
         "Result[T,E]",
         "is_ok",
         (),
@@ -240,6 +249,24 @@ _INSTANCE_METHOD_ROWS = (
         (),
         "Bool",
         representation_lowering="result_is_err",
+    ),
+    InstanceMethodSignature(
+        "Result[T,E]",
+        "unwrap",
+        (),
+        "T",
+        result_ownership="payload_clone",
+        effects=("allocate", "copy", "may_fail"),
+        representation_lowering="result_unwrap_clone",
+    ),
+    InstanceMethodSignature(
+        "Result[T,E]",
+        "unwrap_err",
+        (),
+        "E",
+        result_ownership="payload_clone",
+        effects=("allocate", "copy", "may_fail"),
+        representation_lowering="result_unwrap_err_clone",
     ),
 )
 INSTANCE_METHOD_SIGNATURES: Mapping[

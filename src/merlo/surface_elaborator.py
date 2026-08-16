@@ -1829,38 +1829,6 @@ class _Elaborator:
                             f"UnknownCall: {receiver_type or 'unresolved'}.entries"
                         )
                     term = self.types.typed(f"Borrow[{receiver_type}]")
-                elif method in {"unwrap", "unwrap_err"}:
-                    if expression.arguments:
-                        raise SurfaceElaborationError(
-                            f"ArityMismatch: {method}"
-                        )
-                    receiver = self._expression(
-                        receiver_expression,
-                        function,
-                    )
-                    receiver_type = self.types.concrete.get(
-                        self.types.find(receiver)
-                    )
-                    option_parts = (
-                        _generic_parts(receiver_type, "Option")
-                        if receiver_type is not None
-                        else None
-                    )
-                    result_parts = (
-                        _generic_parts(receiver_type, "Result")
-                        if receiver_type is not None
-                        else None
-                    )
-                    if method == "unwrap" and option_parts:
-                        term = self.types.typed(option_parts[0])
-                    elif method == "unwrap" and result_parts:
-                        term = self.types.typed(result_parts[0])
-                    elif method == "unwrap_err" and result_parts:
-                        term = self.types.typed(result_parts[1])
-                    else:
-                        raise SurfaceElaborationError(
-                            f"UnknownCall: {receiver_type or 'unresolved'}.{method}"
-                        )
                 elif method == "view":
                     if expression.arguments:
                         raise SurfaceElaborationError(

@@ -46,8 +46,10 @@ Host intrinsics and the centralized static `Text.from_bytes` and
 ABI lowering from Surface elaboration through HIR, MIR, and the backend
 manifest. The graph also resolves generic receiver patterns for the pure
 `Option[T].is_none/is_some` and `Result[T,E].is_ok/is_err` predicates and owns
-their inline representation lowering. Generic collection operations and
-payload access through `unwrap/unwrap_err` still have type- and
+their inline representation lowering. `unwrap/unwrap_err` use the same generic
+contracts with borrow-and-clone semantics: copy payloads are read by value,
+owning payloads are deep-cloned, and a tag mismatch traps before inactive union
+storage is read. Generic collection operations still have type- and
 ownership-directed rules outside that graph; this alpha does not claim that
 every builtin is generated from one declaration yet.
 
