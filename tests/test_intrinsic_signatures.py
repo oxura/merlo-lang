@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from dataclasses import FrozenInstanceError
 from pathlib import Path
 
@@ -109,6 +110,24 @@ def test_binder_and_elaborator_contract_views_are_derived() -> None:
     assert CONTRACT_GRAPH.abi_lowering("TextBuilder.new") == (
         "merlo_text_builder_new"
     )
+    option_predicate = CONTRACT_GRAPH.method(
+        "Option[Text]",
+        "is_some",
+    )
+    assert option_predicate is not None
+    assert option_predicate.receiver_type == "Option[Text]"
+    assert option_predicate.result_type == "Bool"
+    assert option_predicate.receiver_ownership == "borrow"
+    assert option_predicate.representation_lowering == "option_is_some"
+    result_predicate = CONTRACT_GRAPH.method(
+        "Result[UInt64,Text]",
+        "is_err",
+    )
+    assert result_predicate is not None
+    assert result_predicate.result_type == "Bool"
+    assert result_predicate.representation_lowering == "result_is_err"
+    assert CONTRACT_GRAPH.method("Option[Text]", "is_ok") is None
+    assert CONTRACT_GRAPH.method("Result[UInt64,Text]", "is_none") is None
 
 
 def test_static_contracts_drive_hir_type_ownership_effects_and_abi() -> None:
@@ -137,6 +156,105 @@ def test_static_contracts_drive_hir_type_ownership_effects_and_abi() -> None:
     assert builder.ownership == "owned"
     assert set(builder.effects) == {"allocate", "may_fail"}
     assert builder.attribute_map["abi_lowering"] == "merlo_text_builder_new"
+
+
+def test_generic_predicate_contracts_drive_hir_metadata() -> None:
+    hir = compile_structured_hir(
+        "fn flags(option: Option[UInt64], result: Result[UInt64,UInt64]) -> Bool:\n"
+        "    let some: Bool = option.is_some()\n"
+        "    let ok: Bool = result.is_ok()\n"
+        "    return some and ok\n",
+        entry_function="flags",
+    )
+    predicates = {
+        node.attribute_map.get("representation_lowering"): node
+        for function in hir.functions
+        for node in function.walk()
+        if node.attribute_map.get("representation_lowering")
+        in {"option_is_some", "result_is_ok"}
+    }
+    assert set(predicates) == {"option_is_some", "result_is_ok"}
+    assert predicates["option_is_some"].type_name == "Bool"
+    assert predicates["option_is_some"].ownership == "value"
+    assert predicates["option_is_some"].attribute_map[
+        "contract_symbol"
+    ] == "Option[UInt64].is_some"
+    assert predicates["result_is_ok"].type_name == "Bool"
+    assert predicates["result_is_ok"].attribute_map[
+        "contract_symbol"
+    ] == "Result[UInt64,UInt64].is_ok"
+
+
+def test_generic_predicates_lower_to_native_enum_tags(
+    tmp_path: Path,
+) -> None:
+    project = Project.create(
+        tmp_path / "generic-predicates",
+        name="generic_predicates",
+    )
+    source = project.source_dir / "main.mlo"
+    source.write_text(
+        "module main\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "fn make_option() -> Option[Text]:\n"
+        '    return Some("value")\n\n'
+        "fn make_result() -> Result[Text,AppError]:\n"
+        '    return Ok("value")\n\n'
+        "export task main(path: Path) -> Result[Text,AppError]:\n"
+        "    uses console.write\n"
+        "    let option = make_option()\n"
+        "    let result = make_result()\n"
+        "    if option.is_some() and not option.is_none():\n"
+        "        if result.is_ok() and not result.is_err():\n"
+        '            console.write("predicates-ok")\n'
+        '    return Ok("done")\n',
+        encoding="utf-8",
+    )
+    compilation = compile_project(
+        project.root,
+        emit_native=True,
+        output=tmp_path / "generic-predicates-app",
+        require_interface_lock=False,
+    )
+    assert compilation.native is not None
+    generated = compilation.generated.source
+    assert all(
+        marker in generated
+        for marker in (
+            "NoneValue_TAG",
+            "Some_TAG",
+            "Err_TAG",
+            "Ok_TAG",
+        )
+    )
+    completed = subprocess.run(
+        [compilation.native.binary_path, str(project.root)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0
+    assert completed.stdout == "predicates-ok\n"
+
+
+@pytest.mark.parametrize(
+    "source",
+    (
+        "fn bad(value: Option[UInt64]) -> Bool:\n"
+        "    return value.is_ok()\n",
+        "fn bad(value: Result[UInt64,UInt64]) -> Bool:\n"
+        "    return value.is_none()\n",
+    ),
+)
+def test_generic_predicates_reject_wrong_receiver_family(
+    source: str,
+) -> None:
+    with pytest.raises(
+        StructuredHIRCompileError,
+        match="UnknownCall",
+    ):
+        compile_structured_hir(source, entry_function="bad")
 
 
 def test_static_contracts_drive_backend_primitive_manifest(

@@ -44,9 +44,12 @@ Builtin semantics are progressively owned by one immutable ContractGraph.
 Host intrinsics and the centralized static `Text.from_bytes` and
 `TextBuilder.new` paths carry parameter/result types, ownership, effects, and
 ABI lowering from Surface elaboration through HIR, MIR, and the backend
-manifest. Generic collection and algebraic `Option`/`Result` operations still
-have type-directed lowering rules outside that graph; this alpha does not claim
-that every builtin is generated from one declaration yet.
+manifest. The graph also resolves generic receiver patterns for the pure
+`Option[T].is_none/is_some` and `Result[T,E].is_ok/is_err` predicates and owns
+their inline representation lowering. Generic collection operations and
+payload access through `unwrap/unwrap_err` still have type- and
+ownership-directed rules outside that graph; this alpha does not claim that
+every builtin is generated from one declaration yet.
 
 ## Ownership and runtime
 

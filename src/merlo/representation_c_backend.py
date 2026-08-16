@@ -5014,6 +5014,15 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             if receiver_text == "TextBuilder" and method == "new":
                 return "merlo_text_builder_new()"
             receiver_type = self._expression_type(node.func.value)
+            method_contract = CONTRACT_GRAPH.method(
+                receiver_type or "",
+                method,
+            )
+            representation_lowering = (
+                method_contract.representation_lowering
+                if method_contract is not None
+                else None
+            )
             temporary_receiver = (
                 receiver_type is not None
                 and self._is_owning_temporary(node.func.value, receiver_type)
@@ -5033,9 +5042,9 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 variants = {variant: payload for variant, payload, _ in enum_descriptor.variants}
                 suffix = _identifier(receiver_type or "")
                 if "Some" in variants and "NoneValue" in variants:
-                    if method == "is_none":
+                    if representation_lowering == "option_is_none":
                         return f"({receiver})->tag == MERLO_{suffix}_NoneValue_TAG"
-                    if method == "is_some":
+                    if representation_lowering == "option_is_some":
                         return f"({receiver})->tag == MERLO_{suffix}_Some_TAG"
                     if method == "unwrap":
                         payload_type = variants["Some"]
@@ -5048,9 +5057,9 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                             return f"merlo_clone_{_identifier(payload_type)}(&{expression})"
                         return expression
                 if "Ok" in variants and "Err" in variants:
-                    if method == "is_err":
+                    if representation_lowering == "result_is_err":
                         return f"({receiver})->tag == MERLO_{suffix}_Err_TAG"
-                    if method == "is_ok":
+                    if representation_lowering == "result_is_ok":
                         return f"({receiver})->tag == MERLO_{suffix}_Ok_TAG"
                     if method == "unwrap":
                         payload_type = variants["Ok"]
@@ -5367,6 +5376,15 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 if receiver_text in self.descriptors and self.descriptors[receiver_text].kind == "enum":
                     return receiver_text
                 receiver_type = self._expression_type(node.func.value)
+                method_contract = CONTRACT_GRAPH.method(
+                    receiver_type or "",
+                    method,
+                )
+                if (
+                    method_contract is not None
+                    and method_contract.representation_lowering is not None
+                ):
+                    return method_contract.result_type
                 if method in COLLECTION_OPERATIONS:
                     shape = collection_shape(receiver_type)
                     metadata = (
