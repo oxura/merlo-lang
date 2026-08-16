@@ -1829,14 +1829,7 @@ class _Elaborator:
                             f"UnknownCall: {receiver_type or 'unresolved'}.entries"
                         )
                     term = self.types.typed(f"Borrow[{receiver_type}]")
-                elif method in {
-                    "is_none",
-                    "is_some",
-                    "is_ok",
-                    "is_err",
-                    "unwrap",
-                    "unwrap_err",
-                }:
+                elif method in {"unwrap", "unwrap_err"}:
                     if expression.arguments:
                         raise SurfaceElaborationError(
                             f"ArityMismatch: {method}"
@@ -1858,11 +1851,7 @@ class _Elaborator:
                         if receiver_type is not None
                         else None
                     )
-                    if method in {"is_none", "is_some"} and option_parts:
-                        term = self.types.typed("Bool")
-                    elif method in {"is_ok", "is_err"} and result_parts:
-                        term = self.types.typed("Bool")
-                    elif method == "unwrap" and option_parts:
+                    if method == "unwrap" and option_parts:
                         term = self.types.typed(option_parts[0])
                     elif method == "unwrap" and result_parts:
                         term = self.types.typed(result_parts[0])

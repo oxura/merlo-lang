@@ -5,9 +5,12 @@ argument validation, result adaptation, effects, and ownership metadata.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 from typing import Mapping
+
+from merlo.type_parser import generic_parts
 
 
 @dataclass(frozen=True)
@@ -52,6 +55,7 @@ class InstanceMethodSignature:
     effects: tuple[str, ...] = ()
     static: bool = False
     abi_lowering: str | None = None
+    representation_lowering: str | None = None
 
     def __post_init__(self) -> None:
         if not self.parameter_ownership:
@@ -209,6 +213,34 @@ _INSTANCE_METHOD_ROWS = (
     InstanceMethodSignature("TextBuilder", "append_uint64", ("UInt64",), "Unit", receiver_ownership="borrow_mut"),
     InstanceMethodSignature("FileReader", "lines", (), "FileLines", receiver_ownership="borrow_mut"),
     InstanceMethodSignature("FileLines", "count_text", (), "Text", result_ownership="owned", receiver_ownership="borrow_mut"),
+    InstanceMethodSignature(
+        "Option[T]",
+        "is_none",
+        (),
+        "Bool",
+        representation_lowering="option_is_none",
+    ),
+    InstanceMethodSignature(
+        "Option[T]",
+        "is_some",
+        (),
+        "Bool",
+        representation_lowering="option_is_some",
+    ),
+    InstanceMethodSignature(
+        "Result[T,E]",
+        "is_ok",
+        (),
+        "Bool",
+        representation_lowering="result_is_ok",
+    ),
+    InstanceMethodSignature(
+        "Result[T,E]",
+        "is_err",
+        (),
+        "Bool",
+        representation_lowering="result_is_err",
+    ),
 )
 INSTANCE_METHOD_SIGNATURES: Mapping[
     tuple[str, str], InstanceMethodSignature
@@ -316,7 +348,43 @@ class BuiltinContractGraph:
         receiver_type: str,
         name: str,
     ) -> InstanceMethodSignature | None:
-        return self.methods.get((receiver_type, name))
+        exact = self.methods.get((receiver_type, name))
+        if exact is not None:
+            return exact
+        for (pattern, method_name), signature in self.methods.items():
+            if method_name != name or "[" not in pattern:
+                continue
+            constructor = pattern.partition("[")[0]
+            pattern_parts = generic_parts(pattern, constructor)
+            actual_parts = generic_parts(
+                receiver_type,
+                constructor,
+                arity=len(pattern_parts) if pattern_parts is not None else None,
+            )
+            if pattern_parts is None or actual_parts is None:
+                continue
+            substitutions = dict(zip(pattern_parts, actual_parts, strict=True))
+
+            def instantiate(type_name: str) -> str:
+                result = type_name
+                for variable, concrete in substitutions.items():
+                    result = re.sub(
+                        rf"\b{re.escape(variable)}\b",
+                        concrete,
+                        result,
+                    )
+                return result
+
+            return replace(
+                signature,
+                receiver_type=receiver_type,
+                parameters=tuple(
+                    instantiate(parameter)
+                    for parameter in signature.parameters
+                ),
+                result_type=instantiate(signature.result_type),
+            )
+        return None
 
     def static_method(
         self,
@@ -325,6 +393,13 @@ class BuiltinContractGraph:
     ) -> InstanceMethodSignature | None:
         signature = self.method(receiver_type, name)
         return signature if signature is not None and signature.static else None
+
+    def has_representation_method(self, name: str) -> bool:
+        return any(
+            method_name == name
+            and signature.representation_lowering is not None
+            for (_receiver, method_name), signature in self.methods.items()
+        )
 
     def abi_lowering(self, symbol: str) -> str | None:
         lowering = self.abi_lowerings.get(symbol)

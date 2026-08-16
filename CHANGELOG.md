@@ -98,6 +98,11 @@
   immutable ContractGraph, including parameters, ownership, effects, static
   dispatch, and ABI lowering. Surface elaboration, HIR, MIR allocation, and the
   backend primitive manifest now consume that shared contract.
+- Adds generic ContractGraph receiver matching for the pure
+  `Option.is_none/is_some` and `Result.is_ok/is_err` predicates. Surface type
+  checking, typed HIR metadata, and native enum-tag lowering now consume the
+  same immutable contracts, while payload-moving unwrap rules remain a
+  separate ownership milestone.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

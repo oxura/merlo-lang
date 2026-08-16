@@ -819,6 +819,15 @@ class _OwnershipChecker:
                 )
                 if static_signature is not None:
                     return static_signature.result_type
+                method_signature = CONTRACT_GRAPH.method(
+                    receiver or "",
+                    method,
+                )
+                if (
+                    method_signature is not None
+                    and method_signature.representation_lowering is not None
+                ):
+                    return method_signature.result_type
                 if receiver_text == "Vec" and method == "new":
                     return expected or "Vec[Inferred]"
                 if receiver_text == "Map" and method == "new":
@@ -1888,6 +1897,18 @@ class _HIRBuilder:
                 receiver_text,
                 method,
             )
+            if (
+                receiver_type is None
+                and signature is None
+                and static_signature is None
+            ):
+                receiver_type = self.expression(
+                    node.func.value
+                ).type_name
+            method_signature = CONTRACT_GRAPH.method(
+                receiver_type or "",
+                method,
+            )
             if method in COLLECTION_OPERATIONS:
                 receiver = self.expression(node.func.value)
                 receiver_type = receiver.type_name or receiver_type
@@ -2057,6 +2078,38 @@ class _HIRBuilder:
                     call_attributes["abi_lowering"] = (
                         static_signature.abi_lowering
                     )
+            elif (
+                method_signature is None
+                and CONTRACT_GRAPH.has_representation_method(method)
+            ):
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: UnknownCall: "
+                    f"{receiver_type or 'unresolved'}.{method}"
+                )
+            elif (
+                method_signature is not None
+                and method_signature.representation_lowering is not None
+            ):
+                if len(arguments) != method_signature.arity:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: {receiver_type}.{method} "
+                        f"expects {method_signature.arity} argument(s), "
+                        f"got {len(arguments)}"
+                    )
+                receiver = self.expression(node.func.value)
+                kind = "DirectCall"
+                type_name = method_signature.result_type
+                ownership = method_signature.result_ownership
+                effects.update(method_signature.effects)
+                operation_children = (receiver,) + arguments
+                call_attributes.update(
+                    {
+                        "contract_symbol": f"{receiver_type}.{method}",
+                        "representation_lowering": (
+                            method_signature.representation_lowering
+                        ),
+                    }
+                )
             elif receiver_type == "FileReader" and method == "lines":
                 kind = "FileLines"
                 type_name = "FileLines"
