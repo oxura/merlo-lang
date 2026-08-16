@@ -118,6 +118,10 @@
   consume the CST node at the same source line and with the same structural kind. Nested
   control-flow bodies, `else` branches, `match` cases, transition bodies, and
   module-body offsets fail closed on missing or inconsistent anchors.
+- Feeds executable statement expressions from their lossless CST token regions
+  into the Surface expression parser instead of lexing those fragments again.
+  Delimited multiline expressions now remain one CST region and do not emit
+  indentation layout while `()`, `[]`, or `{}` are open.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

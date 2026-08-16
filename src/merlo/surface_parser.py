@@ -186,15 +186,19 @@ class _ExpressionParser:
         line: _Line,
         *,
         base_column: int,
+        tokens: tuple[ExpressionToken, ...] | None = None,
     ) -> None:
         self.source = source
         self.path = path
         self.line = line
         self.base_column = base_column
-        try:
-            self.tokens = lex_expression(source)
-        except ExpressionLexError as exc:
-            self._error("InvalidExpression", exc.message, exc.position)
+        if tokens is None:
+            try:
+                self.tokens = lex_expression(source)
+            except ExpressionLexError as exc:
+                self._error("InvalidExpression", exc.message, exc.position)
+        else:
+            self.tokens = tokens
         self.index = 0
 
     def _error(self, code: str, message: str, position: int | None = None) -> None:
@@ -520,12 +524,14 @@ def _parse_expression(
     line: _Line,
     *,
     base_column: int = 0,
+    tokens: tuple[ExpressionToken, ...] | None = None,
 ) -> SurfaceExpression:
     expression = _ExpressionParser(
         source,
         path,
         line,
         base_column=base_column,
+        tokens=tokens,
     ).parse()
     _validate_implicit(expression, path, line)
     return expression
@@ -1338,7 +1344,7 @@ class _Parser:
         if first in {
             "let", "return", "if", "elif", "else", "for", "while",
             "match", "case", "require", "ensure", "uses", "break",
-            "continue", "yield",
+            "continue", "yield", "print", "pass", "var",
         }:
             return first
         if re.fullmatch(r"[A-Za-z_]\w*\s*:\s*[^=]+", line.text):
@@ -1361,6 +1367,67 @@ class _Parser:
                 _span(self.path, line),
             )
         return anchor
+
+    def _parse_statement_expression(
+        self,
+        statement: SyntaxNode,
+        source: str,
+        line: _Line,
+        *,
+        base_column: int = 0,
+        ordinal: int = 0,
+    ) -> SurfaceExpression:
+        header = next(
+            (child for child in statement.children if child.kind == "header"),
+            None,
+        )
+        expressions = (
+            tuple(child for child in header.children if child.kind == "expression")
+            if header is not None
+            else ()
+        )
+        if ordinal >= len(expressions):
+            raise SurfaceSyntaxError(
+                "CSTExpressionMismatch",
+                f"semantic expression {ordinal + 1} has no CST region",
+                _span(self.path, line),
+            )
+        expression = expressions[ordinal]
+        converted: list[ExpressionToken] = []
+        cursor = 0
+        for token in expression.tokens:
+            start = source.find(token.text, cursor)
+            end = start + len(token.text)
+            if (
+                start < 0
+                or end > len(source)
+                or source[start:end] != token.text
+                or source[cursor:start].strip()
+            ):
+                raise SurfaceSyntaxError(
+                    "CSTExpressionMismatch",
+                    "CST expression tokens disagree with semantic source",
+                    _span(self.path, line),
+                )
+            converted.append(
+                ExpressionToken(token.kind, token.text, start, end, token.value)
+            )
+            cursor = end
+        suffix = source[cursor:]
+        if suffix.strip() and not suffix.lstrip().startswith("#"):
+            raise SurfaceSyntaxError(
+                "CSTExpressionMismatch",
+                "CST expression region does not cover semantic source",
+                _span(self.path, line),
+            )
+        converted.append(ExpressionToken("eof", "", len(source), len(source)))
+        return _parse_expression(
+            source,
+            self.path,
+            line,
+            base_column=base_column,
+            tokens=tuple(converted),
+        )
 
     def _block(self, indent: int) -> tuple[SurfaceStatement, ...]:
         statements = []
@@ -1400,9 +1467,9 @@ class _Parser:
             return SurfaceFor(
                 _span(self.path, line, end_line=end),
                 match.group(1),
-                _parse_expression(
+                self._parse_statement_expression(
+                    anchor,
                     match.group(2),
-                    self.path,
                     line,
                     base_column=match.start(2),
                 ),
@@ -1419,9 +1486,9 @@ class _Parser:
             end = self.lines[self.index - 1]
             return SurfaceIf(
                 _span(self.path, line, end_line=end),
-                _parse_expression(
+                self._parse_statement_expression(
+                    anchor,
                     match.group(1),
-                    self.path,
                     line,
                     base_column=match.start(1),
                 ),
@@ -1433,9 +1500,9 @@ class _Parser:
             body = self._block(line.indent + 4)
             return SurfaceWhile(
                 _span(self.path, line, end_line=self.lines[self.index - 1]),
-                _parse_expression(
+                self._parse_statement_expression(
+                    anchor,
                     match.group(1),
-                    self.path,
                     line,
                     base_column=match.start(1),
                 ),
@@ -1508,9 +1575,9 @@ class _Parser:
                     line,
                     end_line=self.lines[self.index - 1],
                 ),
-                _parse_expression(
+                self._parse_statement_expression(
+                    anchor,
                     match.group(1),
-                    self.path,
                     line,
                     base_column=match.start(1),
                 ),
@@ -1536,9 +1603,9 @@ class _Parser:
             self.index += 1
             return SurfacePrint(
                 _span(self.path, line),
-                _parse_expression(
+                self._parse_statement_expression(
+                    anchor,
                     match.group(1),
-                    self.path,
                     line,
                     base_column=match.start(1),
                 ),
@@ -1556,9 +1623,9 @@ class _Parser:
             self.index += 1
             return SurfaceRequire(
                 _span(self.path, line),
-                _parse_expression(
+                self._parse_statement_expression(
+                    anchor,
                     match.group(1),
-                    self.path,
                     line,
                     base_column=match.start(1),
                 ),
@@ -1567,9 +1634,9 @@ class _Parser:
             self.index += 1
             return SurfaceEnsure(
                 _span(self.path, line),
-                _parse_expression(
+                self._parse_statement_expression(
+                    anchor,
                     match.group(1),
-                    self.path,
                     line,
                     base_column=match.start(1),
                 ),
@@ -1578,9 +1645,9 @@ class _Parser:
             self.index += 1
             return SurfaceReturn(
                 _span(self.path, line),
-                _parse_expression(
+                self._parse_statement_expression(
+                    anchor,
                     match.group(1),
-                    self.path,
                     line,
                     base_column=match.start(1),
                 )
@@ -1605,9 +1672,9 @@ class _Parser:
         ):
             self.index += 1
             kind, name, type_name, operator, value = match.groups()
-            expression = _parse_expression(
+            expression = self._parse_statement_expression(
+                anchor,
                 value,
-                self.path,
                 line,
                 base_column=match.start(5),
             )
@@ -1635,22 +1702,27 @@ class _Parser:
             self.index += 1
             return SurfaceAssignment(
                 _span(self.path, line),
-                _parse_expression(
+                self._parse_statement_expression(
+                    anchor,
                     target,
-                    self.path,
                     line,
                     base_column=match.start(1),
+                    ordinal=0,
                 ),
-                _parse_expression(
+                self._parse_statement_expression(
+                    anchor,
                     value,
-                    self.path,
                     line,
                     base_column=match.start(3),
+                    ordinal=1,
                 ),
                 operator,
             )
         self.index += 1
-        return SurfaceExpressionStatement(_span(self.path, line), _parse_expression(line.text, self.path, line))
+        return SurfaceExpressionStatement(
+            _span(self.path, line),
+            self._parse_statement_expression(anchor, line.text, line),
+        )
 
 
 def parse_surface(

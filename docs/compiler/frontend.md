@@ -66,6 +66,9 @@ and reject any CST/parser disagreement instead of silently reparsing a
 different boundary. Statement blocks also require a same-line, same-kind CST
 node for every executable statement; comment-only lines remain lossless trivia,
 while nested `else` and `case` headers are checked as structural anchors.
+Statement expression regions reuse their retained CST tokens, including across
+physical lines inside open delimiters, and reject missing or inconsistent token
+coverage instead of silently re-lexing the fragment.
 Module binding transforms Surface nodes structurally,
 and HIR lowering projects the retained Surface tree into Merlo-owned native
 syntax nodes, so no canonical or module source is reparsed and no CPython AST

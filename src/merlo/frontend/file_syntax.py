@@ -199,6 +199,7 @@ def lex_file(source: str, *, path: str = "main.mlo") -> FileLexResult:
     tokens: list[FileToken] = []
     diagnostics: list[FileDiagnostic] = []
     indentation = [0]
+    delimiter_depth = 0
     offset = 0
     lines = source.splitlines(keepends=True)
     if source and (not lines or sum(len(line) for line in lines) < len(source)):
@@ -222,7 +223,8 @@ def lex_file(source: str, *, path: str = "main.mlo") -> FileLexResult:
                 )
             )
         width = sum(4 if character == "\t" else 1 for character in prefix)
-        if not blank:
+        continuation = delimiter_depth > 0
+        if not blank and not continuation:
             if width > indentation[-1]:
                 if "\t" not in prefix and width % 4:
                     diagnostics.append(
@@ -272,15 +274,21 @@ def lex_file(source: str, *, path: str = "main.mlo") -> FileLexResult:
                 )
             )
         if body:
-            tokens.extend(
-                _line_tokens(
-                    body,
-                    offset=offset + leading,
-                    line_number=line_number,
-                    column_offset=leading,
-                    diagnostics=diagnostics,
-                )
+            body_tokens = _line_tokens(
+                body,
+                offset=offset + leading,
+                line_number=line_number,
+                column_offset=leading,
+                diagnostics=diagnostics,
             )
+            tokens.extend(body_tokens)
+            for token in body_tokens:
+                if token.kind != "operator":
+                    continue
+                if token.text in {"(", "[", "{"}:
+                    delimiter_depth += 1
+                elif token.text in {")", "]", "}"}:
+                    delimiter_depth = max(0, delimiter_depth - 1)
         if newline:
             tokens.append(
                 _token(
@@ -329,7 +337,7 @@ _STATEMENT_KEYWORDS = frozenset(
         "let", "return", "if", "elif", "else", "for", "while", "match",
         "case", "require", "ensure", "invariant", "uses", "parallel",
         "compensate", "transition", "state", "goal", "modify", "preserve",
-        "forbid", "yield", "break", "continue",
+        "forbid", "yield", "break", "continue", "print", "pass", "var",
     }
 )
 
@@ -340,6 +348,7 @@ def _logical_lines(tokens: tuple[FileToken, ...]) -> tuple[_LogicalLine, ...]:
     layout_start = 0
     first: int | None = None
     first_depth: int | None = None
+    delimiter_depth = 0
     for index, token in enumerate(tokens):
         if token.kind == "indent":
             depth += 1
@@ -348,7 +357,7 @@ def _logical_lines(tokens: tuple[FileToken, ...]) -> tuple[_LogicalLine, ...]:
             depth = max(0, depth - 1)
             continue
         if token.kind == "newline":
-            if first is not None:
+            if first is not None and delimiter_depth == 0:
                 lines.append(
                     _LogicalLine(
                         first_depth if first_depth is not None else depth,
@@ -357,15 +366,20 @@ def _logical_lines(tokens: tuple[FileToken, ...]) -> tuple[_LogicalLine, ...]:
                         index + 1,
                     )
                 )
-            first = None
-            first_depth = None
-            layout_start = index + 1
+                first = None
+                first_depth = None
+                layout_start = index + 1
             continue
         if token.kind in {"whitespace", "comment", "eof"}:
             continue
         if first is None:
             first = index
             first_depth = depth
+        if token.kind == "operator":
+            if token.text in {"(", "[", "{"}:
+                delimiter_depth += 1
+            elif token.text in {")", "]", "}"}:
+                delimiter_depth = max(0, delimiter_depth - 1)
     if first is not None:
         lines.append(
             _LogicalLine(
@@ -503,7 +517,7 @@ def _header_parts(
             )
             if arrow is not None:
                 add("type", arrow + 2, trailing_colon)
-    if kind == "let":
+    if kind in {"let", "var"}:
         equals = next((index for index, text in enumerate(texts) if text == "="), None)
         colon = next((index for index, text in enumerate(texts) if text == ":"), None)
         if colon is not None:
@@ -514,13 +528,32 @@ def _header_parts(
         colon = next((index for index, text in enumerate(texts) if text == ":"), None)
         if colon is not None:
             add("type", colon + 1, len(texts))
-    elif kind in {"return", "require", "ensure", "yield"}:
+    elif kind in {"return", "require", "ensure", "yield", "print"}:
         add("expression", 1, trailing_colon)
-    elif kind in {"if", "elif", "while", "match", "case", "for"}:
+    elif kind == "for":
+        in_index = next(
+            (index for index, text in enumerate(texts) if text == "in"),
+            None,
+        )
+        if in_index is not None:
+            add("expression", in_index + 1, trailing_colon)
+    elif kind in {"if", "elif", "while", "match", "case"}:
         add("expression", 1, trailing_colon)
-    elif "=" in texts:
+    elif kind == "expression_statement" and "=" in texts:
         equals = texts.index("=")
+        target_end = (
+            equals - 1
+            if equals and texts[equals - 1] in {"+", "-", "*", "/"}
+            else equals
+        )
+        if (
+            ":" not in texts[:target_end]
+            and any(text in {".", "["} for text in texts[:target_end])
+        ):
+            add("expression", 0, target_end)
         add("expression", equals + 1, len(texts))
+    elif kind == "expression_statement":
+        add("expression", 0, trailing_colon)
     return tuple(parts)
 
 
