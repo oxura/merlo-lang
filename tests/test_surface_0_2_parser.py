@@ -161,6 +161,29 @@ def test_surface_declaration_expressions_consume_cst_tokens(
     ]
 
 
+def test_surface_function_signatures_consume_cst_type_regions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        surface_parser_module._Parser,
+        "_parameters",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("parsed parameter fragment")
+        ),
+    )
+
+    function = parse_surface(
+        "fn choose(left: UInt64, right: Map<Text, UInt64>) -> UInt64 = left\n",
+        path="function-types.mlo",
+    ).declarations[0]
+
+    assert [parameter.type_name for parameter in function.parameters] == [
+        "UInt64",
+        "Map[Text,UInt64]",
+    ]
+    assert function.return_type == "UInt64"
+
+
 def test_surface_inline_declaration_fails_closed_without_cst_expression(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

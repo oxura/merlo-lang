@@ -75,7 +75,10 @@ does not search repeated token text to reconstruct positions or silently
 re-lex the fragment. Inline function declarations retain separate parameter,
 return-type, and body-expression regions. Both inline and indented
 expression-bodied functions consume those anchored expression tokens instead
-of invoking the expression lexer a second time.
+of invoking the expression lexer a second time. Function parameter lists own
+structural parameter children and per-parameter type regions. Surface function
+signatures validate and consume those nodes plus the retained return-type
+region instead of locating parameter fragments in the line text.
 Module binding transforms Surface nodes structurally,
 and HIR lowering projects the retained Surface tree into Merlo-owned native
 syntax nodes, so no canonical or module source is reparsed and no CPython AST

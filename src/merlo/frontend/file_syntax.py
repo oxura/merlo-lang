@@ -522,6 +522,69 @@ def _leaf_node(
     )
 
 
+def _parameter_nodes(
+    tokens: tuple[FileToken, ...],
+    *,
+    parent_id: str,
+) -> tuple[SyntaxNode, ...]:
+    significant = list(_significant(tokens))
+    if len(significant) < 2 or significant[0].text != "(" or significant[-1].text != ")":
+        return ()
+    ranges: list[tuple[int, int]] = []
+    start = 1
+    delimiters: list[str] = []
+    type_delimiters = {**_OPEN_TO_CLOSE, "<": ">"}
+    for index in range(1, len(significant) - 1):
+        text = significant[index].text
+        if text in type_delimiters:
+            delimiters.append(text)
+        elif text in type_delimiters.values() and delimiters:
+            if text == type_delimiters[delimiters[-1]]:
+                delimiters.pop()
+        elif text == "," and not delimiters:
+            ranges.append((start, index))
+            start = index + 1
+    if start < len(significant) - 1:
+        ranges.append((start, len(significant) - 1))
+
+    output: list[SyntaxNode] = []
+    for ordinal, (start, end) in enumerate(ranges):
+        selected = tuple(significant[start:end])
+        if not selected:
+            continue
+        syntax_id = _digest(
+            "syntax-v2-parameter",
+            parent_id,
+            ordinal,
+            _semantic_key(selected),
+        )
+        colon = next(
+            (index for index, token in enumerate(selected) if token.text == ":"),
+            None,
+        )
+        children: tuple[SyntaxNode, ...] = ()
+        if colon is not None:
+            type_node = _leaf_node(
+                "type",
+                selected[colon + 1 :],
+                parent_id=syntax_id,
+                ordinal=0,
+            )
+            if type_node is not None:
+                children = (type_node,)
+        output.append(
+            SyntaxNode(
+                "parameter",
+                syntax_id,
+                selected[0].start,
+                selected[-1].end,
+                selected,
+                children,
+            )
+        )
+    return tuple(output)
+
+
 def _header_parts(
     kind: str,
     tokens: tuple[FileToken, ...],
@@ -544,6 +607,16 @@ def _header_parts(
             ordinal=len(parts),
         )
         if node is not None:
+            if part_kind == "parameters":
+                node = SyntaxNode(
+                    node.kind,
+                    node.syntax_id,
+                    node.start,
+                    node.end,
+                    node.tokens,
+                    _parameter_nodes(node.tokens, parent_id=node.syntax_id),
+                    node.diagnostic_codes,
+                )
             parts.append(node)
 
     texts = [token.text for token in significant]

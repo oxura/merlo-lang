@@ -117,7 +117,7 @@ def test_cst_splits_statement_expression_regions_at_semantic_boundaries() -> Non
 
 def test_cst_retains_inline_declaration_expression_and_return_type_regions() -> None:
     result = parse_file_cst(
-        "fn increment(value: UInt64) -> UInt64 = value + 1\n"
+        "fn increment(value: UInt64, lookup: Map<Text, UInt64>) -> UInt64 = value + 1\n"
         "identity(value) = value\n",
         path="declaration-regions.mlo",
     )
@@ -140,6 +140,15 @@ def test_cst_retains_inline_declaration_expression_and_return_type_regions() -> 
     assert [child.kind for child in inferred_header.children] == [
         "parameters",
         "expression",
+    ]
+    parameters = explicit_header.children[0].children
+    assert [child.kind for child in parameters] == ["parameter", "parameter"]
+    assert [
+        [token.text for token in parameter.children[0].tokens]
+        for parameter in parameters
+    ] == [
+        ["UInt64"],
+        ["Map", "<", "Text", ",", "UInt64", ">"],
     ]
 
 

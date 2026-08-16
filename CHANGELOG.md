@@ -129,6 +129,9 @@
 - Retains inline function-body expressions and return-type regions under
   declaration headers. Inline and indented expression-bodied functions now
   consume their CST expression regions and fail closed when an anchor is absent.
+- Adds structural parameter nodes with retained per-parameter type regions.
+  Function parameter and return types now come from validated CST offsets;
+  missing or inconsistent regions fail with `CSTTypeMismatch`.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

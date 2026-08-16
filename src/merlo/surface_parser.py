@@ -642,7 +642,8 @@ class _Parser:
         for declaration in cst.declarations:
             for node in declaration.walk()[1:]:
                 if node.kind in {
-                    "header", "block", "parameters", "type", "expression",
+                    "header", "block", "parameters", "parameter", "type",
+                    "expression",
                 }:
                     continue
                 line = next(
@@ -1205,6 +1206,144 @@ class _Parser:
             raise SurfaceSyntaxError("DuplicateParameter", "parameter names must be unique", _span(self.path, line))
         return tuple(parameters)
 
+    def _retained_node_text(
+        self,
+        node: SyntaxNode,
+        line: _Line,
+        *,
+        code: str,
+    ) -> str:
+        previous_end = node.start
+        pieces: list[str] = []
+        for token in node.tokens:
+            if (
+                token.start < node.start
+                or token.end > node.end
+                or token.start < previous_end
+                or self.cst.source[token.start:token.end] != token.text
+            ):
+                raise SurfaceSyntaxError(
+                    code,
+                    f"CST {node.kind} tokens have invalid retained offsets",
+                    _span(self.path, line),
+                )
+            pieces.append(token.text)
+            previous_end = token.end
+        return "".join(pieces)
+
+    def _cst_function_parameters(
+        self,
+        owner: SyntaxNode,
+        line: _Line,
+    ) -> tuple[SurfaceParameter, ...]:
+        header = next(
+            (child for child in owner.children if child.kind == "header"),
+            None,
+        )
+        regions = (
+            tuple(child for child in header.children if child.kind == "parameters")
+            if header is not None
+            else ()
+        )
+        if len(regions) != 1:
+            raise SurfaceSyntaxError(
+                "CSTTypeMismatch",
+                "function declaration must have one CST parameter region",
+                _span(self.path, line),
+            )
+        parameters: list[SurfaceParameter] = []
+        for parameter in regions[0].children:
+            if parameter.kind != "parameter" or not parameter.tokens:
+                raise SurfaceSyntaxError(
+                    "CSTTypeMismatch",
+                    "CST parameter region is malformed",
+                    _span(self.path, line),
+                )
+            name = parameter.tokens[0].text
+            if re.fullmatch(r"[A-Za-z_]\w*", name) is None:
+                raise SurfaceSyntaxError(
+                    "InvalidParameter",
+                    name,
+                    _span(self.path, line),
+                )
+            types = tuple(
+                child for child in parameter.children if child.kind == "type"
+            )
+            has_annotation = any(
+                token.text == ":" for token in parameter.tokens[1:]
+            )
+            if len(types) > 1 or bool(types) != has_annotation:
+                raise SurfaceSyntaxError(
+                    "CSTTypeMismatch",
+                    f"parameter {name!r} has inconsistent CST type regions",
+                    _span(self.path, line),
+                )
+            type_name = (
+                _type_name(
+                    self._retained_node_text(
+                        types[0],
+                        line,
+                        code="CSTTypeMismatch",
+                    )
+                )
+                if types
+                else None
+            )
+            first = parameter.tokens[0]
+            last = parameter.tokens[-1]
+            parameters.append(
+                SurfaceParameter(
+                    SourceSpan(
+                        self.path,
+                        first.line + self.line_offset,
+                        first.column,
+                        last.line + self.line_offset,
+                        last.column + len(last.text),
+                    ),
+                    name,
+                    type_name,
+                )
+            )
+        if len({item.name for item in parameters}) != len(parameters):
+            raise SurfaceSyntaxError(
+                "DuplicateParameter",
+                "parameter names must be unique",
+                _span(self.path, line),
+            )
+        return tuple(parameters)
+
+    def _cst_function_return_type(
+        self,
+        owner: SyntaxNode,
+        line: _Line,
+        *,
+        expected: bool,
+    ) -> str | None:
+        header = next(
+            (child for child in owner.children if child.kind == "header"),
+            None,
+        )
+        regions = (
+            tuple(child for child in header.children if child.kind == "type")
+            if header is not None
+            else ()
+        )
+        if len(regions) != (1 if expected else 0):
+            raise SurfaceSyntaxError(
+                "CSTTypeMismatch",
+                "CST return type region disagrees with the function boundary",
+                _span(self.path, line),
+            )
+        if not regions:
+            return None
+        return _type_name(
+            self._retained_node_text(
+                regions[0],
+                line,
+                code="CSTTypeMismatch",
+            )
+        )
+
     def _function(
         self,
         match: re.Match[str],
@@ -1222,12 +1361,12 @@ class _Parser:
             start,
             base_column=match.start(3) if raw_type_parameters is not None else 0,
         )
-        parameters = self._parameters(
-            raw_parameters,
+        parameters = self._cst_function_parameters(function_anchor, start)
+        return_type = self._cst_function_return_type(
+            function_anchor,
             start,
-            base_column=match.start(4),
+            expected=raw_return is not None,
         )
-        return_type = _type_name(raw_return) if raw_return else None
         self.index += 1
         if delimiter == "=" and inline.strip():
             expression = self._parse_cst_expression(function_anchor, start)
