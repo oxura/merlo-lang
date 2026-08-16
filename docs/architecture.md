@@ -39,7 +39,10 @@ the CST anchors and fail closed on disagreement. Surface statement blocks apply
 the same rule to nested control flow, including `else` and `case` constructs,
 and their expression regions consume the file lexer's retained tokens directly.
 Delimited multiline expressions are a single CST region. Declaration-level
-expressions and type-region consumption are the next migration boundaries.
+expressions, function parameter types, return types, and generic parameter
+constraints already consume retained CST tokens. Record/enum fields, interface
+methods, flow/machine signatures, and local annotations remain the next
+type-region migration boundaries.
 Elaboration constraints, call binding, diagnostics, inference state, and
 native lowering have separate owners under `merlo/elaboration` and
 `merlo/frontend`.

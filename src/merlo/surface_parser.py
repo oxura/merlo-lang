@@ -643,7 +643,7 @@ class _Parser:
             for node in declaration.walk()[1:]:
                 if node.kind in {
                     "header", "block", "parameters", "parameter", "type",
-                    "expression",
+                    "type_parameters", "type_parameter", "expression",
                 }:
                     continue
                 line = next(
@@ -1344,6 +1344,95 @@ class _Parser:
             )
         )
 
+    def _cst_function_type_parameters(
+        self,
+        owner: SyntaxNode,
+        line: _Line,
+        *,
+        expected: bool,
+    ) -> tuple[SurfaceTypeParameter, ...]:
+        header = next(
+            (child for child in owner.children if child.kind == "header"),
+            None,
+        )
+        regions = (
+            tuple(
+                child
+                for child in header.children
+                if child.kind == "type_parameters"
+            )
+            if header is not None
+            else ()
+        )
+        if len(regions) != (1 if expected else 0):
+            raise SurfaceSyntaxError(
+                "CSTTypeMismatch",
+                "CST generic parameter region disagrees with the function boundary",
+                _span(self.path, line),
+            )
+        if not regions:
+            return ()
+        result: list[SurfaceTypeParameter] = []
+        for parameter in regions[0].children:
+            if parameter.kind != "type_parameter" or not parameter.tokens:
+                raise SurfaceSyntaxError(
+                    "CSTTypeMismatch",
+                    "CST generic parameter region is malformed",
+                    _span(self.path, line),
+                )
+            text = self._retained_node_text(
+                parameter,
+                line,
+                code="CSTTypeMismatch",
+            )
+            name, separator, constraints_text = text.partition(":")
+            name = name.strip()
+            if re.fullmatch(r"[A-Z][A-Za-z0-9_]*", name) is None:
+                raise SurfaceSyntaxError(
+                    "InvalidTypeParameter",
+                    f"generic type parameter must start with an uppercase letter: {name!r}",
+                    _span(self.path, line),
+                )
+            constraints = tuple(
+                item.strip()
+                for item in constraints_text.split("+")
+                if item.strip()
+            ) if separator else ()
+            if separator and (
+                not constraints
+                or any(
+                    re.fullmatch(r"[A-Z][A-Za-z0-9_]*", item) is None
+                    for item in constraints
+                )
+            ):
+                raise SurfaceSyntaxError(
+                    "InvalidTypeConstraint",
+                    text,
+                    _span(self.path, line),
+                )
+            first = parameter.tokens[0]
+            last = parameter.tokens[-1]
+            result.append(
+                SurfaceTypeParameter(
+                    SourceSpan(
+                        self.path,
+                        first.line + self.line_offset,
+                        first.column,
+                        last.line + self.line_offset,
+                        last.column + len(last.text),
+                    ),
+                    name,
+                    constraints,
+                )
+            )
+        if len({item.name for item in result}) != len(result):
+            raise SurfaceSyntaxError(
+                "DuplicateTypeParameter",
+                "generic type parameters must be unique",
+                _span(self.path, line),
+            )
+        return tuple(result)
+
     def _function(
         self,
         match: re.Match[str],
@@ -1356,10 +1445,10 @@ class _Parser:
             start,
             kind="expression_statement",
         )
-        type_parameters = self._type_parameters(
-            raw_type_parameters,
+        type_parameters = self._cst_function_type_parameters(
+            function_anchor,
             start,
-            base_column=match.start(3) if raw_type_parameters is not None else 0,
+            expected=raw_type_parameters is not None,
         )
         parameters = self._cst_function_parameters(function_anchor, start)
         return_type = self._cst_function_return_type(
@@ -1421,66 +1510,6 @@ class _Parser:
             return_type,
             type_parameters,
         )
-
-    def _type_parameters(
-        self,
-        source: str | None,
-        line: _Line,
-        *,
-        base_column: int,
-    ) -> tuple[SurfaceTypeParameter, ...]:
-        if source is None:
-            return ()
-        result: list[SurfaceTypeParameter] = []
-        cursor = 0
-        for raw in _split_top_level_commas(source):
-            start = source.find(raw, cursor)
-            cursor = start + len(raw)
-            text = raw.strip()
-            name, separator, constraints_text = text.partition(":")
-            name = name.strip()
-            if re.fullmatch(r"[A-Z][A-Za-z0-9_]*", name) is None:
-                raise SurfaceSyntaxError(
-                    "InvalidTypeParameter",
-                    f"generic type parameter must start with an uppercase letter: {name!r}",
-                    _span(self.path, line),
-                )
-            constraints = tuple(
-                item.strip()
-                for item in constraints_text.split("+")
-                if item.strip()
-            ) if separator else ()
-            if separator and (
-                not constraints
-                or any(re.fullmatch(r"[A-Z][A-Za-z0-9_]*", item) is None for item in constraints)
-            ):
-                raise SurfaceSyntaxError(
-                    "InvalidTypeConstraint",
-                    text,
-                    _span(self.path, line),
-                )
-            lexical_start = base_column + start + (len(raw) - len(raw.lstrip()))
-            lexical_end = base_column + start + len(raw.rstrip())
-            result.append(
-                SurfaceTypeParameter(
-                    SourceSpan(
-                        self.path,
-                        line.number,
-                        line.indent + lexical_start + 1,
-                        line.number,
-                        line.indent + lexical_end + 1,
-                    ),
-                    name,
-                    constraints,
-                )
-            )
-        if len({item.name for item in result}) != len(result):
-            raise SurfaceSyntaxError(
-                "DuplicateTypeParameter",
-                "generic type parameters must be unique",
-                _span(self.path, line),
-            )
-        return tuple(result)
 
     @staticmethod
     def _expected_statement_kind(line: _Line) -> str:

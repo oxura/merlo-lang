@@ -132,6 +132,9 @@
 - Adds structural parameter nodes with retained per-parameter type regions.
   Function parameter and return types now come from validated CST offsets;
   missing or inconsistent regions fail with `CSTTypeMismatch`.
+- Adds retained generic-parameter nodes under function headers. Generic names,
+  interface constraints, and exact spans now come from the same CST token
+  stream; the old function-signature `source.find()` path has been removed.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

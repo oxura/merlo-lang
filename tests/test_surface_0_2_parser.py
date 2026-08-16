@@ -184,6 +184,20 @@ def test_surface_function_signatures_consume_cst_type_regions(
     assert function.return_type == "UInt64"
 
 
+def test_surface_generic_parameters_consume_cst_regions() -> None:
+    assert not hasattr(surface_parser_module._Parser, "_type_parameters")
+
+    function = parse_surface(
+        "fn choose[T: Comparable + Display, U](left: T, right: U) -> T = left\n",
+        path="generic-types.mlo",
+    ).declarations[0]
+
+    assert [(item.name, item.constraints) for item in function.type_parameters] == [
+        ("T", ("Comparable", "Display")),
+        ("U", ()),
+    ]
+
+
 def test_surface_inline_declaration_fails_closed_without_cst_expression(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

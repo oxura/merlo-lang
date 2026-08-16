@@ -152,6 +152,28 @@ def test_cst_retains_inline_declaration_expression_and_return_type_regions() -> 
     ]
 
 
+def test_cst_retains_generic_type_parameter_regions() -> None:
+    result = parse_file_cst(
+        "fn choose[T: Comparable + Display, U](left: T, right: U) -> T = left\n",
+        path="generic-regions.mlo",
+    )
+    header = result.declarations[0].children[0]
+
+    assert [child.kind for child in header.children] == [
+        "type_parameters",
+        "parameters",
+        "type",
+        "expression",
+    ]
+    assert [
+        [token.text for token in parameter.tokens]
+        for parameter in header.children[0].children
+    ] == [
+        ["T", ":", "Comparable", "+", "Display"],
+        ["U"],
+    ]
+
+
 def test_multiline_delimited_expression_is_one_lossless_cst_region() -> None:
     source = (
         "fn values() -> Array[UInt64, 2]:\n"
