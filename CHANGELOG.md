@@ -106,6 +106,10 @@
   borrow-and-clone payload ownership. Owning payloads are deep-cloned instead
   of aliasing the enum storage, fixing a reproducible native double-free;
   incorrect variants now trap before reading inactive C union members.
+- Replaces the flat declaration-only CST projection with a lossless hierarchy
+  of declarations, headers, blocks, statements, and conservative type and
+  expression regions. Recovery is represented by explicit error nodes, while
+  structural IDs survive trivia changes and unrelated sibling insertions.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

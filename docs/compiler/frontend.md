@@ -53,11 +53,17 @@ records and their spans, not rediscover declarations with regular expressions.
 ## Experimental boundary
 
 The full-file lexer/CST owns lossless tokens, indentation, trivia, and recovery.
-The Surface parser owns semantic declarations, types, statements, and
-expressions. Module binding transforms those nodes structurally; it does not
-rename source text. HIR lowering projects the retained Surface tree into
-Merlo-owned native syntax nodes, so no canonical or module source is reparsed
-and no CPython AST is created on the production frontend path.
+Its immutable hierarchy is `file -> declaration -> header/block -> statement`,
+with conservative parameter, type, and expression regions under headers.
+`SyntaxNode.walk()` exposes the tree, recovered regions are explicit `error`
+nodes, and IDs are derived from semantic headers plus their structural parent
+rather than absolute offsets. This makes an existing node identity survive
+trivia edits and unrelated sibling insertions. The Surface parser still owns
+the complete semantic grammar for declarations, types, statements, and
+expressions; the CST is not yet the sole parser. Module binding transforms
+Surface nodes structurally, and HIR lowering projects the retained Surface tree
+into Merlo-owned native syntax nodes, so no canonical or module source is
+reparsed and no CPython AST is created on the production frontend path.
 
 ## Verification commands
 
