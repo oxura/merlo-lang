@@ -35,10 +35,12 @@ type-region, and expression-region nodes with explicit recovery nodes and
 structurally stable identities. It remains a conservative syntax hierarchy,
 not yet a complete replacement for the semantic Surface parser. Top-level
 Surface declaration boundaries and declaration-kind dispatch already consume
-the CST anchors and fail closed on disagreement; statement parsing is the next
-migration boundary. Elaboration constraints, call binding, diagnostics,
-inference state, and native lowering have separate owners under
-`merlo/elaboration` and `merlo/frontend`.
+the CST anchors and fail closed on disagreement. Surface statement blocks now
+apply the same rule to nested control flow, including `else` and `case`
+constructs; expression token consumption is the next migration boundary.
+Elaboration constraints, call binding, diagnostics, inference state, and
+native lowering have separate owners under `merlo/elaboration` and
+`merlo/frontend`.
 
 Typed Surface nodes lower directly into Merlo-owned native syntax nodes. HIR and
 the C backend share that representation without constructing or compiling

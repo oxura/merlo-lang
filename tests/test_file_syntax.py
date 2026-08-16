@@ -74,6 +74,21 @@ def test_cst_builds_hierarchical_headers_blocks_statements_and_parts() -> None:
     }
 
 
+def test_statement_keywords_used_as_receivers_remain_expressions() -> None:
+    result = parse_file_cst(
+        "fn emit(state: State):\n"
+        "    state = State.new()\n"
+        "    state.tokens.push(1)\n",
+        path="receiver.mlo",
+    )
+    block = result.declarations[0].children[1]
+
+    assert [child.kind for child in block.children] == [
+        "expression_statement",
+        "expression_statement",
+    ]
+
+
 def test_hierarchical_ids_survive_unrelated_sibling_insertions() -> None:
     original = (
         "fn value() -> UInt64:\n"
