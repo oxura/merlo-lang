@@ -5892,21 +5892,52 @@ __MERLO_CAPS__
         normalized_entries = []
         for entry in entries:
             signature = intrinsic_signature(entry[0])
-            if signature is None:
+            receiver, separator, method = entry[0].partition(".")
+            method_signature = (
+                CONTRACT_GRAPH.static_method(receiver, method)
+                if separator
+                else None
+            )
+            if signature is None and method_signature is None:
                 normalized_entries.append(entry)
                 continue
-            parameter_text = ", ".join(signature.parameters)
+            contract = signature or method_signature
+            assert contract is not None
+            parameter_text = ", ".join(contract.parameters)
+            if signature is not None:
+                normalized_entries.append(
+                    (
+                        entry[0],
+                        f"fn({parameter_text}) -> {signature.result_type}",
+                        entry[2],
+                        signature.effect,
+                        entry[4],
+                        entry[5],
+                        entry[6],
+                        entry[7],
+                        entry[8],
+                    )
+                )
+                continue
+            assert method_signature is not None
             normalized_entries.append(
                 (
                     entry[0],
-                    f"fn({parameter_text}) -> {signature.result_type}",
-                    entry[2],
-                    signature.effect,
-                    entry[4],
-                    entry[5],
-                    entry[6],
+                    f"fn({parameter_text}) -> {method_signature.result_type}",
+                    (
+                        f"parameters={method_signature.parameter_ownership}; "
+                        f"result={method_signature.result_ownership}"
+                    ),
+                    entry[3],
+                    method_signature.result_ownership == "owned",
+                    method_signature.result_ownership == "owned"
+                    or any(
+                        item in {"Text", "TextView", "Bytes", "BytesView"}
+                        for item in method_signature.parameters
+                    ),
+                    "may_fail" in method_signature.effects,
                     entry[7],
-                    entry[8],
+                    CONTRACT_GRAPH.abi_lowering(entry[0]) or entry[8],
                 )
             )
         entries = normalized_entries
@@ -5915,6 +5946,13 @@ __MERLO_CAPS__
             for name in INTRINSIC_SIGNATURES
             if (lowering := CONTRACT_GRAPH.abi_lowering(name)) is not None
         }
+        implementations.update(
+            {
+                f"{receiver}.{method}": signature.abi_lowering
+                for (receiver, method), signature in CONTRACT_GRAPH.methods.items()
+                if signature.static and signature.abi_lowering is not None
+            }
+        )
         present = {entry[0] for entry in normalized_entries}
         for name, intrinsic in INTRINSIC_SIGNATURES.items():
             if name in present:
@@ -5940,6 +5978,35 @@ __MERLO_CAPS__
                     linear,
                     intrinsic.result_type.startswith("Result["),
                     "O(n)" if linear else "O(1)",
+                    implementations[name],
+                )
+            )
+        present = {entry[0] for entry in normalized_entries}
+        for (receiver, method), contract in CONTRACT_GRAPH.methods.items():
+            name = f"{receiver}.{method}"
+            if not contract.static or name in present:
+                continue
+            parameter_text = ", ".join(contract.parameters)
+            linear = (
+                contract.result_ownership == "owned"
+                or any(
+                    item in {"Text", "TextView", "Bytes", "BytesView"}
+                    for item in contract.parameters
+                )
+            )
+            normalized_entries.append(
+                (
+                    name,
+                    f"fn({parameter_text}) -> {contract.result_type}",
+                    (
+                        f"parameters={contract.parameter_ownership}; "
+                        f"result={contract.result_ownership}"
+                    ),
+                    "memory",
+                    "allocate" in contract.effects,
+                    "copy" in contract.effects,
+                    "may_fail" in contract.effects,
+                    "O(n)" if "copy" in contract.effects else "O(1)",
                     implementations[name],
                 )
             )

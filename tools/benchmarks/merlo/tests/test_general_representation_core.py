@@ -280,6 +280,7 @@ def test_runtime_vec_box_rules_and_c_intrinsic_boundary(layers):
         "host_output",
         "overflow_trap",
         "Text.from_bytes",
+        "TextBuilder.new",
         "TextBuilder.append",
         "TextBuilder.finish",
     } == set(manifest)

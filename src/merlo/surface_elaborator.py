@@ -1593,14 +1593,34 @@ class _Elaborator:
                     term = self.types.typed("Map[Text,UInt64]")
                 elif (
                     isinstance(receiver_expression, SurfaceName)
-                    and receiver_expression.name == "TextBuilder"
-                    and method == "new"
-                ):
-                    if expression.arguments:
-                        raise SurfaceElaborationError(
-                            "ArityMismatch: TextBuilder.new"
+                    and (
+                        static_signature
+                        := CONTRACT_GRAPH.static_method(
+                            receiver_expression.name,
+                            method,
                         )
-                    term = self.types.typed("TextBuilder")
+                    )
+                ):
+                    if len(expression.arguments) != len(
+                        static_signature.parameters
+                    ):
+                        raise SurfaceElaborationError(
+                            "ArityMismatch: "
+                            f"{receiver_expression.name}.{method}"
+                        )
+                    for argument, parameter_type in zip(
+                        expression.arguments,
+                        static_signature.parameters,
+                        strict=True,
+                    ):
+                        self._expression(
+                            argument.value,
+                            function,
+                            parameter_type,
+                        )
+                    term = self.types.typed(
+                        static_signature.result_type
+                    )
                 elif (
                     isinstance(receiver_expression, SurfaceName)
                     and receiver_expression.name == "Box"
@@ -1809,14 +1829,6 @@ class _Elaborator:
                             f"UnknownCall: {receiver_type or 'unresolved'}.entries"
                         )
                     term = self.types.typed(f"Borrow[{receiver_type}]")
-                elif (
-                    isinstance(receiver_expression, SurfaceName)
-                    and receiver_expression.name == "Text"
-                    and method == "from_bytes"
-                ):
-                    for argument in expression.arguments:
-                        self._expression(argument.value, function)
-                    term = self.types.typed("Text")
                 elif method in {
                     "is_none",
                     "is_some",

@@ -287,7 +287,7 @@ class _CFGBuilder:
             if callee.endswith(".byte"):
                 self.instruction(block, "bounds_check", operation, operands=operands, result=False)
                 op = "byte_load"
-            elif callee in {"Text.from_bytes", "TextBuilder.new"}:
+            elif "allocate" in operation.effects:
                 self.instruction(block, "allocate", operation, operands=operands, result=False)
                 op = "primitive_call"
             else:
