@@ -174,6 +174,56 @@ def test_cst_retains_generic_type_parameter_regions() -> None:
     ]
 
 
+def test_cst_retains_record_enum_and_local_type_regions() -> None:
+    result = parse_file_cst(
+        "record User:\n"
+        "    state: Text\n"
+        "enum Choice:\n"
+        "    Some: Text\n"
+        "    None\n"
+        "fn main():\n"
+        "    value: Text\n"
+        "    let count: UInt64 = 1\n"
+        "    return count\n",
+        path="retained-types.mlo",
+    )
+
+    record_field = result.declarations[0].children[1].children[0]
+    enum_payload = result.declarations[1].children[1].children[0]
+    enum_empty = result.declarations[1].children[1].children[1]
+    local_annotation = result.declarations[2].children[1].children[0]
+    local_binding = result.declarations[2].children[1].children[1]
+
+    assert [child.kind for child in record_field.children[0].children] == ["type"]
+    assert [child.kind for child in enum_payload.children[0].children] == ["type"]
+    assert not any(
+        child.kind == "type" for child in enum_empty.children[0].children
+    )
+    assert [child.kind for child in local_annotation.children[0].children] == ["type"]
+    assert [child.kind for child in local_binding.children[0].children] == [
+        "type",
+        "expression",
+    ]
+
+
+def test_keyword_named_field_does_not_reclassify_else_block() -> None:
+    result = parse_file_cst(
+        "record Shipment:\n"
+        "    state: Text\n"
+        "fn main():\n"
+        "    if true:\n"
+        "        pass\n"
+        "    else:\n"
+        "        pass\n",
+        path="keyword-field.mlo",
+    )
+
+    field = result.declarations[0].children[1].children[0]
+    function_block = result.declarations[1].children[1]
+    assert field.kind == "field"
+    assert [child.kind for child in function_block.children] == ["if", "else"]
+
+
 def test_multiline_delimited_expression_is_one_lossless_cst_region() -> None:
     source = (
         "fn values() -> Array[UInt64, 2]:\n"

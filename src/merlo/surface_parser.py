@@ -1131,11 +1131,12 @@ class _Parser:
                     match.group(1),
                     _span(self.path, line),
                 )
+            anchor = self._statement_anchor(line, kind="field")
             fields.append(
                 SurfaceField(
                     _span(self.path, line),
                     match.group(1),
-                    _type_name(match.group(2)),
+                    self._cst_type_region(anchor, line, expected=True) or "",
                 )
             )
             self.index += 1
@@ -1163,7 +1164,19 @@ class _Parser:
             match = re.fullmatch(r"([A-Z]\w*)(?:\s*:\s*(.+))?", line.text)
             if line.indent != start.indent + 4 or match is None:
                 raise SurfaceSyntaxError("ExpectedEnumVariant", line.text, _span(self.path, line))
-            variants.append(SurfaceEnumVariant(_span(self.path, line), match.group(1), _type_name(match.group(2)) if match.group(2) else None))
+            anchor = self._statement_anchor(
+                line,
+                kind="field" if match.group(2) is not None else "expression_statement",
+            )
+            variants.append(SurfaceEnumVariant(
+                _span(self.path, line),
+                match.group(1),
+                self._cst_type_region(
+                    anchor,
+                    line,
+                    expected=match.group(2) is not None,
+                ),
+            ))
             self.index += 1
         return SurfaceEnum(_span(self.path, start, end_line=self.lines[self.index - 1]), name, tuple(variants), exported)
 
@@ -1339,6 +1352,40 @@ class _Parser:
         return _type_name(
             self._retained_node_text(
                 regions[0],
+                line,
+                code="CSTTypeMismatch",
+            )
+        )
+
+    def _cst_type_region(
+        self,
+        owner: SyntaxNode,
+        line: _Line,
+        *,
+        expected: bool,
+        ordinal: int = 0,
+    ) -> str | None:
+        header = next(
+            (child for child in owner.children if child.kind == "header"),
+            None,
+        )
+        regions = (
+            tuple(child for child in header.children if child.kind == "type")
+            if header is not None
+            else ()
+        )
+        required_count = ordinal + 1 if expected else 0
+        if len(regions) != required_count:
+            raise SurfaceSyntaxError(
+                "CSTTypeMismatch",
+                "CST type regions disagree with the semantic boundary",
+                _span(self.path, line),
+            )
+        if not expected:
+            return None
+        return _type_name(
+            self._retained_node_text(
+                regions[ordinal],
                 line,
                 code="CSTTypeMismatch",
             )
@@ -1856,7 +1903,7 @@ class _Parser:
             return SurfaceAnnotation(
                 _span(self.path, line),
                 match.group(1),
-                _type_name(match.group(2)),
+                self._cst_type_region(anchor, line, expected=True) or "",
             )
         if match := re.fullmatch(
             r"(?:(let|var)\s+)?([A-Za-z_]\w*)"
@@ -1877,7 +1924,11 @@ class _Parser:
                     _span(self.path, line),
                     name,
                     expression,
-                    _type_name(type_name) if type_name else None,
+                    self._cst_type_region(
+                        anchor,
+                        line,
+                        expected=type_name is not None,
+                    ),
                     kind,
                 )
             return SurfaceAssignment(

@@ -481,6 +481,15 @@ def _construct_kind(
         return first
     if (
         not top_level
+        and len(significant) >= 2
+        and significant[0].kind == "identifier"
+        and significant[1].text == ":"
+        and (first not in _STATEMENT_KEYWORDS or len(significant) > 2)
+        and not any(token.text == "=" for token in significant)
+    ):
+        return "field"
+    if (
+        not top_level
         and first in _STATEMENT_KEYWORDS
         and (
             len(significant) == 1
@@ -488,14 +497,6 @@ def _construct_kind(
         )
     ):
         return first
-    if (
-        not top_level
-        and len(significant) >= 2
-        and significant[0].kind == "identifier"
-        and significant[1].text == ":"
-        and not any(token.text == "=" for token in significant)
-    ):
-        return "field"
     return "statement" if top_level else "expression_statement"
 
 
@@ -769,6 +770,12 @@ def _header_parts(
         and "=" in texts
     ):
         equals = texts.index("=")
+        colon = next(
+            (index for index, text in enumerate(texts[:equals]) if text == ":"),
+            None,
+        )
+        if colon is not None:
+            add("type", colon + 1, equals)
         target_end = (
             equals - 1
             if equals and texts[equals - 1] in {"+", "-", "*", "/"}

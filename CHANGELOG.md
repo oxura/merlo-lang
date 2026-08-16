@@ -135,6 +135,9 @@
 - Adds retained generic-parameter nodes under function headers. Generic names,
   interface constraints, and exact spans now come from the same CST token
   stream; the old function-signature `source.find()` path has been removed.
+- Routes record fields, enum payloads, local annotations, and annotated
+  bindings through retained CST type regions. Missing or extra regions fail
+  closed instead of falling back to line-fragment type parsing.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

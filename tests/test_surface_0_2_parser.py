@@ -198,6 +198,86 @@ def test_surface_generic_parameters_consume_cst_regions() -> None:
     ]
 
 
+def test_surface_record_enum_and_local_types_consume_cst_regions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, bool]] = []
+    original = surface_parser_module._Parser._cst_type_region
+
+    def recorded(parser, owner, line, *, expected, ordinal=0):
+        calls.append((owner.kind, expected))
+        return original(
+            parser,
+            owner,
+            line,
+            expected=expected,
+            ordinal=ordinal,
+        )
+
+    monkeypatch.setattr(
+        surface_parser_module._Parser,
+        "_cst_type_region",
+        recorded,
+    )
+    program = parse_surface(
+        "record User:\n"
+        "    state: Text\n"
+        "enum Choice:\n"
+        "    Some: Text\n"
+        "    None\n"
+        "fn main():\n"
+        "    value: Text\n"
+        "    let count: UInt64 = 1\n"
+        "    return count\n",
+        path="retained-types.mlo",
+    )
+
+    record, enum, function = program.declarations
+    assert record.fields[0].type_name == "Text"
+    assert [variant.type_name for variant in enum.variants] == ["Text", None]
+    assert function.body[0].type_name == "Text"
+    assert function.body[1].type_name == "UInt64"
+    assert calls == [
+        ("field", True),
+        ("field", True),
+        ("expression_statement", False),
+        ("field", True),
+        ("let", True),
+    ]
+
+
+def test_surface_local_annotation_fails_closed_without_cst_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = "fn main():\n    let count: UInt64 = 1\n    return count\n"
+    cst = parse_file_cst(source, path="missing-local-type.mlo")
+    declaration = cst.declarations[0]
+    header, block = declaration.children
+    binding = block.children[0]
+    binding_header = binding.children[0]
+    without_type = replace(
+        binding_header,
+        children=tuple(
+            child for child in binding_header.children if child.kind != "type"
+        ),
+    )
+    changed_binding = replace(binding, children=(without_type,))
+    changed_block = replace(
+        block,
+        children=(changed_binding,) + block.children[1:],
+    )
+    changed_declaration = replace(declaration, children=(header, changed_block))
+    changed = replace(cst, declarations=(changed_declaration,))
+    monkeypatch.setattr(
+        surface_parser_module,
+        "parse_file_cst",
+        lambda _source, *, path: changed,
+    )
+
+    with pytest.raises(SurfaceSyntaxError, match="CSTTypeMismatch"):
+        parse_surface(source, path="missing-local-type.mlo")
+
+
 def test_surface_inline_declaration_fails_closed_without_cst_expression(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
