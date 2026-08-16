@@ -248,6 +248,27 @@ def test_cst_retains_flow_machine_state_and_interface_signatures() -> None:
     ]
 
 
+def test_cst_retains_invariant_expressions_and_impl_target_type() -> None:
+    result = parse_file_cst(
+        "record Positive:\n"
+        "    value: UInt64\n"
+        "    invariant value > 0\n"
+        "interface Sized:\n"
+        "    size(value: Self) -> UInt64\n"
+        "impl Sized for Map<Text, UInt64>:\n"
+        "    size(value: Map<Text, UInt64>) -> UInt64 = 0\n",
+        path="invariant-impl.mlo",
+    )
+
+    invariant = result.declarations[0].children[1].children[1].children[0]
+    impl_header = result.declarations[2].children[0]
+    assert [child.kind for child in invariant.children] == ["expression"]
+    assert [child.kind for child in impl_header.children] == ["type"]
+    assert [token.text for token in impl_header.children[0].tokens] == [
+        "Map", "<", "Text", ",", "UInt64", ">",
+    ]
+
+
 def test_multiline_delimited_expression_is_one_lossless_cst_region() -> None:
     source = (
         "fn values() -> Array[UInt64, 2]:\n"

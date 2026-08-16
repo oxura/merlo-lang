@@ -270,6 +270,35 @@ def test_surface_local_annotation_fails_closed_without_cst_type(
         parse_surface(source, path="missing-local-type.mlo")
 
 
+def test_surface_invariants_and_impl_target_consume_cst_regions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        surface_parser_module,
+        "lex_expression",
+        lambda _source: (_ for _ in ()).throw(AssertionError("re-lexed")),
+    )
+    program = parse_surface(
+        "record Positive:\n"
+        "    value: UInt64\n"
+        "    invariant value > 0\n"
+        "machine Job(id: UInt64):\n"
+        "    state Idle\n"
+        "    initial Idle\n"
+        "    invariant id > 0\n"
+        "interface Sized:\n"
+        "    size(value: Self) -> UInt64\n"
+        "impl Sized for Map<Text, UInt64>:\n"
+        "    size(value: Map<Text, UInt64>) -> UInt64 = 0\n",
+        path="invariant-impl.mlo",
+    )
+
+    record, machine, _interface, implementation = program.declarations
+    assert record.invariants[0].condition is not None
+    assert machine.invariant is not None
+    assert implementation.type_name == "Map[Text,UInt64]"
+
+
 def test_surface_inline_declaration_fails_closed_without_cst_expression(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -141,6 +141,9 @@
 - Routes flow, machine, state, and interface method signatures through retained
   parameter and return-type nodes, including interface methods without an
   explicit `fn`. The transitional string-based `_parameters()` parser is gone.
+- Routes record and machine invariant expressions through retained CST tokens
+  and retains the target type of `impl Interface for Type` as a validated type
+  region. These paths no longer re-lex or normalize line fragments directly.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

@@ -763,7 +763,7 @@ class _Parser:
             if match:
                 if exported:
                     raise SurfaceSyntaxError("ExportedImplementationForbidden", raw, _span(self.path, line))
-                return self._implementation(match.group(1), _type_name(match.group(2)))
+                return self._implementation(match.group(1), anchor)
         elif kind == "enum":
             match = re.fullmatch(r"enum\s+([A-Z]\w*)\s*:", raw)
             if match:
@@ -961,9 +961,9 @@ class _Parser:
                 continue
             invariant_match = re.fullmatch(r"invariant\s+(.+)", line.text)
             if invariant_match:
-                invariant = _parse_expression(
-                    invariant_match.group(1), self.path, line,
-                    base_column=invariant_match.start(1),
+                invariant = self._parse_cst_expression(
+                    self._statement_anchor(line, kind="invariant"),
+                    line,
                 )
                 self.index += 1
                 continue
@@ -1071,9 +1071,16 @@ class _Parser:
     def _implementation(
         self,
         interface_name: str,
-        type_name: str,
+        anchor: SyntaxNode,
     ) -> SurfaceImplementation:
         start = self.lines[self.index]
+        type_name = self._cst_type_region(anchor, start, expected=True)
+        if type_name is None:
+            raise SurfaceSyntaxError(
+                "CSTTypeMismatch",
+                "implementation target type is missing from the CST",
+                _span(self.path, start),
+            )
         self.index += 1
         methods: list[SurfaceFunction] = []
         while self.index < len(self.lines):
@@ -1145,11 +1152,9 @@ class _Parser:
                 invariants.append(
                     SurfaceInvariant(
                         _span(self.path, line),
-                        _parse_expression(
-                            match.group(1),
-                            self.path,
+                        self._parse_cst_expression(
+                            self._statement_anchor(line, kind="invariant"),
                             line,
-                            base_column=line.text.index(match.group(1)),
                         ),
                     )
                 )

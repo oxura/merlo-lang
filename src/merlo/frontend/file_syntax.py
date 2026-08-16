@@ -756,7 +756,16 @@ def _header_parts(
         colon = next((index for index, text in enumerate(texts) if text == ":"), None)
         if colon is not None:
             add("type", colon + 1, len(texts))
-    elif kind in {"return", "require", "ensure", "yield", "print"}:
+    elif kind == "impl":
+        for_index = next(
+            (index for index, text in enumerate(texts) if text == "for"),
+            None,
+        )
+        if for_index is not None:
+            add("type", for_index + 1, trailing_colon)
+    elif kind in {
+        "return", "require", "ensure", "invariant", "yield", "print",
+    }:
         add("expression", 1, trailing_colon)
     elif kind == "for":
         in_index = next(
