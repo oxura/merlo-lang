@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 
 from merlo.frontend.lexer import ExpressionLexError, ExpressionToken, lex_expression
-from merlo.frontend.file_syntax import parse_file_cst
+from merlo.frontend.file_syntax import FileCST, SyntaxNode, parse_file_cst
 from merlo.module_syntax import ModuleSyntaxError, parse_module_prelude
 from merlo.surface_ast import (
     SourceSpan,
@@ -620,11 +620,13 @@ class _Parser:
         self,
         source: str,
         path: str,
+        cst: FileCST,
         *,
         line_offset: int = 0,
     ) -> None:
         self.source = source
         self.path = path
+        self.cst = cst
         self.line_offset = line_offset
         self.lines = _lines(source, path, line_offset=line_offset)
         self.index = 0
@@ -650,14 +652,53 @@ class _Parser:
             raise SurfaceSyntaxError(exc.code, exc.message, _span(self.path, line)) from exc
 
         declarations: list[SurfaceDeclaration] = []
+        anchors = tuple(
+            node
+            for node in self.cst.declarations
+            if node.kind not in {"module", "use", "import"}
+        )
+        anchor_index = 0
         self.index = prelude.body_source_lines[0] - 1 if prelude.body_source_lines else len(self.lines)
         self._skip_blank()
         while self.index < len(self.lines):
             line = self.lines[self.index]
             if line.indent:
                 raise SurfaceSyntaxError("UnexpectedIndent", "top-level declaration expected", _span(self.path, line))
-            declarations.append(self._declaration())
+            if anchor_index >= len(anchors):
+                raise SurfaceSyntaxError(
+                    "CSTDeclarationMismatch",
+                    "semantic declaration has no CST anchor",
+                    _span(self.path, line),
+                )
+            anchor = anchors[anchor_index]
+            anchor_line = next(
+                token.line
+                for token in anchor.tokens
+                if token.start == anchor.start
+            ) + self.line_offset
+            if anchor_line != line.number:
+                raise SurfaceSyntaxError(
+                    "CSTDeclarationMismatch",
+                    f"expected CST declaration anchor on line {line.number}",
+                    _span(self.path, line),
+                )
+            declarations.append(self._declaration(anchor))
+            anchor_index += 1
             self._skip_blank()
+        if anchor_index != len(anchors):
+            anchor = anchors[anchor_index]
+            token = next(token for token in anchor.tokens if token.start == anchor.start)
+            line = _Line(
+                token.line + self.line_offset,
+                token.column - 1,
+                token.text,
+                token.text,
+            )
+            raise SurfaceSyntaxError(
+                "CSTDeclarationMismatch",
+                "CST declaration anchor was not consumed",
+                _span(self.path, line),
+            )
         end = self.lines[-1] if self.lines else _Line(1, 0, "", "")
         return SurfaceProgram(
             SourceSpan(self.path, 1, 1, end.number, len(end.raw) + 1),
@@ -667,37 +708,52 @@ class _Parser:
             self.source,
         )
 
-    def _declaration(self) -> SurfaceDeclaration:
+    def _declaration(self, anchor: SyntaxNode) -> SurfaceDeclaration:
         line = self.lines[self.index]
         raw = line.text
         exported = bool(re.match(r"export\s+", raw))
         raw = re.sub(r"^export\s+", "", raw)
-        flow_match = re.fullmatch(
-            r"(durable\s+)?flow\s+([a-z_]\w*)\((.*)\)\s*->\s*([^:]+)\s*:",
-            raw,
-        )
-        if flow_match:
-            return self._flow(flow_match, exported)
-        machine_match = re.fullmatch(r"machine\s+([A-Z]\w*)\((.*)\)\s*:", raw)
-        if machine_match:
-            return self._machine(machine_match, exported)
-        interface_match = re.fullmatch(r"interface\s+([A-Z]\w*)\s*:", raw)
-        if interface_match:
-            return self._interface(interface_match.group(1), exported)
-        implementation_match = re.fullmatch(r"impl\s+([A-Z]\w*)\s+for\s+(.+)\s*:", raw)
-        if implementation_match:
-            if exported:
-                raise SurfaceSyntaxError("ExportedImplementationForbidden", raw, _span(self.path, line))
-            return self._implementation(implementation_match.group(1), _type_name(implementation_match.group(2)))
-        enum_match = re.fullmatch(r"enum\s+([A-Z]\w*)\s*:", raw)
-        if enum_match:
-            return self._enum(enum_match.group(1), exported)
-        record_match = re.fullmatch(r"(?:record\s+)?([A-Z]\w*)\s*:", raw)
-        if record_match:
-            return self._record(record_match.group(1), exported)
-        function_match = _FUNCTION_HEADER.fullmatch(raw)
-        if function_match:
-            return self._function(function_match, exported)
+        kind = anchor.kind
+        if kind == "flow":
+            match = re.fullmatch(
+                r"(durable\s+)?flow\s+([a-z_]\w*)\((.*)\)\s*->\s*([^:]+)\s*:",
+                raw,
+            )
+            if match:
+                return self._flow(match, exported)
+        elif kind == "machine":
+            match = re.fullmatch(r"machine\s+([A-Z]\w*)\((.*)\)\s*:", raw)
+            if match:
+                return self._machine(match, exported)
+        elif kind == "interface":
+            match = re.fullmatch(r"interface\s+([A-Z]\w*)\s*:", raw)
+            if match:
+                return self._interface(match.group(1), exported)
+        elif kind == "impl":
+            match = re.fullmatch(r"impl\s+([A-Z]\w*)\s+for\s+(.+)\s*:", raw)
+            if match:
+                if exported:
+                    raise SurfaceSyntaxError("ExportedImplementationForbidden", raw, _span(self.path, line))
+                return self._implementation(match.group(1), _type_name(match.group(2)))
+        elif kind == "enum":
+            match = re.fullmatch(r"enum\s+([A-Z]\w*)\s*:", raw)
+            if match:
+                return self._enum(match.group(1), exported)
+        elif kind == "record":
+            match = re.fullmatch(r"record\s+([A-Z]\w*)\s*:", raw)
+            if match:
+                return self._record(match.group(1), exported)
+        elif kind in {"fn", "task"}:
+            match = _FUNCTION_HEADER.fullmatch(raw)
+            if match:
+                return self._function(match, exported)
+        elif kind == "statement":
+            record_match = re.fullmatch(r"([A-Z]\w*)\s*:", raw)
+            if record_match:
+                return self._record(record_match.group(1), exported)
+            function_match = _FUNCTION_HEADER.fullmatch(raw)
+            if function_match:
+                return self._function(function_match, exported)
         raise SurfaceSyntaxError("ExpectedDeclaration", raw, _span(self.path, line))
 
     def _flow_policies(
@@ -1568,7 +1624,7 @@ def parse_surface(
                 diagnostic.column + max(1, diagnostic.end - diagnostic.start),
             ),
         )
-    return _Parser(source, path, line_offset=line_offset).parse()
+    return _Parser(source, path, cst, line_offset=line_offset).parse()
 
 
 __all__ = ["SurfaceSyntaxError", "parse_surface"]

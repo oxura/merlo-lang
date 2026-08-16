@@ -110,6 +110,10 @@
   of declarations, headers, blocks, statements, and conservative type and
   expression regions. Recovery is represented by explicit error nodes, while
   structural IDs survive trivia changes and unrelated sibling insertions.
+- Routes top-level Surface declaration boundaries and kind dispatch through
+  those CST anchors. The semantic parser now fails closed if its line cursor
+  and CST disagree, including for module-body line offsets; statement and
+  expression grammar migration remains incremental.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

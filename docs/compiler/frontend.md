@@ -60,10 +60,13 @@ nodes, and IDs are derived from semantic headers plus their structural parent
 rather than absolute offsets. This makes an existing node identity survive
 trivia edits and unrelated sibling insertions. The Surface parser still owns
 the complete semantic grammar for declarations, types, statements, and
-expressions; the CST is not yet the sole parser. Module binding transforms
-Surface nodes structurally, and HIR lowering projects the retained Surface tree
-into Merlo-owned native syntax nodes, so no canonical or module source is
-reparsed and no CPython AST is created on the production frontend path.
+expressions; the CST is not yet the sole parser. Its top-level declaration
+cursor and kind dispatch do consume CST anchors, including source line offsets,
+and reject any CST/parser disagreement instead of silently reparsing a
+different boundary. Module binding transforms Surface nodes structurally, and
+HIR lowering projects the retained Surface tree into Merlo-owned native syntax
+nodes, so no canonical or module source is reparsed and no CPython AST is
+created on the production frontend path.
 
 ## Verification commands
 

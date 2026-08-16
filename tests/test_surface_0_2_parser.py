@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import ast
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 
 import pytest
 
+import merlo.surface_parser as surface_parser_module
 from merlo.canonical_ast import CanonicalFunction, CanonicalProgram, CanonicalReturn
+from merlo.frontend.file_syntax import parse_file_cst
 from merlo.surface_ast import (
     SourceSpan,
     SurfaceBinary,
@@ -45,6 +47,41 @@ def test_parser_accepts_inferred_functions_with_exact_spans(
     assert function.span == SourceSpan(
         "sample.mlo", 1, 1, len(source.splitlines()), len(source.splitlines()[-1]) + 1
     )
+
+
+def test_surface_declarations_require_and_dispatch_through_cst_anchors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = "value() = 1\n"
+    cst = parse_file_cst(source, path="anchored.mlo")
+    without_anchor = replace(cst, declarations=())
+    monkeypatch.setattr(
+        surface_parser_module,
+        "parse_file_cst",
+        lambda _source, *, path: without_anchor,
+    )
+    with pytest.raises(SurfaceSyntaxError, match="CSTDeclarationMismatch"):
+        parse_surface(source, path="anchored.mlo")
+
+    wrong_kind = replace(cst.declarations[0], kind="enum")
+    wrong_dispatch = replace(cst, declarations=(wrong_kind,))
+    monkeypatch.setattr(
+        surface_parser_module,
+        "parse_file_cst",
+        lambda _source, *, path: wrong_dispatch,
+    )
+    with pytest.raises(SurfaceSyntaxError, match="ExpectedDeclaration"):
+        parse_surface(source, path="anchored.mlo")
+
+
+def test_cst_anchor_lines_compose_with_module_body_offsets() -> None:
+    program = parse_surface(
+        "value() = 1\n",
+        path="offset.mlo",
+        line_offset=9,
+    )
+
+    assert program.declarations[0].span.start_line == 10
 
 
 def test_parser_recognizes_records_optional_types_and_tail_expressions() -> None:
