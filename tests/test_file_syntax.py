@@ -115,6 +115,34 @@ def test_cst_splits_statement_expression_regions_at_semantic_boundaries() -> Non
     ]
 
 
+def test_cst_retains_inline_declaration_expression_and_return_type_regions() -> None:
+    result = parse_file_cst(
+        "fn increment(value: UInt64) -> UInt64 = value + 1\n"
+        "identity(value) = value\n",
+        path="declaration-regions.mlo",
+    )
+    explicit_header = result.declarations[0].children[0]
+    inferred_header = result.declarations[1].children[0]
+
+    assert [child.kind for child in explicit_header.children] == [
+        "parameters",
+        "type",
+        "expression",
+    ]
+    assert [token.text for token in explicit_header.children[1].tokens] == [
+        "UInt64",
+    ]
+    assert [token.text for token in explicit_header.children[2].tokens] == [
+        "value",
+        "+",
+        "1",
+    ]
+    assert [child.kind for child in inferred_header.children] == [
+        "parameters",
+        "expression",
+    ]
+
+
 def test_multiline_delimited_expression_is_one_lossless_cst_region() -> None:
     source = (
         "fn values() -> Array[UInt64, 2]:\n"

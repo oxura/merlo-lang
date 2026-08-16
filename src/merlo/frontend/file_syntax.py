@@ -548,24 +548,52 @@ def _header_parts(
 
     texts = [token.text for token in significant]
     trailing_colon = len(texts) - 1 if texts[-1] == ":" else len(texts)
-    if kind in {"fn", "task", "flow", "extern"}:
+    function_header = kind in {"fn", "task", "flow", "extern", "statement"}
+    if kind == "expression_statement" and "(" in texts and ")" in texts:
+        last_close = len(texts) - 1 - texts[::-1].index(")")
+        function_header = (
+            texts[0] in {"fn", "task"}
+            or texts[-1] == ":"
+            or "=" in texts[last_close + 1 :]
+        )
+    if function_header:
         try:
             open_index = texts.index("(")
-            close_index = len(texts) - 1 - texts[::-1].index(")")
         except ValueError:
-            open_index = close_index = -1
+            open_index = -1
+        close_index = -1
+        depth = 0
+        for index in range(open_index, len(texts)) if open_index >= 0 else ():
+            if texts[index] == "(":
+                depth += 1
+            elif texts[index] == ")":
+                depth -= 1
+                if depth == 0:
+                    close_index = index
+                    break
         if 0 <= open_index < close_index:
             add("parameters", open_index, close_index + 1)
+            equals = next(
+                (
+                    index
+                    for index in range(close_index + 1, len(texts))
+                    if texts[index] == "="
+                ),
+                None,
+            )
+            signature_end = equals if equals is not None else trailing_colon
             arrow = next(
                 (
                     index
-                    for index in range(close_index + 1, trailing_colon - 1)
+                    for index in range(close_index + 1, signature_end - 1)
                     if texts[index : index + 2] == ["-", ">"]
                 ),
                 None,
             )
             if arrow is not None:
-                add("type", arrow + 2, trailing_colon)
+                add("type", arrow + 2, signature_end)
+            if equals is not None:
+                add("expression", equals + 1, len(texts))
     if kind in {"let", "var"}:
         equals = next((index for index, text in enumerate(texts) if text == "="), None)
         colon = next((index for index, text in enumerate(texts) if text == ":"), None)
@@ -588,7 +616,11 @@ def _header_parts(
             add("expression", in_index + 1, trailing_colon)
     elif kind in {"if", "elif", "while", "match", "case"}:
         add("expression", 1, trailing_colon)
-    elif kind == "expression_statement" and "=" in texts:
+    elif (
+        kind == "expression_statement"
+        and not function_header
+        and "=" in texts
+    ):
         equals = texts.index("=")
         target_end = (
             equals - 1
@@ -601,7 +633,7 @@ def _header_parts(
         ):
             add("expression", 0, target_end)
         add("expression", equals + 1, len(texts))
-    elif kind == "expression_statement":
+    elif kind == "expression_statement" and not function_header:
         add("expression", 0, trailing_colon)
     return tuple(parts)
 

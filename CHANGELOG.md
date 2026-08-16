@@ -126,6 +126,9 @@
   mismatched, unexpected, and unclosed delimiters at retained token spans.
   Statement expressions now rebase exact CST offsets directly, removing the
   repeated-text `source.find()` reconstruction path.
+- Retains inline function-body expressions and return-type regions under
+  declaration headers. Inline and indented expression-bodied functions now
+  consume their CST expression regions and fail closed when an anchor is absent.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

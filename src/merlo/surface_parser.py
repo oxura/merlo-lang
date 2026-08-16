@@ -774,14 +774,14 @@ class _Parser:
         elif kind in {"fn", "task"}:
             match = _FUNCTION_HEADER.fullmatch(raw)
             if match:
-                return self._function(match, exported)
+                return self._function(match, exported, anchor)
         elif kind == "statement":
             record_match = re.fullmatch(r"([A-Z]\w*)\s*:", raw)
             if record_match:
                 return self._record(record_match.group(1), exported)
             function_match = _FUNCTION_HEADER.fullmatch(raw)
             if function_match:
-                return self._function(function_match, exported)
+                return self._function(function_match, exported, anchor)
         raise SurfaceSyntaxError("ExpectedDeclaration", raw, _span(self.path, line))
 
     def _flow_policies(
@@ -1205,9 +1205,18 @@ class _Parser:
             raise SurfaceSyntaxError("DuplicateParameter", "parameter names must be unique", _span(self.path, line))
         return tuple(parameters)
 
-    def _function(self, match: re.Match[str], exported: bool) -> SurfaceFunction:
+    def _function(
+        self,
+        match: re.Match[str],
+        exported: bool,
+        anchor: SyntaxNode | None = None,
+    ) -> SurfaceFunction:
         start = self.lines[self.index]
         kind, name, raw_type_parameters, raw_parameters, raw_return, delimiter, inline = match.groups()
+        function_anchor = anchor or self._statement_anchor(
+            start,
+            kind="expression_statement",
+        )
         type_parameters = self._type_parameters(
             raw_type_parameters,
             start,
@@ -1221,13 +1230,7 @@ class _Parser:
         return_type = _type_name(raw_return) if raw_return else None
         self.index += 1
         if delimiter == "=" and inline.strip():
-            leading = len(inline) - len(inline.lstrip())
-            expression = _parse_expression(
-                inline.strip(),
-                self.path,
-                start,
-                base_column=match.start(7) + leading,
-            )
+            expression = self._parse_cst_expression(function_anchor, start)
             return SurfaceFunction(
                 name, parameters, expression, "expression", exported,
                 _span(self.path, start), kind, return_type, type_parameters,
@@ -1244,9 +1247,8 @@ class _Parser:
                     _span(self.path, start),
                 )
             expression_line = self.lines[self.index]
-            expression = _parse_expression(
-                expression_line.text,
-                self.path,
+            expression = self._parse_cst_expression(
+                self._statement_anchor(expression_line),
                 expression_line,
             )
             self.index += 1
@@ -1380,8 +1382,20 @@ class _Parser:
         base_column: int = 0,
         ordinal: int = 0,
     ) -> SurfaceExpression:
+        # source/base_column remain until the transitional statement parser is
+        # removed. The retained CST region is the expression source of truth.
+        del source, base_column
+        return self._parse_cst_expression(statement, line, ordinal=ordinal)
+
+    def _parse_cst_expression(
+        self,
+        owner: SyntaxNode,
+        line: _Line,
+        *,
+        ordinal: int = 0,
+    ) -> SurfaceExpression:
         header = next(
-            (child for child in statement.children if child.kind == "header"),
+            (child for child in owner.children if child.kind == "header"),
             None,
         )
         expressions = (
