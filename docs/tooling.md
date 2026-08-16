@@ -3,7 +3,7 @@
 The production console script is `merlo`. Its project commands are:
 
 - `new`, `check`, `verify`, `build`, `run`, and `test`;
-- `obligations`, `holes`, and `explain-hole`;
+- `obligations`, `holes`, `explain-hole`, and `synthesize`;
 - `fmt`, `expand`, `explain`, `doc`, and `map`;
 - `inspect`, `refs`, `callers`, `callees`, `deps`, `impact`, `why`, and `context`;
 - `refactor rename|move|signature`, `evolve rename|apply`, and
@@ -23,6 +23,17 @@ typed expressions, while `merlo explain-hole HOLE_ID` reports the expected
 type, visible bindings and callables, allowed effects, and capabilities. All
 four commands have deterministic `--json` output; `verify` and `obligations`
 also accept the same optional `--smt z3` settings as `check`.
+
+`merlo synthesize TARGET PROJECT` fills one typed hole with deterministic,
+offline candidates from bounded enumeration, contract-guided symbolic search,
+and the local package graph. Preview is read-only and ranks only candidates
+that compile in an isolated project, remove the selected hole, and do not add a
+refuted obligation. Use `--hole ID` when the target contains more than one hole,
+`--goal TEXT` to bind the semantic capsule to an intent, `--report-out FILE` to
+persist the digest-bound report, and `--apply` for an explicit journaled write.
+Application repeats verification against the fresh SemanticWorld and rolls the
+exact transaction back if its evidence or resulting source hashes differ.
+`merlo build` never invokes synthesis or an LLM.
 
 `merlo evolve rename TARGET NEW_NAME PROJECT` creates a digest-bound plan with
 ChangeIR, a target SemanticCapsule, and a transitive impact report. Use

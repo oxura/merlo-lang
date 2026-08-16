@@ -13,6 +13,7 @@ from merlo.evolve_protocol import EvolutionPlan, VerifiedEvolutionProtocol
 from merlo.formatter import format_application_source
 from merlo.project import Project
 from merlo.semantic_world import SemanticWorld
+from merlo.synthesize_protocol import synthesize_typed_hole
 from merlo.docgen import generate_documentation, write_documentation
 from merlo.test_runner import run_project_tests
 
@@ -25,7 +26,7 @@ _PRODUCTION_COMMANDS = (
     "new", "check", "verify", "obligations", "holes", "explain-hole",
     "build", "run", "test", "fmt", "expand", "explain", "doc", "map",
     "inspect", "refs", "callers", "callees", "deps", "impact", "why",
-    "context", "refactor", "evolve", "add",
+    "context", "refactor", "evolve", "synthesize", "add",
 )
 
 
@@ -98,6 +99,19 @@ def build_parser() -> argparse.ArgumentParser:
     explain_hole.add_argument("hole_id")
     explain_hole.add_argument("path", nargs="?", default=".")
     _json_flag(explain_hole)
+
+    synthesize = commands.add_parser(
+        "synthesize",
+        help="generate and verify deterministic typed-hole candidates",
+    )
+    synthesize.add_argument("target")
+    synthesize.add_argument("path", nargs="?", default=".")
+    synthesize.add_argument("--hole")
+    synthesize.add_argument("--goal", default="")
+    synthesize.add_argument("--max-candidates", type=int, default=16)
+    synthesize.add_argument("--apply", action="store_true")
+    synthesize.add_argument("--report-out")
+    _json_flag(synthesize)
 
     for name in ("inspect", "refs", "callers", "callees", "deps", "impact", "context"):
         command = commands.add_parser(name, help=f"query semantic world ({name})")
@@ -596,6 +610,102 @@ def _main_production(args: argparse.Namespace) -> int:
         )
         _emit(payload, args.json, text=text)
         return EXIT_OK if ok else EXIT_DIAGNOSTIC
+    if name == "synthesize":
+        project = _project(args.path)
+        world = _world(project)
+        symbol = world.resolve(args.target)
+        holes = tuple(symbol.get("holes", ()))
+        if args.hole is None:
+            if len(holes) != 1:
+                raise ValueError(
+                    "TypedHoleSelectionRequired: target must have exactly "
+                    "one hole or --hole must be provided"
+                )
+            hole_id = holes[0]["hole_id"]
+        else:
+            matches = tuple(
+                item for item in holes if item.get("hole_id") == args.hole
+            )
+            if len(matches) != 1:
+                raise ValueError(f"UnknownTypedHole: {args.hole}")
+            hole_id = args.hole
+        run = synthesize_typed_hole(
+            world,
+            symbol["symbol_id"],
+            hole_id,
+            goal=args.goal,
+            max_candidates=args.max_candidates,
+        )
+        if args.report_out:
+            destination = Path(args.report_out).resolve()
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_text(run.to_json() + "\n", encoding="utf-8")
+        selected = run.selected_candidate
+        verified_count = sum(item.verified for item in run.verifications)
+        if selected is None:
+            payload = {
+                "ok": False,
+                "status": "no_verified_candidate",
+                "report_path": (
+                    str(Path(args.report_out).resolve())
+                    if args.report_out
+                    else None
+                ),
+                "run": run.to_dict(),
+            }
+            _emit(
+                payload,
+                args.json,
+                text=(
+                    f"no verified synthesis candidate\n"
+                    f"generated: {len(run.candidates)}\n"
+                    f"verified: {verified_count}\n"
+                ),
+            )
+            return EXIT_DIAGNOSTIC
+        expression = str(selected.change_ir.metadata.get("replacement", ""))
+        if args.apply:
+            application = run.apply(world)
+            ok = application["status"] == "committed"
+            payload = {
+                "ok": ok,
+                "status": application["status"],
+                "selected_expression": expression,
+                "application": application,
+                "run": run.to_dict(),
+            }
+            _emit(
+                payload,
+                args.json,
+                text=(
+                    f"synthesis {application['status']}\n"
+                    f"selected: {expression}\n"
+                    f"candidates: {len(run.candidates)}\n"
+                    f"verified: {verified_count}\n"
+                ),
+            )
+            return EXIT_OK if ok else EXIT_DIAGNOSTIC
+        payload = {
+            "ok": True,
+            "status": "selected",
+            "selected_expression": expression,
+            "report_path": (
+                str(Path(args.report_out).resolve())
+                if args.report_out
+                else None
+            ),
+            "run": run.to_dict(),
+        }
+        _emit(
+            payload,
+            args.json,
+            text=(
+                f"selected: {expression}\n"
+                f"candidates: {len(run.candidates)}\n"
+                f"verified: {verified_count}\n"
+            ),
+        )
+        return EXIT_OK
     raise ValueError(f"UnknownCommand: {name}")
 
 

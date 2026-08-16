@@ -83,6 +83,10 @@
 - Routes ChangeIR application through durable source-snapshot transactions
   with atomic commit, exact rollback/replay, stale-state rejection, and
   content-addressed journals.
+- Adds deterministic offline typed-hole synthesis through bounded enumeration,
+  contract-guided symbolic search, and local package candidates. Preview is
+  read-only; explicit apply repeats isolated compilation and obligation checks,
+  binds evidence to exact source hashes, and rolls back on any mismatch.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.
