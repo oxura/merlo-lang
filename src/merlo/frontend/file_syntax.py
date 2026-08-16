@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from merlo.frontend.lexer import ExpressionLexError, ExpressionToken, lex_expression
 
@@ -53,6 +53,15 @@ class SyntaxNode:
     start: int
     end: int
     tokens: tuple[FileToken, ...]
+    children: tuple[SyntaxNode, ...] = ()
+    diagnostic_codes: tuple[str, ...] = ()
+
+    def walk(self) -> tuple[SyntaxNode, ...]:
+        return (self,) + tuple(
+            descendant
+            for child in self.children
+            for descendant in child.walk()
+        )
 
 
 @dataclass(frozen=True)
@@ -63,6 +72,8 @@ class FileCST:
     declarations: tuple[SyntaxNode, ...]
     diagnostics: tuple[FileDiagnostic, ...]
     syntax_id: str
+    root: SyntaxNode
+    errors: tuple[SyntaxNode, ...] = ()
 
     def to_source(self) -> str:
         return "".join(
@@ -303,13 +314,33 @@ _DECLARATION_KEYWORDS = frozenset(
 _TRIVIA = frozenset({"whitespace", "comment", "newline", "indent", "dedent"})
 
 
-def parse_file_cst(source: str, *, path: str = "main.mlo") -> FileCST:
-    lexed = lex_file(source, path=path)
-    significant = [token for token in lexed.tokens if token.kind not in _TRIVIA | {"eof"}]
-    declaration_starts: list[int] = []
+@dataclass
+class _LogicalLine:
+    depth: int
+    layout_start_index: int
+    start_index: int
+    header_end_index: int
+    children: list[_LogicalLine] = field(default_factory=list)
+    end_index: int = 0
+
+
+_STATEMENT_KEYWORDS = frozenset(
+    {
+        "let", "return", "if", "elif", "else", "for", "while", "match",
+        "case", "require", "ensure", "invariant", "uses", "parallel",
+        "compensate", "transition", "state", "goal", "modify", "preserve",
+        "forbid", "yield", "break", "continue",
+    }
+)
+
+
+def _logical_lines(tokens: tuple[FileToken, ...]) -> tuple[_LogicalLine, ...]:
+    lines: list[_LogicalLine] = []
     depth = 0
-    line_first: FileToken | None = None
-    for index, token in enumerate(lexed.tokens):
+    layout_start = 0
+    first: int | None = None
+    first_depth: int | None = None
+    for index, token in enumerate(tokens):
         if token.kind == "indent":
             depth += 1
             continue
@@ -317,53 +348,317 @@ def parse_file_cst(source: str, *, path: str = "main.mlo") -> FileCST:
             depth = max(0, depth - 1)
             continue
         if token.kind == "newline":
-            line_first = None
+            if first is not None:
+                lines.append(
+                    _LogicalLine(
+                        first_depth if first_depth is not None else depth,
+                        layout_start,
+                        first,
+                        index + 1,
+                    )
+                )
+            first = None
+            first_depth = None
+            layout_start = index + 1
             continue
         if token.kind in {"whitespace", "comment", "eof"}:
             continue
-        if line_first is None:
-            line_first = token
-            if depth == 0:
-                declaration_starts.append(index)
-    nodes: list[SyntaxNode] = []
-    for ordinal, start_index in enumerate(declaration_starts):
-        end_index = (
-            declaration_starts[ordinal + 1]
-            if ordinal + 1 < len(declaration_starts)
-            else len(lexed.tokens) - 1
-        )
-        node_tokens = tuple(lexed.tokens[start_index:end_index])
-        first = next((token for token in node_tokens if token.kind not in _TRIVIA), None)
         if first is None:
-            continue
-        keyword = first.text if first.text in _DECLARATION_KEYWORDS else "statement"
-        semantic = tuple(
-            (token.kind, token.text)
-            for token in node_tokens
-            if token.kind not in _TRIVIA and token.kind != "eof"
-        )
-        nodes.append(
-            SyntaxNode(
-                keyword,
-                _digest("syntax", path, keyword, ordinal, semantic),
-                first.start,
-                max((token.end for token in node_tokens), default=first.end),
-                node_tokens,
+            first = index
+            first_depth = depth
+    if first is not None:
+        lines.append(
+            _LogicalLine(
+                first_depth if first_depth is not None else depth,
+                layout_start,
+                first,
+                len(tokens) - 1,
             )
         )
+
+    stack: list[_LogicalLine] = []
+    roots: list[_LogicalLine] = []
+    for line in lines:
+        line.end_index = len(tokens) - 1
+        while stack and stack[-1].depth >= line.depth:
+            stack.pop().end_index = line.layout_start_index
+        if stack:
+            stack[-1].children.append(line)
+        else:
+            roots.append(line)
+        stack.append(line)
+    return tuple(roots)
+
+
+def _significant(
+    tokens: tuple[FileToken, ...],
+) -> tuple[FileToken, ...]:
+    return tuple(
+        token
+        for token in tokens
+        if token.kind not in _TRIVIA and token.kind != "eof"
+    )
+
+
+def _construct_kind(
+    tokens: tuple[FileToken, ...],
+    *,
+    top_level: bool,
+) -> str:
+    significant = _significant(tokens)
+    if not significant or any(token.kind == "error" for token in significant):
+        return "error"
+    texts = [token.text for token in significant]
+    first = texts[0]
+    if first == "export" and len(texts) > 1:
+        first = texts[1]
+    if first in _DECLARATION_KEYWORDS or first in {"use"}:
+        return first
+    if not top_level and first in _STATEMENT_KEYWORDS:
+        return first
+    if (
+        not top_level
+        and len(significant) >= 2
+        and significant[0].kind == "identifier"
+        and significant[1].text == ":"
+        and not any(token.text == "=" for token in significant)
+    ):
+        return "field"
+    return "statement" if top_level else "expression_statement"
+
+
+def _semantic_key(tokens: tuple[FileToken, ...]) -> tuple[tuple[str, str], ...]:
+    return tuple((token.kind, token.text) for token in _significant(tokens))
+
+
+def _leaf_node(
+    kind: str,
+    tokens: tuple[FileToken, ...],
+    *,
+    parent_id: str,
+    ordinal: int,
+) -> SyntaxNode | None:
+    significant = _significant(tokens)
+    if not significant:
+        return None
+    return SyntaxNode(
+        kind,
+        _digest("syntax-v2-leaf", parent_id, kind, ordinal, _semantic_key(tokens)),
+        significant[0].start,
+        max(token.end for token in tokens),
+        tokens,
+    )
+
+
+def _header_parts(
+    kind: str,
+    tokens: tuple[FileToken, ...],
+    *,
+    parent_id: str,
+) -> tuple[SyntaxNode, ...]:
+    significant = list(_significant(tokens))
+    if not significant:
+        return ()
+    parts: list[SyntaxNode] = []
+
+    def add(part_kind: str, start: int, end: int) -> None:
+        if start >= end:
+            return
+        selected = tuple(significant[start:end])
+        node = _leaf_node(
+            part_kind,
+            selected,
+            parent_id=parent_id,
+            ordinal=len(parts),
+        )
+        if node is not None:
+            parts.append(node)
+
+    texts = [token.text for token in significant]
+    trailing_colon = len(texts) - 1 if texts[-1] == ":" else len(texts)
+    if kind in {"fn", "task", "flow", "extern"}:
+        try:
+            open_index = texts.index("(")
+            close_index = len(texts) - 1 - texts[::-1].index(")")
+        except ValueError:
+            open_index = close_index = -1
+        if 0 <= open_index < close_index:
+            add("parameters", open_index, close_index + 1)
+            arrow = next(
+                (
+                    index
+                    for index in range(close_index + 1, trailing_colon - 1)
+                    if texts[index : index + 2] == ["-", ">"]
+                ),
+                None,
+            )
+            if arrow is not None:
+                add("type", arrow + 2, trailing_colon)
+    if kind == "let":
+        equals = next((index for index, text in enumerate(texts) if text == "="), None)
+        colon = next((index for index, text in enumerate(texts) if text == ":"), None)
+        if colon is not None:
+            add("type", colon + 1, equals if equals is not None else len(texts))
+        if equals is not None:
+            add("expression", equals + 1, len(texts))
+    elif kind == "field":
+        colon = next((index for index, text in enumerate(texts) if text == ":"), None)
+        if colon is not None:
+            add("type", colon + 1, len(texts))
+    elif kind in {"return", "require", "ensure", "yield"}:
+        add("expression", 1, trailing_colon)
+    elif kind in {"if", "elif", "while", "match", "case", "for"}:
+        add("expression", 1, trailing_colon)
+    elif "=" in texts:
+        equals = texts.index("=")
+        add("expression", equals + 1, len(texts))
+    return tuple(parts)
+
+
+def _build_nodes(
+    lines: tuple[_LogicalLine, ...] | list[_LogicalLine],
+    tokens: tuple[FileToken, ...],
+    *,
+    path: str,
+    parent_anchor: str,
+) -> tuple[SyntaxNode, ...]:
+    occurrences: dict[tuple[str, tuple[tuple[str, str], ...]], int] = {}
+    output: list[SyntaxNode] = []
+    for line in lines:
+        header_tokens = tuple(tokens[line.start_index : line.header_end_index])
+        full_tokens = tuple(tokens[line.start_index : line.end_index])
+        kind = _construct_kind(header_tokens, top_level=line.depth == 0)
+        semantic = _semantic_key(header_tokens)
+        occurrence_key = (kind, semantic)
+        occurrence = occurrences.get(occurrence_key, 0)
+        occurrences[occurrence_key] = occurrence + 1
+        anchor = _digest("syntax-v2-anchor", path, kind, semantic)
+        syntax_id = _digest(
+            "syntax-v2",
+            parent_anchor,
+            anchor,
+            occurrence,
+        )
+        header_id = _digest("syntax-v2-header", syntax_id)
+        header = SyntaxNode(
+            "header",
+            header_id,
+            _significant(header_tokens)[0].start,
+            max(token.end for token in header_tokens),
+            header_tokens,
+            _header_parts(kind, header_tokens, parent_id=header_id),
+        )
+        construct_children = _build_nodes(
+            line.children,
+            tokens,
+            path=path,
+            parent_anchor=syntax_id,
+        )
+        children: tuple[SyntaxNode, ...] = (header,)
+        if line.children:
+            block_start = line.header_end_index
+            block_tokens = tuple(tokens[block_start : line.end_index])
+            block = SyntaxNode(
+                "block",
+                _digest("syntax-v2-block", syntax_id),
+                block_tokens[0].start if block_tokens else header.end,
+                max((token.end for token in block_tokens), default=header.end),
+                block_tokens,
+                construct_children,
+            )
+            children += (block,)
+        diagnostics = ("InvalidToken",) if kind == "error" else ()
+        output.append(
+            SyntaxNode(
+                kind,
+                syntax_id,
+                _significant(header_tokens)[0].start,
+                max((token.end for token in full_tokens), default=header.end),
+                full_tokens,
+                children,
+                diagnostics,
+            )
+        )
+    return tuple(output)
+
+
+def parse_file_cst(source: str, *, path: str = "main.mlo") -> FileCST:
+    lexed = lex_file(source, path=path)
+    lines = _logical_lines(lexed.tokens)
+    declarations = _build_nodes(
+        lines,
+        lexed.tokens,
+        path=path,
+        parent_anchor=_digest("syntax-v2-file-anchor", path),
+    )
+    recovered_nodes = tuple(
+        node
+        for declaration in declarations
+        for node in declaration.walk()
+        if node.kind == "error"
+    )
+    covered_codes = {
+        code
+        for node in recovered_nodes
+        for code in node.diagnostic_codes
+    }
+    errors = list(recovered_nodes)
+    standalone_errors: list[SyntaxNode] = []
+    for diagnostic in lexed.diagnostics:
+        if diagnostic.code in covered_codes:
+            continue
+        diagnostic_tokens = tuple(
+            token
+            for token in lexed.tokens
+            if (
+                diagnostic.start <= token.start <= diagnostic.end
+                or token.start <= diagnostic.start < token.end
+            )
+        )
+        recovered = SyntaxNode(
+            "error",
+            _digest(
+                "syntax-v2-error",
+                path,
+                diagnostic.code,
+                tuple((token.kind, token.text) for token in diagnostic_tokens),
+            ),
+            diagnostic.start,
+            diagnostic.end,
+            diagnostic_tokens,
+            (),
+            (diagnostic.code,),
+        )
+        errors.append(recovered)
+        standalone_errors.append(recovered)
     root_id = _digest(
-        "file",
+        "syntax-v2-file",
         path,
-        tuple(node.syntax_id for node in nodes),
-        tuple((token.kind, token.text) for token in significant),
+        tuple(node.syntax_id for node in declarations),
+        tuple(node.syntax_id for node in standalone_errors),
+    )
+    root = SyntaxNode(
+        "file",
+        root_id,
+        0,
+        len(source),
+        lexed.tokens,
+        tuple(
+            sorted(
+                declarations + tuple(standalone_errors),
+                key=lambda node: (node.start, node.end, node.syntax_id),
+            )
+        ),
     )
     return FileCST(
         source,
         path,
         lexed.tokens,
-        tuple(nodes),
+        declarations,
         lexed.diagnostics,
         root_id,
+        root,
+        tuple(errors),
     )
 
 
