@@ -813,10 +813,12 @@ class _OwnershipChecker:
                 receiver = self._expr_type(node.func.value)
                 method = node.func.attr
                 receiver_text = _ast_qualified_name(node.func.value)
-                if receiver_text == "Text" and method == "from_bytes":
-                    return "Text"
-                if receiver_text == "TextBuilder" and method == "new":
-                    return "TextBuilder"
+                static_signature = CONTRACT_GRAPH.static_method(
+                    receiver_text,
+                    method,
+                )
+                if static_signature is not None:
+                    return static_signature.result_type
                 if receiver_text == "Vec" and method == "new":
                     return expected or "Vec[Inferred]"
                 if receiver_text == "Map" and method == "new":
@@ -1882,6 +1884,10 @@ class _HIRBuilder:
             method = node.func.attr
             callee = f"{receiver_text}.{method}"
             signature = intrinsic_signature(callee)
+            static_signature = CONTRACT_GRAPH.static_method(
+                receiver_text,
+                method,
+            )
             if method in COLLECTION_OPERATIONS:
                 receiver = self.expression(node.func.value)
                 receiver_type = receiver.type_name or receiver_type
@@ -2016,6 +2022,41 @@ class _HIRBuilder:
                 raise StructuredHIRCompileError(
                     f"{self.path}:{node.lineno}: UnknownIntrinsic: {callee}"
                 )
+            elif static_signature is not None:
+                if len(arguments) != static_signature.arity:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: {callee} expects "
+                        f"{static_signature.arity} argument(s), got {len(arguments)}"
+                    )
+                for index, (argument, parameter_type) in enumerate(
+                    zip(
+                        arguments,
+                        static_signature.parameters,
+                        strict=True,
+                    ),
+                    1,
+                ):
+                    if argument.type_name != parameter_type and (
+                        argument.type_name,
+                        parameter_type,
+                    ) not in {
+                        ("Bytes", "BytesView"),
+                        ("Text", "TextView"),
+                    }:
+                        raise StructuredHIRCompileError(
+                            f"{self.path}:{node.lineno}: {callee} argument "
+                            f"{index} expects {parameter_type}, got "
+                            f"{argument.type_name}"
+                        )
+                kind = "BytesTextOperation"
+                type_name = static_signature.result_type
+                ownership = static_signature.result_ownership
+                effects.update(static_signature.effects)
+                call_attributes["contract_symbol"] = callee
+                if static_signature.abi_lowering is not None:
+                    call_attributes["abi_lowering"] = (
+                        static_signature.abi_lowering
+                    )
             elif receiver_type == "FileReader" and method == "lines":
                 kind = "FileLines"
                 type_name = "FileLines"
@@ -2120,15 +2161,7 @@ class _HIRBuilder:
                 or method in {"append_byte", "append_scalar", "finish", "byte"}
             ):
                 kind = "BytesTextOperation"
-                if name == "Text.from_bytes":
-                    type_name = "Text"
-                    ownership = "owned"
-                    effects.update(("allocate", "copy", "may_fail"))
-                elif name == "TextBuilder.new":
-                    type_name = "TextBuilder"
-                    ownership = "owned"
-                    effects.update(("allocate", "may_fail"))
-                elif receiver_type == "Bytes" and method == "view":
+                if receiver_type == "Bytes" and method == "view":
                     type_name = "BytesView"
                     ownership = "borrow"
                 elif receiver_type == "Text" and method in {"as_view", "view"}:
@@ -2203,11 +2236,19 @@ class _HIRBuilder:
             name = _ast_qualified_name(node.func)
             if (
                 ".push" in name
-                or name in {"Vec.new", "TextBuilder.new", "Text.from_bytes", "Map.new"}
+                or name in {"Vec.new", "Map.new"}
                 or name.endswith(".insert")
                 or name.endswith(".increment")
             ):
                 effects.update(("allocate", "may_fail"))
+            receiver, separator, method = name.partition(".")
+            static_signature = (
+                CONTRACT_GRAPH.static_method(receiver, method)
+                if separator
+                else None
+            )
+            if static_signature is not None:
+                effects.update(static_signature.effects)
             signature = intrinsic_signature(name)
             if signature is not None:
                 effects.add(signature.effect)

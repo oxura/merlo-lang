@@ -40,6 +40,14 @@ CPython AST objects. Python parsing survives only behind the legacy
 `compile_structured_hir(source)` test boundary; project compilation never uses
 it.
 
+Builtin semantics are progressively owned by one immutable ContractGraph.
+Host intrinsics and the centralized static `Text.from_bytes` and
+`TextBuilder.new` paths carry parameter/result types, ownership, effects, and
+ABI lowering from Surface elaboration through HIR, MIR, and the backend
+manifest. Generic collection and algebraic `Option`/`Result` operations still
+have type-directed lowering rules outside that graph; this alpha does not claim
+that every builtin is generated from one declaration yet.
+
 ## Ownership and runtime
 
 Ordinary values are immutable. Owning values move unless an operation explicitly

@@ -91,6 +91,10 @@
   signatures when the exact edit compiles with every existing body and caller
   in an isolated project. Incompatible migrations remain read-only unsupported
   plans, and apply revalidates the anchored CST edit against a fresh world.
+- Moves the static `Text.from_bytes` and `TextBuilder.new` contracts into the
+  immutable ContractGraph, including parameters, ownership, effects, static
+  dispatch, and ABI lowering. Surface elaboration, HIR, MIR allocation, and the
+  backend primitive manifest now consume that shared contract.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

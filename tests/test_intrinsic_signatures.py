@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
+from pathlib import Path
 
 import pytest
 
@@ -19,6 +20,8 @@ from merlo.structured_hir_v2 import (
     StructuredHIRCompileError,
     compile_structured_hir,
 )
+from merlo.compiler import compile_project
+from merlo.project import Project
 
 
 EXPECTED = {
@@ -91,6 +94,87 @@ def test_binder_and_elaborator_contract_views_are_derived() -> None:
     assert CONTRACT_GRAPH.abi_lowering("fs.write_text") == "merlo_file_write_text"
     assert CONTRACT_GRAPH.method("TextBuilder", "append_text").receiver_ownership == "borrow_mut"  # type: ignore[union-attr]
     assert CONTRACT_GRAPH.method("TextBuilder", "finish").receiver_ownership == "consuming"  # type: ignore[union-attr]
+    text_from_bytes = CONTRACT_GRAPH.static_method("Text", "from_bytes")
+    assert text_from_bytes is not None
+    assert text_from_bytes.parameters == ("BytesView", "UInt64", "UInt64")
+    assert text_from_bytes.result_type == "Text"
+    assert text_from_bytes.result_ownership == "owned"
+    assert text_from_bytes.effects == ("allocate", "copy", "may_fail")
+    assert CONTRACT_GRAPH.abi_lowering("Text.from_bytes") == (
+        "merlo_text_from_bytes"
+    )
+    builder_new = CONTRACT_GRAPH.static_method("TextBuilder", "new")
+    assert builder_new is not None
+    assert builder_new.effects == ("allocate", "may_fail")
+    assert CONTRACT_GRAPH.abi_lowering("TextBuilder.new") == (
+        "merlo_text_builder_new"
+    )
+
+
+def test_static_contracts_drive_hir_type_ownership_effects_and_abi() -> None:
+    hir = compile_structured_hir(
+        "fn build(input: BytesView) -> Text:\n"
+        "    let copied: Text = Text.from_bytes(input, 0, input.len())\n"
+        "    let builder: TextBuilder = TextBuilder.new()\n"
+        "    builder.append_text(copied)\n"
+        "    builder.finish()\n",
+        entry_function="build",
+    )
+    calls = {
+        node.attribute_map.get("callee"): node
+        for function in hir.functions
+        for node in function.walk()
+        if node.attribute_map.get("callee")
+        in {"Text.from_bytes", "TextBuilder.new"}
+    }
+    copied = calls["Text.from_bytes"]
+    assert copied.type_name == "Text"
+    assert copied.ownership == "owned"
+    assert set(copied.effects) == {"allocate", "copy", "may_fail"}
+    assert copied.attribute_map["abi_lowering"] == "merlo_text_from_bytes"
+    builder = calls["TextBuilder.new"]
+    assert builder.type_name == "TextBuilder"
+    assert builder.ownership == "owned"
+    assert set(builder.effects) == {"allocate", "may_fail"}
+    assert builder.attribute_map["abi_lowering"] == "merlo_text_builder_new"
+
+
+def test_static_contracts_drive_backend_primitive_manifest(
+    tmp_path: Path,
+) -> None:
+    project = Project.create(tmp_path / "contract-graph", name="contract_graph")
+    (project.source_dir / "main.mlo").write_text(
+        "module main\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "export main(path: Path) -> Result[Text, AppError]:\n"
+        "    let input: Bytes = console.read()\n"
+        "    let copied: Text = Text.from_bytes(input, 0, input.len())\n"
+        "    let builder: TextBuilder = TextBuilder.new()\n"
+        "    builder.append_text(copied)\n"
+        "    Ok(builder.finish())\n",
+        encoding="utf-8",
+    )
+    generated = compile_project(
+        project.root,
+        require_interface_lock=False,
+    ).generated
+    manifest = {
+        item["name"]: item
+        for item in generated.primitive_manifest
+    }
+    copied = manifest["Text.from_bytes"]
+    assert copied["type_signature"] == (
+        "fn(BytesView, UInt64, UInt64) -> Text"
+    )
+    assert copied["may_allocate"] is True
+    assert copied["may_copy"] is True
+    assert copied["may_fail"] is True
+    builder = manifest["TextBuilder.new"]
+    assert builder["type_signature"] == "fn() -> TextBuilder"
+    assert builder["may_allocate"] is True
+    assert builder["may_copy"] is False
+    assert builder["may_fail"] is True
 
 
 @pytest.mark.parametrize("name", tuple(EXPECTED))

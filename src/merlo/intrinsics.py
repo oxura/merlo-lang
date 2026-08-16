@@ -49,6 +49,9 @@ class InstanceMethodSignature:
     parameter_ownership: tuple[str, ...] = ()
     result_ownership: str = "value"
     receiver_ownership: str = "borrow"
+    effects: tuple[str, ...] = ()
+    static: bool = False
+    abi_lowering: str | None = None
 
     def __post_init__(self) -> None:
         if not self.parameter_ownership:
@@ -64,6 +67,14 @@ class InstanceMethodSignature:
         if self.receiver_ownership not in {"borrow", "borrow_mut", "consuming"}:
             raise ValueError(
                 f"invalid receiver ownership for {self.receiver_type}.{self.name}"
+            )
+        if tuple(sorted(set(self.effects))) != self.effects:
+            raise ValueError(
+                f"effects must be canonical for {self.receiver_type}.{self.name}"
+            )
+        if self.static and self.receiver_ownership != "borrow":
+            raise ValueError(
+                f"static method cannot own a receiver: {self.receiver_type}.{self.name}"
             )
 
     @property
@@ -146,6 +157,27 @@ INTRINSIC_SIGNATURES: Mapping[str, IntrinsicSignature] = MappingProxyType(
 
 
 _INSTANCE_METHOD_ROWS = (
+    InstanceMethodSignature(
+        "Text",
+        "from_bytes",
+        ("BytesView", "UInt64", "UInt64"),
+        "Text",
+        ("borrow", "value", "value"),
+        result_ownership="owned",
+        effects=("allocate", "copy", "may_fail"),
+        static=True,
+        abi_lowering="merlo_text_from_bytes",
+    ),
+    InstanceMethodSignature(
+        "TextBuilder",
+        "new",
+        (),
+        "TextBuilder",
+        result_ownership="owned",
+        effects=("allocate", "may_fail"),
+        static=True,
+        abi_lowering="merlo_text_builder_new",
+    ),
     InstanceMethodSignature("Path", "to_text", (), "Text", result_ownership="owned"),
     InstanceMethodSignature("Bytes", "to_text", (), "Text", result_ownership="owned"),
     InstanceMethodSignature("Bytes", "view", (), "BytesView"),
@@ -286,8 +318,23 @@ class BuiltinContractGraph:
     ) -> InstanceMethodSignature | None:
         return self.methods.get((receiver_type, name))
 
+    def static_method(
+        self,
+        receiver_type: str,
+        name: str,
+    ) -> InstanceMethodSignature | None:
+        signature = self.method(receiver_type, name)
+        return signature if signature is not None and signature.static else None
+
     def abi_lowering(self, symbol: str) -> str | None:
-        return self.abi_lowerings.get(symbol)
+        lowering = self.abi_lowerings.get(symbol)
+        if lowering is not None:
+            return lowering
+        receiver, separator, method = symbol.partition(".")
+        if not separator:
+            return None
+        signature = self.methods.get((receiver, method))
+        return signature.abi_lowering if signature is not None else None
 
 
 CONTRACT_GRAPH = BuiltinContractGraph(
