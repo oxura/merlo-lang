@@ -90,18 +90,20 @@ These outputs are fixtures from the examples; they are not performance claims.
 - `Text`, `Bytes`, `Vec`, `Map`, arrays, slices, boxes, and streaming file input
 - HIR, Representation IR, MIR, C11 lowering, and native executable generation
 - CLI commands for project work, deterministic verification reports, typed-hole
-  context, SemanticWorld queries, structural refactors, and verified rename
-  evolution with exact rollback evidence
+  context and offline synthesis, SemanticWorld queries, structural refactors,
+  and verified evolution with exact rollback evidence
 - an LSP server, editor grammar, FFI boundary, standard library, and twenty
   runnable example projects
 
 The supported alpha target is Linux x86-64 with a C11-capable Clang or GCC
 toolchain. Production host I/O is synchronous. Arbitrary closure capture,
 language-level `async`, macros, cycle collection, a hosted public registry, and
-production stability guarantees are outside this release. A staged self-host
-subset and experimental machine, flow, parallel, synthesis, registry, and
-WASM components are present as research surfaces; they are not all production
-native language routes. See
+production stability guarantees are outside this release. The production
+`synthesize` command is currently limited to deterministic offline typed-hole
+candidates; LLM generation remains a separate research surface and is never
+called by `build`. A staged self-host subset and experimental machine, flow,
+parallel, registry, and WASM components are present as research surfaces; they
+are not all production native language routes. See
 [Known limitations](docs/limitations.md) for the exact boundary.
 
 > **Security note:** Merlo capabilities constrain checked program behavior, but

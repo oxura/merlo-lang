@@ -44,6 +44,24 @@ merlo evolve rename app.main.helper assist PROJECT \
 merlo evolve apply .merlo/helper-rename.json PROJECT
 ```
 
+Typed-hole synthesis uses the same world, capsule, impact, ChangeIR, and
+transaction identities:
+
+```console
+merlo synthesize app.main.parse_port PROJECT \
+  --goal "return a valid Port or ParseError" \
+  --report-out .merlo/parse-port-synthesis.json
+merlo synthesize app.main.parse_port PROJECT \
+  --goal "return a valid Port or ParseError" --apply
+```
+
+Preview generation is read-only. Bounded enumeration, symbolic contract
+projection, and local package candidates are compiled in isolated project
+copies; a candidate is rejected if it leaves the selected hole unresolved or
+introduces a refuted obligation. Apply verifies the chosen candidate again
+against the fresh world and compares stable evidence plus exact source hashes
+before committing.
+
 The apply command reconstructs the plan against a fresh SemanticWorld, rejects
 tampered or stale artifacts before writing, performs the exact structural
 edits, rebuilds the world, checks preservation, emits patch evidence, and saves

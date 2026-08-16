@@ -227,7 +227,6 @@ def _artifact(candidate: SynthesisCandidate, compilation: Any, world: SemanticWo
         "candidate_digest": candidate.digest,
         "operation": candidate.change_ir.operation,
         "target_symbol_id": candidate.target_symbol_id,
-        "world_digest": world.digest,
         "output_digest": compilation.digest,
         "semantic_digest": _digest(diff),
         "changed_files": changed,
@@ -235,6 +234,35 @@ def _artifact(candidate: SynthesisCandidate, compilation: Any, world: SemanticWo
         "priority": candidate.rank.priority,
         "cost": candidate.rank.cost,
         "tie_breaker": candidate.rank.tie_breaker,
+        "verification_summary": verification_summary(
+            compilation.verification_metrics
+        ),
+    }
+
+
+def verification_summary(report: Any) -> dict[str, Any]:
+    """Return path- and identity-independent verification evidence."""
+    return {
+        "total_obligations": report.total_obligations,
+        "automatically_closed": report.automatically_closed,
+        "refuted": report.refuted,
+        "runtime_guarded": report.runtime_guarded,
+        "unresolved": report.unresolved,
+        "closed_rate_basis_points": report.closed_rate_basis_points,
+        "categories": [
+            item.to_dict() for item in report.categories
+        ],
+        "states": sorted(
+            (
+                {
+                    "category": item.category.value,
+                    "state": item.state.value,
+                    "statuses": list(item.statuses),
+                }
+                for item in report.obligations
+            ),
+            key=_json,
+        ),
     }
 @dataclass(frozen=True)
 class CandidateVerification:
@@ -442,7 +470,13 @@ def _verify_one(world: SemanticWorld, raw: Any, original_files: Mapping[str, byt
         change = candidate.change_ir
         if change.target.to_dict() != {key: symbol[key] for key in ("symbol_id", "revision_id", "interface_revision_id", "implementation_revision_id")}:
             raise StaleWorldError("CandidateTargetIdentityMismatch")
-        capsule = world.compile_context(symbol["symbol_id"])
+        request_goal = candidate.provenance.get("request_goal", "")
+        if type(request_goal) is not str:
+            raise WorldError("CandidateRequestGoalMismatch")
+        capsule = world.compile_context(
+            symbol["symbol_id"],
+            goal=request_goal,
+        )
         if candidate.capsule_digest != capsule.digest:
             raise WorldError("CandidateCapsuleDigestMismatch")
         impact = world.change_impact(change)
@@ -483,6 +517,15 @@ def _verify_one(world: SemanticWorld, raw: Any, original_files: Mapping[str, byt
                 raise WorldError("CandidateSemanticEditMismatch")
             isolated_change.apply(isolated_world)
             compilation_after = compile_project(entry, require_interface_lock=False)
+            before_metrics = compilation_before.verification_metrics
+            after_metrics = compilation_after.verification_metrics
+            if after_metrics.refuted > before_metrics.refuted:
+                raise WorldError("CandidateIntroducedRefutedObligation")
+            if (
+                change.operation == "fill_hole"
+                and after_metrics.unresolved >= before_metrics.unresolved
+            ):
+                raise WorldError("CandidateDidNotCloseTypedHoleObligation")
             after_world = SemanticWorld.build(compilation_after, state_path=isolated_root / ".merlo" / "world-after.json", lockfile=clone_lock, require_interface_lock=False)
             after_target = after_world.resolve(candidate.target_symbol_id)
             if mapped_hole_id is not None and _hole(after_target, mapped_hole_id) is not None:
@@ -579,4 +622,5 @@ __all__ = [
     "CandidateVerification",
     "benchmark_candidates",
     "verify_candidates",
+    "verification_summary",
 ]

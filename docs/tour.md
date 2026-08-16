@@ -58,6 +58,17 @@ returns a diagnostic status while the completion obligation is unresolved.
 `merlo build` rejects the hole instead of inventing a value. This is distinct
 from postfix `operation()?` result propagation.
 
+The offline synthesis command can preview and explicitly fill such a hole:
+
+```console
+merlo synthesize app.discount PROJECT --goal "preserve its postcondition"
+merlo synthesize app.discount PROJECT --goal "preserve its postcondition" --apply
+```
+
+Only candidates independently rebuilt against the typed context are ranked.
+The apply route repeats that evidence and uses an exact rollback transaction;
+ordinary `check` and `build` never generate code or invoke an LLM.
+
 `or` is boolean OR only for `Bool`; for `Option[T] or T` it is a strict typed
 fallback. Other truthiness is rejected. `.field` is an implicit callable only
 inside `where`, `map`, and `count`; it cannot capture locals or appear at an
