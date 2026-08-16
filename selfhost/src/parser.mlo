@@ -1,0 +1,343 @@
+module parser
+
+use syntax
+use lexer
+
+record ParserState:
+    source: Text
+    tokens: Vec[Token]
+    index: UInt64
+    failed: Bool
+    error: CompileError
+record BodySpan:
+    start: UInt64
+    length: UInt64
+
+parser_join2(left: Text, right: Text) -> Text:
+    builder = TextBuilder.new()
+    builder.append_text(left)
+    builder.append_text(right)
+    builder.finish()
+
+parser_join3(first: Text, second: Text, third: Text) -> Text:
+    builder = TextBuilder.new()
+    builder.append_text(first)
+    builder.append_text(second)
+    builder.append_text(third)
+    builder.finish()
+
+export parse(source: Text, tokens: Vec[Token]) -> Program:
+    state = ParserState(source, tokens, 0, false, CompileError.UnexpectedToken("parser has not started"))
+    skip_newlines(state)
+    module_name = parse_module(state)
+    records = Vec.new()
+    enums = Vec.new()
+    functions = Vec.new()
+    while not state.failed and not at(state, token_eof_kind()):
+        skip_newlines(state)
+        if state.failed or at(state, token_eof_kind()):
+            break
+        parse_declaration(state, records, enums, functions)
+    if not state.failed and not at(state, token_eof_kind()):
+        fail(state, CompileError.UnexpectedToken("trailing tokens"))
+    program = Program(module_name, records, enums, functions, state.source.clone())
+    if state.failed:
+        return Program("", Vec.new(), Vec.new(), Vec.new(), "")
+    program
+
+parse_module(state: ParserState) -> Text:
+    if not at(state, token_module_kind()):
+        fail(state, CompileError.MissingModule("source must begin with module declaration"))
+        return ""
+    advance(state)
+    name = parse_name(state, "module name")
+    if not state.failed:
+        require_line_end(state, "module declaration")
+    name
+
+parse_use(state: ParserState) -> Unit:
+    expect(state, token_use_kind(), "'use'")
+    parse_name(state, "use module name")
+    if not state.failed:
+        require_line_end(state, "use declaration")
+
+parse_declaration(state: ParserState, records: Vec[RecordDecl], enums: Vec[EnumDecl], functions: Vec[Function]) -> Unit:
+    exported = false
+    if at(state, token_export_kind()):
+        exported = true
+        advance(state)
+    if state.failed:
+        return
+    if at(state, token_invalid_kind()):
+        fail(state, CompileError.InvalidLexeme("invalid token"))
+        return
+    if at(state, token_use_kind()):
+        if exported:
+            fail(state, CompileError.InvalidDeclaration("use cannot be exported"))
+            return
+        parse_use(state)
+        return
+    if at(state, token_module_kind()):
+        fail(state, CompileError.InvalidDeclaration("module declaration is only allowed at the beginning"))
+        return
+    if at(state, token_enum_kind()):
+        advance(state)
+        parse_enum(state, enums)
+        return
+    if at(state, token_record_kind()):
+        advance(state)
+        parse_record(state, records)
+        return
+    if not at(state, token_identifier_kind()):
+        fail(state, CompileError.InvalidDeclaration("expected function, record, or enum declaration"))
+        return
+    next = peek(state, 1)
+    if next.kind == token_lparen_kind():
+        parse_function(state, functions)
+        return
+    if next.kind == token_colon_kind():
+        parse_record(state, records)
+        return
+    if exported:
+        fail(state, CompileError.InvalidDeclaration("export must introduce a declaration"))
+    else:
+        fail(state, CompileError.InvalidDeclaration("unsupported top-level declaration"))
+
+parse_record(state: ParserState, records: Vec[RecordDecl]) -> Unit:
+    name = parse_identifier(state, "record name")
+    expect(state, token_colon_kind(), "':' after record name")
+    require_line_end(state, "record header")
+    fields = Vec.new()
+    if not expect_indent(state, "record body"):
+        return
+    while not state.failed and not at(state, token_dedent_kind()) and not at(state, token_eof_kind()):
+        if at(state, token_newline_kind()):
+            advance(state)
+        else:
+            if at(state, token_indent_kind()):
+                fail(state, CompileError.InvalidIndentation("record fields cannot nest"))
+                return
+            field_name = parse_identifier(state, "record field name")
+            expect(state, token_colon_kind(), "':' after record field")
+            field_type = parse_type(state, "record field type")
+            if not state.failed:
+                fields.push(RecordField(field_name, field_type))
+                require_line_end(state, "record field")
+    if state.failed:
+        return
+    if at(state, token_eof_kind()):
+        fail(state, CompileError.InvalidIndentation("unterminated record body"))
+        return
+    advance(state)
+    if fields.len() == 0:
+        fail(state, CompileError.InvalidDeclaration("record must declare at least one field"))
+        return
+    records.push(RecordDecl(name, fields))
+
+parse_enum(state: ParserState, enums: Vec[EnumDecl]) -> Unit:
+    name = parse_identifier(state, "enum name")
+    expect(state, token_colon_kind(), "':' after enum name")
+    require_line_end(state, "enum header")
+    variants = Vec.new()
+    if not expect_indent(state, "enum body"):
+        return
+    while not state.failed and not at(state, token_dedent_kind()) and not at(state, token_eof_kind()):
+        if at(state, token_newline_kind()):
+            advance(state)
+        else:
+            if at(state, token_indent_kind()):
+                fail(state, CompileError.InvalidIndentation("enum variants cannot nest"))
+                return
+            variant_name = parse_identifier(state, "enum variant name")
+            payload = ""
+            if at(state, token_colon_kind()):
+                advance(state)
+                payload = parse_type(state, "enum variant payload type")
+            if not state.failed:
+                variants.push(EnumVariant(variant_name, payload))
+                require_line_end(state, "enum variant")
+    if state.failed:
+        return
+    if at(state, token_eof_kind()):
+        fail(state, CompileError.InvalidIndentation("unterminated enum body"))
+        return
+    advance(state)
+    if variants.len() == 0:
+        fail(state, CompileError.InvalidDeclaration("enum must declare at least one variant"))
+        return
+    enums.push(EnumDecl(name, variants))
+
+parse_function(state: ParserState, functions: Vec[Function]) -> Unit:
+    name = parse_identifier(state, "function name")
+    expect(state, token_lparen_kind(), "'(' after function name")
+    parameters = Vec.new()
+    if not at(state, token_rparen_kind()):
+        while not state.failed:
+            parameter_name = parse_identifier(state, "parameter name")
+            expect(state, token_colon_kind(), "':' after parameter name")
+            parameter_type = parse_type(state, "parameter type")
+            if not state.failed:
+                parameters.push(Parameter(parameter_name, parameter_type))
+            if at(state, token_comma_kind()):
+                advance(state)
+                if at(state, token_rparen_kind()):
+                    fail(state, CompileError.ExpectedToken("parameter after ','"))
+                    break
+            else:
+                break
+    expect(state, token_rparen_kind(), "')' after parameters")
+    expect(state, token_arrow_kind(), "'->' after parameters")
+    return_type = parse_type(state, "return type")
+    expect(state, token_colon_kind(), "':' after return type")
+    require_line_end(state, "function header")
+    body = BodySpan(0, 0)
+    if not state.failed:
+        body = parse_body(state)
+    if not state.failed:
+        functions.push(Function(name, parameters, return_type, body.start, body.length))
+
+parse_body(state: ParserState) -> BodySpan:
+    if not expect_indent(state, "function body"):
+        return BodySpan(0, 0)
+    depth = 1
+    have_token = false
+    first = 0
+    last = 0
+    while not state.failed and not at(state, token_eof_kind()) and depth > 0:
+        token = current(state)
+        if token.kind == token_invalid_kind():
+            fail(state, CompileError.InvalidLexeme("invalid token in function body"))
+            break
+        if token.kind == token_indent_kind():
+            depth = depth + 1
+            advance(state)
+        else:
+            if token.kind == token_dedent_kind():
+                depth = depth - 1
+                advance(state)
+            else:
+                if token.kind != token_newline_kind():
+                    if not have_token:
+                        first = token.start
+                        have_token = true
+                    last = token.start + token.length
+                advance(state)
+    if state.failed:
+        return BodySpan(0, 0)
+    if depth != 0:
+        fail(state, CompileError.InvalidIndentation("unterminated function body"))
+        return BodySpan(0, 0)
+    if not have_token:
+        fail(state, CompileError.InvalidDeclaration("function body cannot be empty"))
+        return BodySpan(0, 0)
+    BodySpan(first, last - first)
+
+parse_type(state: ParserState, context: Text) -> Text:
+    if not at(state, token_identifier_kind()) and not at(state, token_fn_kind()):
+        fail(state, CompileError.UnsupportedType(context))
+        return ""
+    first = current(state)
+    if at(state, token_fn_kind()):
+        advance(state)
+        expect(state, token_lparen_kind(), "'(' in function type")
+        if not at(state, token_rparen_kind()):
+            parse_type(state, context)
+            while not state.failed and at(state, token_comma_kind()):
+                advance(state)
+                parse_type(state, context)
+        expect(state, token_rparen_kind(), "')' in function type")
+        expect(state, token_arrow_kind(), "'->' in function type")
+        parse_type(state, context)
+    else:
+        parse_identifier(state, context)
+        while not state.failed and at(state, token_dot_kind()):
+            advance(state)
+            parse_identifier(state, context)
+        if at(state, token_lbracket_kind()):
+            advance(state)
+            if at(state, token_rbracket_kind()):
+                fail(state, CompileError.UnsupportedType(parser_join2("empty generic type in ", context)))
+            else:
+                parse_type(state, context)
+                while not state.failed and at(state, token_comma_kind()):
+                    advance(state)
+                    parse_type(state, context)
+            expect(state, token_rbracket_kind(), "']' in generic type")
+    if state.failed:
+        return ""
+    if state.index == 0:
+        return ""
+    last = state.tokens.get(state.index - 1)
+    source_view = state.source.as_view()
+    source_view.slice_bytes(first.start, last.start + last.length - first.start).to_text()
+
+parse_name(state: ParserState, context: Text) -> Text:
+    result = parse_identifier(state, context)
+    while not state.failed and at(state, token_dot_kind()):
+        advance(state)
+        piece = parse_identifier(state, context)
+        result = parser_join3(result, ".", piece)
+    result
+
+parse_identifier(state: ParserState, context: Text) -> Text:
+    if not at(state, token_identifier_kind()):
+        fail(state, CompileError.ExpectedToken(context))
+        return ""
+    token = current(state)
+    advance(state)
+    token_text(state, token)
+
+token_text(state: ParserState, token: Token) -> Text:
+    source_view = state.source.as_view()
+    source_view.slice_bytes(token.start, token.length).to_text()
+
+current(state: ParserState) -> Token:
+    if state.index >= state.tokens.len():
+        return Token(token_eof_kind(), state.source.len(), 0, 0, 0)
+    state.tokens.get(state.index)
+
+peek(state: ParserState, offset: UInt64) -> Token:
+    position = state.index + offset
+    if position >= state.tokens.len():
+        return Token(token_eof_kind(), state.source.len(), 0, 0, 0)
+    state.tokens.get(position)
+
+advance(state: ParserState) -> Token:
+    token = current(state)
+    if state.index < state.tokens.len():
+        state.index = state.index + 1
+    token
+
+at(state: ParserState, kind: UInt64) -> Bool:
+    token = current(state)
+    token.kind == kind
+
+expect(state: ParserState, kind: UInt64, context: Text) -> Token:
+    token = current(state)
+    if token.kind != kind:
+        fail(state, CompileError.ExpectedToken(context))
+        return token
+    advance(state)
+
+expect_indent(state: ParserState, context: Text) -> Bool:
+    if not at(state, token_indent_kind()):
+        fail(state, CompileError.InvalidIndentation(parser_join2("expected indented ", context)))
+        return false
+    advance(state)
+    true
+
+require_line_end(state: ParserState, context: Text) -> Unit:
+    if at(state, token_newline_kind()):
+        advance(state)
+    else:
+        if not at(state, token_eof_kind()):
+            fail(state, CompileError.ExpectedToken(parser_join2("newline after ", context)))
+
+skip_newlines(state: ParserState) -> Unit:
+    while at(state, token_newline_kind()):
+        advance(state)
+
+fail(state: ParserState, error: CompileError) -> Unit:
+    if not state.failed:
+        state.failed = true
+        state.error = error

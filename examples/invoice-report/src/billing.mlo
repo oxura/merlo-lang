@@ -1,0 +1,33 @@
+module billing
+
+export Line:
+    unit_cents: UInt64
+    quantity: UInt64
+    taxable: Bool
+
+line_total(line):
+    line.unit_cents * line.quantity
+
+export render() -> Text:
+    lines: Array[Line,3] = [
+        Line(1200, 2, true),
+        Line(350, 3, false),
+        Line(499, 1, true),
+    ]
+    subtotal: UInt64 = 0
+    taxable: UInt64 = 0
+    for line in lines:
+        amount: UInt64 = line_total(line)
+        subtotal = subtotal + amount
+        if line.taxable:
+            taxable = taxable + amount
+    tax: UInt64 = taxable / 10
+    output: TextBuilder = TextBuilder.new()
+    output.append_text("invoice-report\nitems=3\nsubtotal_cents=")
+    output.append_uint64(subtotal)
+    output.append_text("\ntax_cents=")
+    output.append_uint64(tax)
+    output.append_text("\ntotal_cents=")
+    output.append_uint64(subtotal + tax)
+    output.append_byte(10)
+    output.finish()

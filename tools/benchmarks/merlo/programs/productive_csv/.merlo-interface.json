@@ -3,6 +3,7 @@
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.csv",
       "name": "fields",
@@ -16,12 +17,14 @@
           "UInt64"
         ]
       ],
+      "requirements": [],
       "return_type": "Vec[Text]",
-      "revision_id": "7d8b0ddd1cb483a918890963fe5502be135c965c8e87d488ef591fdcf4289099"
+      "revision_id": "d5c2d2d111c4f81f8498550aca3d28ef35aef76f8bfa89cd2f6662845b9b6842"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.main",
       "name": "main",
@@ -31,8 +34,9 @@
           "Path"
         ]
       ],
+      "requirements": [],
       "return_type": "Result[Text,app.sales.AppError]",
-      "revision_id": "3af0a7083c664f7a00c648f308ff17ea3c34e6e717fc828a41308f936cf69d00"
+      "revision_id": "c0457b8b6ce0832e0a9406f395462282ab388bbf08f472457a13b0ecdd87971a"
     },
     {
       "capabilities": [
@@ -43,6 +47,7 @@
         "console.write",
         "fs.read"
       ],
+      "ensures": [],
       "kind": "task",
       "module": "app.main",
       "name": "main",
@@ -52,22 +57,26 @@
           "Path"
         ]
       ],
+      "requirements": [],
       "return_type": "Result[Text,app.sales.AppError]",
-      "revision_id": "75743a13e915c496c353498b32802a6f1c5779afbee23873754bbed7f3a321a1"
+      "revision_id": "0efe53cda4cc61555ad2c0be2a1aad1c157de58224eb815f8b9ba2b75908346c"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "enum",
       "module": "app.sales",
       "name": "AppError",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "7c8eef62ef3022ef250529478696c7d514722073a5d192db95e33971b96501c0"
+      "revision_id": "c3b7db7b9e3ba85a9103dcb4864b620618d0b05cf9e78e285d3ac32eb98c782c"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.sales",
       "name": "aggregate",
@@ -81,18 +90,21 @@
           "app.sales.Options"
         ]
       ],
+      "requirements": [],
       "return_type": "Result[Text,app.sales.AppError]",
-      "revision_id": "38d04333616ea8454af5032797de0aee2ca9e64915c386f8ed8243d1b356d231"
+      "revision_id": "8613c19bccfebf8ad1a0d7eae284540cb6c36b632d2df71562a1c97850ee5e59"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "record",
       "module": "app.sales",
       "name": "Options",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "b1b8e6acc42350f534f8c52ec939bcd09a891a5d6695754e43154559f1e7dc20"
+      "revision_id": "006e09720d8b748b11ad410870e48dd154196ec6f2c44a9477ff3f14da07b546"
     }
   ],
   "schema_version": 1

@@ -1,0 +1,39 @@
+module board
+
+export enum Status:
+    Todo
+    Doing
+    Done
+
+export Task:
+    status: Status
+    points: UInt64
+
+export report() -> Text:
+    tasks: Array[Task,4] = [
+        Task(Status.Todo, 3),
+        Task(Status.Doing, 5),
+        Task(Status.Done, 8),
+        Task(Status.Done, 2),
+    ]
+    completed: UInt64 = 0
+    open: UInt64 = 0
+    completed_points: UInt64 = 0
+    for task in tasks:
+        match task.status:
+            case Status.Done:
+                completed = completed + 1
+                completed_points = completed_points + task.points
+            case Status.Todo:
+                open = open + 1
+            case Status.Doing:
+                open = open + 1
+    output: TextBuilder = TextBuilder.new()
+    output.append_text("task-board\ntasks=4\ncompleted=")
+    output.append_uint64(completed)
+    output.append_text("\nopen=")
+    output.append_uint64(open)
+    output.append_text("\ncompleted_points=")
+    output.append_uint64(completed_points)
+    output.append_byte(10)
+    output.finish()

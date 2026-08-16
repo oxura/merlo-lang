@@ -1,0 +1,4 @@
+access-policy
+principals=5
+active=3
+writers=2

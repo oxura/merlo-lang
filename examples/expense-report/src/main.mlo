@@ -1,0 +1,11 @@
+module main
+
+use expenses
+
+export enum AppError:
+    InvalidPath: Text
+
+export main(path: Path) -> Result[Text, AppError]:
+    result: Text = expenses.report()
+    console.write(result)
+    Ok(result)

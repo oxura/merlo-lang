@@ -3,16 +3,19 @@
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "enum",
       "module": "app.main",
       "name": "AppError",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "5d92a5a2fca3eec1beaadbd8230c9495f0671f99ff0721fb2e712074ba80ee2f"
+      "revision_id": "476e730d2c3b96bf865acbcb53aa0bd4810b162e3beac181e5a975c1c216f762"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.main",
       "name": "main",
@@ -22,8 +25,9 @@
           "Path"
         ]
       ],
+      "requirements": [],
       "return_type": "Result[Text,app.main.AppError]",
-      "revision_id": "beb0aec9c62e8b9bdd9b88f92fa6b39f037811dd4740645183c09041b00579c6"
+      "revision_id": "8990690a6d1684794ab4286cee3b8f0a6f66418bd161b557d4002dc7cdfffb65"
     },
     {
       "capabilities": [
@@ -34,6 +38,7 @@
         "console.write",
         "fs.read"
       ],
+      "ensures": [],
       "kind": "task",
       "module": "app.main",
       "name": "main",
@@ -43,12 +48,14 @@
           "Path"
         ]
       ],
+      "requirements": [],
       "return_type": "Result[Text,app.main.AppError]",
-      "revision_id": "31d82afa363c85ea1113265c2c5244a2a5983d01753ede0e7a12930e878bd7e0"
+      "revision_id": "ecc2d7ccad886505147ba11d852cbf038caf81b9181bd33ccd1e89e12b43eaee"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.search",
       "name": "find",
@@ -70,8 +77,9 @@
           "Bool"
         ]
       ],
+      "requirements": [],
       "return_type": "Text",
-      "revision_id": "45a99fcfb3b14d3ec157f5117c8f9920b2ed1512f682e142bbfb4a399e2237af"
+      "revision_id": "3d57deaf4ae8e4a732648030d1e32959b638e1d92b9c9370b4c4ae3d8e15a390"
     }
   ],
   "schema_version": 1

@@ -180,6 +180,8 @@ def explain_concise_application(entry: str | Path) -> str:
         lines.append(
             f"  {signature}; effects={','.join(interface.effects) or 'none'}; "
             f"capabilities={','.join(interface.capabilities) or 'none'}; "
+            f"requires={','.join(interface.requirements) or 'none'}; "
+            f"ensures={','.join(interface.ensures) or 'none'}; "
             f"revision={interface.revision_id}"
         )
     lines.append("ambiguous points: none")

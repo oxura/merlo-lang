@@ -39,6 +39,11 @@ class SurfaceName(SurfaceNode):
 
 
 @dataclass(frozen=True)
+class SurfaceHole(SurfaceNode):
+    pass
+
+
+@dataclass(frozen=True)
 class SurfaceLiteral(SurfaceNode):
     value: object
     kind: str
@@ -108,9 +113,16 @@ class SurfaceTry(SurfaceNode):
     expression: SurfaceExpression
 
 
+@dataclass(frozen=True)
+class SurfaceLambda(SurfaceNode):
+    parameters: tuple[str, ...]
+    body: SurfaceExpression
+
+
 SurfaceExpression: TypeAlias = (
     SurfaceName
     | SurfaceLiteral
+    | SurfaceHole
     | SurfaceList
     | SurfaceMember
     | SurfaceImplicitReceiver
@@ -119,6 +131,7 @@ SurfaceExpression: TypeAlias = (
     | SurfaceUnary
     | SurfaceBinary
     | SurfaceTry
+    | SurfaceLambda
 )
 
 
@@ -126,6 +139,12 @@ SurfaceExpression: TypeAlias = (
 class SurfaceParameter(SurfaceNode):
     name: str
     type_name: str | None
+
+
+@dataclass(frozen=True)
+class SurfaceTypeParameter(SurfaceNode):
+    name: str
+    constraints: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -168,6 +187,16 @@ class SurfaceComment(SurfaceNode):
 @dataclass(frozen=True)
 class SurfaceReturn(SurfaceNode):
     expression: SurfaceExpression | None
+
+
+@dataclass(frozen=True)
+class SurfaceRequire(SurfaceNode):
+    condition: SurfaceExpression
+
+
+@dataclass(frozen=True)
+class SurfaceEnsure(SurfaceNode):
+    condition: SurfaceExpression
 
 
 
@@ -235,6 +264,8 @@ SurfaceStatement: TypeAlias = (
     | SurfaceComment
     | SurfaceExpressionStatement
     | SurfaceReturn
+    | SurfaceRequire
+    | SurfaceEnsure
     | SurfaceContinue
     | SurfaceBreak
     | SurfacePass
@@ -248,10 +279,95 @@ SurfaceStatement: TypeAlias = (
 
 
 @dataclass(frozen=True)
+class SurfacePolicy(SurfaceNode):
+    kind: str
+    value: str
+    error_type: str | None = None
+    expression: SurfaceExpression | None = None
+
+
+@dataclass(frozen=True)
+class SurfaceFlowStep(SurfaceNode):
+    name: str
+    value: SurfaceExpression
+    type_name: str | None = None
+    policies: tuple[SurfacePolicy, ...] = ()
+
+
+@dataclass(frozen=True)
+class SurfaceParallel(SurfaceNode):
+    branches: tuple[SurfaceFlowStep, ...]
+
+
+@dataclass(frozen=True)
+class SurfaceFlow(SurfaceNode):
+    name: str
+    parameters: tuple[SurfaceParameter, ...]
+    return_type: str
+    body: tuple[SurfaceStatement, ...]
+    durable: bool = False
+    exported: bool = False
+
+
+@dataclass(frozen=True)
+class SurfaceState(SurfaceNode):
+    name: str
+    fields: tuple[SurfaceField, ...] = ()
+
+
+@dataclass(frozen=True)
+class SurfaceTransition(SurfaceNode):
+    name: str
+    sources: tuple[str, ...]
+    target: str
+    body: tuple[SurfaceStatement, ...]
+
+
+@dataclass(frozen=True)
+class SurfaceMachine(SurfaceNode):
+    name: str
+    parameters: tuple[SurfaceParameter, ...]
+    states: tuple[SurfaceState, ...]
+    initial: str | None
+    invariant: SurfaceExpression | None
+    transitions: tuple[SurfaceTransition, ...]
+    exported: bool = False
+
+
+SurfaceStatement = (
+    SurfaceBinding
+    | SurfaceAnnotation
+    | SurfaceAssignment
+    | SurfaceComment
+    | SurfaceExpressionStatement
+    | SurfaceReturn
+    | SurfaceRequire
+    | SurfaceEnsure
+    | SurfaceContinue
+    | SurfaceBreak
+    | SurfacePass
+    | SurfaceUses
+    | SurfacePrint
+    | SurfaceFor
+    | SurfaceIf
+    | SurfaceWhile
+    | SurfaceMatch
+    | SurfaceParallel
+    | SurfaceFlowStep
+)
+
+
+@dataclass(frozen=True)
+class SurfaceInvariant(SurfaceNode):
+    condition: SurfaceExpression
+
+
+@dataclass(frozen=True)
 class SurfaceRecord(SurfaceNode):
     name: str
     fields: tuple[SurfaceField, ...]
     exported: bool = False
+    invariants: tuple[SurfaceInvariant, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -276,6 +392,7 @@ class SurfaceFunction(SurfaceNode):
     exported: bool
     declared_kind: str | None = None
     return_type: str | None = None
+    type_parameters: tuple[SurfaceTypeParameter, ...] = ()
 
     def __init__(
         self,
@@ -287,6 +404,7 @@ class SurfaceFunction(SurfaceNode):
         span: SourceSpan,
         declared_kind: str | None = None,
         return_type: str | None = None,
+        type_parameters: tuple[SurfaceTypeParameter, ...] = (),
     ) -> None:
         object.__setattr__(self, "span", span)
         object.__setattr__(self, "name", name)
@@ -296,9 +414,39 @@ class SurfaceFunction(SurfaceNode):
         object.__setattr__(self, "exported", exported)
         object.__setattr__(self, "declared_kind", declared_kind)
         object.__setattr__(self, "return_type", return_type)
+        object.__setattr__(self, "type_parameters", type_parameters)
 
 
-SurfaceDeclaration: TypeAlias = SurfaceRecord | SurfaceEnum | SurfaceFunction
+@dataclass(frozen=True)
+class SurfaceInterfaceMethod(SurfaceNode):
+    name: str
+    parameters: tuple[SurfaceParameter, ...]
+    return_type: str
+
+
+@dataclass(frozen=True)
+class SurfaceInterface(SurfaceNode):
+    name: str
+    methods: tuple[SurfaceInterfaceMethod, ...]
+    exported: bool = False
+
+
+@dataclass(frozen=True)
+class SurfaceImplementation(SurfaceNode):
+    interface_name: str
+    type_name: str
+    methods: tuple[SurfaceFunction, ...]
+
+
+SurfaceDeclaration: TypeAlias = (
+    SurfaceRecord
+    | SurfaceEnum
+    | SurfaceFunction
+    | SurfaceInterface
+    | SurfaceImplementation
+    | SurfaceFlow
+    | SurfaceMachine
+)
 
 
 @dataclass(frozen=True)

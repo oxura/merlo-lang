@@ -20,7 +20,7 @@ export Options:
     contains: Option[Text]
     minimum_duration_ms: Option[UInt64]
 
-valid_event(value: Json) -> Bool:
+valid_event(value: Json):
     match value:
         case Json.Object(fields):
             match json.required(fields, "timestamp"):

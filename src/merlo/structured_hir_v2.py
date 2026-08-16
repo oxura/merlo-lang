@@ -1,4 +1,4 @@
-"""Structured Typed HIR v2 for Merlo's general representation milestone.
+"""Structured Typed HIR v3 for Merlo's general representation milestone.
 
 The HIR is deliberately a tree. Control-flow graphs, allocation primitives, drop
 flags, and pointer arithmetic belong to lower layers.
@@ -13,16 +13,30 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 from merlo import native_syntax as ast
+from merlo.collection_protocol import (
+    COLLECTION_OPERATIONS,
+    collection_result_type,
+    collection_shape,
+)
 from merlo.ffi import FFICompileError, FFIProgram, validate_ffi
-from merlo.canonical_ast import CanonicalProgram
+from merlo.canonical_ast import (
+    CanonicalFlowStep,
+    CanonicalParallel,
+    CanonicalProgram,
+)
 from merlo.surface_ast import SurfaceProgram
 from merlo.type_parser import generic_parts, parse_type, validate_type_expr
-from merlo.intrinsics import contextual_result_type, format_intrinsic_arity, intrinsic_signature
+from merlo.intrinsics import (
+    CONTRACT_GRAPH,
+    contextual_result_type,
+    format_intrinsic_arity,
+    intrinsic_signature,
+)
 from merlo.type_properties import TypePropertyResolver
 
 
-STRUCTURED_HIR_SCHEMA_VERSION = 2
-STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v2"
+STRUCTURED_HIR_SCHEMA_VERSION = 6
+STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v6"
 _SCALAR_TYPES = frozenset(
     {
         "Bool",
@@ -40,6 +54,18 @@ _SCALAR_TYPES = frozenset(
     }
 )
 _INTEGER_TYPES = frozenset({"Byte", "Int8", "UInt8", "Int16", "UInt16", "Int32", "UInt32", "Int64", "UInt64"})
+_LANGUAGE_NUMERIC_TYPES = frozenset(
+    {"Byte", "Int64", "UInt64", "Float32", "Float64"}
+)
+_INTEGER_BINARY_OPERATORS = (
+    ast.FloorDiv,
+    ast.Mod,
+    ast.BitOr,
+    ast.BitAnd,
+    ast.BitXor,
+    ast.LShift,
+    ast.RShift,
+)
 _TYPE_ALIASES = {"Int": "Int64", "UInt": "UInt64", "Float": "Float64"}
 
 def _type_leaf(type_name: str) -> str:
@@ -111,6 +137,22 @@ class HIRVariant:
 
 
 @dataclass(frozen=True)
+class HIRInvariant:
+    function_name: str
+    expression: str
+    source: SourceSpan
+    revision_id: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "function_name": self.function_name,
+            "expression": self.expression,
+            "source": self.source.to_dict(),
+            "revision_id": self.revision_id,
+        }
+
+
+@dataclass(frozen=True)
 class HIRTypeDecl:
     name: str
     kind: str
@@ -119,6 +161,7 @@ class HIRTypeDecl:
     revision_id: str
     fields: tuple[HIRField, ...] = ()
     variants: tuple[HIRVariant, ...] = ()
+    invariants: tuple[HIRInvariant, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -129,6 +172,9 @@ class HIRTypeDecl:
             "revision_id": self.revision_id,
             "fields": [item.to_dict() for item in self.fields],
             "variants": [item.to_dict() for item in self.variants],
+            "invariants": [
+                item.to_dict() for item in self.invariants
+            ],
         }
 
 
@@ -192,14 +238,68 @@ class HIRNode:
 
 
 @dataclass(frozen=True)
+class HIRContract:
+    kind: str
+    expression: str
+    condition: HIRNode
+    source: SourceSpan
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "expression": self.expression,
+            "condition": self.condition.to_dict(),
+            "source": self.source.to_dict(),
+        }
+
+
+@dataclass(frozen=True)
 class HIRFunction:
     name: str
     parameters: tuple[HIRParameter, ...]
     return_type: str
     effects: tuple[str, ...]
+    requirements: tuple[HIRContract, ...]
+    ensures: tuple[HIRContract, ...]
     body: tuple[HIRNode, ...]
     source: SourceSpan
     scope_id: str
+    symbol_id: str
+    revision_id: str
+
+    def walk(self) -> Iterable[HIRNode]:
+        for contract in (*self.requirements, *self.ensures):
+            yield from contract.condition.walk()
+        for node in self.body:
+            yield from node.walk()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "parameters": [item.to_dict() for item in self.parameters],
+            "return_type": self.return_type,
+            "effects": list(self.effects),
+            "requirements": [
+                item.to_dict() for item in self.requirements
+            ],
+            "ensures": [item.to_dict() for item in self.ensures],
+            "body": [item.to_dict() for item in self.body],
+            "source": self.source.to_dict(),
+            "scope_id": self.scope_id,
+            "symbol_id": self.symbol_id,
+            "revision_id": self.revision_id,
+        }
+
+@dataclass(frozen=True)
+class HIRFlow:
+    name: str
+    parameters: tuple[HIRParameter, ...]
+    return_type: str
+    durable: bool
+    effects: tuple[str, ...]
+    capabilities: tuple[str, ...]
+    body: tuple[HIRNode, ...]
+    source: SourceSpan
     symbol_id: str
     revision_id: str
 
@@ -212,14 +312,47 @@ class HIRFunction:
             "name": self.name,
             "parameters": [item.to_dict() for item in self.parameters],
             "return_type": self.return_type,
+            "durable": self.durable,
             "effects": list(self.effects),
+            "capabilities": list(self.capabilities),
             "body": [item.to_dict() for item in self.body],
             "source": self.source.to_dict(),
-            "scope_id": self.scope_id,
             "symbol_id": self.symbol_id,
             "revision_id": self.revision_id,
         }
 
+
+@dataclass(frozen=True)
+class HIRMachine:
+    name: str
+    parameters: tuple[HIRParameter, ...]
+    states: tuple[tuple[str, tuple[tuple[str, str], ...]], ...]
+    initial: str | None
+    invariant: str | None
+    transitions: tuple[HIRNode, ...]
+    source: SourceSpan
+    symbol_id: str
+    revision_id: str
+
+    def walk(self) -> Iterable[HIRNode]:
+        for node in self.transitions:
+            yield from node.walk()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "parameters": [item.to_dict() for item in self.parameters],
+            "states": [
+                {"name": name, "fields": [list(field) for field in fields]}
+                for name, fields in self.states
+            ],
+            "initial": self.initial,
+            "invariant": self.invariant,
+            "transitions": [item.to_dict() for item in self.transitions],
+            "source": self.source.to_dict(),
+            "symbol_id": self.symbol_id,
+            "revision_id": self.revision_id,
+        }
 
 @dataclass(frozen=True)
 class StructuredHIRProgram:
@@ -231,16 +364,10 @@ class StructuredHIRProgram:
     entry_function: str
     schema_version: int = STRUCTURED_HIR_SCHEMA_VERSION
     contract: str = STRUCTURED_HIR_CONTRACT
-    native_module: ast.Module | None = field(
-        default=None,
-        repr=False,
-        compare=False,
-    )
-    surface_program: SurfaceProgram | None = field(
-        default=None,
-        repr=False,
-        compare=False,
-    )
+    native_module: ast.Module | None = field(default=None, repr=False, compare=False)
+    surface_program: SurfaceProgram | None = field(default=None, repr=False, compare=False)
+    flows: tuple[HIRFlow, ...] = ()
+    machines: tuple[HIRMachine, ...] = ()
 
     def __post_init__(self) -> None:
         if self.schema_version != STRUCTURED_HIR_SCHEMA_VERSION:
@@ -251,13 +378,21 @@ class StructuredHIRProgram:
             raise ValueError("duplicate Structured HIR type")
         if len(function_names) != len(set(function_names)):
             raise ValueError("duplicate Structured HIR function")
-        if self.entry_function not in set(function_names):
+        if self.entry_function not in set(function_names) and not (self.flows or self.machines):
             raise ValueError("missing Structured HIR entry function")
-        node_ids = [node.id for function in self.functions for node in function.walk()]
+        node_ids = [
+            node.id
+            for owner in (*self.functions, *self.flows, *self.machines)
+            for node in owner.walk()
+        ]
         if len(node_ids) != len(set(node_ids)):
             raise ValueError("duplicate Structured HIR node id")
         forbidden = {"BasicBlock", "Goto", "Malloc", "Free", "DropFlag", "RawPointer"}
-        actual = {node.kind for function in self.functions for node in function.walk()}
+        actual = {
+            node.kind
+            for owner in (*self.functions, *self.flows, *self.machines)
+            for node in owner.walk()
+        }
         if actual & forbidden:
             raise ValueError("CFG or raw-memory detail escaped into Structured HIR")
 
@@ -280,6 +415,8 @@ class StructuredHIRProgram:
             "entry_function": self.entry_function,
             "types": [item.to_dict() for item in self.types],
             "functions": [item.to_dict() for item in self.functions],
+            "flows": [item.to_dict() for item in self.flows],
+            "machines": [item.to_dict() for item in self.machines],
             "invariants": {
                 "structured_program_tree": True,
                 "cfg_absent": True,
@@ -706,9 +843,10 @@ class _OwnershipChecker:
                     return "Text"
         if isinstance(node, ast.Subscript):
             owner = self._expr_type(node.value)
-            vec_parts = generic_parts(owner, "Vec", arity=1)
-            if vec_parts is not None:
-                return vec_parts[0]
+            shape = collection_shape(owner)
+            if shape is not None:
+                return shape.element_type
+            return expected
         return expected
 
     @staticmethod
@@ -808,6 +946,29 @@ class _OwnershipChecker:
             for argument in node.args:
                 if getattr(argument, "_merlo_implicit_callable", None) is None:
                     self._check_expr(argument, state)
+            method_signature = (
+                CONTRACT_GRAPH.method(receiver_type, method)
+                if receiver_type is not None and method
+                else None
+            )
+            if method_signature is not None:
+                if receiver_root is not None:
+                    if method_signature.receiver_ownership == "borrow_mut":
+                        self._check_mutation(receiver_root, state)
+                    elif method_signature.receiver_ownership == "consuming":
+                        self._consume(receiver_root, state)
+                for argument, parameter_ownership in zip(
+                    node.args,
+                    method_signature.parameter_ownership,
+                    strict=True,
+                ):
+                    root = self._root_name(argument)
+                    if root is None:
+                        continue
+                    if parameter_ownership == "borrow_mut":
+                        self._check_mutation(root, state)
+                    elif parameter_ownership in {"owned", "consuming"}:
+                        self._consume(root, state)
             signature = intrinsic_signature(name)
             if signature is not None:
                 for argument, parameter_ownership in zip(
@@ -846,6 +1007,13 @@ class _OwnershipChecker:
             result_type = self._expr_type(node, expected)
             self._borrow_result(node.func.value if receiver is not None else node, result_type, state)
             return result_type
+        if isinstance(node, ast.Lambda):
+            metadata = getattr(node, "_merlo_closure_metadata", None)
+            if metadata is None:
+                self._error("CapturingClosureUnsupported")
+            for name, _type_name_, _ownership in metadata[3]:
+                self._check_name(name, state)
+            return expected
     def _merge(self, before: _OwnershipState, branches: tuple[_OwnershipState, ...]) -> _OwnershipState:
         live = tuple(branch for branch in branches if not branch.terminal)
         if not live:
@@ -899,6 +1067,9 @@ class _OwnershipChecker:
             if isinstance(node, ast.Expr):
                 self._check_expr(node.value, state)
                 continue
+            if isinstance(node, ast.Contract):
+                self._check_expr(node.condition, state)
+                continue
             if isinstance(node, ast.Return):
                 result_type = _type_name(self.current.returns if self.current else None)
                 root = self._root_name(self._borrow_source(node.value))
@@ -931,12 +1102,19 @@ class _OwnershipChecker:
                 self._merge(state, (state, loop_state))
                 continue
             if isinstance(node, ast.For):
-                self._check_expr(node.iter, state)
+                iterable_type = self._check_expr(node.iter, state)
                 loop_state = state.clone()
                 before_statuses = set(loop_state.statuses)
                 before_borrows = set(loop_state.borrows)
                 if isinstance(node.target, ast.Name):
-                    self.env[node.target.id] = "Inferred"
+                    shape = collection_shape(iterable_type)
+                    self.env[node.target.id] = (
+                        shape.element_type
+                        if shape is not None
+                        else "TextView"
+                        if iterable_type == "FileLines"
+                        else "Inferred"
+                    )
                 loop_state = self._check_statements(node.body, loop_state)
                 for name in set(loop_state.statuses) - before_statuses:
                     loop_state.statuses.pop(name, None)
@@ -1104,6 +1282,32 @@ class _HIRBuilder:
         *,
         expected: str | None = None,
     ) -> HIRNode:
+        if isinstance(node, ast.Hole):
+            if expected is not None and expected != node.expected_type:
+                raise StructuredHIRCompileError(
+                    "TypedHoleContextMismatch: "
+                    f"{node.hole_id}: {node.expected_type} != "
+                    f"{expected}"
+                )
+            return self._new_node(
+                node,
+                "TypedHole",
+                type_name=node.expected_type,
+                ownership=(
+                    "owned"
+                    if self._owner(node.expected_type)
+                    else "value"
+                ),
+                symbol_id=node.hole_id,
+                attributes={
+                    "hole_id": node.hole_id,
+                    "expected_type": node.expected_type,
+                    "context": list(node.context),
+                    "callables": list(node.callables),
+                    "effects": list(node.effects),
+                    "capabilities": list(node.capabilities),
+                },
+            )
         if isinstance(node, ast.Name):
             type_name = self.local_types.get(node.id)
             symbol = _stable_id(
@@ -1125,7 +1329,7 @@ class _HIRBuilder:
                 attributes={"name": node.id},
             )
         if isinstance(node, ast.Constant):
-            type_name = (
+            inferred_type = (
                 "Bool"
                 if isinstance(node.value, bool)
                 else "UInt64"
@@ -1137,6 +1341,12 @@ class _HIRBuilder:
                 else "Bytes"
                 if isinstance(node.value, bytes)
                 else "Unit"
+            )
+            type_name = (
+                expected
+                if expected in _LANGUAGE_NUMERIC_TYPES
+                and inferred_type in _LANGUAGE_NUMERIC_TYPES
+                else inferred_type
             )
             attributes: dict[str, Any] = {"value": node.value}
             if isinstance(node.value, bytes):
@@ -1200,13 +1410,19 @@ class _HIRBuilder:
                 )
             return self._call(node, arguments, expected=expected)
         if isinstance(node, ast.BinOp):
-            children = (self.expression(node.left), self.expression(node.right))
+            children = (
+                self.expression(node.left, expected=expected),
+                self.expression(node.right, expected=expected),
+            )
             numeric = {
                 item.type_name
                 for item in children
                 if item.type_name is not None
             }
-            if "Bool" in numeric or not numeric <= _SCALAR_TYPES - {"Bool"}:
+            if (
+                "Bool" in numeric
+                or not numeric <= _LANGUAGE_NUMERIC_TYPES
+            ):
                 raise StructuredHIRCompileError(
                     f"{self.path}:{node.lineno}: NumericOperandsRequired "
                     f"{tuple(item.type_name for item in children)}"
@@ -1216,15 +1432,76 @@ class _HIRBuilder:
                 for item in children
                 if item.kind != "Literal" and item.type_name is not None
             }
-            type_name = next(
-                iter(non_literals),
-                next(iter(numeric), "UInt64"),
+            if len(non_literals) > 1:
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: NumericTypeMismatch "
+                    f"{tuple(sorted(non_literals))}"
+                )
+            type_name = (
+                expected
+                if expected in _LANGUAGE_NUMERIC_TYPES
+                else next(
+                    iter(non_literals),
+                    next(iter(numeric), "UInt64"),
+                )
             )
+            if (
+                isinstance(node.op, _INTEGER_BINARY_OPERATORS)
+                and type_name not in _INTEGER_TYPES
+            ):
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: IntegerOperatorRequired "
+                    f"{type(node.op).__name__} for {type_name}"
+                )
+            operator = type(node.op).__name__
+            attributes: dict[str, Any] = {"operator": operator}
+            if isinstance(node.op, (ast.Add, ast.Sub, ast.Mult)):
+                attributes["overflow"] = (
+                    "checked"
+                    if type_name in _INTEGER_TYPES
+                    else "ieee754"
+                )
+            elif isinstance(node.op, ast.Div):
+                attributes.update(
+                    division_by_zero=(
+                        "trap"
+                        if type_name in _INTEGER_TYPES
+                        else "ieee754"
+                    ),
+                    rounding=(
+                        "toward_zero"
+                        if type_name in _INTEGER_TYPES
+                        else "ieee754"
+                    ),
+                )
+                if type_name == "Int64":
+                    attributes["signed_overflow"] = "checked"
+            elif isinstance(node.op, ast.FloorDiv):
+                attributes.update(
+                    division_by_zero="trap",
+                    rounding="toward_negative_infinity",
+                    signed_overflow="checked",
+                )
+            elif isinstance(node.op, ast.Mod):
+                attributes.update(
+                    division_by_zero="trap",
+                    remainder_sign="divisor",
+                    signed_overflow="checked",
+                )
+            elif isinstance(node.op, (ast.LShift, ast.RShift)):
+                attributes.update(
+                    shift_range="checked",
+                    overflow=(
+                        "checked"
+                        if isinstance(node.op, ast.LShift)
+                        else "not_applicable"
+                    ),
+                )
             return self._new_node(
                 node,
                 "Binary",
                 type_name=type_name,
-                attributes={"operator": type(node.op).__name__, "overflow": "checked"},
+                attributes=attributes,
                 children=children,
             )
         if isinstance(node, ast.BoolOp):
@@ -1257,12 +1534,40 @@ class _HIRBuilder:
                 children=children,
             )
         if isinstance(node, ast.UnaryOp):
-            child = self.expression(node.operand)
+            child = self.expression(node.operand, expected=expected)
+            type_name = (
+                "Bool"
+                if isinstance(node.op, ast.Not)
+                else expected
+                if expected in _LANGUAGE_NUMERIC_TYPES
+                else child.type_name
+            )
+            if (
+                isinstance(node.op, ast.Invert)
+                and type_name not in _INTEGER_TYPES
+            ):
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: IntegerOperatorRequired "
+                    f"Invert for {type_name}"
+                )
+            if (
+                isinstance(node.op, ast.USub)
+                and type_name in {"Byte", "UInt64"}
+            ):
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: "
+                    f"UnsignedNegationForbidden: {type_name}"
+                )
+            attributes: dict[str, Any] = {
+                "operator": type(node.op).__name__
+            }
+            if isinstance(node.op, ast.USub) and type_name == "Int64":
+                attributes["overflow"] = "checked"
             return self._new_node(
                 node,
                 "Unary",
-                type_name="Bool" if isinstance(node.op, ast.Not) else child.type_name,
-                attributes={"operator": type(node.op).__name__},
+                type_name=type_name,
+                attributes=attributes,
                 children=(child,),
             )
         if isinstance(node, (ast.List, ast.Tuple)):
@@ -1284,17 +1589,60 @@ class _HIRBuilder:
             )
         if isinstance(node, ast.Subscript):
             owner = self.expression(node.value)
+            shape = collection_shape(owner.type_name)
+            if shape is None:
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: IndexRequiresCollection"
+                )
             return self._new_node(
                 node,
                 "Index",
+                type_name=shape.element_type,
                 ownership="borrow",
                 effects=("bounds_check",),
                 children=(owner, self.expression(node.slice)),
             )
         if isinstance(node, ast.Lambda):
-            raise StructuredHIRCompileError(
-                f"{self.path}:{node.lineno}: CapturingClosureUnsupported; "
-                "use a named non-capturing fn"
+            metadata = getattr(node, "_merlo_closure_metadata", None)
+            if metadata is None:
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: CapturingClosureUnsupported; "
+                    "use a typed Surface closure"
+                )
+            closure_id, parameters, return_type, captures, owner = metadata
+            callback_type = expected or (
+                "Fn["
+                + ",".join(
+                    (*[type_name for _, type_name in parameters], return_type)
+                )
+                + "]"
+            )
+            capture_nodes = []
+            for name, _type_name_, _ownership in captures:
+                capture = ast.Name(id=name, ctx=ast.Load())
+                for attribute in (
+                    "lineno",
+                    "col_offset",
+                    "end_lineno",
+                    "end_col_offset",
+                    "_merlo_path",
+                ):
+                    if hasattr(node, attribute):
+                        setattr(capture, attribute, getattr(node, attribute))
+                capture_nodes.append(self.expression(capture))
+            return self._new_node(
+                node,
+                "ClosureCreate",
+                type_name=callback_type,
+                ownership="owned",
+                attributes={
+                    "closure_id": closure_id,
+                    "parameters": parameters,
+                    "return_type": return_type,
+                    "captures": captures,
+                    "owner": owner,
+                },
+                children=capture_nodes,
             )
         raise StructuredHIRCompileError(
             f"{self.path}:{getattr(node, 'lineno', 1)}: unsupported expression {type(node).__name__}"
@@ -1534,16 +1882,16 @@ class _HIRBuilder:
             method = node.func.attr
             callee = f"{receiver_text}.{method}"
             signature = intrinsic_signature(callee)
-            if method in {"where", "map", "count"}:
+            if method in COLLECTION_OPERATIONS:
                 receiver = self.expression(node.func.value)
                 receiver_type = receiver.type_name or receiver_type
-                parts = generic_parts(receiver_type, "Vec", arity=1)
+                shape = collection_shape(receiver_type)
                 metadata = (
                     getattr(node.args[0], "_merlo_implicit_callable", None)
                     if len(node.args) == 1
                     else None
                 )
-                if parts is None or metadata is None:
+                if shape is None or metadata is None:
                     raise StructuredHIRCompileError(
                         f"{self.path}:{node.lineno}: typed collection callable metadata required"
                     )
@@ -1564,19 +1912,18 @@ class _HIRBuilder:
                         "expression": expression_text,
                     },
                 )
-                kind = "VecOperation"
-                type_name = (
-                    "UInt64"
-                    if method == "count"
-                    else receiver_type
-                    if method == "where"
-                    else f"Vec[{return_type}]"
+                kind = "CollectionOperation"
+                result_element = (
+                    return_type if method == "map" else shape.element_type
                 )
+                type_name = collection_result_type(method, result_element)
                 operation_children = (receiver, callback)
                 call_attributes.update(
                     {
-                        "vec_operation": method,
-                        "element_type": parts[0],
+                        "collection_operation": method,
+                        "collection_kind": shape.kind,
+                        "source_collection_type": receiver_type,
+                        "element_type": shape.element_type,
                         "callable_parameter": parameter,
                     }
                 )
@@ -2010,7 +2357,14 @@ class _HIRBuilder:
             return self._new_node(node, "While", children=(test, loop_body), scope_id=scope_id)
         if isinstance(node, ast.For) and isinstance(node.target, ast.Name):
             iterable = self.expression(node.iter)
-            self.local_types[node.target.id] = "TextView" if iterable.type_name == "FileLines" else "Inferred"
+            shape = collection_shape(iterable.type_name)
+            self.local_types[node.target.id] = (
+                shape.element_type
+                if shape is not None
+                else "TextView"
+                if iterable.type_name == "FileLines"
+                else "Inferred"
+            )
             body = tuple(self.statement(item, scope_suffix=f"for@{node.lineno}") for item in node.body)
             loop_body = self._new_node(node, "LoopBody", children=body, scope_id=self._scope(f"for@{node.lineno}"))
             return self._new_node(
@@ -2119,6 +2473,25 @@ class _HIRBuilder:
                 f"{self.path}:{node.lineno}: NonExhaustiveMatch {enum_name}: {missing}"
             )
 
+    def _contract(self, node: ast.Contract) -> HIRContract:
+        source_node = (
+            node
+            if hasattr(node, "lineno")
+            else node.condition
+        )
+        condition = self.expression(node.condition, expected="Bool")
+        if condition.type_name != "Bool":
+            raise StructuredHIRCompileError(
+                f"{self.path}:{source_node.lineno}: ContractRequiresBool"
+            )
+        return HIRContract(
+            node.kind,
+            ast.unparse(node.condition),
+            condition,
+            _span(self.path, source_node),
+        )
+
+
     def function(self, node: ast.FunctionDef) -> HIRFunction:
         self.current_function = node.name
         self.ordinal = 0
@@ -2157,11 +2530,34 @@ class _HIRBuilder:
                     _stable_id("rev", node.name, argument.arg, type_name, ownership),
                 )
             )
-        body = tuple(self.statement(item) for item in node.body)
+        requirements = tuple(
+            self._contract(item)
+            for item in node.body
+            if isinstance(item, ast.Contract)
+            and item.kind == "require"
+        )
+        body = tuple(
+            self.statement(item)
+            for item in node.body
+            if not isinstance(item, ast.Contract)
+        )
+        return_type = _type_name(node.returns)
+        self.local_types["result"] = return_type
+        try:
+            ensures = tuple(
+                self._contract(
+                    ast.Contract(
+                        condition=condition,
+                        kind="ensure",
+                    )
+                )
+                for condition in getattr(node, "_merlo_ensures", ())
+            )
+        finally:
+            del self.local_types["result"]
         effects = tuple(sorted({effect for item in body for nested in item.walk() for effect in nested.effects}))
         source = _span(self.path, node)
         symbol_id = self.function_symbols[node.name]
-        return_type = _type_name(node.returns)
         revision_id = _stable_id(
             "rev",
             node.name,
@@ -2169,12 +2565,16 @@ class _HIRBuilder:
             return_type,
             effects,
             [item.revision_id for item in body],
+            [item.condition.revision_id for item in requirements],
+            [item.condition.revision_id for item in ensures],
         )
         return HIRFunction(
             node.name,
             tuple(parameters),
             return_type,
             effects,
+            requirements,
+            ensures,
             body,
             source,
             self._scope(),
@@ -2197,6 +2597,30 @@ def _parse_type_declarations(
         type_symbol = _stable_id("shirs", path, kind, node.name)
         fields: list[HIRField] = []
         variants: list[HIRVariant] = []
+        invariants = tuple(
+            HIRInvariant(
+                function.name,
+                ast.unparse(function.body[0].value),
+                _span(path, function.body[0]),
+                _stable_id(
+                    "rev",
+                    node.name,
+                    "invariant",
+                    ast.unparse(function.body[0].value),
+                ),
+            )
+            for function in module.body
+            if isinstance(function, ast.FunctionDef)
+            and getattr(
+                function,
+                "_merlo_invariant_owner",
+                None,
+            )
+            == node.name
+            and len(function.body) == 1
+            and isinstance(function.body[0], ast.Return)
+            and function.body[0].value is not None
+        )
         for ordinal, statement in enumerate(node.body):
             if kind == "record":
                 if not isinstance(statement, ast.AnnAssign) or not isinstance(statement.target, ast.Name):
@@ -2224,9 +2648,145 @@ def _parse_type_declarations(
             node.name,
             [(item.name, item.type_name) for item in fields],
             [(item.name, item.payload_type, item.tag) for item in variants],
+            [item.revision_id for item in invariants],
         )
-        result[node.name] = HIRTypeDecl(node.name, kind, source, type_symbol, revision, tuple(fields), tuple(variants))
+        result[node.name] = HIRTypeDecl(
+            node.name,
+            kind,
+            source,
+            type_symbol,
+            revision,
+            tuple(fields),
+            tuple(variants),
+            invariants,
+        )
     return result
+def _canonical_span(span: Any) -> SourceSpan:
+    return SourceSpan(span.path, span.start_line, span.start_column, span.end_line, span.end_column)
+
+def _canonical_flow_machine_hir(program: CanonicalProgram) -> tuple[tuple[HIRFlow, ...], tuple[HIRMachine, ...]]:
+    flows: list[HIRFlow] = []
+    for flow in program.flows:
+        symbol = _stable_id("shirs", flow.span.path, "flow", flow.name)
+        revision = _stable_id(
+            "rev",
+            flow.to_payload(),
+        )
+        scope = _stable_id("scope", flow.span.path, flow.name, "flow")
+        body: list[HIRNode] = []
+        for item in flow.body:
+            if isinstance(item, CanonicalParallel):
+                children = tuple(
+                    HIRNode(
+                        _stable_id("node", flow.name, branch.node_id),
+                        "FlowStep",
+                        _canonical_span(branch.span),
+                        scope,
+                        branch.type_name,
+                        "value",
+                        tuple(),
+                        None,
+                        revision,
+                        (("name", branch.name), ("value", branch.value), ("policies", branch.to_payload()["policies"])),
+                    )
+                    for branch in item.branches
+                )
+                body.append(HIRNode(
+                    _stable_id("node", flow.name, item.node_id),
+                    "Parallel",
+                    _canonical_span(item.span),
+                    scope,
+                    None,
+                    "value",
+                    tuple(),
+                    None,
+                    revision,
+                    (),
+                    children,
+                ))
+            elif isinstance(item, CanonicalFlowStep):
+                body.append(HIRNode(
+                    _stable_id("node", flow.name, item.node_id),
+                    "FlowStep",
+                    _canonical_span(item.span),
+                    scope,
+                    item.type_name,
+                    "value",
+                    tuple(),
+                    None,
+                    revision,
+                    (("name", item.name), ("value", item.value), ("policies", item.to_payload()["policies"])),
+                ))
+        parameters = tuple(
+            HIRParameter(
+                name,
+                type_name,
+                "value",
+                _canonical_span(flow.span),
+                _stable_id("symbol", flow.name, name),
+                revision,
+            )
+            for name, type_name in flow.parameters
+        )
+        flows.append(HIRFlow(
+            flow.name,
+            parameters,
+            flow.return_type,
+            flow.durable,
+            flow.effects,
+            flow.capabilities,
+            tuple(body),
+            _canonical_span(flow.span),
+            symbol,
+            revision,
+        ))
+    machines: list[HIRMachine] = []
+    for machine in program.machines:
+        symbol = _stable_id("shirs", machine.span.path, "machine", machine.name)
+        revision = _stable_id(
+            "rev",
+            machine.to_payload(),
+        )
+        scope = _stable_id("scope", machine.span.path, machine.name, "machine")
+        transitions = tuple(
+            HIRNode(
+                _stable_id("node", machine.name, transition.node_id),
+                "Transition",
+                _canonical_span(transition.span),
+                scope,
+                transition.target,
+                "value",
+                transition.effects,
+                None,
+                revision,
+                (("name", transition.name), ("sources", transition.sources), ("target", transition.target)),
+            )
+            for transition in machine.transitions
+        )
+        parameters = tuple(
+            HIRParameter(
+                name,
+                type_name,
+                "value",
+                _canonical_span(machine.span),
+                _stable_id("symbol", machine.name, name),
+                revision,
+            )
+            for name, type_name in machine.parameters
+        )
+        machines.append(HIRMachine(
+            machine.name,
+            parameters,
+            tuple((state.name, state.fields) for state in machine.states),
+            machine.initial,
+            machine.invariant,
+            transitions,
+            _canonical_span(machine.span),
+            symbol,
+            revision,
+        ))
+    return tuple(flows), tuple(machines)
+
 
 
 
@@ -2324,7 +2884,8 @@ def compile_canonical_hir(
         raise StructuredHIRCompileError(
             f"unsupported top-level declarations: {unsupported}"
         )
-    if entry_function not in function_nodes:
+    flows, machines = _canonical_flow_machine_hir(program)
+    if entry_function not in function_nodes and not (flows or machines):
         raise StructuredHIRCompileError(
             f"missing entry function: {entry_function}"
         )
@@ -2348,6 +2909,8 @@ def compile_canonical_hir(
         entry_function,
         native_module=module,
         surface_program=program.surface_program,
+        flows=flows,
+        machines=machines,
     )
 
 
@@ -2358,6 +2921,7 @@ def compile_structured_hir_file(path: str | Path) -> StructuredHIRProgram:
 
 __all__ = [
     "HIRField",
+    "HIRInvariant",
     "HIRFunction",
     "HIRNode",
     "HIRParameter",

@@ -1,0 +1,32 @@
+module invoices
+
+export Line:
+    quantity: UInt64
+    unit_cents: UInt64
+    taxable: Bool
+
+export report() -> Text:
+    lines: Array[Line,4] = [
+        Line(2, 1250, true),
+        Line(1, 4999, true),
+        Line(3, 300, false),
+        Line(5, 120, false),
+    ]
+    subtotal: UInt64 = 0
+    taxable: UInt64 = 0
+    units: UInt64 = 0
+    for line in lines:
+        amount: UInt64 = line.quantity * line.unit_cents
+        units = units + line.quantity
+        subtotal = subtotal + amount
+        if line.taxable:
+            taxable = taxable + amount
+    output: TextBuilder = TextBuilder.new()
+    output.append_text("invoice-summary\nlines=4\nunits=")
+    output.append_uint64(units)
+    output.append_text("\nsubtotal_cents=")
+    output.append_uint64(subtotal)
+    output.append_text("\ntaxable_cents=")
+    output.append_uint64(taxable)
+    output.append_byte(10)
+    output.finish()

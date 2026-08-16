@@ -1,0 +1,17 @@
+module main
+
+use syntax
+use lexer
+use parser
+use validator
+use emitter
+export main(source: Text) -> Text:
+    console.write("")
+    tokens = lexer.lex(source.clone())
+    program = parser.parse(source, tokens)
+    if program.functions.len() == 0:
+        return "#error selfhost parse failed"
+    valid_program = validator.validate(program)
+    if valid_program.functions.len() == 0:
+        return "#error selfhost validation failed"
+    emitter.emit_c(valid_program)

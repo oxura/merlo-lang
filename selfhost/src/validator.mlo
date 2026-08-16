@@ -1,0 +1,183 @@
+module validator
+
+use syntax
+
+validator_contains(value: Text, needle: Text) -> Bool:
+    value_view: TextView = value.as_view()
+    if needle.len() == 0:
+        return true
+    if needle.len() > value.len():
+        return false
+    index: UInt64 = 0
+    last: UInt64 = value.len() - needle.len()
+    while index <= last:
+        if value_view.slice_bytes(index, needle.len()).to_text() == needle:
+            return true
+        index = index + 1
+    false
+
+validator_starts(value: Text, prefix: Text) -> Bool:
+    value_view: TextView = value.as_view()
+    if prefix.len() > value.len():
+        return false
+    value_view.slice_bytes(0, prefix.len()).to_text() == prefix
+
+validator_known_type(type_name: Text, program: Program) -> Bool:
+    if type_name == "UInt64" or type_name == "Int64" or type_name == "Bool" or type_name == "Byte":
+        return true
+    if type_name == "Text" or type_name == "TextView" or type_name == "TextBuilder" or type_name == "Unit":
+        return true
+    if type_name == "Path" or type_name == "Bytes" or type_name == "BytesView" or type_name == "FileLines":
+        return true
+    if validator_starts(type_name, "Vec[") or validator_starts(type_name, "Result[") or validator_starts(type_name, "Map["):
+        return true
+    index: UInt64 = 0
+    while index < program.records.len():
+        known_record = program.records.get(index)
+        if known_record.name == type_name:
+            return true
+        index = index + 1
+    index = 0
+    while index < program.enums.len():
+        known_enum = program.enums.get(index)
+        if known_enum.name == type_name:
+            return true
+        index = index + 1
+    false
+
+validator_duplicate_parameters(function: Function) -> Text:
+    index: UInt64 = 0
+    while index < function.parameters.len():
+        other: UInt64 = index + 1
+        while other < function.parameters.len():
+            left_parameter = function.parameters.get(index)
+            right_parameter = function.parameters.get(other)
+            if left_parameter.name == right_parameter.name:
+                return left_parameter.name
+            other = other + 1
+        index = index + 1
+    ""
+
+validator_unsupported(source: Text, function: Function) -> Text:
+    source_view: TextView = source.as_view()
+    body = source_view.slice_bytes(function.body_start, function.body_length).to_text()
+    words: Vec[Text] = Vec.new()
+    words.push("match ")
+    words.push("for ")
+    words.push("async ")
+    words.push("await ")
+    words.push("spawn ")
+    words.push("defer ")
+    index: UInt64 = 0
+    while index < words.len():
+        if validator_contains(body, words.get(index)):
+            return words.get(index)
+        index = index + 1
+    ""
+
+validator_check_fields(program: Program) -> Text:
+    index: UInt64 = 0
+    while index < program.records.len():
+        record = program.records.get(index)
+        field: UInt64 = 0
+        while field < record.fields.len():
+            item = record.fields.get(field)
+            if item.name.len() == 0 or not validator_known_type(item.type_name, program):
+                return record.name
+            other: UInt64 = field + 1
+            while other < record.fields.len():
+                other_field = record.fields.get(other)
+                if item.name == other_field.name:
+                    return item.name
+                other = other + 1
+            field = field + 1
+        index = index + 1
+    index = 0
+    while index < program.enums.len():
+        declaration = program.enums.get(index)
+        variant: UInt64 = 0
+        while variant < declaration.variants.len():
+            variant_item = declaration.variants.get(variant)
+            if variant_item.name.len() == 0 or (variant_item.payload_type.len() > 0 and not validator_known_type(variant_item.payload_type, program)):
+                return declaration.name
+            variant = variant + 1
+        index = index + 1
+    ""
+
+validator_invalid() -> Program:
+    Program("", Vec.new(), Vec.new(), Vec.new(), "")
+
+export validate(program: Program) -> Program:
+    if program.module_name.len() == 0:
+        return validator_invalid()
+    if program.functions.len() == 0:
+        return validator_invalid()
+    index: UInt64 = 0
+    while index < program.records.len():
+        record_item = program.records.get(index)
+        name = record_item.name
+        other: UInt64 = index + 1
+        while other < program.records.len():
+            other_record = program.records.get(other)
+            if name == other_record.name:
+                return validator_invalid()
+            other = other + 1
+        other = 0
+        while other < program.enums.len():
+            other_enum = program.enums.get(other)
+            if name == other_enum.name:
+                return validator_invalid()
+            other = other + 1
+        index = index + 1
+    index = 0
+    while index < program.enums.len():
+        enum_item = program.enums.get(index)
+        name = enum_item.name
+        other: UInt64 = index + 1
+        while other < program.enums.len():
+            other_enum = program.enums.get(other)
+            if name == other_enum.name:
+                return validator_invalid()
+            other = other + 1
+        index = index + 1
+    index = 0
+    while index < program.functions.len():
+        function = program.functions.get(index)
+        other: UInt64 = index + 1
+        while other < program.functions.len():
+            other_function = program.functions.get(other)
+            if function.name == other_function.name:
+                return validator_invalid()
+            other = other + 1
+        duplicate = validator_duplicate_parameters(function)
+        if duplicate.len() > 0:
+            return validator_invalid()
+        parameter: UInt64 = 0
+        while parameter < function.parameters.len():
+            parameter_item = function.parameters.get(parameter)
+            if not validator_known_type(parameter_item.type_name, program):
+                return validator_invalid()
+            parameter = parameter + 1
+        if not validator_known_type(function.return_type, program):
+            return validator_invalid()
+        index = index + 1
+    fields_error = validator_check_fields(program)
+    if fields_error.len() > 0:
+        return validator_invalid()
+    index = 0
+    while index < program.functions.len():
+        function = program.functions.get(index)
+        if function.name == "main":
+            if function.parameters.len() != 1:
+                return validator_invalid()
+            main_parameter = function.parameters.get(0)
+            if main_parameter.type_name != "Text" or function.return_type != "Text":
+                return validator_invalid()
+        index = index + 1
+    index = 0
+    while index < program.functions.len():
+        function = program.functions.get(index)
+        if function.name == "main":
+            return program
+        index = index + 1
+    validator_invalid()

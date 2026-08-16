@@ -11,6 +11,7 @@ from typing import Any, BinaryIO, Iterable, Mapping
 from urllib.parse import unquote, urlparse
 
 from merlo.alpha_protocol import AlphaProtocol
+from merlo.refactor import ChangeIR
 from merlo.compiler import compile_project
 from merlo.formatter import format_application_source
 from merlo.project import Project
@@ -466,14 +467,17 @@ class MerloLanguageServer:
                     return [self._response(request_id, locations)]
                 rename = str(params.get("newName", ""))
                 result = self.protocol.call("refactor.rename", {"target": symbol["symbol_id"], "new_name": rename, "mode": "preview"})
+                change = ChangeIR.from_dict(result, world=self.world)
+                if change.status != "ready":
+                    raise WorldError("UnsupportedMigration: rename preview is not ready")
                 changes: dict[str, list[dict[str, Any]]] = {}
-                for edit in result["edits"]:
-                    edit_path = self._public_path(Path(edit["path"]))
+                for edit in change.edits:
+                    edit_path = self._public_path(Path(edit.path))
                     try:
                         text = self.documents.get(edit_path, _Document("", edit_path, edit_path.read_text(encoding="utf-8"), None)).text
                     except OSError:
                         text = ""
-                    changes.setdefault(_uri(edit_path), []).append({"range": {"start": _position(text, int(edit["start"])), "end": _position(text, int(edit["end"]))}, "newText": edit["replacement"]})
+                    changes.setdefault(_uri(edit_path), []).append({"range": {"start": _position(text, edit.start), "end": _position(text, edit.end)}, "newText": edit.replacement})
                 for edits in changes.values():
                     edits.sort(key=lambda item: (item["range"]["start"]["line"], item["range"]["start"]["character"]))
                 return [self._response(request_id, {"changes": dict(sorted(changes.items()))})]

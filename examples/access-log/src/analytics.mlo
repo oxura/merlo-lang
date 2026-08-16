@@ -1,0 +1,21 @@
+module analytics
+
+export summarize(lines: FileLines) -> Text:
+    requests: UInt64 = 0
+    gets: UInt64 = 0
+    failures: UInt64 = 0
+    for line in lines:
+        requests = requests + 1
+        if line.contains(" GET "):
+            gets = gets + 1
+        if line.contains(" 500"):
+            failures = failures + 1
+    output: TextBuilder = TextBuilder.new()
+    output.append_text("access-log\nrequests=")
+    output.append_uint64(requests)
+    output.append_text("\nget_requests=")
+    output.append_uint64(gets)
+    output.append_text("\nserver_errors=")
+    output.append_uint64(failures)
+    output.append_byte(10)
+    output.finish()

@@ -40,7 +40,7 @@
     },
     "keywords": {
       "patterns": [
-        {"name": "keyword.control.merlo", "match": "\\b(?:module|use|export|return|if|else|match|case|for|while|in|break|continue|print|and|or|not)\\b"},
+        {"name": "keyword.control.merlo", "match": "\\b(?:module|use|export|return|require|ensure|invariant|if|else|match|case|for|while|in|break|continue|print|and|or|not)\\b"},
         {"name": "storage.type.function.merlo", "match": "\\bfn\\b"},
         {"name": "storage.type.task.merlo", "match": "\\btask\\b"},
         {"name": "storage.type.record.merlo", "match": "\\brecord\\b"},

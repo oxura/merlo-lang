@@ -3,36 +3,43 @@
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "enum",
       "module": "app.json",
       "name": "ErrorKind",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "136420a53b5e27611fe2df1e0b6f9e7f4f244e89fa5d419b5b8c26daaab4d5fc"
+      "revision_id": "d25fb322062a2aa79b7d0115ddcc6db2c212e36cc07ab7d3ff3c351802f50311"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "enum",
       "module": "app.json",
       "name": "Json",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "39b1a39623cd8286d2f3488ab5b13492aff0654b1f68d4dfd5a322f3cfa76c15"
+      "revision_id": "2e6cad5fb6c3c96fe9659e28a9b6532367a4cf5042939b2867e7c9e6a4bc83bf"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "enum",
       "module": "app.json",
       "name": "TokenKind",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "f9c24753f0d9241d9b12d6daf941a17dc5125f714df44e982b6a84138ef73648"
+      "revision_id": "c16b2fdaf20da93e3c0fdada8641561c4a53471da9a0c2d31e53627803fc6159"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.json",
       "name": "parse_value",
@@ -46,12 +53,14 @@
           "UInt64"
         ]
       ],
+      "requirements": [],
       "return_type": "app.json.Json",
-      "revision_id": "38c60df47cfbc5960ea083c079788e2c7e6e4d974bfd754fb783331256434ce5"
+      "revision_id": "a7a75b71c2b39c6ea974d3b67c165b235f96cb7ddf38e6d56c5aa9ec12c48bf7"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.json",
       "name": "set_error",
@@ -69,12 +78,14 @@
           "UInt64"
         ]
       ],
+      "requirements": [],
       "return_type": "Unit",
-      "revision_id": "0a0eb64bf291b5936c6e6158478a44eece642db52f5aebbc12df88b21991f680"
+      "revision_id": "3c95c542b1c19100e7569f01c8741c8119e9880329a557ff7c6960ae6d22c997"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.json",
       "name": "token_at",
@@ -84,12 +95,14 @@
           "app.json.Parser"
         ]
       ],
+      "requirements": [],
       "return_type": "app.json.Token",
-      "revision_id": "3e2b74c58aaa296fedc7d030f00c52b8ae2a7fb9531468495f689fcc16845fee"
+      "revision_id": "07253691e35542c7244640c1e024d6e17ec8d328d34595aff627ca44aeedf958"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.json",
       "name": "tokenize",
@@ -99,12 +112,14 @@
           "app.json.Parser"
         ]
       ],
+      "requirements": [],
       "return_type": "Unit",
-      "revision_id": "7dc33eb59d92dd2b832143e7db3a0e89ac1f221d73e0966cbe1f742921458089"
+      "revision_id": "a5a4af63a1c700fad66d079573b6a7f7552f92d4376ee5652a3f926fb6f3ff84"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.json",
       "name": "validate_utf8",
@@ -114,72 +129,86 @@
           "app.json.Parser"
         ]
       ],
+      "requirements": [],
       "return_type": "Bool",
-      "revision_id": "6cecf8f81087cd228cfe52a638690ea6c3558c0693a623a13d12695c388457bd"
+      "revision_id": "23e3c31de7dbfc19bf02ef1ee3480017eb41617c8704727158fab7f205ebbab9"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "record",
       "module": "app.json",
       "name": "JsonField",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "7d97ef76862b3fbbc307d07132b2bab8c899aa61fe5710c0b544c186ad568db5"
+      "revision_id": "c5a6ff16b1918e638ffe83a97944b6e25b0a364d50658981135444ba529f3beb"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "record",
       "module": "app.json",
       "name": "Parser",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "a7b643ab895155b888786ac2074c4f7dc4fafff199100a938e91b1d22929ff96"
+      "revision_id": "be47aa281444af36b8b23c5a8953e0a41bb8776766d77bd0ccd13802a869c0ab"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "record",
       "module": "app.json",
       "name": "ProgramResult",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "0741ab727e1a17db160618658e431d31b97cb3d70615a51947bbd49b1f0cd9ed"
+      "revision_id": "9666465ce0176547b868a4cb742626e25f1f71915adc6f2d0af9de53b0ea15fd"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "record",
       "module": "app.json",
       "name": "Stats",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "cf86694722422fbf6b67491843c43404d898aec5562f68f8f097e8d58a46da83"
+      "revision_id": "df48dc3ca79d2fa970eb6c7da1e9e84c6f280ecf11863f937fcea5e8a990a51d"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "record",
       "module": "app.json",
       "name": "Token",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "847d987fb6941101beb2933ae13b3b42b096310b91228e753d76327e3dc27c56"
+      "revision_id": "7d23d8e46dfc113668909aeea4c5aafc0301b9c2a54deb72113ede98f11354af"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "enum",
       "module": "app.main",
       "name": "AppError",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "5d92a5a2fca3eec1beaadbd8230c9495f0671f99ff0721fb2e712074ba80ee2f"
+      "revision_id": "476e730d2c3b96bf865acbcb53aa0bd4810b162e3beac181e5a975c1c216f762"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.main",
       "name": "main",
@@ -189,8 +218,9 @@
           "Path"
         ]
       ],
+      "requirements": [],
       "return_type": "Result[Text,app.main.AppError]",
-      "revision_id": "beb0aec9c62e8b9bdd9b88f92fa6b39f037811dd4740645183c09041b00579c6"
+      "revision_id": "8990690a6d1684794ab4286cee3b8f0a6f66418bd161b557d4002dc7cdfffb65"
     },
     {
       "capabilities": [
@@ -201,6 +231,7 @@
         "console.write",
         "fs.read"
       ],
+      "ensures": [],
       "kind": "task",
       "module": "app.main",
       "name": "main",
@@ -210,12 +241,14 @@
           "Path"
         ]
       ],
+      "requirements": [],
       "return_type": "Result[Text,app.main.AppError]",
-      "revision_id": "31d82afa363c85ea1113265c2c5244a2a5983d01753ede0e7a12930e878bd7e0"
+      "revision_id": "ecc2d7ccad886505147ba11d852cbf038caf81b9181bd33ccd1e89e12b43eaee"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.stats",
       "name": "analyze",
@@ -225,12 +258,14 @@
           "BytesView"
         ]
       ],
+      "requirements": [],
       "return_type": "app.json.ProgramResult",
-      "revision_id": "dc7a861bd36383347d6fc1758a641f4dee158de92958677b5b9c17b3e29e388c"
+      "revision_id": "242ca67d053b80c69b37e54cbb957fb275408ae75625cdf5c6cdab0fc6b902b6"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.stats",
       "name": "format_result",
@@ -240,8 +275,9 @@
           "app.json.ProgramResult"
         ]
       ],
+      "requirements": [],
       "return_type": "Text",
-      "revision_id": "ed84ac4ced3e31d1d2ce7a086a978fc74e2805f41a8783af0350238eaf08e696"
+      "revision_id": "06940d296edc84155f5cb3a90ba343a55875f27fedd97689b6264bd0ecdcc2f8"
     }
   ],
   "schema_version": 1

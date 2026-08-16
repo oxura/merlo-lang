@@ -3,9 +3,9 @@
 ## Unreleased
 
 - Starts the `0.1.0-alpha.3-dev` compatibility line with language contract
-  `0.3`, frontend contract `4`, and runtime ABI `2`. The mode-specific file
-  resource API is intentionally incompatible with alpha.2; see the migration
-  guide.
+  `0.3`, frontend `7`, canonical `5`, HIR `5`, Obligation IR `1`, RIR/MIR `2`,
+  runtime ABI `2`, and SemanticWorld `5`. Alpha.2 lockfiles must be regenerated;
+  see the migration guide.
 - Replaces owner/view pointer punning with real view descriptors and locks the
   generated C under GCC and Clang strict-aliasing optimization.
 - Defines byte and text escape semantics, rejecting Unicode escapes in bytes,
@@ -15,6 +15,74 @@
 - Adds the lossless full-file token/CST boundary and replaces the production
   CPython AST compatibility adapter with Merlo-owned native syntax nodes shared
   by HIR and the C backend.
+- Replaces `Vec`-specific transform lowering with one General collection
+  protocol for `Vec`, fixed `Array`, `Slice`, borrowed vectors, bytes, and text;
+  indexing, iteration, `where`, `map`, and `count` now share typed HIR and
+  native C semantics.
+- Fuses eligible copy-scalar collection chains into one native loop, removing
+  every intermediate vector allocation while preserving ordered callback and
+  bounds semantics.
+- Locks recursive record and enum values through `Box`/`Vec` indirection,
+  including mutually recursive native layouts and active-payload,
+  initialized-element, and boxed-payload drop glue.
+- Defines complete core numeric behavior across Surface, typed HIR, and C:
+  checked integer division, floor division, remainder, shifts, unary negation,
+  literal ranges and casts, with explicit zero, shift, and overflow traps.
+- Expands the native example corpus from nine to fifteen complete projects,
+  adding invoicing, access-log analysis, byte statistics, inventory, task-board,
+  and recursive-tree workloads with checked fixtures.
+- Measures private function boundaries structurally across all fifteen
+  applications: 6 of 19 parameter and return slots remain explicit (31.58%),
+  below the locked one-third gate.
+- Recomputes the frozen 48-program paired-source corpus at a median
+  concise-Merlo/Python lexical-token ratio of 0.5455, with a module CLI and
+  explicit source-surface-only claim boundary.
+- Adds a checked seven-workload Merlo/C/Rust native study with raw samples,
+  frozen checksums and source hashes; the measured geometric-mean ratio to each
+  workload's faster native baseline is 1.091, with shared allocation called out
+  as the 1.821 outlier.
+- Adds pure, typed `require` and `ensure` function contracts, preserves them in
+  canonical and Structured HIR identities, and emits entry/all-return native
+  checks with source-located `MerloContractViolation` diagnostics.
+- Adds pure, typed record invariants, preserves them through canonical, HIR,
+  representation descriptors, and SemanticWorld, and enforces them at every
+  native record constructor.
+- Adds contextual bare `?` holes with exact expected types and completion
+  contexts in canonical, HIR, and SemanticWorld data. RIR/MIR retain explicit
+  non-executable hole operations; native builds fail without a fallback value.
+- Adds deterministic typed Obligation IR categories and dispositions for
+  contracts, invariants, holes, and future safety proofs, with separate stable
+  identity and content revisions exposed through compiler and SemanticWorld
+  artifacts.
+- Adds deterministic constant and branch-local integer range refinement,
+  unreachable-branch facts, and checked arithmetic/cast safety obligations to
+  compiler artifacts and SemanticWorld.
+- Adds deterministic bounded symbolic execution for pure postconditions over
+  finite primitive domains, with explicit proof, counterexample, inconclusive,
+  and unsupported results.
+- Adds an opt-in Z3 backend with canonical SMT-LIB queries, deterministic
+  solver settings, model counterexamples, timeout/unknown handling, and no
+  default-build dependency.
+- Generates canonical postcondition property domains/cases and normalizes real
+  bounded/SMT counterexamples with typed inputs and replay provenance.
+- Measures automatically closed obligations with deduplicated engine
+  provenance, conservative refutation precedence, per-category counts, and an
+  exact integer closure rate.
+- Replaces unversioned refactor transactions and ad hoc unsupported responses
+  with canonical, digest-bound `ChangeIR`, revision/world validation, and one
+  preview/apply envelope across protocol, CLI, and LSP.
+- Replaces ad hoc task context maps with immutable, revision-bound semantic
+  capsules containing only target-relevant code, authority, obligations,
+  tests, and filtered verification evidence.
+- Adds canonical ChangeIR-bound semantic impact reports covering direct and
+  transitive symbols, reference/call/dependency edges, interfaces, files, and
+  tests before a change is applied.
+- Adds digest-bound patch evidence and preservation reports, keeping structural
+  apply proof separate from contract, effect, capability, obligation, and
+  verification preservation.
+- Routes ChangeIR application through durable source-snapshot transactions
+  with atomic commit, exact rollback/replay, stale-state rejection, and
+  content-addressed journals.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

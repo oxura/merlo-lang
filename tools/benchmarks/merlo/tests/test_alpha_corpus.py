@@ -54,8 +54,22 @@ def test_each_family_representative_compiles_through_production_lineage(tmp_path
     (root / "src" / "main.mlo").write_text(case["source"], encoding="utf-8")
     (root / "tests" / "main.mlo").write_text(case["test_source"], encoding="utf-8")
     compilation = compile_project(root, require_interface_lock=False)
-    assert tuple(compilation.artifacts)[:6] == ("modules", "concise", "canonical", "hir", "rir", "mir")
-    assert set(("optimized_mir", "c11")) <= set(compilation.artifacts)
+    assert tuple(compilation.artifacts)[:4] == (
+        "modules", "concise", "canonical", "hir"
+    )
+    assert {
+        "obligations",
+        "ranges",
+        "bounded-symbolic",
+        "smt",
+        "property-evidence",
+        "verification-metrics",
+        "rir",
+        "mir",
+        "optimized_mir",
+        "parallel_ir",
+        "c11",
+    } <= set(compilation.artifacts)
 
 
 def test_runtime_invalid_case_is_a_clean_native_failure(tmp_path: Path) -> None:

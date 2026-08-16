@@ -1,0 +1,11 @@
+module main
+
+use invoices
+
+export enum AppError:
+    InvalidPath: Text
+
+export main(path: Path) -> Result[Text, AppError]:
+    result: Text = invoices.report()
+    console.write(result)
+    Ok(result)

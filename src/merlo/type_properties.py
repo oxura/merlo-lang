@@ -65,6 +65,13 @@ class TypePropertyResolver:
         for constructor in ("Slice", "Borrow"):
             if generic_parts(type_name, constructor) is not None:
                 return _BORROW
+        if generic_parts(type_name, "Fn") is not None:
+            return TypeProperties(
+                False,
+                True,
+                True,
+                layout="closure",
+            )
 
         if type_name in seen:
             # Recursive nominal types require indirection in Merlo. Treat the
@@ -101,7 +108,11 @@ class TypePropertyResolver:
 
         declaration = self.declarations.get(type_name)
         if declaration is not None:
-            kind = getattr(declaration, "kind", "record")
+            kind = getattr(
+                declaration,
+                "kind",
+                "enum" if hasattr(declaration, "variants") else "record",
+            )
             if kind == "record":
                 children = tuple(
                     field.type_name for field in getattr(declaration, "fields", ())

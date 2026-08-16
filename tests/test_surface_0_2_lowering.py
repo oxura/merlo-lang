@@ -61,7 +61,8 @@ def test_surface_handoff_retains_tree_and_preserves_provenance(
     assert hir.surface_program is result.canonical.surface_program
     returned = hir.function("active_names").body[0]
     operation = returned.children[0]
-    assert operation.kind == "VecOperation"
+    assert operation.kind == "CollectionOperation"
+    assert operation.attribute_map["collection_kind"] == "vec"
     assert operation.type_name == "Vec[Text]"
     assert hir.source == source
     assert hir.source_sha256 == __import__("hashlib").sha256(source.encode()).hexdigest()

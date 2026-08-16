@@ -518,6 +518,49 @@ def test_nested_owned_record_call_temporary_has_one_drop(tmp_path: Path) -> None
     assert b"OK result=22" in completed.stdout
     assert b"text_allocations=2 text_frees=2" in completed.stdout
 
+def test_temporary_drop_follows_return_prefixed_assignment(tmp_path: Path) -> None:
+    source = (
+        "fn inspect(value: Text) -> UInt64:\n"
+        "    return value.len()\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let return_source: UInt64 = inspect(Text.from_bytes(input, 0, input.len()))\n"
+        "    return return_source\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    function_body = generated.source.split("merlo_fn_main(", 1)[1]
+    assignment = function_body.index("return_source = merlo_fn_inspect(")
+    cleanup = function_body.index("merlo_drop_Text(&__merlo_owned_temp_1);")
+    assert assignment < cleanup
+
+    binary = _native(source, tmp_path, "return-prefixed-assignment")
+    completed = subprocess.run([str(binary)], input=b"abc", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=3" in completed.stdout
+
+
+def test_owned_reassignment_evaluates_borrowing_rhs_before_drop(tmp_path: Path) -> None:
+    source = (
+        "fn preserve(value: Text) -> Text:\n"
+        "    return value.clone()\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    var current: Text = Text.from_bytes(input, 0, input.len())\n"
+        "    current = preserve(current)\n"
+        "    return current.len()\n"
+    )
+    hir, rir, _mir, optimized = _layers(source)
+    generated = emit_general_c(hir, rir, optimized)
+    function_body = generated.source.split("merlo_fn_main(", 1)[1]
+    replacement = function_body.index("__merlo_replacement_")
+    cleanup = function_body.index("merlo_drop_Text(&current);", replacement)
+    assignment = function_body.index("current = merlo_move_Text(&__merlo_replacement_", cleanup)
+    assert replacement < cleanup < assignment
+
+    binary = _native(source, tmp_path, "owned-reassignment")
+    completed = subprocess.run([str(binary)], input=b"abc", capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=3" in completed.stdout
+
 
 def test_owned_record_return_moves_named_argument_once(tmp_path: Path) -> None:
     source = (

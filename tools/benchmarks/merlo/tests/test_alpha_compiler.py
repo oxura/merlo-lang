@@ -15,13 +15,27 @@ def test_alpha_versions_are_independent_and_frozen() -> None:
     assert VERSIONS.to_dict() == {
         "release": "0.1.0-alpha.3-dev",
         "language": "0.3",
-        "frontend": 4,
-        "canonical": 2,
-        "hir": 2,
-        "rir": 1,
-        "mir": 1,
+        "frontend": 8,
+        "canonical": 6,
+        "hir": 6,
+        "obligation_ir": 1,
+        "range_analysis": 1,
+        "bounded_symbolic": 1,
+        "smt": 1,
+        "property_evidence": 1,
+        "verification_metrics": 1,
+        "change_ir": 1,
+        "semantic_capsule": 1,
+        "semantic_impact": 1,
+        "patch_evidence": 1,
+        "preservation": 1,
+        "transaction": 1,
+        "rir": 2,
+        "mir": 2,
+        "parallel_ir": 1,
+        "wasm_backend": 1,
         "runtime_abi": 2,
-        "semantic_world": 1,
+        "semantic_world": 14,
         "manifest": 1,
         "lockfile": 1,
     }
@@ -52,16 +66,48 @@ def test_compile_project_records_one_complete_parent_digest_chain() -> None:
         "concise",
         "canonical",
         "hir",
+        "obligations",
+        "ranges",
+        "bounded-symbolic",
+        "smt",
+        "property-evidence",
+        "verification-metrics",
         "rir",
         "mir",
         "optimized_mir",
+        "parallel_ir",
         "c11",
     )
-    previous = None
     for artifact in compilation.artifacts.values():
-        assert artifact.parent_digest == previous
         assert len(artifact.digest) == 64
-        previous = artifact.digest
+    parents = {
+        name: next(
+            (
+                parent_name
+                for parent_name, parent in compilation.artifacts.items()
+                if parent.digest == artifact.parent_digest
+            ),
+            None,
+        )
+        for name, artifact in compilation.artifacts.items()
+    }
+    assert parents == {
+        "modules": None,
+        "concise": "modules",
+        "canonical": "concise",
+        "hir": "canonical",
+        "obligations": "hir",
+        "ranges": "hir",
+        "bounded-symbolic": "obligations",
+        "smt": "obligations",
+        "property-evidence": "obligations",
+        "verification-metrics": "obligations",
+        "rir": "hir",
+        "mir": "rir",
+        "optimized_mir": "mir",
+        "parallel_ir": "optimized_mir",
+        "c11": "optimized_mir",
+    }
     assert compilation.artifacts["canonical"].content == compilation.elaborated.canonical_source
     assert compilation.hir.source == compilation.elaborated.canonical_source
     assert compilation.generated.domain_opaque_calls == ()

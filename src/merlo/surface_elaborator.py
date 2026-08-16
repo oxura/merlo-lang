@@ -4,9 +4,27 @@ import hashlib
 from dataclasses import replace
 from typing import Iterable
 
+from merlo.collection_protocol import (
+    COLLECTION_OPERATIONS,
+    collection_result_type,
+    collection_shape,
+)
 from merlo.canonical_ast import (
     CanonicalBinding,
     CanonicalCallable,
+    CanonicalCapture,
+    CanonicalContract,
+    CanonicalClosure,
+    CanonicalFlow,
+    CanonicalFlowStep,
+    CanonicalParallel,
+    CanonicalPolicy,
+    CanonicalMachine,
+    CanonicalMachineState,
+    CanonicalTransition,
+    CanonicalHole,
+    CanonicalHoleBinding,
+    CanonicalHoleCallable,
     CanonicalEnum,
     CanonicalFunction,
     CanonicalProgram,
@@ -35,23 +53,32 @@ from merlo.surface_ast import (
     SurfaceCall,
     SurfaceComment,
     SurfaceContinue,
+    SurfaceEnum,
+    SurfaceEnsure,
     SurfaceExpression,
     SurfaceExpressionStatement,
+    SurfaceFlow,
+    SurfaceFlowStep,
     SurfaceFor,
     SurfaceFunction,
+    SurfaceHole,
     SurfaceIf,
-    SurfaceEnum,
     SurfaceIndex,
     SurfaceList,
+    SurfaceLambda,
     SurfaceLiteral,
-    SurfaceMember,
+    SurfaceMachine,
     SurfaceMatch,
+    SurfaceMember,
     SurfaceName,
+    SurfaceParallel,
+    SurfaceParameter,
     SurfaceImplicitReceiver,
     SurfacePass,
     SurfacePrint,
-    SurfaceProgram,
     SurfaceRecord,
+    SurfaceProgram,
+    SurfaceRequire,
     SurfaceReturn,
     SurfaceStatement,
     SurfaceTry,
@@ -60,6 +87,7 @@ from merlo.surface_ast import (
     SurfaceWhile,
 )
 from merlo.type_parser import generic_parts
+from merlo.type_properties import TypePropertyResolver
 from merlo.intrinsics import (
     CONTRACT_GRAPH,
     INSTANCE_METHOD_NAMES,
@@ -70,6 +98,20 @@ _HOST_CALLS = {
     name: (signature.parameters, signature.result_type, signature.effect, signature.capability)
     for name, signature in CONTRACT_GRAPH.intrinsics.items()
 }
+_NUMERIC_TYPES = frozenset(
+    {"Byte", "UInt64", "Int64", "Float32", "Float64"}
+)
+_INTEGER_TYPES = frozenset({"Byte", "UInt64", "Int64"})
+_INTEGER_ONLY_OPERATORS = frozenset(
+    {"//", "%", "|", "^", "&", "<<", ">>"}
+)
+_INTEGER_BOUNDS = {
+    "Byte": (0, 255),
+    "UInt64": (0, 18446744073709551615),
+    "Int64": (-9223372036854775808, 9223372036854775807),
+}
+
+
 
 def _generic_parts(type_name: str, constructor: str) -> tuple[str, ...] | None:
     return generic_parts(type_name, constructor)
@@ -77,6 +119,7 @@ def _generic_parts(type_name: str, constructor: str) -> tuple[str, ...] | None:
 class _Elaborator:
     def __init__(self, program: SurfaceProgram) -> None:
         self._active_binding: str | None = None
+        self._active_contract_result: _Function | None = None
         self.program = program
         self.types = _Types()
         self.records = {
@@ -89,10 +132,20 @@ class _Elaborator:
             for declaration in program.declarations
             if isinstance(declaration, SurfaceEnum)
         }
+        self.type_properties = TypePropertyResolver({**self.records, **self.enums})
+        invariant_function_names = {
+            f"__merlo_invariant_{record.name}_{index}"
+            for record in self.records.values()
+            for index, _ in enumerate(record.invariants)
+        }
         self.functions: dict[str, _Function] = {}
         for declaration in program.declarations:
             if not isinstance(declaration, SurfaceFunction):
                 continue
+            if declaration.name in invariant_function_names:
+                raise SurfaceElaborationError(
+                    f"ReservedInvariantFunction: {declaration.name}"
+                )
             if declaration.name in self.functions:
                 raise SurfaceElaborationError(f"DuplicateFunction: {declaration.name}")
             parameters = {
@@ -141,6 +194,7 @@ class _Elaborator:
                     function.errors.add(result_parts[1])
         for function in self.functions.values():
             body = self._body(function.source)
+            self._validate_contract_layout(function)
             self._validate_function_flow(function)
             self._count(body, function)
         for _ in range(max(1, len(self.functions) * 4)):
@@ -151,6 +205,22 @@ class _Elaborator:
                 break
         for function in self.functions.values():
             self._validate_function_return(function)
+            if any(
+                isinstance(statement, SurfaceEnsure)
+                and any(
+                    isinstance(node, SurfaceName)
+                    and node.name == "result"
+                    for node in statement.condition.walk()
+                )
+                for statement in self._body(function.source)
+            ) and self.types.resolve(
+                function.return_term,
+                name=f"{function.source.name}.return",
+            ) == "Unit":
+                raise SurfaceElaborationError(
+                    "UnitEnsureResultForbidden: "
+                    f"{function.source.name}"
+                )
         for _ in range(max(1, len(self.functions) * 2)):
             changed = False
             for function in self.functions.values():
@@ -179,6 +249,82 @@ class _Elaborator:
                     raise SurfaceElaborationError(
                         f"TryRequiresResult: {callee} has no error row"
                     )
+            for callee in function.collection_callbacks:
+                if self.functions[callee].effects:
+                    raise SurfaceElaborationError(
+                        f"EffectInCollectionCallable: {callee}"
+                    )
+            for callee in function.contract_calls:
+                if self.functions[callee].effects:
+                    raise SurfaceElaborationError(
+                        f"EffectInContract: {callee}"
+                    )
+        self._validate_record_invariants()
+
+    def _validate_record_invariants(self) -> None:
+        for record in self.records.values():
+            for index, invariant in enumerate(record.invariants):
+                if any(
+                    isinstance(node, SurfaceHole)
+                    for node in invariant.condition.walk()
+                ):
+                    raise SurfaceElaborationError(
+                        "TypedHoleInInvariantForbidden: "
+                        f"{record.name}"
+                    )
+                name = f"__merlo_invariant_{record.name}_{index}"
+                parameters = tuple(
+                    SurfaceParameter(
+                        field.span,
+                        field.name,
+                        field.type_name,
+                    )
+                    for field in record.fields
+                )
+                source = SurfaceFunction(
+                    name,
+                    parameters,
+                    invariant.condition,
+                    "expression",
+                    False,
+                    invariant.span,
+                    "fn",
+                    "Bool",
+                )
+                state = _Function(
+                    source,
+                    {
+                        field.name: self.types.typed(field.type_name)
+                        for field in record.fields
+                    },
+                    self.types.typed("Bool"),
+                    {},
+                    {},
+                    {},
+                    {},
+                )
+                try:
+                    self._expression(
+                        invariant.condition,
+                        state,
+                        "Bool",
+                    )
+                except SurfaceElaborationError as exc:
+                    if str(exc).startswith(
+                        "EffectInPureFunction:"
+                    ):
+                        raise SurfaceElaborationError(
+                            f"EffectInInvariant: {record.name}"
+                        ) from exc
+                    raise
+                if state.effects or any(
+                    self.functions[callee].effects
+                    for callee in state.calls
+                    if callee in self.functions
+                ):
+                    raise SurfaceElaborationError(
+                        f"EffectInInvariant: {record.name}"
+                    )
 
     @staticmethod
     def _body(function: SurfaceFunction) -> tuple[SurfaceStatement, ...]:
@@ -187,6 +333,38 @@ class _Elaborator:
                 SurfaceExpressionStatement(function.body.span, function.body),  # type: ignore[union-attr]
             )
         return function.body  # type: ignore[return-value]
+    @staticmethod
+    def _validate_contract_layout(function: _Function) -> None:
+        body = _Elaborator._body(function.source)
+        executable_seen = False
+        for statement in body:
+            if isinstance(statement, (SurfaceComment, SurfaceUses)):
+                continue
+            if isinstance(statement, (SurfaceRequire, SurfaceEnsure)):
+                if executable_seen:
+                    raise SurfaceElaborationError(
+                        "ContractClauseAfterBody: "
+                        f"{function.source.name}"
+                    )
+                if isinstance(statement, SurfaceRequire) and any(
+                    isinstance(node, SurfaceName) and node.name == "result"
+                    for node in statement.condition.walk()
+                ):
+                    raise SurfaceElaborationError(
+                        "RequireResultForbidden: "
+                        f"{function.source.name}"
+                    )
+                continue
+            executable_seen = True
+            if any(
+                isinstance(node, (SurfaceRequire, SurfaceEnsure))
+                for node in statement.walk()
+                if node is not statement
+            ):
+                raise SurfaceElaborationError(
+                    "NestedContractClauseForbidden: "
+                    f"{function.source.name}"
+                )
     @staticmethod
     def _literal_true(expression: SurfaceExpression) -> bool:
         return (
@@ -324,7 +502,22 @@ class _Elaborator:
         for statement in statements:
             if not reachable:
                 break
-            if isinstance(statement, (SurfaceUses, SurfaceComment, SurfacePass)):
+            if isinstance(
+                statement,
+                (SurfaceUses, SurfaceComment, SurfacePass),
+            ):
+                continue
+            if isinstance(statement, (SurfaceRequire, SurfaceEnsure)):
+                contract_assigned = set(assigned)
+                contract_declared = set(declared)
+                if isinstance(statement, SurfaceEnsure):
+                    contract_assigned.add("result")
+                    contract_declared.add("result")
+                self._validate_expression_reads(
+                    statement.condition,
+                    contract_assigned,
+                    contract_declared,
+                )
                 continue
             if isinstance(statement, SurfaceBinding):
                 self._validate_expression_reads(
@@ -748,23 +941,56 @@ class _Elaborator:
                 self.types.typed(receiver_type),
                 context=f"collection {operation} receiver",
             )
-        parts = _generic_parts(receiver_type, "Vec")
-        if parts is None or len(parts) != 1:
+        shape = collection_shape(receiver_type)
+        if shape is None:
             raise SurfaceElaborationError(
                 f"CollectionReceiverRequired: {receiver_type}"
             )
-        element_type = parts[0]
+        element_type = shape.element_type
         callable_expected = "Bool" if operation in {"where", "count"} else None
-        callable_term = self._implicit_expression(
-            argument,
-            function,
-            element_type,
-            callable_expected,
-        )
+        callable_parameter = "__item"
+        if isinstance(argument, SurfaceName) and argument.name in self.functions:
+            target = self.functions[argument.name]
+            if not self.type_properties.resolve(element_type).is_copy:
+                raise SurfaceElaborationError(
+                    "OwnedCollectionCallableRequiresImplicitExpression: "
+                    f"{argument.name}"
+                )
+            if target.source.declared_kind == "task":
+                raise SurfaceElaborationError(
+                    f"EffectInCollectionCallable: {argument.name}"
+                )
+            if len(target.parameters) != 1:
+                raise SurfaceElaborationError(
+                    f"ArityMismatch: collection callable {argument.name}"
+                )
+            parameter_term = next(iter(target.parameters.values()))
+            self.types.unify(
+                parameter_term,
+                self.types.typed(element_type),
+                context=f"collection {operation} callable parameter",
+            )
+            callable_term = target.return_term
+            callable_expression = f"{argument.name}(__item)"
+            function.calls.add(argument.name)
+            function.collection_callbacks.add(argument.name)
+        else:
+            callable_term = self._implicit_expression(
+                argument,
+                function,
+                element_type,
+                callable_expected,
+            )
+            callable_expression = _emit_implicit_expression(argument)
         callable_return = self.types.resolve(
             callable_term,
             name=f"{function.source.name}.{operation} callable",
         )
+        if callable_expected is not None and callable_return != callable_expected:
+            raise SurfaceElaborationError(
+                f"CollectionCallableReturnMismatch: {operation} "
+                f"requires {callable_expected}, got {callable_return}"
+            )
         digest_input = (
             f"{function.source.name}\0{expression.span.path}\0"
             f"{expression.span.start_line}\0{expression.span.start_column}\0"
@@ -773,18 +999,18 @@ class _Elaborator:
         callable_id = hashlib.sha256(digest_input.encode()).hexdigest()[:16]
         function.implicit_callables[callable_id] = CanonicalCallable(
             callable_id,
-            "__item",
+            callable_parameter,
             element_type,
             callable_return,
-            _emit_implicit_expression(argument),
+            callable_expression,
             argument.span,
         )
-        if operation == "map":
-            term = self.types.typed(f"Vec[{callable_return}]")
-        elif operation == "where":
-            term = self.types.typed(receiver_type)
-        else:
-            term = self.types.typed("UInt64")
+        result_element = (
+            callable_return if operation == "map" else element_type
+        )
+        term = self.types.typed(
+            collection_result_type(operation, result_element)
+        )
         if expected:
             self.types.unify(
                 term,
@@ -792,22 +1018,153 @@ class _Elaborator:
                 context=f"collection {operation} result",
             )
         return term
+    def _lambda(
+        self,
+        expression: SurfaceLambda,
+        function: _Function,
+        expected: str | None,
+    ) -> str:
+        callback = _generic_parts(expected or "", "Fn")
+        if callback is None or len(callback) != len(expression.parameters) + 1:
+            raise SurfaceElaborationError(
+                f"ClosureTypeAnnotationRequired: {function.source.name}"
+            )
+        parameter_types = callback[:-1]
+        return_type = callback[-1]
+        parameter_names = frozenset(expression.parameters)
+        captures: list[CanonicalCapture] = []
+        captured_names: set[str] = set()
+        for node in expression.body.walk():
+            if not isinstance(node, SurfaceName) or node.name in parameter_names:
+                continue
+            if node.name in captured_names:
+                continue
+            if not self._local_visible(function, node.name, node.span):
+                continue
+            if node.name not in function.parameters and node.name not in function.locals:
+                continue
+            first_binding = function.first_bindings.get(node.name)
+            if (
+                (
+                    first_binding is not None
+                    and first_binding.explicit_kind == "var"
+                )
+                or function.assignments.get(node.name, 0) > 1
+            ):
+                raise SurfaceElaborationError(
+                    f"MutableClosureCaptureForbidden: {node.name}"
+                )
+            type_name = self.types.resolve(
+                self._lookup(function, node.name),
+                name=f"{function.source.name}.closure_capture.{node.name}",
+            )
+            properties = self.type_properties.resolve(type_name)
+            if properties.contains_borrow:
+                raise SurfaceElaborationError(
+                    f"BorrowedClosureCaptureEscapes: {node.name}"
+                )
+            if properties.is_resource:
+                raise SurfaceElaborationError(
+                    f"ResourceClosureCaptureForbidden: {node.name}"
+                )
+            captures.append(
+                CanonicalCapture(
+                    node.name,
+                    type_name,
+                    "owned" if properties.needs_drop else "copy",
+                )
+            )
+            captured_names.add(node.name)
+
+        previous = {
+            name: function.locals.get(name)
+            for name in expression.parameters
+        }
+        try:
+            for name, type_name in zip(
+                expression.parameters,
+                parameter_types,
+                strict=True,
+            ):
+                function.locals[name] = self.types.typed(type_name)
+            body = self._expression(
+                expression.body,
+                function,
+                return_type,
+            )
+            self.types.unify(
+                body,
+                self.types.typed(return_type),
+                context=f"{function.source.name} closure return",
+            )
+        finally:
+            for name, value in previous.items():
+                if value is None:
+                    function.locals.pop(name, None)
+                else:
+                    function.locals[name] = value
+        digest_input = (
+            f"{function.source.name}\0{expression.span.path}\0"
+            f"{expression.span.start_line}\0{expression.span.start_column}\0"
+            + ",".join(callback)
+        )
+        closure_id = hashlib.sha256(digest_input.encode()).hexdigest()[:16]
+        function.closures[closure_id] = CanonicalClosure(
+            closure_id,
+            tuple(zip(expression.parameters, parameter_types, strict=True)),
+            return_type,
+            _emit_expression(expression.body),
+            tuple(captures),
+            expression.span,
+        )
+        return self.types.typed(expected)
+
     def _expression(
         self,
         expression: SurfaceExpression,
         function: _Function,
         expected: str | None = None,
     ) -> str:
-        if isinstance(expression, SurfaceLiteral):
-            numeric = {"Byte", "UInt64", "Int64", "Float32", "Float64"}
-            if expected in numeric and expression.kind in numeric:
+        if isinstance(expression, SurfaceHole):
+            if expected is None or expected == "Inferred":
+                raise SurfaceElaborationError(
+                    "UnconstrainedTypedHole: "
+                    f"{function.source.name}:"
+                    f"{expression.span.start_line}:"
+                    f"{expression.span.start_column}"
+                )
+            key = (
+                f"{expression.span.path}:"
+                f"{expression.span.start_line}:"
+                f"{expression.span.start_column}"
+            )
+            function.holes[key] = (expression, expected)
+            term = self.types.typed(expected)
+        elif isinstance(expression, SurfaceLiteral):
+            if (
+                expected in _INTEGER_BOUNDS
+                and isinstance(expression.value, int)
+                and not isinstance(expression.value, bool)
+            ):
+                lower, upper = _INTEGER_BOUNDS[expected]
+                if not lower <= expression.value <= upper:
+                    raise SurfaceElaborationError(
+                        "NumericLiteralOutOfRange: "
+                        f"{expression.value} for {expected}"
+                    )
+            if expected in _NUMERIC_TYPES and expression.kind in _NUMERIC_TYPES:
                 term = self.types.typed(expected)
             elif expression.kind == "None" and expected and expected.startswith("Option["):
                 term = self.types.typed(expected)
             else:
                 term = self.types.typed(expression.kind)
         elif isinstance(expression, SurfaceName):
-            if expression.name == "Unit":
+            if (
+                expression.name == "result"
+                and self._active_contract_result is function
+            ):
+                term = function.return_term
+            elif expression.name == "Unit":
                 term = self.types.typed("Unit")
             elif self._local_visible(
                 function,
@@ -838,7 +1195,34 @@ class _Elaborator:
             expected = None
         elif isinstance(expression, SurfaceUnary):
             required = "Bool" if expression.operator == "not" else expected
-            term = self._expression(expression.operand, function, required)
+            if (
+                expression.operator == "-"
+                and expected == "Int64"
+                and isinstance(expression.operand, SurfaceLiteral)
+                and expression.operand.value == 9223372036854775808
+            ):
+                term = self.types.typed("Int64")
+            else:
+                term = self._expression(
+                    expression.operand,
+                    function,
+                    required,
+                )
+            operand_type = self.types.concrete.get(self.types.find(term))
+            if expression.operator in {"+", "-", "~"}:
+                if operand_type not in _NUMERIC_TYPES:
+                    raise SurfaceElaborationError(
+                        "numeric unary operator requires a numeric operand, "
+                        f"got {operand_type or 'unresolved'}"
+                    )
+                if expression.operator == "~" and operand_type not in _INTEGER_TYPES:
+                    raise SurfaceElaborationError(
+                        f"IntegerOperatorRequired: ~ for {operand_type}"
+                    )
+                if expression.operator == "-" and operand_type in {"Byte", "UInt64"}:
+                    raise SurfaceElaborationError(
+                        f"UnsignedNegationForbidden: {operand_type}"
+                    )
         elif isinstance(expression, SurfaceBinary):
             if expression.operator in {"==", "!=", "<", "<=", ">", ">="}:
                 left = self._expression(expression.left, function)
@@ -888,11 +1272,14 @@ class _Elaborator:
                         f"TruthinessForbidden: {left_type or 'unresolved'}"
                     )
             else:
-                numeric = {"Byte", "UInt64", "Int64", "Float32", "Float64"}
-                contextual = expected if expected in numeric else None
-                left = self._expression(expression.left, function)
+                contextual = expected if expected in _NUMERIC_TYPES else None
+                left = self._expression(
+                    expression.left,
+                    function,
+                    contextual,
+                )
                 left_type = self.types.concrete.get(self.types.find(left))
-                if left_type is not None and left_type not in numeric:
+                if left_type is not None and left_type not in _NUMERIC_TYPES:
                     raise SurfaceElaborationError(
                         "numeric operator requires numeric operands, "
                         f"got {left_type}"
@@ -905,10 +1292,20 @@ class _Elaborator:
                     expression.right, function, operand_type
                 )
                 right_type = self.types.concrete.get(self.types.find(right))
-                if right_type is not None and right_type not in numeric:
+                if right_type is not None and right_type not in _NUMERIC_TYPES:
                     raise SurfaceElaborationError(
                         "numeric operator requires numeric operands, "
                         f"got {right_type}"
+                    )
+                operation_type = contextual or left_type or right_type
+                if (
+                    expression.operator in _INTEGER_ONLY_OPERATORS
+                    and operation_type not in _INTEGER_TYPES
+                ):
+                    raise SurfaceElaborationError(
+                        "IntegerOperatorRequired: "
+                        f"{expression.operator} for "
+                        f"{operation_type or 'unresolved'}"
                     )
                 self.types.unify(left, right, context="numeric operator")
                 if expected:
@@ -921,7 +1318,27 @@ class _Elaborator:
         elif isinstance(expression, SurfaceCall):
             if isinstance(expression.callee, SurfaceName):
                 name = expression.callee.name
-                if name == "sqrt":
+                if name in _NUMERIC_TYPES:
+                    if (
+                        len(expression.arguments) != 1
+                        or expression.arguments[0].name is not None
+                    ):
+                        raise SurfaceElaborationError(
+                            f"ArityMismatch: {name}"
+                        )
+                    source_term = self._expression(
+                        expression.arguments[0].value,
+                        function,
+                    )
+                    source_type = self.types.concrete.get(
+                        self.types.find(source_term)
+                    )
+                    if source_type not in _NUMERIC_TYPES:
+                        raise SurfaceElaborationError(
+                            f"NumericCastRequired: {source_type or 'unresolved'}"
+                        )
+                    term = self.types.typed(name)
+                elif name == "sqrt":
                     for argument in expression.arguments:
                         self._expression(argument.value, function, "Float64")
                     term = self.types.typed("Float64")
@@ -1212,7 +1629,7 @@ class _Elaborator:
                             "AmbiguousType: Box.new"
                         )
                     term = self.types.typed(box_type)
-                elif method in {"where", "map", "count"}:
+                elif method in COLLECTION_OPERATIONS:
                     term = self._collection_call(expression, function, expected)
                     expected = None
                 elif method == "clone":
@@ -1529,23 +1946,27 @@ class _Elaborator:
                     )
             else:
                 raise SurfaceElaborationError("UnsupportedCall")
+        elif isinstance(expression, SurfaceLambda):
+            term = self._lambda(expression, function, expected)
         elif isinstance(expression, SurfaceIndex):
             self._expression(expression.index, function, "UInt64")
             owner = self._expression(expression.receiver, function)
             owner_type = self.types.concrete.get(self.types.find(owner))
-            if not owner_type or not owner_type.startswith("Vec["):
+            shape = collection_shape(owner_type)
+            if shape is None:
                 raise SurfaceElaborationError("IndexRequiresCollection")
-            element_parts = _generic_parts(owner_type, "Vec")
-            if element_parts is None:
-                raise SurfaceElaborationError("IndexRequiresCollection")
-            term = self.types.typed(element_parts[0])
+            term = self.types.typed(shape.element_type)
         elif isinstance(expression, SurfaceList):
             element = self.types.variable(f"list:{expression.span.start_line}:{expression.span.start_column}")
             for item in expression.items:
                 self.types.unify(element, self._expression(item, function), context="list element")
-            expected_parts = _generic_parts(expected, "Vec") if expected else None
-            if expected_parts is not None:
-                self.types.unify(element, self.types.typed(expected_parts[0]), context="list expected type")
+            expected_shape = collection_shape(expected)
+            if expected_shape is not None:
+                self.types.unify(
+                    element,
+                    self.types.typed(expected_shape.element_type),
+                    context="list expected type",
+                )
                 term = self.types.typed(expected)
             else:
                 element_type = self.types.concrete.get(self.types.find(element))
@@ -1643,7 +2064,10 @@ class _Elaborator:
                     value = self._expression(
                         statement.value,
                         function,
-                        statement.type_name,
+                        statement.type_name
+                        or self.types.concrete.get(
+                            self.types.find(term)
+                        ),
                     )
                 finally:
                     self._active_binding = previous_binding
@@ -1731,6 +2155,27 @@ class _Elaborator:
                         context=f"{function.source.name} return",
                     )
                 self._note(function, "$return", "explicit_return")
+            elif isinstance(statement, (SurfaceRequire, SurfaceEnsure)):
+                calls_before = set(function.calls)
+                effects_before = set(function.effects)
+                capabilities_before = set(function.capabilities)
+                previous_contract = self._active_contract_result
+                self._active_contract_result = (
+                    function if isinstance(statement, SurfaceEnsure) else None
+                )
+                try:
+                    self._expression(statement.condition, function, "Bool")
+                finally:
+                    self._active_contract_result = previous_contract
+                function.contract_calls.update(function.calls - calls_before)
+                if (
+                    function.effects != effects_before
+                    or function.capabilities != capabilities_before
+                ):
+                    raise SurfaceElaborationError(
+                        "EffectInContract: "
+                        f"{function.source.name}"
+                    )
             elif isinstance(statement, SurfaceBreak):
                 if loop_depth == 0:
                     raise SurfaceElaborationError("BreakOutsideLoop")
@@ -1838,22 +2283,23 @@ class _Elaborator:
             elif isinstance(statement, SurfaceFor):
                 iterable = self._expression(statement.iterable, function)
                 iterable_type = self.types.concrete.get(self.types.find(iterable))
-                vec_parts = _generic_parts(iterable_type, "Vec")
+                shape = collection_shape(iterable_type)
                 borrowed_parts = _generic_parts(iterable_type, "Borrow")
-                borrowed_vec_parts = (
-                    _generic_parts(borrowed_parts[0], "Vec")
+                borrowed_type = (
+                    borrowed_parts[0]
                     if borrowed_parts and len(borrowed_parts) == 1
                     else None
                 )
+                borrowed_shape = collection_shape(borrowed_type)
                 borrowed_map_parts = (
-                    _generic_parts(borrowed_parts[0], "Map")
-                    if borrowed_parts and len(borrowed_parts) == 1
+                    _generic_parts(borrowed_type, "Map")
+                    if borrowed_type
                     else None
                 )
-                if vec_parts is not None:
-                    item_type = vec_parts[0]
-                elif borrowed_vec_parts is not None:
-                    item_type = borrowed_vec_parts[0]
+                if shape is not None:
+                    item_type = shape.element_type
+                elif borrowed_shape is not None:
+                    item_type = borrowed_shape.element_type
                 elif borrowed_map_parts is not None:
                     item_type = (
                         f"MapEntry[{borrowed_map_parts[0]},"
@@ -1862,7 +2308,9 @@ class _Elaborator:
                 elif iterable_type == "FileLines":
                     item_type = "TextView"
                 else:
-                    item_type = "UInt64"
+                    raise SurfaceElaborationError(
+                        f"CollectionReceiverRequired: for {iterable_type}"
+                    )
                 self.types.unify(
                     self._local(function, statement.name),
                     self.types.typed(item_type),
@@ -2034,6 +2482,16 @@ class _Elaborator:
                 lines.append(f"{prefix}return{suffix}")
             elif isinstance(statement, SurfaceBreak):
                 lines.append(f"{prefix}break")
+            elif isinstance(statement, SurfaceRequire):
+                lines.append(
+                    f"{prefix}require "
+                    f"{_emit_expression(statement.condition)}"
+                )
+            elif isinstance(statement, SurfaceEnsure):
+                lines.append(
+                    f"{prefix}ensure "
+                    f"{_emit_expression(statement.condition)}"
+                )
             elif isinstance(statement, SurfaceContinue):
                 lines.append(f"{prefix}continue")
             elif isinstance(statement, SurfacePass):
@@ -2109,11 +2567,199 @@ class _Elaborator:
                         self._canonical_block(
                             case.body,
                             function,
+
                             depth=depth + 2,
                             tail_returns=False,
                         )
                     )
         return tuple(lines)
+    @staticmethod
+    def _node_id(kind: str, name: str, span, ordinal: int = 0) -> str:
+        payload = f"{kind}\0{name}\0{span.path}\0{span.start_line}\0{span.start_column}\0{ordinal}"
+        return hashlib.sha256(payload.encode()).hexdigest()[:24]
+
+    def _canonical_flow(self, flow: SurfaceFlow) -> CanonicalFlow:
+        names = {item.name for item in flow.parameters}
+        body: list[CanonicalFlowStep | CanonicalParallel | CanonicalReturn] = []
+        effects: set[str] = set()
+        capabilities: set[str] = set()
+        ordinal = 0
+        for statement in flow.body:
+            if isinstance(statement, SurfaceUses):
+                effects.update(statement.effects)
+                capabilities.update(statement.effects)
+                continue
+            if isinstance(statement, SurfaceParallel):
+                branches: list[CanonicalFlowStep] = []
+                for branch in statement.branches:
+                    if branch.name in names:
+                        raise SurfaceElaborationError(
+                            f"FlowDuplicateBinding: {flow.name}.{branch.name}"
+                        )
+                    names.add(branch.name)
+                    policies = tuple(
+                        CanonicalPolicy(
+                            policy.kind,
+                            policy.value,
+                            policy.error_type,
+                            _emit_expression(policy.expression) if policy.expression else None,
+                            policy.span,
+                        )
+                        for policy in branch.policies
+                    )
+                    self._validate_flow_policies(flow, branch, policies)
+                    branches.append(CanonicalFlowStep(
+                        self._node_id("flow-step", branch.name, branch.span, ordinal),
+                        branch.name,
+                        str(_emit_expression(branch.value)),
+                        branch.type_name or self._flow_value_type(branch.value),
+                        policies,
+                        branch.span,
+                    ))
+                    ordinal += 1
+                body.append(CanonicalParallel(
+                    self._node_id("parallel", flow.name, statement.span, ordinal),
+                    tuple(branches), statement.span,
+                ))
+                continue
+            if isinstance(statement, SurfaceFlowStep):
+                if statement.name in names:
+                    raise SurfaceElaborationError(
+                        f"FlowDuplicateBinding: {flow.name}.{statement.name}"
+                    )
+                names.add(statement.name)
+                policies = tuple(
+                    CanonicalPolicy(
+                        policy.kind,
+                        policy.value,
+                        policy.error_type,
+                        _emit_expression(policy.expression) if policy.expression else None,
+                        policy.span,
+                    )
+                    for policy in statement.policies
+                )
+                self._validate_flow_policies(flow, statement, policies)
+                body.append(CanonicalFlowStep(
+                    self._node_id("flow-step", statement.name, statement.span, ordinal),
+                    statement.name,
+                    str(_emit_expression(statement.value)),
+                    statement.type_name or self._flow_value_type(statement.value),
+                    policies,
+                    statement.span,
+                ))
+                ordinal += 1
+                continue
+            if isinstance(statement, SurfaceReturn) and statement.expression is not None:
+                body.append(CanonicalReturn(str(_emit_expression(statement.expression)), statement.span))
+        return CanonicalFlow(
+            flow.name,
+            tuple((item.name, item.type_name or "Inferred") for item in flow.parameters),
+            flow.return_type,
+            flow.durable,
+            tuple(sorted(effects)),
+            tuple(sorted(capabilities)),
+            tuple(body),
+            flow.span,
+            flow.exported,
+        )
+
+    @staticmethod
+    def _flow_value_type(expression: SurfaceExpression) -> str:
+        if isinstance(expression, SurfaceLiteral):
+            return {"bool": "Bool", "int": "Int64", "float": "Float64", "str": "Text"}.get(
+                type(expression.value).__name__, "Inferred"
+            )
+        return "Inferred"
+
+    @staticmethod
+    def _validate_flow_policies(
+        flow: SurfaceFlow, step: SurfaceFlowStep, policies: tuple[CanonicalPolicy, ...]
+    ) -> None:
+        retry = next((item for item in policies if item.kind == "retry"), None)
+        if retry is not None:
+            if int(retry.value) <= 0:
+                raise SurfaceElaborationError(
+                    f"RetryCountMustBePositive: {flow.name}.{step.name}"
+                )
+            if not any(item.kind == "idempotent" for item in policies):
+                raise SurfaceElaborationError(
+                    f"RetryRequiresIdempotency: {flow.name}.{step.name}"
+                )
+
+    def _canonical_machine(self, machine: SurfaceMachine) -> CanonicalMachine:
+        state_names = [item.name for item in machine.states]
+        if len(state_names) != len(set(state_names)):
+            raise SurfaceElaborationError(f"DuplicateState: {machine.name}")
+        states = tuple(
+            CanonicalMachineState(
+                item.name,
+                tuple((field.name, field.type_name) for field in item.fields),
+                item.span,
+            )
+            for item in machine.states
+        )
+        known = set(state_names)
+        if machine.initial is not None and machine.initial not in known:
+            raise SurfaceElaborationError(f"UnknownInitialState: {machine.name}.{machine.initial}")
+        transitions: list[CanonicalTransition] = []
+        transition_names: set[str] = set()
+        for transition in machine.transitions:
+            if transition.name in transition_names:
+                raise SurfaceElaborationError(f"DuplicateTransition: {machine.name}.{transition.name}")
+            transition_names.add(transition.name)
+            if any(source not in known for source in transition.sources):
+                unknown = next(source for source in transition.sources if source not in known)
+                raise SurfaceElaborationError(f"UnknownState: {machine.name}.{unknown}")
+            if transition.target not in known:
+                raise SurfaceElaborationError(f"IllegalTargetState: {machine.name}.{transition.target}")
+            effects = tuple(sorted(
+                effect
+                for statement in transition.body
+                if isinstance(statement, SurfaceUses)
+                for effect in statement.effects
+            ))
+            body = tuple(
+                CanonicalBinding(
+                    statement.name,
+                    "Inferred",
+                    False,
+                    str(_emit_expression(statement.value)),
+                    statement.span,
+                )
+                for statement in transition.body
+                if isinstance(statement, SurfaceBinding)
+            )
+            transitions.append(CanonicalTransition(
+                self._node_id("transition", transition.name, transition.span),
+                transition.name,
+                transition.sources,
+                transition.target,
+                effects,
+                body,
+                transition.span,
+            ))
+        if machine.initial is not None:
+            reachable = {machine.initial}
+            changed = True
+            while changed:
+                changed = False
+                for transition in transitions:
+                    if set(transition.sources) & reachable and transition.target not in reachable:
+                        reachable.add(transition.target)
+                        changed = True
+            if reachable != known:
+                missing = sorted(known - reachable)[0]
+                raise SurfaceElaborationError(f"UnreachableState: {machine.name}.{missing}")
+        return CanonicalMachine(
+            machine.name,
+            tuple((item.name, item.type_name or "Inferred") for item in machine.parameters),
+            states,
+            machine.initial,
+            _emit_expression(machine.invariant) if machine.invariant else None,
+            tuple(transitions),
+            machine.span,
+            machine.exported,
+        )
     def result(self) -> SurfaceElaboration:
         records = tuple(
             CanonicalRecord(
@@ -2121,6 +2767,14 @@ class _Elaborator:
                 tuple((field.name, field.type_name) for field in record.fields),
                 record.span,
                 record.exported,
+                tuple(
+                    CanonicalContract(
+                        "invariant",
+                        _emit_expression(invariant.condition),
+                        invariant.span,
+                    )
+                    for invariant in record.invariants
+                ),
             )
             for record in self.records.values()
         )
@@ -2216,6 +2870,24 @@ class _Elaborator:
                     )
                 )
             statements = self._body(function.source)
+            requirements = tuple(
+                CanonicalContract(
+                    "require",
+                    _emit_expression(statement.condition),
+                    statement.span,
+                )
+                for statement in statements
+                if isinstance(statement, SurfaceRequire)
+            )
+            ensures = tuple(
+                CanonicalContract(
+                    "ensure",
+                    _emit_expression(statement.condition),
+                    statement.span,
+                )
+                for statement in statements
+                if isinstance(statement, SurfaceEnsure)
+            )
             tail = statements[-1]
             if isinstance(tail, SurfaceExpressionStatement):
                 body.append(
@@ -2248,6 +2920,104 @@ class _Elaborator:
                     tuple(sorted(function.evidence.get("$return", {"body_constraint"}))),
                 )
             )
+            holes = []
+            for _key, (hole, expected_type) in sorted(
+                function.holes.items()
+            ):
+                context_items = [
+                    CanonicalHoleBinding(
+                        name,
+                        type_name,
+                        (
+                            "owned"
+                            if self.type_properties.resolve(
+                                type_name
+                            ).needs_drop
+                            else "copy"
+                        ),
+                    )
+                    for name, type_name in parameter_types
+                ]
+                for name, binding in sorted(
+                    function.first_bindings.items(),
+                    key=lambda item: (
+                        item[1].span.start_line,
+                        item[1].span.start_column,
+                        item[0],
+                    ),
+                ):
+                    if (
+                        binding.span.start_line
+                        >= hole.span.start_line
+                    ):
+                        continue
+                    type_name = self.types.resolve(
+                        function.locals[name],
+                        name=(
+                            f"{function.source.name}."
+                            f"hole_context.{name}"
+                        ),
+                    )
+                    context_items.append(
+                        CanonicalHoleBinding(
+                            name,
+                            type_name,
+                            (
+                                "owned"
+                                if self.type_properties.resolve(
+                                    type_name
+                                ).needs_drop
+                                else "copy"
+                            ),
+                        )
+                    )
+                callable_items = tuple(
+                    CanonicalHoleCallable(
+                        name,
+                        tuple(
+                            (
+                                parameter_name,
+                                self.types.resolve(
+                                    term,
+                                    name=(
+                                        f"{name}."
+                                        f"{parameter_name}"
+                                    ),
+                                ),
+                            )
+                            for parameter_name, term
+                            in target.parameters.items()
+                        ),
+                        self.types.resolve(
+                            target.return_term,
+                            name=f"{name}.$return",
+                        ),
+                        tuple(sorted(target.effects)),
+                        tuple(sorted(target.capabilities)),
+                    )
+                    for name, target in sorted(
+                        self.functions.items()
+                    )
+                )
+                identity = hashlib.sha256(
+                    (
+                        f"hole\0{function.source.name}\0"
+                        f"{hole.span.path}\0"
+                        f"{hole.span.start_line}\0"
+                        f"{hole.span.start_column}"
+                    ).encode()
+                ).hexdigest()
+                holes.append(
+                    CanonicalHole(
+                        f"hole_{identity[:24]}",
+                        expected_type,
+                        hole.span,
+                        tuple(context_items),
+                        callable_items,
+                        tuple(sorted(function.effects)),
+                        tuple(sorted(function.capabilities)),
+                    )
+                )
             functions.append(
                 CanonicalFunction(
                     function.source.name,
@@ -2258,6 +3028,8 @@ class _Elaborator:
                     tuple(sorted(function.effects)),
                     tuple(sorted(function.capabilities)),
                     tuple(sorted(function.errors)),
+                    requirements,
+                    ensures,
                     tuple(body),
                     function.source.span,
                     function.source.exported,
@@ -2265,9 +3037,21 @@ class _Elaborator:
                     tuple(function.implicit_callables.values()),
                     tuple(function.option_fallbacks.values()),
                     self._canonical_lines(statements, function),
+                    tuple(function.closures.values()),
+                    tuple(holes),
                 )
             )
-        canonical = CanonicalProgram(records, tuple(functions), enums)
+        flows = tuple(
+            self._canonical_flow(item)
+            for item in self.program.declarations
+            if isinstance(item, SurfaceFlow)
+        )
+        machines = tuple(
+            self._canonical_machine(item)
+            for item in self.program.declarations
+            if isinstance(item, SurfaceMachine)
+        )
+        canonical = CanonicalProgram(records, tuple(functions), enums, flows, machines)
         canonical = replace(
             canonical,
             surface_program=self.program,
@@ -2293,12 +3077,19 @@ def _emit_nested(expression: SurfaceExpression) -> str:
 def _emit_expression(expression: SurfaceExpression | None) -> str | None:
     if expression is None:
         return None
+    if isinstance(expression, SurfaceHole):
+        return "?"
     if isinstance(expression, SurfaceName):
         return expression.name
     if isinstance(expression, SurfaceLiteral):
         if expression.kind == "Bool":
             return "true" if expression.value else "false"
         return repr(expression.value)
+    if isinstance(expression, SurfaceLambda):
+        return (
+            f"{', '.join(expression.parameters)} => "
+            f"{_emit_expression(expression.body)}"
+        )
     if isinstance(expression, SurfaceImplicitReceiver):
         return f".{expression.field}"
     if isinstance(expression, SurfaceMember):
@@ -2352,7 +3143,9 @@ def _emit_implicit_expression(expression: SurfaceExpression) -> str:
         f"CannotEmitImplicitExpression: {type(expression).__name__}"
     )
 def elaborate_surface(program: SurfaceProgram) -> SurfaceElaboration:
-    return _Elaborator(program).result()
+    from merlo.monomorphization import monomorphize_surface
+
+    return _Elaborator(monomorphize_surface(program)).result()
 
 
 __all__ = [

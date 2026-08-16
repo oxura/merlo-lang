@@ -159,7 +159,7 @@ def test_shipped_human_sources_use_and_parse_as_surface_0_2() -> None:
         flags=re.MULTILINE,
     )
     sources = _human_surface_paths()
-    assert len(sources) == 45
+    assert len(sources) == 78
     for path in sources:
         source = path.read_text(encoding="utf-8")
         assert canonical_only.search(source) is None, path
@@ -198,9 +198,19 @@ def test_dual_license_and_alpha_limitations_are_explicit() -> None:
         for path in ("README.md", "docs/limitations.md", "ROADMAP.md")
     ).casefold()
     for statement in (
-        "linux x86-64", "c11 clang/gcc", "synchronous", "no cycle collector",
-        "capturing closures", "async", "registry", "macros", "traits", "self-hosting",
-        "one semantic core", "no future facets",
+        "linux x86-64",
+        "c11",
+        "synchronous",
+        "cycle collector",
+        "capturing closures",
+        "async",
+        "hosted public registry",
+        "macro",
+        "staged self-host",
+        "python bootstrap",
+        "experimental research surfaces",
+        "one semantic core",
+        "no future facets",
     ):
         assert statement in public_text
 

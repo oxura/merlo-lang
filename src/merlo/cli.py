@@ -41,9 +41,23 @@ def build_parser() -> argparse.ArgumentParser:
         command = commands.add_parser(name, help=f"{name} a Merlo project")
         command.add_argument("path", nargs="?", default=".")
         _json_flag(command)
-        if name == "build":
+        if name == "check":
+            command.add_argument("--smt", choices=("z3",))
+            command.add_argument(
+                "--smt-timeout-ms",
+                type=int,
+                default=1000,
+            )
+            command.add_argument(
+                "--smt-max-paths",
+                type=int,
+                default=256,
+            )
+        elif name == "build":
             command.add_argument("-o", "--output")
             command.add_argument("--release", action="store_true")
+            command.add_argument("--target", choices=("native", "wasm"), default="native")
+            command.add_argument("--entry")
         elif name == "run":
             command.add_argument("program_arguments", nargs=argparse.REMAINDER)
         elif name == "test":
@@ -217,7 +231,13 @@ def _main_production(args: argparse.Namespace) -> int:
     if name == "check":
         candidate = _input_path(args.path)
         project = Project.discover(candidate)
-        compilation = compile_project(candidate, require_interface_lock=False)
+        compilation = compile_project(
+            candidate,
+            smt_backend=args.smt,
+            smt_timeout_ms=args.smt_timeout_ms,
+            smt_max_paths=args.smt_max_paths,
+            require_interface_lock=False,
+        )
         world = SemanticWorld.build(
             compilation,
             state_path=project.root / ".merlo" / "world.json" if project else None,
@@ -233,6 +253,27 @@ def _main_production(args: argparse.Namespace) -> int:
         candidate = _input_path(args.path)
         project = Project.discover(candidate)
         root = project.root if project else candidate.parent if candidate.is_file() else candidate
+        if args.target == "wasm":
+            output = args.output or str(root / ".merlo" / "build" / "app.wasm")
+            compilation = compile_project(
+                candidate,
+                emit_wasm=True,
+                wasm_entry=args.entry,
+                wasm_output=output,
+                require_interface_lock=False,
+            )
+            if compilation.wasm is None:
+                raise RuntimeError("WasmBuildMissing: compiler did not produce a module")
+            payload = {
+                "ok": True,
+                "project": str(root),
+                "entry_path": compilation.entry_path,
+                "digest": compilation.wasm.artifact_digest,
+                "wasm": str(Path(output).resolve()),
+                "exports": list(compilation.wasm.exports),
+            }
+            _emit(payload, args.json, text=f"{Path(output).resolve()}\n")
+            return EXIT_OK
         output = args.output or str(root / ".merlo" / "build" / "app")
         compilation = compile_project(candidate, emit_native=True, release=args.release, output=output, require_interface_lock=False)
         if compilation.native is None:

@@ -1,0 +1,346 @@
+module syntax
+
+export enum CompileError:
+    InvalidLexeme: Text
+    UnexpectedToken: Text
+    ExpectedToken: Text
+    InvalidDeclaration: Text
+    InvalidIndentation: Text
+    DuplicateDeclaration: Text
+    MissingModule: Text
+    UnsupportedSyntax: Text
+    UnsupportedType: Text
+    InvalidEntrypoint: Text
+    Io: Text
+    Emission: Text
+
+export Token:
+    kind: UInt64
+    start: UInt64
+    length: UInt64
+    line: UInt64
+    column: UInt64
+
+export Parameter:
+    name: Text
+    type_name: Text
+
+export Function:
+    name: Text
+    parameters: Vec[Parameter]
+    return_type: Text
+    body_start: UInt64
+    body_length: UInt64
+
+export RecordField:
+    name: Text
+    type_name: Text
+
+export RecordDecl:
+    name: Text
+    fields: Vec[RecordField]
+
+export EnumVariant:
+    name: Text
+    payload_type: Text
+
+export EnumDecl:
+    name: Text
+    variants: Vec[EnumVariant]
+
+export Program:
+    module_name: Text
+    records: Vec[RecordDecl]
+    enums: Vec[EnumDecl]
+    functions: Vec[Function]
+    source: Text
+
+export token_invalid_kind() -> UInt64:
+    0
+
+export token_identifier_kind() -> UInt64:
+    1
+
+export token_integer_kind() -> UInt64:
+    2
+
+export token_string_kind() -> UInt64:
+    3
+
+export token_colon_kind() -> UInt64:
+    4
+
+export token_comma_kind() -> UInt64:
+    5
+
+export token_lparen_kind() -> UInt64:
+    6
+
+export token_rparen_kind() -> UInt64:
+    7
+
+export token_lbracket_kind() -> UInt64:
+    8
+
+export token_rbracket_kind() -> UInt64:
+    9
+
+export token_lbrace_kind() -> UInt64:
+    10
+
+export token_rbrace_kind() -> UInt64:
+    11
+
+export token_arrow_kind() -> UInt64:
+    12
+
+export token_equal_kind() -> UInt64:
+    13
+
+export token_plus_kind() -> UInt64:
+    14
+
+export token_minus_kind() -> UInt64:
+    15
+
+export token_star_kind() -> UInt64:
+    16
+
+export token_slash_kind() -> UInt64:
+    17
+
+export token_percent_kind() -> UInt64:
+    18
+
+export token_less_kind() -> UInt64:
+    19
+
+export token_greater_kind() -> UInt64:
+    20
+
+export token_question_kind() -> UInt64:
+    21
+
+export token_dot_kind() -> UInt64:
+    22
+
+
+export token_operator_kind() -> UInt64:
+    token_dot_kind()
+export token_bang_kind() -> UInt64:
+    23
+
+export token_ampersand_kind() -> UInt64:
+    24
+
+export token_pipe_kind() -> UInt64:
+    25
+
+export token_newline_kind() -> UInt64:
+    26
+
+export token_indent_kind() -> UInt64:
+    27
+
+export token_dedent_kind() -> UInt64:
+    28
+
+export token_eof_kind() -> UInt64:
+    29
+
+export token_semicolon_kind() -> UInt64:
+    30
+
+export token_tilde_kind() -> UInt64:
+    31
+
+export token_fat_arrow_kind() -> UInt64:
+    32
+
+export token_double_equal_kind() -> UInt64:
+    33
+
+export token_not_equal_kind() -> UInt64:
+    34
+
+export token_less_equal_kind() -> UInt64:
+    35
+
+export token_greater_equal_kind() -> UInt64:
+    36
+
+export token_double_slash_kind() -> UInt64:
+    37
+
+export token_left_shift_kind() -> UInt64:
+    38
+
+export token_right_shift_kind() -> UInt64:
+    39
+
+export token_module_kind() -> UInt64:
+    100
+
+export token_use_kind() -> UInt64:
+    101
+
+export token_export_kind() -> UInt64:
+    102
+
+export token_enum_kind() -> UInt64:
+    103
+
+export token_if_kind() -> UInt64:
+    104
+
+export token_else_kind() -> UInt64:
+    105
+
+export token_while_kind() -> UInt64:
+    106
+
+export token_for_kind() -> UInt64:
+    107
+
+export token_in_kind() -> UInt64:
+    108
+
+export token_match_kind() -> UInt64:
+    109
+
+export token_return_kind() -> UInt64:
+    110
+
+export token_record_kind() -> UInt64:
+    111
+
+export token_true_kind() -> UInt64:
+    112
+
+export token_false_kind() -> UInt64:
+    113
+
+export token_none_kind() -> UInt64:
+    114
+
+export token_and_kind() -> UInt64:
+    115
+
+export token_or_kind() -> UInt64:
+    116
+
+export token_not_kind() -> UInt64:
+    117
+
+export token_as_kind() -> UInt64:
+    118
+
+export token_is_kind() -> UInt64:
+    119
+
+export token_let_kind() -> UInt64:
+    120
+
+export token_const_kind() -> UInt64:
+    121
+
+export token_type_kind() -> UInt64:
+    122
+
+export token_fn_kind() -> UInt64:
+    123
+
+export token_break_kind() -> UInt64:
+    124
+
+export token_continue_kind() -> UInt64:
+    125
+
+export token_kind_is_invalid(value: Token) -> Bool:
+    value.kind == token_invalid_kind()
+
+export token_kind_is_identifier(value: Token) -> Bool:
+    value.kind == token_identifier_kind()
+
+export token_kind_is_literal(value: Token) -> Bool:
+    value.kind == token_integer_kind() or value.kind == token_string_kind()
+
+export token_keyword_kind(word: Text) -> UInt64:
+    if word == "module":
+        return token_module_kind()
+    else:
+        if word == "use":
+            return token_use_kind()
+        else:
+            if word == "export":
+                return token_export_kind()
+            else:
+                if word == "enum":
+                    return token_enum_kind()
+                else:
+                    if word == "if":
+                        return token_if_kind()
+                    else:
+                        if word == "else":
+                            return token_else_kind()
+                        else:
+                            if word == "while":
+                                return token_while_kind()
+                            else:
+                                if word == "for":
+                                    return token_for_kind()
+                                else:
+                                    if word == "in":
+                                        return token_in_kind()
+                                    else:
+                                        if word == "match":
+                                            return token_match_kind()
+                                        else:
+                                            if word == "return":
+                                                return token_return_kind()
+                                            else:
+                                                if word == "record":
+                                                    return token_record_kind()
+                                                else:
+                                                    if word == "true":
+                                                        return token_true_kind()
+                                                    else:
+                                                        if word == "false":
+                                                            return token_false_kind()
+                                                        else:
+                                                            if word == "None" or word == "none":
+                                                                return token_none_kind()
+                                                            else:
+                                                                if word == "and":
+                                                                    return token_and_kind()
+                                                                else:
+                                                                    if word == "or":
+                                                                        return token_or_kind()
+                                                                    else:
+                                                                        if word == "not":
+                                                                            return token_not_kind()
+                                                                        else:
+                                                                            if word == "as":
+                                                                                return token_as_kind()
+                                                                            else:
+                                                                                if word == "is":
+                                                                                    return token_is_kind()
+                                                                                else:
+                                                                                    if word == "let":
+                                                                                        return token_let_kind()
+                                                                                    else:
+                                                                                        if word == "const":
+                                                                                            return token_const_kind()
+                                                                                        else:
+                                                                                            if word == "type":
+                                                                                                return token_type_kind()
+                                                                                            else:
+                                                                                                if word == "fn":
+                                                                                                    return token_fn_kind()
+                                                                                                else:
+                                                                                                    if word == "break":
+                                                                                                        return token_break_kind()
+                                                                                                    else:
+                                                                                                        if word == "continue":
+                                                                                                            return token_continue_kind()
+    token_identifier_kind()

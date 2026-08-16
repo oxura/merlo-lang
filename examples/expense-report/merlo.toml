@@ -1,0 +1,6 @@
+manifest = 1
+
+[project]
+name = "expense-report"
+version = "0.1.0"
+edition = "alpha.1"

@@ -296,7 +296,8 @@ def lex_file(source: str, *, path: str = "main.mlo") -> FileLexResult:
 _DECLARATION_KEYWORDS = frozenset(
     {
         "module", "import", "export", "record", "enum", "fn", "task",
-        "interface", "extern", "spec", "impl", "const",
+        "flow", "durable", "machine", "interface", "extern", "spec",
+        "impl", "const",
     }
 )
 _TRIVIA = frozenset({"whitespace", "comment", "newline", "indent", "dedent"})

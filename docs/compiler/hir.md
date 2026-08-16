@@ -17,11 +17,12 @@ tree is rejected; serialized projections are not compiler input.
 ## Outputs
 
 The function returns `StructuredHIRProgram`, contract
-`merlo.structured-typed-hir.v2`, schema version `2`. It contains source
-text/digest, `HIRTypeDecl`/`HIRField`/`HIRVariant` values, `HIRFunction`
-records, typed parameters, an entry function, and tree-shaped `HIRNode`
-bodies. `HIRNode.walk()` is the traversal used by current source-map
-projection.
+`merlo.structured-typed-hir.v6`, schema version `6`. It contains source
+text/digest, `HIRTypeDecl` values with typed record invariants,
+`HIRField`/`HIRVariant` values, `HIRFunction` records, typed parameters,
+function contracts, contextual `TypedHole` nodes, an entry function, and
+tree-shaped `HIRNode` bodies. `HIRNode.walk()` traverses contract conditions
+and executable nodes for source-map projection.
 
 ## Invariants
 
@@ -30,6 +31,51 @@ optional symbol/revision IDs, attributes, and children. Names, node IDs, and the
 entry function are unique. HIR is a tree: CFG blocks, gotos, allocation, raw
 pointers, and drop flags are rejected here. Stable JSON includes source and
 semantic identity for every function and node.
+Requirements and ensures are Boolean, source-spanned HIR expressions. Their
+revision IDs contribute to the enclosing function revision.
+Typed holes retain their expected type, stable source identity, visible typed
+bindings and callables, and allowed effects/capabilities. RIR/MIR preserve an
+explicit non-executable hole operation. C emission produces a
+`TypedHoleNotExecutable` compile-time blocker and never a value.
+
+The sibling `obligations` compiler artifact derives typed verification work
+from HIR without changing executable semantics. Function contracts and data
+invariants begin as runtime-guarded obligations; contextual holes begin
+unresolved. Stable obligation IDs are separate from predicate revisions so
+stored verification results can be invalidated precisely.
+
+The sibling `ranges` artifact, contract
+`merlo.constant-range-analysis.v1`, propagates closed integer intervals through
+constants, bindings, checked arithmetic, casts, preconditions, and conditional
+branches. It records branch-local facts and unreachable branch IDs. Checked
+arithmetic and narrowing casts contribute typed safety obligations; only
+intervals wholly inside or outside the target domain are proven or refuted.
+Overlapping or otherwise unknown domains remain unresolved.
+
+The `bounded-symbolic` artifact exhaustively enumerates finite primitive input
+domains up to explicit case/value limits and checks typed postconditions against
+the HIR executor. Complete domains may be proven; concrete failures retain
+deterministic input/result counterexamples. Truncated domains are inconclusive,
+and unsupported operations or checked traps are reported without a proof.
+
+Optional `merlo check --smt z3` translates supported pure postcondition paths
+to canonical SMT-LIB, asks Z3 for a counterexample to each postcondition, and
+records solver version, timeout, query digest/text, and model inputs. The
+default report is disabled and does not import a solver. Missing packages,
+unsupported HIR, timeout, and solver `unknown` remain explicit non-proofs.
+Path expansion is bounded by `--smt-max-paths`; exceeding it is unsupported.
+
+The `property-evidence` artifact derives replayable parameter domains and
+Cartesian cases for each typed postcondition. Exhaustive finite domains are
+marked separately from bounded boundary samples. Preconditions remain attached
+to each property, and concrete bounded/SMT refutations are normalized with
+typed inputs and engine provenance.
+
+The `verification-metrics` artifact measures automatic closure without
+double-counting obligations proven by multiple engines. Static, exhaustive
+bounded, and SMT proofs count as closed; refutations take precedence over any
+conflicting proof. Counts, per-category/per-engine provenance, and an exact
+integer basis-points rate are serialized canonically.
 
 ## Failure modes
 
