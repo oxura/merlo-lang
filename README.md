@@ -90,7 +90,8 @@ These outputs are fixtures from the examples; they are not performance claims.
 - `Text`, `Bytes`, `Vec`, `Map`, arrays, slices, boxes, and streaming file input
 - HIR, Representation IR, MIR, C11 lowering, and native executable generation
 - CLI commands for project work, deterministic verification reports, typed-hole
-  context, SemanticWorld queries, and structural refactors
+  context, SemanticWorld queries, structural refactors, and verified rename
+  evolution with exact rollback evidence
 - an LSP server, editor grammar, FFI boundary, standard library, and twenty
   runnable example projects
 

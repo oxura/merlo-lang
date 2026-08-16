@@ -9,6 +9,7 @@ from typing import Any, Sequence
 
 from merlo.alpha_protocol import AlphaProtocol
 from merlo.compiler import compile_project
+from merlo.evolve_protocol import EvolutionPlan, VerifiedEvolutionProtocol
 from merlo.formatter import format_application_source
 from merlo.project import Project
 from merlo.semantic_world import SemanticWorld
@@ -24,7 +25,7 @@ _PRODUCTION_COMMANDS = (
     "new", "check", "verify", "obligations", "holes", "explain-hole",
     "build", "run", "test", "fmt", "expand", "explain", "doc", "map",
     "inspect", "refs", "callers", "callees", "deps", "impact", "why",
-    "context", "refactor", "add",
+    "context", "refactor", "evolve", "add",
 )
 
 
@@ -136,6 +137,33 @@ def build_parser() -> argparse.ArgumentParser:
         command.add_argument("path", nargs="?", default=".")
         command.add_argument("--apply", action="store_true")
         _json_flag(command)
+
+    evolve = commands.add_parser(
+        "evolve",
+        help="preview or apply a verified semantic evolution",
+    )
+    evolve_commands = evolve.add_subparsers(
+        dest="evolution_operation",
+        required=True,
+    )
+    evolve_rename = evolve_commands.add_parser(
+        "rename",
+        help="create a verified rename plan",
+    )
+    evolve_rename.add_argument("target")
+    evolve_rename.add_argument("new_name")
+    evolve_rename.add_argument("path", nargs="?", default=".")
+    evolve_rename.add_argument("--goal", default="")
+    evolve_rename.add_argument("--apply", action="store_true")
+    evolve_rename.add_argument("--plan-out")
+    _json_flag(evolve_rename)
+    evolve_apply = evolve_commands.add_parser(
+        "apply",
+        help="validate and apply an exact serialized evolution plan",
+    )
+    evolve_apply.add_argument("plan")
+    evolve_apply.add_argument("path", nargs="?", default=".")
+    _json_flag(evolve_apply)
 
     return parser
 
@@ -509,6 +537,65 @@ def _main_production(args: argparse.Namespace) -> int:
             value = protocol.call("refactor.signature", {"target": args.target, "signature": args.signature})
         _emit(value, args.json, text=None)
         return EXIT_OK if not isinstance(value, dict) or "diagnostic" not in value else EXIT_DIAGNOSTIC
+    if name == "evolve":
+        project = _project(args.path)
+        protocol = VerifiedEvolutionProtocol(_world(project))
+        if args.evolution_operation == "rename":
+            plan = protocol.preview_rename(
+                args.target,
+                args.new_name,
+                goal=args.goal,
+            )
+            if args.plan_out:
+                destination = Path(args.plan_out).resolve()
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_text(plan.to_json() + "\n", encoding="utf-8")
+            if not args.apply:
+                impact = plan.impact
+                payload = {
+                    "ok": True,
+                    "status": "preview",
+                    "plan_path": (
+                        str(Path(args.plan_out).resolve())
+                        if args.plan_out
+                        else None
+                    ),
+                    "plan": plan.to_dict(),
+                }
+                text = (
+                    f"evolution plan {plan.digest}\n"
+                    f"direct symbols: {len(impact.directly_changed)}\n"
+                    f"affected symbols: {len(impact.transitively_affected)}\n"
+                    f"files: {len(impact.files)}\n"
+                )
+                _emit(payload, args.json, text=text)
+                return EXIT_OK
+        else:
+            plan_path = Path(args.plan).resolve()
+            plan = EvolutionPlan.from_json(
+                plan_path.read_text(encoding="utf-8"),
+                world=protocol.world,
+            )
+        result = protocol.apply(plan)
+        ok = result.status == "committed"
+        payload = {
+            "ok": ok,
+            "status": result.status,
+            "result": result.to_dict(),
+        }
+        text = (
+            f"evolution {result.status}\n"
+            f"change: {result.change_digest}\n"
+            + (
+                f"after world: {result.after_world_digest}\n"
+                f"preservation: {result.preservation.overall}\n"
+                f"evidence: {result.evidence.digest}\n"
+                if ok
+                else f"diagnostic: {result.diagnostic.message}\n"
+            )
+        )
+        _emit(payload, args.json, text=text)
+        return EXIT_OK if ok else EXIT_DIAGNOSTIC
     raise ValueError(f"UnknownCommand: {name}")
 
 

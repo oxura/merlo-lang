@@ -112,12 +112,30 @@ class PatchClaimStatus(str, Enum):
 
 
 
-def _provenance(value: Any) -> Any:
+def _provenance(
+    value: Any,
+    function_names: tuple[str, str] | None = None,
+) -> Any:
     ignored = {"digest", "hir_digest", "obligation_digest", "obligation_id", "owner_symbol_id", "owner_revision_id", "revision_id", "query_sha256"}
     if isinstance(value, Mapping):
-        return {key: _provenance(item) for key, item in sorted(value.items()) if key not in ignored}
+        return {
+            key: (
+                "<target-name>"
+                if key == "function"
+                and isinstance(item, str)
+                and function_names is not None
+                and any(
+                    item == function_name
+                    or item.endswith(f"__{function_name}")
+                    for function_name in function_names
+                )
+                else _provenance(item, function_names)
+            )
+            for key, item in sorted(value.items())
+            if key not in ignored
+        }
     if isinstance(value, (list, tuple)):
-        rows = [_provenance(item) for item in value]
+        rows = [_provenance(item, function_names) for item in value]
         return sorted(rows, key=_json)
     return value
 
@@ -691,9 +709,13 @@ def emit_patch_evidence(change: ChangeIR, before_world: SemanticWorld, after_wor
     after_target_path = str(Path(after_symbol["source"]["path"]).resolve())
     if before_target_path != after_target_path or before_target_path not in edit_paths:
         raise _error("PatchEvidenceTargetSourceLineageMismatch")
-    if _provenance(before_capsule.obligations) != _provenance(after_capsule.obligations):
+    function_names = (
+        before_capsule.target.name,
+        after_capsule.target.name,
+    )
+    if _provenance(before_capsule.obligations, function_names) != _provenance(after_capsule.obligations, function_names):
         raise _error("PatchEvidenceObligationProvenanceMismatch")
-    if set(before_capsule.verification) != set(after_capsule.verification) or _provenance(before_capsule.verification) != _provenance(after_capsule.verification):
+    if set(before_capsule.verification) != set(after_capsule.verification) or _provenance(before_capsule.verification, function_names) != _provenance(after_capsule.verification, function_names):
         raise _error("PatchEvidenceVerificationProvenanceMismatch")
     target = PatchTargetLineage(
         before_symbol["symbol_id"],

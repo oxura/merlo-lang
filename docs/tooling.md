@@ -6,7 +6,8 @@ The production console script is `merlo`. Its project commands are:
 - `obligations`, `holes`, and `explain-hole`;
 - `fmt`, `expand`, `explain`, `doc`, and `map`;
 - `inspect`, `refs`, `callers`, `callees`, `deps`, `impact`, `why`, and `context`;
-- `refactor rename|move|signature` and `add --path|--git`.
+- `refactor rename|move|signature`, `evolve rename|apply`, and
+  `add --path|--git`.
 
 Use `merlo --help` for parser-level details. `--json` is available on the
 commands that emit structured payloads. `doc` writes generated API markdown to
@@ -22,6 +23,15 @@ typed expressions, while `merlo explain-hole HOLE_ID` reports the expected
 type, visible bindings and callables, allowed effects, and capabilities. All
 four commands have deterministic `--json` output; `verify` and `obligations`
 also accept the same optional `--smt z3` settings as `check`.
+
+`merlo evolve rename TARGET NEW_NAME PROJECT` creates a digest-bound plan with
+ChangeIR, a target SemanticCapsule, and a transitive impact report. Use
+`--plan-out FILE` to persist the exact plan for review, then apply that same
+artifact with `merlo evolve apply FILE PROJECT`. The shorter `--apply` route is
+also available. A successful result includes preservation findings, before and
+after world identities, exact file hashes, a journaled transaction, and patch
+evidence. Any post-commit verification failure rolls the complete transaction
+back before the command returns a diagnostic status.
 
 `merlo fmt` preserves the human Surface AST. It does not insert canonical
 keywords. `merlo expand` projects the typed Canonical AST with complete
