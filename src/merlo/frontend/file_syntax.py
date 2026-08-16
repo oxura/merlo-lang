@@ -675,13 +675,16 @@ def _header_parts(
 
     texts = [token.text for token in significant]
     trailing_colon = len(texts) - 1 if texts[-1] == ":" else len(texts)
-    function_header = kind in {"fn", "task", "flow", "extern", "statement"}
+    function_header = kind in {
+        "fn", "task", "flow", "machine", "state", "extern", "statement",
+    }
     if kind == "expression_statement" and "(" in texts and ")" in texts:
         last_close = len(texts) - 1 - texts[::-1].index(")")
         function_header = (
             texts[0] in {"fn", "task"}
             or texts[-1] == ":"
             or "=" in texts[last_close + 1 :]
+            or texts[last_close + 1 : last_close + 3] == ["-", ">"]
         )
     if function_header:
         try:

@@ -161,16 +161,8 @@ def test_surface_declaration_expressions_consume_cst_tokens(
     ]
 
 
-def test_surface_function_signatures_consume_cst_type_regions(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        surface_parser_module._Parser,
-        "_parameters",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            AssertionError("parsed parameter fragment")
-        ),
-    )
+def test_surface_function_signatures_consume_cst_type_regions() -> None:
+    assert not hasattr(surface_parser_module._Parser, "_parameters")
 
     function = parse_surface(
         "fn choose(left: UInt64, right: Map<Text, UInt64>) -> UInt64 = left\n",

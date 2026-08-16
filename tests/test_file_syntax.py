@@ -224,6 +224,30 @@ def test_keyword_named_field_does_not_reclassify_else_block() -> None:
     assert [child.kind for child in function_block.children] == ["if", "else"]
 
 
+def test_cst_retains_flow_machine_state_and_interface_signatures() -> None:
+    result = parse_file_cst(
+        "flow ingest(input: Text) -> Result[Text, Err]:\n"
+        "    output = input\n"
+        "machine Job(id: UInt64):\n"
+        "    state Running(value: Text)\n"
+        "interface Sized:\n"
+        "    size(value: Self) -> UInt64\n",
+        path="extended-signatures.mlo",
+    )
+
+    flow_header = result.declarations[0].children[0]
+    machine_header = result.declarations[1].children[0]
+    state_header = result.declarations[1].children[1].children[0].children[0]
+    interface_method = result.declarations[2].children[1].children[0].children[0]
+    assert [child.kind for child in flow_header.children] == ["parameters", "type"]
+    assert [child.kind for child in machine_header.children] == ["parameters"]
+    assert [child.kind for child in state_header.children] == ["parameters"]
+    assert [child.kind for child in interface_method.children] == [
+        "parameters",
+        "type",
+    ]
+
+
 def test_multiline_delimited_expression_is_one_lossless_cst_region() -> None:
     source = (
         "fn values() -> Array[UInt64, 2]:\n"

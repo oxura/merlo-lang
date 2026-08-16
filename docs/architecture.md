@@ -41,8 +41,10 @@ and their expression regions consume the file lexer's retained tokens directly.
 Delimited multiline expressions are a single CST region. Declaration-level
 expressions, function parameter types, return types, generic parameter
 constraints, record/enum payloads, and local annotations already consume
-retained CST tokens. Interface methods and flow/machine signatures remain the
-next type-region migration boundaries.
+retained CST tokens. Flow, machine, state, and interface method signatures use
+the same boundary, so production signature parsing no longer has a separate
+line-fragment parameter parser. Implementation target types and flow policy
+expressions remain migration boundaries.
 Elaboration constraints, call binding, diagnostics, inference state, and
 native lowering have separate owners under `merlo/elaboration` and
 `merlo/frontend`.

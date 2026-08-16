@@ -749,11 +749,11 @@ class _Parser:
                 raw,
             )
             if match:
-                return self._flow(match, exported)
+                return self._flow(match, exported, anchor)
         elif kind == "machine":
             match = re.fullmatch(r"machine\s+([A-Z]\w*)\((.*)\)\s*:", raw)
             if match:
-                return self._machine(match, exported)
+                return self._machine(match, exported, anchor)
         elif kind == "interface":
             match = re.fullmatch(r"interface\s+([A-Z]\w*)\s*:", raw)
             if match:
@@ -848,10 +848,28 @@ class _Parser:
             _type_name(type_name) if type_name else None,
             policies,
         )
-    def _flow(self, match: re.Match[str], exported: bool) -> SurfaceFlow:
+    def _flow(
+        self,
+        match: re.Match[str],
+        exported: bool,
+        anchor: SyntaxNode,
+    ) -> SurfaceFlow:
         start = self.lines[self.index]
         durable, name, raw_parameters, raw_return = match.groups()
-        parameters = self._parameters(raw_parameters, start, base_column=match.start(2))
+        del raw_parameters
+        parameters = self._cst_function_parameters(anchor, start)
+        return_type = self._cst_function_return_type(
+            anchor,
+            start,
+            expected=True,
+        )
+        if return_type is None:
+            raise SurfaceSyntaxError(
+                "CSTTypeMismatch",
+                "flow return type is missing from the CST",
+                _span(self.path, start),
+            )
+        del raw_return
         self.index += 1
         body: list[SurfaceStatement] = []
         while self.index < len(self.lines):
@@ -893,13 +911,19 @@ class _Parser:
         end = self.lines[self.index - 1] if self.index else start
         return SurfaceFlow(
             _span(self.path, start, end_line=end), name, parameters,
-            _type_name(raw_return), tuple(body), bool(durable), exported,
+            return_type, tuple(body), bool(durable), exported,
         )
 
-    def _machine(self, match: re.Match[str], exported: bool) -> SurfaceMachine:
+    def _machine(
+        self,
+        match: re.Match[str],
+        exported: bool,
+        anchor: SyntaxNode,
+    ) -> SurfaceMachine:
         start = self.lines[self.index]
         name, raw_parameters = match.groups()
-        parameters = self._parameters(raw_parameters, start, base_column=match.start(2))
+        del raw_parameters
+        parameters = self._cst_function_parameters(anchor, start)
         self.index += 1
         states: list[SurfaceState] = []
         transitions: list[SurfaceTransition] = []
@@ -916,9 +940,11 @@ class _Parser:
                 raise SurfaceSyntaxError("InvalidIndentation", "machine member expected", _span(self.path, line))
             state_match = re.fullmatch(r"state\s+([A-Z]\w*)(?:\((.*)\))?", line.text)
             if state_match:
-                fields = self._parameters(
-                    state_match.group(2) or "", line,
-                    base_column=state_match.start(2) if state_match.group(2) else 0,
+                state_anchor = self._statement_anchor(line, kind="state")
+                fields = (
+                    self._cst_function_parameters(state_anchor, line)
+                    if state_match.group(2) is not None
+                    else ()
                 )
                 if any(item.type_name is None for item in fields):
                     raise SurfaceSyntaxError("StateFieldTypeRequired", state_match.group(1), _span(self.path, line))
@@ -992,15 +1018,26 @@ class _Parser:
                     line.text,
                     _span(self.path, line),
                 )
-            parameters = self._parameters(
-                match.group(2),
+            method_anchor = self._statement_anchor(
                 line,
-                base_column=match.start(2),
+                kind="expression_statement",
             )
+            parameters = self._cst_function_parameters(method_anchor, line)
             if any(item.type_name is None for item in parameters):
                 raise SurfaceSyntaxError(
                     "InterfaceBoundaryAnnotationRequired",
                     match.group(1),
+                    _span(self.path, line),
+                )
+            return_type = self._cst_function_return_type(
+                method_anchor,
+                line,
+                expected=True,
+            )
+            if return_type is None:
+                raise SurfaceSyntaxError(
+                    "CSTTypeMismatch",
+                    "interface return type is missing from the CST",
                     _span(self.path, line),
                 )
             methods.append(
@@ -1008,7 +1045,7 @@ class _Parser:
                     _span(self.path, line),
                     match.group(1),
                     parameters,
-                    _type_name(match.group(3)),
+                    return_type,
                 )
             )
             self.index += 1
@@ -1179,45 +1216,6 @@ class _Parser:
             ))
             self.index += 1
         return SurfaceEnum(_span(self.path, start, end_line=self.lines[self.index - 1]), name, tuple(variants), exported)
-
-    def _parameters(
-        self,
-        source: str,
-        line: _Line,
-        *,
-        base_column: int = 0,
-    ) -> tuple[SurfaceParameter, ...]:
-        if not source.strip():
-            return ()
-        parameters = []
-        cursor = 0
-        for part in _split_top_level_commas(source):
-            start = source.find(part, cursor)
-            cursor = start + len(part)
-            left = len(part) - len(part.lstrip())
-            right = len(part.rstrip())
-            lexical_start = base_column + start + left
-            lexical_end = base_column + start + right
-            name, separator, type_name = part.strip().partition(":")
-            if not re.fullmatch(r"[A-Za-z_]\w*", name):
-                raise SurfaceSyntaxError("InvalidParameter", part, _span(self.path, line))
-            parameter_span = SourceSpan(
-                self.path,
-                line.number,
-                line.indent + lexical_start + 1,
-                line.number,
-                line.indent + lexical_end + 1,
-            )
-            parameters.append(
-                SurfaceParameter(
-                    parameter_span,
-                    name,
-                    _type_name(type_name) if separator else None,
-                )
-            )
-        if len({item.name for item in parameters}) != len(parameters):
-            raise SurfaceSyntaxError("DuplicateParameter", "parameter names must be unique", _span(self.path, line))
-        return tuple(parameters)
 
     def _retained_node_text(
         self,

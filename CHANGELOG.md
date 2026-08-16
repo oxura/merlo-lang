@@ -138,6 +138,9 @@
 - Routes record fields, enum payloads, local annotations, and annotated
   bindings through retained CST type regions. Missing or extra regions fail
   closed instead of falling back to line-fragment type parsing.
+- Routes flow, machine, state, and interface method signatures through retained
+  parameter and return-type nodes, including interface methods without an
+  explicit `fn`. The transitional string-based `_parameters()` parser is gone.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.
