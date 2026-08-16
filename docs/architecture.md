@@ -35,9 +35,11 @@ type-region, and expression-region nodes with explicit recovery nodes and
 structurally stable identities. It remains a conservative syntax hierarchy,
 not yet a complete replacement for the semantic Surface parser. Top-level
 Surface declaration boundaries and declaration-kind dispatch already consume
-the CST anchors and fail closed on disagreement. Surface statement blocks now
-apply the same rule to nested control flow, including `else` and `case`
-constructs; expression token consumption is the next migration boundary.
+the CST anchors and fail closed on disagreement. Surface statement blocks apply
+the same rule to nested control flow, including `else` and `case` constructs,
+and their expression regions consume the file lexer's retained tokens directly.
+Delimited multiline expressions are a single CST region. Declaration-level
+expressions and type-region consumption are the next migration boundaries.
 Elaboration constraints, call binding, diagnostics, inference state, and
 native lowering have separate owners under `merlo/elaboration` and
 `merlo/frontend`.

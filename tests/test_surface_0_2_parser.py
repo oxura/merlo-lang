@@ -124,6 +124,51 @@ def test_surface_statement_blocks_fail_closed_on_cst_disagreement(
         parse_surface(source, path="statement-anchor.mlo")
 
 
+def test_surface_statement_expressions_consume_cst_tokens(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = "value():\n    return 1 + 2\n"
+
+    monkeypatch.setattr(
+        surface_parser_module,
+        "lex_expression",
+        lambda _source: (_ for _ in ()).throw(AssertionError("re-lexed")),
+    )
+
+    program = parse_surface(source, path="expression-region.mlo")
+    assert program.declarations[0].body[0].expression is not None
+
+
+def test_surface_statement_expressions_fail_closed_on_cst_disagreement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = "value():\n    return 1 + 2\n"
+    cst = parse_file_cst(source, path="expression-region.mlo")
+    declaration = cst.declarations[0]
+    declaration_header, block = declaration.children
+    statement = block.children[0]
+    statement_header = statement.children[0]
+    missing_expression_header = replace(statement_header, children=())
+    missing_statement = replace(
+        statement,
+        children=(missing_expression_header,),
+    )
+    missing_block = replace(block, children=(missing_statement,))
+    missing_declaration = replace(
+        declaration,
+        children=(declaration_header, missing_block),
+    )
+    missing = replace(cst, declarations=(missing_declaration,))
+    monkeypatch.setattr(
+        surface_parser_module,
+        "parse_file_cst",
+        lambda _source, *, path: missing,
+    )
+
+    with pytest.raises(SurfaceSyntaxError, match="CSTExpressionMismatch"):
+        parse_surface(source, path="expression-region.mlo")
+
+
 def test_parser_recognizes_records_optional_types_and_tail_expressions() -> None:
     program = parse_surface(
         "User:\n"

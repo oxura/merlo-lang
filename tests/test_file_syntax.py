@@ -89,6 +89,56 @@ def test_statement_keywords_used_as_receivers_remain_expressions() -> None:
     ]
 
 
+def test_cst_splits_statement_expression_regions_at_semantic_boundaries() -> None:
+    result = parse_file_cst(
+        "fn update(items: Vec[Item]):\n"
+        "    for item in items.where(.active):\n"
+        "        item.count += item.delta\n",
+        path="regions.mlo",
+    )
+    outer_block = result.declarations[0].children[1]
+    loop = outer_block.children[0]
+    loop_header, loop_block = loop.children
+    assignment_header = loop_block.children[0].children[0]
+
+    assert [token.text for token in loop_header.children[0].tokens] == [
+        "items", ".", "where", "(", ".", "active", ")",
+    ]
+    assert [
+        [token.text for token in expression.tokens]
+        for expression in assignment_header.children
+    ] == [
+        ["item", ".", "count"],
+        ["item", ".", "delta"],
+    ]
+
+
+def test_multiline_delimited_expression_is_one_lossless_cst_region() -> None:
+    source = (
+        "fn values() -> Array[UInt64, 2]:\n"
+        "    values: Array[UInt64, 2] = [\n"
+        "        1,\n"
+        "        2,\n"
+        "    ]\n"
+        "    return values\n"
+    )
+    lexed = lex_file(source, path="multiline.mlo")
+    result = parse_file_cst(source, path="multiline.mlo")
+    block = result.declarations[0].children[1]
+    binding = block.children[0]
+    expression = binding.children[0].children[-1]
+
+    assert lexed.to_source() == source
+    assert [token.kind for token in lexed.tokens].count("indent") == 1
+    assert [child.kind for child in block.children] == [
+        "expression_statement",
+        "return",
+    ]
+    assert [token.text for token in expression.tokens] == [
+        "[", "1", ",", "2", ",", "]",
+    ]
+
+
 def test_hierarchical_ids_survive_unrelated_sibling_insertions() -> None:
     original = (
         "fn value() -> UInt64:\n"
