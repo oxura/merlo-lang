@@ -34,8 +34,25 @@ merlo refactor move app.main.helper app.support PROJECT
 merlo refactor signature app.main.helper "(value: UInt64) -> Text" PROJECT
 ```
 
-In alpha.2, exact rename plans are the only refactors that can become ready and
-be applied. Every preview is a canonical `merlo.change-ir.v1` envelope with a
+For the verified path, serialize and review the whole evolution plan before
+applying it:
+
+```console
+merlo evolve rename app.main.helper assist PROJECT \
+  --goal "rename without changing behavior" \
+  --plan-out .merlo/helper-rename.json
+merlo evolve apply .merlo/helper-rename.json PROJECT
+```
+
+The apply command reconstructs the plan against a fresh SemanticWorld, rejects
+tampered or stale artifacts before writing, performs the exact structural
+edits, rebuilds the world, checks preservation, emits patch evidence, and saves
+the new world. If any post-commit step fails, the journal restores every edited
+file and the previous world.
+
+In the current alpha.3 development contract, exact rename plans are the only
+refactors that can become ready and be applied. Every preview is a canonical
+`merlo.change-ir.v1` envelope with a
 schema version, deterministic digest, world/target revisions, immutable
 metadata, and source-anchored edits. `move` and `signature` are reserved
 protocol operations that return the same envelope with `status: unsupported`;
