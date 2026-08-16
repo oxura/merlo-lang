@@ -35,6 +35,13 @@ Application repeats verification against the fresh SemanticWorld and rolls the
 exact transaction back if its evidence or resulting source hashes differ.
 `merlo build` never invokes synthesis or an LLM.
 
+`merlo refactor signature TARGET SIGNATURE PROJECT` replaces only the anchored
+explicit signature span. The preview becomes `ready` only if an isolated full
+project compile proves that existing bodies and callers still type-check; use
+`--apply` for the journaled edit. The command deliberately does not synthesize
+caller arguments. Cross-module `refactor move` remains fail-closed until the
+protocol carries old/new SymbolId lineage.
+
 `merlo evolve rename TARGET NEW_NAME PROJECT` creates a digest-bound plan with
 ChangeIR, a target SemanticCapsule, and a transitive impact report. Use
 `--plan-out FILE` to persist the exact plan for review, then apply that same

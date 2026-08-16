@@ -173,6 +173,138 @@ def test_protocol_rename_uses_only_semantic_spans_for_nested_calls(tmp_path: Pat
     assert "helper" not in updated
 
 
+def test_change_signature_is_structural_verified_and_transactional(
+    tmp_path: Path,
+) -> None:
+    from merlo.alpha_protocol import AlphaProtocol
+    from merlo.compiler import compile_project
+    from merlo.refactor import ChangeIR, preview_change_signature
+    from merlo.semantic_world import (
+        SemanticWorld,
+        UnsupportedMigration,
+        WorldError,
+    )
+    from merlo.transaction import load_transaction
+
+    source = tmp_path / "signature" / "main.mlo"
+    source.parent.mkdir(parents=True)
+    source.write_text(
+        "module signature\n\n"
+        "fn identity(value: UInt64) -> UInt64:\n"
+        "    value\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "export main(path: Path) -> Result[Text, AppError]:\n"
+        "    let answer = identity(7)\n"
+        "    console.write(\"signature\")\n"
+        "    Ok(\"signature\")\n",
+        encoding="utf-8",
+    )
+    world = SemanticWorld.build(source, require_interface_lock=False)
+    before = source.read_bytes()
+    change = preview_change_signature(
+        world,
+        "signature.identity",
+        "(value: Int64) -> Int64",
+    )
+    assert change.status == "ready"
+    assert change.edits[0].kind == "signature"
+    assert change.metadata["old_signature"] == (
+        "(value: UInt64) -> UInt64"
+    )
+    assert ChangeIR.from_json(
+        change.to_json(),
+        world=world,
+    ).to_json() == change.to_json()
+
+    spoofed = replace(
+        change,
+        edits=(
+            replace(
+                change.edits[0],
+                replacement="(value: Text) -> Text",
+            ),
+        ),
+        digest="",
+    )
+    with pytest.raises(WorldError, match="SemanticEditMismatch"):
+        spoofed.apply()
+    assert source.read_bytes() == before
+
+    forged = replace(
+        change,
+        metadata={
+            "old_signature": "(value: UInt64) -> UInt64",
+            "signature": "(value: Text) -> Text",
+        },
+        edits=(
+            replace(
+                change.edits[0],
+                replacement="(value: Text) -> Text",
+            ),
+        ),
+        digest="",
+    )
+    with pytest.raises(
+        UnsupportedMigration,
+        match="no longer type-checks",
+    ):
+        forged.apply()
+    assert source.read_bytes() == before
+
+    receipt = AlphaProtocol(world).call(
+        "refactor.signature.apply",
+        {
+            "target": "signature.identity",
+            "signature": "(value: Int64) -> Int64",
+        },
+    )
+    assert receipt["committed"] is True
+    assert "identity(value: Int64) -> Int64" in source.read_text(
+        encoding="utf-8"
+    )
+    compile_project(source, require_interface_lock=False)
+    transaction = load_transaction(
+        source.parent,
+        receipt["transaction"]["transaction_id"],
+    )
+    assert transaction.rollback().changed is True
+    assert source.read_bytes() == before
+
+
+def test_change_signature_rejects_incompatible_callers_without_writes(
+    tmp_path: Path,
+) -> None:
+    from merlo.refactor import preview_change_signature
+    from merlo.semantic_world import SemanticWorld
+
+    source = tmp_path / "signature" / "main.mlo"
+    source.parent.mkdir(parents=True)
+    source.write_text(
+        "module signature\n\n"
+        "fn identity(value: UInt64) -> UInt64:\n"
+        "    value\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "export main(path: Path) -> Result[Text, AppError]:\n"
+        "    let answer = identity(7)\n"
+        "    console.write(\"signature\")\n"
+        "    Ok(\"signature\")\n",
+        encoding="utf-8",
+    )
+    world = SemanticWorld.build(source, require_interface_lock=False)
+    before = source.read_bytes()
+    change = preview_change_signature(
+        world,
+        "signature.identity",
+        "(value: Text) -> Text",
+    )
+    assert change.status == "unsupported"
+    assert change.edits == ()
+    assert "caller/body migration" in change.diagnostic.message
+    assert source.read_bytes() == before
+
+
 def test_change_ir_roundtrip_tamper_and_apply_status(
     tmp_path: Path,
 ) -> None:

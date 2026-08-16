@@ -548,9 +548,20 @@ def _main_production(args: argparse.Namespace) -> int:
         elif args.operation == "move":
             value = protocol.call("refactor.move", {"target": args.target, "module": args.module})
         else:
-            value = protocol.call("refactor.signature", {"target": args.target, "signature": args.signature})
+            value = protocol.call(
+                "refactor.signature",
+                {
+                    "target": args.target,
+                    "signature": args.signature,
+                    "mode": "apply" if args.apply else "preview",
+                },
+            )
         _emit(value, args.json, text=None)
-        return EXIT_OK if not isinstance(value, dict) or "diagnostic" not in value else EXIT_DIAGNOSTIC
+        return (
+            EXIT_OK
+            if not isinstance(value, dict) or value.get("diagnostic") is None
+            else EXIT_DIAGNOSTIC
+        )
     if name == "evolve":
         project = _project(args.path)
         protocol = VerifiedEvolutionProtocol(_world(project))

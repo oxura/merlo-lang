@@ -87,6 +87,10 @@
   contract-guided symbolic search, and local package candidates. Preview is
   read-only; explicit apply repeats isolated compilation and obligation checks,
   binds evidence to exact source hashes, and rolls back on any mismatch.
+- Enables structural `refactor signature` for explicit function/task
+  signatures when the exact edit compiles with every existing body and caller
+  in an isolated project. Incompatible migrations remain read-only unsupported
+  plans, and apply revalidates the anchored CST edit against a fresh world.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.
