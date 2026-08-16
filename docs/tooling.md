@@ -39,8 +39,12 @@ exact transaction back if its evidence or resulting source hashes differ.
 explicit signature span. The preview becomes `ready` only if an isolated full
 project compile proves that existing bodies and callers still type-check; use
 `--apply` for the journaled edit. The command deliberately does not synthesize
-caller arguments. Cross-module `refactor move` remains fail-closed until the
-protocol carries old/new SymbolId lineage.
+caller arguments. `merlo refactor move TARGET MODULE PROJECT` now supports the
+verified private-function subset: existing project destinations, structural
+declaration/import edits, isolated full-project compilation, transactional
+apply, and exact old/new SymbolId lineage. Public/type/task moves, qualified
+call migration, stdlib destinations, and dependency changes outside this
+subset remain fail-closed.
 
 `merlo evolve rename TARGET NEW_NAME PROJECT` creates a digest-bound plan with
 ChangeIR, a target SemanticCapsule, and a transitive impact report. Use

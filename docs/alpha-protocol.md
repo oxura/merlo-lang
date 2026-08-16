@@ -31,9 +31,18 @@ Refactors are explicit and can be previewed before applying:
 merlo refactor rename app.main.helper assist PROJECT
 merlo refactor rename app.main.helper assist PROJECT --apply
 merlo refactor move app.main.helper app.support PROJECT
+merlo refactor move app.main.helper app.support PROJECT --apply
 merlo refactor signature app.main.helper "(value: UInt64) -> Text" PROJECT
 merlo refactor signature app.main.helper "(value: Int64) -> Int64" PROJECT --apply
 ```
+
+The alpha `move` subset is deliberately narrow: it moves a private top-level
+function into an existing reachable project module, migrates required direct
+imports, and exports the moved declaration so existing unqualified callers
+continue to resolve. Preview runs an isolated full-project compile and records
+the exact old/new SymbolId and revision lineage. Public symbols, types, tasks,
+qualified-call rewrites, dependency cycles, stdlib destinations, and any move
+that does not compile remain fail-closed.
 
 For the verified path, serialize and review the whole evolution plan before
 applying it:

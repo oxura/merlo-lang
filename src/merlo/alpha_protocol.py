@@ -236,6 +236,7 @@ class AlphaProtocol:
                 change.apply()
                 if self._mode(operation, values)
                 == "apply"
+                and change.status == "ready"
                 else change.to_dict()
             )
         if operation in {
@@ -248,12 +249,18 @@ class AlphaProtocol:
                 raise WorldError(
                     "MissingMoveModule"
                 )
-            self._mode(operation, values)
-            return preview_move(
+            change = preview_move(
                 self.world,
                 self._target(values),
                 module,
-            ).to_dict()
+            )
+            return (
+                change.apply()
+                if self._mode(operation, values)
+                == "apply"
+                and change.status == "ready"
+                else change.to_dict()
+            )
         if operation in {
             "refactor.signature",
             "refactor.change_signature",

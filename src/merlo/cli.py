@@ -546,7 +546,14 @@ def _main_production(args: argparse.Namespace) -> int:
         if args.operation == "rename":
             value = protocol.call("refactor.rename", {"target": args.target, "new_name": args.new_name, "mode": "apply" if args.apply else "preview"})
         elif args.operation == "move":
-            value = protocol.call("refactor.move", {"target": args.target, "module": args.module})
+            value = protocol.call(
+                "refactor.move",
+                {
+                    "target": args.target,
+                    "module": args.module,
+                    "mode": "apply" if args.apply else "preview",
+                },
+            )
         else:
             value = protocol.call(
                 "refactor.signature",

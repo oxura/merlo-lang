@@ -77,6 +77,9 @@
 - Adds canonical ChangeIR-bound semantic impact reports covering direct and
   transitive symbols, reference/call/dependency edges, interfaces, files, and
   tests before a change is applied.
+- Adds a verified cross-module `MoveSymbol` subset for private functions, with
+  structural CST edits, direct-import migration, isolated project compilation,
+  transactional apply, and digest-bound old/new SymbolId revision lineage.
 - Adds digest-bound patch evidence and preservation reports, keeping structural
   apply proof separate from contract, effect, capability, obligation, and
   verification preservation.

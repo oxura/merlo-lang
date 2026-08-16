@@ -63,6 +63,60 @@ def test_new_json_is_deterministic_and_discovers_source_project(tmp_path: Path, 
     assert checked["entry_path"] == str(source)
 
 
+def test_refactor_move_cli_previews_then_applies_verified_lineage(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    project = Project.create(tmp_path / "move_cli", name="move_cli")
+    source = project.source_dir / "main.mlo"
+    support = project.source_dir / "support.mlo"
+    source.write_text(
+        "module main\n"
+        "use support\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "fn helper(value: Text) -> Text:\n"
+        "    return value\n\n"
+        "export task main(path: Path) -> Result[Text, AppError]:\n"
+        "    uses console.write\n"
+        '    console.write(helper("move-cli"))\n'
+        '    return Ok(helper("ok"))\n',
+        encoding="utf-8",
+    )
+    support.write_text(
+        "module support\n\n"
+        "export fn existing(value: UInt64) -> UInt64:\n"
+        "    return value\n",
+        encoding="utf-8",
+    )
+
+    command = [
+        "refactor",
+        "move",
+        "main.helper",
+        "support",
+        str(project.root),
+        "--json",
+    ]
+    assert main(command) == EXIT_OK
+    preview = json.loads(capsys.readouterr().out)
+    assert preview["status"] == "ready"
+    assert preview["metadata"]["old_symbol_id"] != (
+        preview["metadata"]["new_symbol_id"]
+    )
+    assert "fn helper" in source.read_text(encoding="utf-8")
+
+    assert main([*command, "--apply"]) == EXIT_OK
+    applied = json.loads(capsys.readouterr().out)
+    assert applied["committed"] is True
+    assert applied["lineage"] == {
+        "old_symbol_id": preview["metadata"]["old_symbol_id"],
+        "new_symbol_id": preview["metadata"]["new_symbol_id"],
+    }
+    assert "fn helper" not in source.read_text(encoding="utf-8")
+    assert "export fn helper" in support.read_text(encoding="utf-8")
+
+
 def test_check_exposes_optional_smt_outcome(tmp_path: Path, capsys) -> None:
     project = Project.create(tmp_path / "smt", name="smt")
     source = project.source_dir / "main.mlo"
