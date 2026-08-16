@@ -270,12 +270,15 @@ class AlphaProtocol:
                 raise WorldError(
                     "MissingSignature"
                 )
-            self._mode(operation, values)
-            return preview_change_signature(
+            mode = self._mode(operation, values)
+            change = preview_change_signature(
                 self.world,
                 self._target(values),
                 signature,
-            ).to_dict()
+            )
+            if mode == "apply" and change.status == "ready":
+                return change.apply()
+            return change.to_dict()
         raise WorldError(
             f"UnknownOperation: {operation}"
         )

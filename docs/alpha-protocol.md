@@ -32,6 +32,7 @@ merlo refactor rename app.main.helper assist PROJECT
 merlo refactor rename app.main.helper assist PROJECT --apply
 merlo refactor move app.main.helper app.support PROJECT
 merlo refactor signature app.main.helper "(value: UInt64) -> Text" PROJECT
+merlo refactor signature app.main.helper "(value: Int64) -> Int64" PROJECT --apply
 ```
 
 For the verified path, serialize and review the whole evolution plan before
@@ -69,12 +70,18 @@ the new world. If any post-commit step fails, the journal restores every edited
 file and the previous world.
 
 In the current alpha.3 development contract, exact rename plans are the only
-refactors that can become ready and be applied. Every preview is a canonical
+changes accepted by the verified `evolve` path. The lower-level structural
+refactor path also accepts explicit function/task signature replacements when
+the changed project compiles in isolation with every existing body and caller.
+It does not invent argument migrations. `move` remains unsupported until
+ChangeIR can express old/new SymbolId lineage across module boundaries.
+
+Every preview is a canonical
 `merlo.change-ir.v1` envelope with a
 schema version, deterministic digest, world/target revisions, immutable
-metadata, and source-anchored edits. `move` and `signature` are reserved
-protocol operations that return the same envelope with `status: unsupported`;
-they do not edit source and cannot be applied.
+metadata, and source-anchored edits. Unsupported signature migrations and all
+move requests return the same envelope with `status: unsupported`; they do not
+edit source and cannot be applied.
 
 The CLI checks the affected semantic world and returns a diagnostic when a
 migration is unsupported, a target is missing, or an edit capability is not

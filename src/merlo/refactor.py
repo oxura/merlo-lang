@@ -4,6 +4,8 @@ import hashlib
 import json
 import math
 import re
+import shutil
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
@@ -219,6 +221,162 @@ def _identifier_edit(path: Path, span: dict[str, Any], old: str, new: str, symbo
         token_id=match.token_id,
         token_ordinal=token_ordinal,
     )
+
+
+def _signature_edit(
+    symbol: Mapping[str, Any],
+    signature: str,
+) -> tuple[RefactorEdit, str]:
+    path = Path(symbol["source"]["path"]).resolve()
+    source = path.read_text(encoding="utf-8")
+    cst = parse_file_cst(source, path=str(path))
+    if cst.diagnostics:
+        codes = ",".join(item.code for item in cst.diagnostics)
+        raise UnsupportedMigration(
+            "UnsupportedMigration: cannot change a signature in recovered "
+            f"syntax in {path}: {codes}"
+        )
+    line = int(symbol["source"].get("line", 0))
+    candidates = tuple(
+        declaration
+        for declaration in cst.declarations
+        if any(
+            token.line == line
+            and token.kind == "identifier"
+            and token.text == symbol["name"]
+            for token in declaration.tokens
+        )
+    )
+    if len(candidates) != 1:
+        raise UnsupportedMigration(
+            "UnsupportedMigration: function declaration identity is ambiguous"
+        )
+    declaration = candidates[0]
+    significant = tuple(
+        token
+        for token in declaration.tokens
+        if token.kind
+        not in {
+            "whitespace",
+            "comment",
+            "newline",
+            "indent",
+            "dedent",
+            "eof",
+        }
+    )
+    name_index = next(
+        (
+            index
+            for index, token in enumerate(significant)
+            if token.line == line
+            and token.kind == "identifier"
+            and token.text == symbol["name"]
+        ),
+        None,
+    )
+    if name_index is None:
+        raise UnsupportedMigration(
+            "UnsupportedMigration: function name token is missing"
+        )
+    open_index = next(
+        (
+            index
+            for index in range(name_index + 1, len(significant))
+            if significant[index].text == "("
+        ),
+        None,
+    )
+    if open_index is None:
+        raise UnsupportedMigration(
+            "UnsupportedMigration: inferred short-form signatures cannot yet "
+            "be migrated"
+        )
+    depth = 0
+    header_colon = None
+    for token in significant[open_index:]:
+        if token.text in {"(", "[", "{"}:
+            depth += 1
+        elif token.text in {")", "]", "}"}:
+            depth -= 1
+        elif token.text == ":" and depth == 0:
+            header_colon = token
+            break
+    if header_colon is None:
+        raise UnsupportedMigration(
+            "UnsupportedMigration: function signature terminator is missing"
+        )
+    anchor = significant[open_index]
+    old_signature = source[anchor.start:header_colon.start]
+    if old_signature == signature:
+        raise WorldError("ChangeSignatureNoOp")
+    return (
+        RefactorEdit(
+            path=str(path),
+            start=anchor.start,
+            end=header_colon.start,
+            replacement=signature,
+            symbol_id=str(symbol["symbol_id"]),
+            kind="signature",
+            syntax_id=declaration.syntax_id,
+            token_id=anchor.token_id,
+            token_ordinal=open_index,
+        ),
+        old_signature,
+    )
+
+
+def _validate_signature(signature: str) -> None:
+    if (
+        type(signature) is not str
+        or signature != signature.strip()
+        or not signature.startswith("(")
+        or "\n" in signature
+        or "\r" in signature
+        or not re.search(r"\)\s*->\s*[^:]+$", signature)
+    ):
+        raise WorldError("ChangeSignatureInvalidSyntax")
+    from merlo.surface_parser import SurfaceSyntaxError, parse_surface
+
+    try:
+        parse_surface(
+            f"fn __merlo_signature_probe__{signature}:\n    ?\n",
+            path="<change-signature>",
+        )
+    except (SurfaceSyntaxError, ValueError) as exc:
+        raise WorldError("ChangeSignatureInvalidSyntax") from exc
+
+
+def _signature_compiles_in_isolation(
+    world: SemanticWorld,
+    edit: RefactorEdit,
+) -> tuple[bool, str]:
+    from merlo.compiler import compile_project
+
+    try:
+        relative = Path(edit.path).resolve().relative_to(world.root.resolve())
+    except ValueError as exc:
+        raise WorldError("ChangeIRInvalidPath: edit escapes project root") from exc
+    with tempfile.TemporaryDirectory(prefix="merlo-change-signature-") as directory:
+        isolated_root = Path(directory) / "project"
+        shutil.copytree(world.root, isolated_root, symlinks=False)
+        isolated_path = isolated_root / relative
+        source = isolated_path.read_text(encoding="utf-8")
+        isolated_path.write_text(
+            source[:edit.start] + edit.replacement + source[edit.end:],
+            encoding="utf-8",
+        )
+        entry = Path(world.data["entry_path"]).resolve()
+        isolated_entry = isolated_root / entry.relative_to(world.root.resolve())
+        try:
+            compile_project(isolated_entry, require_interface_lock=False)
+        except Exception as exc:
+            message = (str(exc) or type(exc).__name__).replace(
+                str(isolated_root),
+                "<isolated>",
+            )
+            return False, message
+    return True, ""
 
 
 def _hole_payload(
@@ -465,13 +623,13 @@ class ChangeIR:
             raise WorldError("ChangeIRVersionMismatch")
         if not isinstance(self.operation, str) or not isinstance(self.status, str) or self.status not in {"ready", "unsupported"}:
             raise WorldError("ChangeIRInvalidStatus")
-        expected_status = {
-            "rename": "ready",
-            "move": "unsupported",
-            "change_signature": "unsupported",
-            "fill_hole": "ready",
+        allowed_statuses = {
+            "rename": {"ready"},
+            "move": {"unsupported"},
+            "change_signature": {"ready", "unsupported"},
+            "fill_hole": {"ready"},
         }.get(self.operation)
-        if expected_status is None or self.status != expected_status:
+        if allowed_statuses is None or self.status not in allowed_statuses:
             raise WorldError("ChangeIRInvalidOperation")
         if not isinstance(self.expected_world_digest, str) or not self.operation or not self.expected_world_digest:
             raise WorldError("ChangeIRInvalidEnvelope")
@@ -674,6 +832,34 @@ class ChangeIR:
                 raise WorldError(
                     "ChangeIRSemanticEditMismatch"
                 )
+        elif self.operation == "change_signature":
+            if set(self.metadata) != {
+                "old_signature",
+                "signature",
+            }:
+                raise WorldError(
+                    "ChangeIRInvalidChangeSignatureMetadata"
+                )
+            signature = self.metadata["signature"]
+            _validate_signature(signature)
+            expected_edit, old_signature = _signature_edit(
+                current,
+                signature,
+            )
+            if (
+                self.metadata["old_signature"] != old_signature
+                or self.edits != (expected_edit,)
+            ):
+                raise WorldError("ChangeIRSemanticEditMismatch")
+            compatible, diagnostic = _signature_compiles_in_isolation(
+                world,
+                expected_edit,
+            )
+            if not compatible:
+                raise UnsupportedMigration(
+                    "UnsupportedMigration: change-signature no longer "
+                    "type-checks with its body and callers: " + diagnostic
+                )
         elif self.operation == "fill_hole":
             if set(self.metadata) != {
                 "hole_id",
@@ -800,7 +986,10 @@ class ChangeIR:
                     token is None
                     or token.token_id != edit.token_id
                     or token.start != edit.start
-                    or token.end != edit.end
+                    or (
+                        edit.kind != "signature"
+                        and token.end != edit.end
+                    )
                 ):
                     raise UnsupportedMigration(
                         "UnsupportedMigration: "
@@ -810,6 +999,8 @@ class ChangeIR:
                 expected_source = (
                     self.metadata["old_name"]
                     if self.operation == "rename"
+                    else self.metadata["old_signature"]
+                    if self.operation == "change_signature"
                     else "?"
                     if self.operation == "fill_hole"
                     else text[
@@ -877,13 +1068,41 @@ def preview_move(world: SemanticWorld, target: str, module: str) -> ChangeIR:
 
 
 def preview_change_signature(world: SemanticWorld, target: str, signature: str) -> ChangeIR:
+    if not isinstance(world, SemanticWorld):
+        raise WorldError("ChangeSignatureWorldRequired")
+    world.require_fresh()
+    _validate_signature(signature)
     symbol = world.resolve(target)
-    message = (
-        "Change-signature requires typed argument migration for every caller."
-        if world.callers(symbol["symbol_id"])
-        else "Change-signature migration is unsupported for this source form."
+    if symbol["kind"] not in {"fn", "task"}:
+        return _unsupported(
+            world,
+            target,
+            "change_signature",
+            "Change-signature is limited to functions and tasks.",
+            {"signature": signature},
+        )
+    edit, old_signature = _signature_edit(symbol, signature)
+    compatible, diagnostic = _signature_compiles_in_isolation(world, edit)
+    if not compatible:
+        return _unsupported(
+            world,
+            target,
+            "change_signature",
+            "Change-signature requires a caller/body migration: " + diagnostic,
+            {"signature": signature},
+        )
+    return ChangeIR(
+        operation="change_signature",
+        status="ready",
+        target=_target(symbol),
+        expected_world_digest=world.digest,
+        metadata={
+            "old_signature": old_signature,
+            "signature": signature,
+        },
+        edits=(edit,),
+        world=world,
     )
-    return _unsupported(world, target, "change_signature", message, {"signature": signature})
 
 
 __all__ = [
