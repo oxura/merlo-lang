@@ -52,9 +52,11 @@ Use a bare `?` to retain an intentionally incomplete, exactly typed expression:
 let discount: UInt64 = ?
 ```
 
-The semantic model records the expected type and visible scope. `merlo check`
-can expose that context; `merlo build` rejects the hole instead of inventing a
-value. This is distinct from postfix `operation()?` result propagation.
+The semantic model records the expected type and visible scope. `merlo holes`
+lists that context, `merlo explain-hole HOLE_ID` expands it, and `merlo verify`
+returns a diagnostic status while the completion obligation is unresolved.
+`merlo build` rejects the hole instead of inventing a value. This is distinct
+from postfix `operation()?` result propagation.
 
 `or` is boolean OR only for `Bool`; for `Option[T] or T` it is a strict typed
 fallback. Other truthiness is rejected. `.field` is an implicit callable only

@@ -89,8 +89,8 @@ These outputs are fixtures from the examples; they are not performance claims.
 - modules, projects, lockfiles, packages, and deterministic semantic identities
 - `Text`, `Bytes`, `Vec`, `Map`, arrays, slices, boxes, and streaming file input
 - HIR, Representation IR, MIR, C11 lowering, and native executable generation
-- CLI commands for `new`, `check`, `fmt`, `test`, `build`, `run`, `map`, and
-  `inspect`
+- CLI commands for project work, deterministic verification reports, typed-hole
+  context, SemanticWorld queries, and structural refactors
 - an LSP server, editor grammar, FFI boundary, standard library, and twenty
   runnable example projects
 

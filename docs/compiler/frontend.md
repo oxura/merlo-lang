@@ -65,6 +65,9 @@ From a checked-out project, the supported smoke paths are:
 
 ```console
 merlo check PROJECT
+merlo verify PROJECT
+merlo obligations PROJECT --json
+merlo holes PROJECT --json
 merlo expand PROJECT
 merlo explain PROJECT
 ```

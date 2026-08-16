@@ -21,9 +21,10 @@ EXIT_USAGE = 2
 
 
 _PRODUCTION_COMMANDS = (
-    "new", "check", "build", "run", "test", "fmt", "expand", "explain",
-    "doc", "map", "inspect", "refs", "callers", "callees", "deps", "impact",
-    "why", "context", "refactor", "add",
+    "new", "check", "verify", "obligations", "holes", "explain-hole",
+    "build", "run", "test", "fmt", "expand", "explain", "doc", "map",
+    "inspect", "refs", "callers", "callees", "deps", "impact", "why",
+    "context", "refactor", "add",
 )
 
 
@@ -69,6 +70,33 @@ def build_parser() -> argparse.ArgumentParser:
             command.add_argument("-o", "--output")
         elif name == "map":
             command.add_argument("--projection", choices=("text", "dot", "json"), default="text")
+
+    for name in ("verify", "obligations"):
+        command = commands.add_parser(
+            name,
+            help=(
+                "verify project obligations"
+                if name == "verify"
+                else "list typed verification obligations"
+            ),
+        )
+        command.add_argument("path", nargs="?", default=".")
+        command.add_argument("--smt", choices=("z3",))
+        command.add_argument("--smt-timeout-ms", type=int, default=1000)
+        command.add_argument("--smt-max-paths", type=int, default=256)
+        _json_flag(command)
+
+    holes = commands.add_parser("holes", help="list typed holes")
+    holes.add_argument("path", nargs="?", default=".")
+    _json_flag(holes)
+
+    explain_hole = commands.add_parser(
+        "explain-hole",
+        help="show the completion context for one typed hole",
+    )
+    explain_hole.add_argument("hole_id")
+    explain_hole.add_argument("path", nargs="?", default=".")
+    _json_flag(explain_hole)
 
     for name in ("inspect", "refs", "callers", "callees", "deps", "impact", "context"):
         command = commands.add_parser(name, help=f"query semantic world ({name})")
@@ -173,6 +201,61 @@ def _error_payload(exc: Exception) -> dict[str, Any]:
     return {"ok": False, "diagnostics": [{"code": code, "message": str(exc)}]}
 
 
+def _compile_verification(args: argparse.Namespace):
+    return compile_project(
+        _input_path(args.path),
+        smt_backend=getattr(args, "smt", None),
+        smt_timeout_ms=getattr(args, "smt_timeout_ms", 1000),
+        smt_max_paths=getattr(args, "smt_max_paths", 256),
+        require_interface_lock=False,
+    )
+
+
+def _obligation_rows(compilation: Any) -> list[dict[str, Any]]:
+    verification = {
+        item.obligation_id: item.to_dict()
+        for item in compilation.verification_metrics.obligations
+    }
+    bounded = {
+        item.obligation_id: item.to_dict()
+        for item in compilation.bounded_symbolic.results
+    }
+    smt = {
+        item.obligation_id: item.to_dict()
+        for item in compilation.smt.results
+    }
+    rows = []
+    for obligation in compilation.obligations.obligations:
+        row = obligation.to_dict()
+        row["verification"] = verification[obligation.obligation_id]
+        row["bounded_symbolic"] = bounded.get(obligation.obligation_id)
+        row["smt"] = smt.get(obligation.obligation_id)
+        rows.append(row)
+    return rows
+
+
+def _hole_rows(compilation: Any) -> list[dict[str, Any]]:
+    rows = []
+    for function in compilation.elaborated.canonical_program.functions:
+        for hole in function.holes:
+            row = hole.to_payload()
+            row["owner"] = function.name
+            rows.append(row)
+    return sorted(rows, key=lambda item: item["hole_id"])
+
+
+def _verification_text(metrics: Any, ok: bool) -> str:
+    status = "passed" if ok else "incomplete"
+    return (
+        f"verification {status}\n"
+        f"total: {metrics.total_obligations}\n"
+        f"automatically closed: {metrics.automatically_closed}\n"
+        f"runtime guarded: {metrics.runtime_guarded}\n"
+        f"refuted: {metrics.refuted}\n"
+        f"unresolved: {metrics.unresolved}\n"
+    )
+
+
 def _main_production(args: argparse.Namespace) -> int:
     name = args.command
 
@@ -248,6 +331,76 @@ def _main_production(args: argparse.Namespace) -> int:
         root = project.root if project else Path(compilation.entry_path).parent
         payload = {"ok": True, "project": str(root), "entry_path": compilation.entry_path, "compiler": compilation.to_dict(), "world_digest": world.digest, "diagnostics": []}
         _emit(payload, args.json, text=f"ok {root}\n")
+        return EXIT_OK
+    if name in {"verify", "obligations"}:
+        compilation = _compile_verification(args)
+        metrics = compilation.verification_metrics
+        rows = _obligation_rows(compilation)
+        ok = metrics.refuted == 0 and metrics.unresolved == 0
+        if name == "verify":
+            payload = {
+                "ok": ok,
+                "entry_path": compilation.entry_path,
+                "verification": metrics.to_dict(),
+                "diagnostics": [],
+            }
+            _emit(payload, args.json, text=_verification_text(metrics, ok))
+            return EXIT_OK if ok else EXIT_DIAGNOSTIC
+        text = "no obligations\n" if not rows else "".join(
+            f"{row['verification']['state']} {row['category']} "
+            f"{row['owner_symbol_id']}: {row['predicate']} "
+            f"[{row['obligation_id']}]\n"
+            for row in rows
+        )
+        payload = {
+            "ok": True,
+            "entry_path": compilation.entry_path,
+            "obligation_digest": compilation.obligations.digest,
+            "summary": metrics.to_dict(),
+            "obligations": rows,
+        }
+        _emit(payload, args.json, text=text)
+        return EXIT_OK
+    if name in {"holes", "explain-hole"}:
+        compilation = compile_project(
+            _input_path(args.path),
+            require_interface_lock=False,
+        )
+        rows = _hole_rows(compilation)
+        if name == "explain-hole":
+            row = next(
+                (item for item in rows if item["hole_id"] == args.hole_id),
+                None,
+            )
+            if row is None:
+                raise ValueError(f"UnknownTypedHole: {args.hole_id}")
+            context = ", ".join(
+                f"{item['name']}: {item['type']}"
+                for item in row["context"]
+            ) or "none"
+            text = (
+                f"{row['hole_id']}\n"
+                f"owner: {row['owner']}\n"
+                f"expected type: {row['expected_type']}\n"
+                f"context: {context}\n"
+                f"effects: {', '.join(row['effects']) or 'none'}\n"
+                f"capabilities: {', '.join(row['capabilities']) or 'none'}\n"
+            )
+            _emit({"ok": True, "hole": row}, args.json, text=text)
+            return EXIT_OK
+        text = "no typed holes\n" if not rows else "".join(
+            f"{row['hole_id']}: {row['expected_type']} in {row['owner']}\n"
+            for row in rows
+        )
+        _emit(
+            {
+                "ok": True,
+                "entry_path": compilation.entry_path,
+                "holes": rows,
+            },
+            args.json,
+            text=text,
+        )
         return EXIT_OK
     if name == "build":
         candidate = _input_path(args.path)
