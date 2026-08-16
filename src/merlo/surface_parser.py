@@ -786,7 +786,10 @@ class _Parser:
         raise SurfaceSyntaxError("ExpectedDeclaration", raw, _span(self.path, line))
 
     def _flow_policies(
-        self, source: str, line: _Line, base_column: int
+        self,
+        source: str,
+        line: _Line,
+        anchor: SyntaxNode,
     ) -> tuple[str, tuple[SurfacePolicy, ...]]:
         matches = list(re.finditer(
             r"\s+(timeout\s+\S+|retry\s+\d+\s+on\s+[A-Za-z_]\w*(?:\[[^\]]+\])?|"
@@ -807,6 +810,7 @@ class _Parser:
         clause_starts = list(re.finditer(
             r"(?<!\w)(?:timeout|retry|idempotent|compensate)\b", suffix
         ))
+        expression_ordinal = 1
         for index, marker in enumerate(clause_starts):
             end = clause_starts[index + 1].start() if index + 1 < len(clause_starts) else len(suffix)
             clause = suffix[marker.start():end].strip()
@@ -823,17 +827,23 @@ class _Parser:
                 expression = clause[len("idempotent by "):].strip()
                 policies.append(SurfacePolicy(
                     _span(self.path, line), "idempotent", expression,
-                    expression= _parse_expression(
-                        expression, self.path, line,
-                        base_column=base_column + source.find(expression),
-                    )
+                    expression=self._parse_cst_expression(
+                        anchor,
+                        line,
+                        ordinal=expression_ordinal,
+                    ),
                 ))
+                expression_ordinal += 1
             elif clause.startswith("compensate "):
                 policies.append(SurfacePolicy(
                     _span(self.path, line), "compensate", clause[len("compensate "):].strip()
                 ))
         return value, tuple(policies)
-    def _flow_step(self, line: _Line) -> SurfaceFlowStep:
+    def _flow_step(
+        self,
+        line: _Line,
+        anchor: SyntaxNode,
+    ) -> SurfaceFlowStep:
         match = re.fullmatch(
             r"(?:(let|var)\s+)?([A-Za-z_]\w*)(?:\s*:\s*([^=]+))?\s*=\s*(.+)",
             line.text,
@@ -841,11 +851,20 @@ class _Parser:
         if match is None:
             raise SurfaceSyntaxError("ExpectedFlowStep", line.text, _span(self.path, line))
         kind, name, type_name, raw_value = match.groups()
-        value, policies = self._flow_policies(raw_value, line, match.start(4))
+        value, policies = self._flow_policies(
+            raw_value,
+            line,
+            anchor,
+        )
+        del value
         return SurfaceFlowStep(
             _span(self.path, line), name,
-            _parse_expression(value, self.path, line, base_column=match.start(4)),
-            _type_name(type_name) if type_name else None,
+            self._parse_cst_expression(anchor, line),
+            self._cst_type_region(
+                anchor,
+                line,
+                expected=type_name is not None,
+            ),
             policies,
         )
     def _flow(
@@ -894,7 +913,12 @@ class _Parser:
                         break
                     if branch.indent != parallel_start.indent + 4:
                         raise SurfaceSyntaxError("InvalidIndentation", "parallel branch expected", _span(self.path, branch))
-                    branches.append(self._flow_step(branch))
+                    branches.append(
+                        self._flow_step(
+                            branch,
+                            self._statement_anchor(branch),
+                        )
+                    )
                     self.index += 1
                 if not branches:
                     raise SurfaceSyntaxError("EmptyParallel", name, _span(self.path, parallel_start))
@@ -904,7 +928,12 @@ class _Parser:
                 ))
                 continue
             if re.match(r"(?:(?:let|var)\s+)?[A-Za-z_]\w*(?:\s*:\s*[^=]+)?\s*=", line.text):
-                body.append(self._flow_step(line))
+                body.append(
+                    self._flow_step(
+                        line,
+                        self._statement_anchor(line),
+                    )
+                )
                 self.index += 1
             else:
                 body.append(self._statement())
@@ -1673,6 +1702,31 @@ class _Parser:
             tokens=tuple(converted),
         )
 
+    def _require_cst_expression_count(
+        self,
+        owner: SyntaxNode,
+        line: _Line,
+        *,
+        expected: int,
+    ) -> None:
+        header = next(
+            (child for child in owner.children if child.kind == "header"),
+            None,
+        )
+        actual = len(
+            tuple(
+                child
+                for child in header.children
+                if child.kind == "expression"
+            )
+        ) if header is not None else 0
+        if actual != expected:
+            raise SurfaceSyntaxError(
+                "CSTExpressionMismatch",
+                f"expected {expected} CST expression regions, found {actual}",
+                _span(self.path, line),
+            )
+
     def _block(self, indent: int) -> tuple[SurfaceStatement, ...]:
         statements = []
         while self.index < len(self.lines):
@@ -1916,6 +1970,7 @@ class _Parser:
         ):
             self.index += 1
             kind, name, type_name, operator, value = match.groups()
+            self._require_cst_expression_count(anchor, line, expected=1)
             expression = self._parse_statement_expression(
                 anchor,
                 value,
@@ -1948,6 +2003,7 @@ class _Parser:
         ):
             target, operator, value = match.groups()
             self.index += 1
+            self._require_cst_expression_count(anchor, line, expected=2)
             return SurfaceAssignment(
                 _span(self.path, line),
                 self._parse_statement_expression(

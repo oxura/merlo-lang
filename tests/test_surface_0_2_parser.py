@@ -299,6 +299,16 @@ def test_surface_invariants_and_impl_target_consume_cst_regions(
     assert implementation.type_name == "Map[Text,UInt64]"
 
 
+def test_flow_policy_regions_are_rejected_in_ordinary_bindings() -> None:
+    with pytest.raises(SurfaceSyntaxError, match="CSTExpressionMismatch"):
+        parse_surface(
+            "fn main():\n"
+            "    value = read() idempotent by value\n"
+            "    return value\n",
+            path="not-a-flow.mlo",
+        )
+
+
 def test_surface_inline_declaration_fails_closed_without_cst_expression(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

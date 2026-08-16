@@ -1,3 +1,5 @@
+import pytest
+
 import merlo.surface_parser as surface_parser_module
 from merlo.surface_ast import SurfaceFlow, SurfaceMachine, SurfaceParallel
 from merlo.surface_elaborator import elaborate_surface
@@ -78,3 +80,20 @@ def test_retry_requires_idempotency() -> None:
         assert "RetryRequiresIdempotency" in str(exc)
     else:
         raise AssertionError("retry without idempotency was accepted")
+
+
+def test_flow_step_and_policy_expressions_consume_cst_regions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        surface_parser_module,
+        "lex_expression",
+        lambda _source: (_ for _ in ()).throw(AssertionError("re-lexed")),
+    )
+
+    flow = parse_surface(SOURCE, path="machine-flow.mlo").declarations[0]
+    assert flow.body[0].value is not None
+    idempotent = next(
+        policy for policy in flow.body[0].policies if policy.kind == "idempotent"
+    )
+    assert idempotent.expression is not None

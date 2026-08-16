@@ -629,6 +629,40 @@ def _type_parameter_nodes(
     return tuple(output)
 
 
+def _flow_policy_markers(
+    texts: list[str],
+    *,
+    start: int,
+) -> tuple[int, ...]:
+    markers: list[int] = []
+    delimiters: list[str] = []
+    for index in range(start, len(texts)):
+        text = texts[index]
+        if text in _OPEN_TO_CLOSE:
+            delimiters.append(text)
+            continue
+        if text in _CLOSING_DELIMITERS:
+            if delimiters and text == _OPEN_TO_CLOSE[delimiters[-1]]:
+                delimiters.pop()
+            continue
+        if delimiters:
+            continue
+        suffix = texts[index:]
+        if (
+            (text == "timeout" and len(suffix) >= 2 and suffix[1] not in {"+", "-", "*", "/"})
+            or (
+                text == "retry"
+                and len(suffix) >= 4
+                and suffix[1].isdigit()
+                and suffix[2] == "on"
+            )
+            or (text == "idempotent" and len(suffix) >= 3 and suffix[1] == "by")
+            or (text == "compensate" and len(suffix) >= 2 and suffix[1] not in {"+", "-", "*", "/"})
+        ):
+            markers.append(index)
+    return tuple(markers)
+
+
 def _header_parts(
     kind: str,
     tokens: tuple[FileToken, ...],
@@ -672,6 +706,15 @@ def _header_parts(
                     node.diagnostic_codes,
                 )
             parts.append(node)
+
+    def add_assignment_expressions(equals: int) -> None:
+        markers = _flow_policy_markers(texts, start=equals + 1)
+        add("expression", equals + 1, markers[0] if markers else len(texts))
+        for marker_index, marker in enumerate(markers):
+            if texts[marker : marker + 2] != ["idempotent", "by"]:
+                continue
+            end = markers[marker_index + 1] if marker_index + 1 < len(markers) else len(texts)
+            add("expression", marker + 2, end)
 
     texts = [token.text for token in significant]
     trailing_colon = len(texts) - 1 if texts[-1] == ":" else len(texts)
@@ -751,7 +794,7 @@ def _header_parts(
         if colon is not None:
             add("type", colon + 1, equals if equals is not None else len(texts))
         if equals is not None:
-            add("expression", equals + 1, len(texts))
+            add_assignment_expressions(equals)
     elif kind == "field":
         colon = next((index for index, text in enumerate(texts) if text == ":"), None)
         if colon is not None:
@@ -798,7 +841,7 @@ def _header_parts(
             and any(text in {".", "["} for text in texts[:target_end])
         ):
             add("expression", 0, target_end)
-        add("expression", equals + 1, len(texts))
+        add_assignment_expressions(equals)
     elif kind == "expression_statement" and not function_header:
         add("expression", 0, trailing_colon)
     return tuple(parts)

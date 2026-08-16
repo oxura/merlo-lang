@@ -227,7 +227,7 @@ def test_keyword_named_field_does_not_reclassify_else_block() -> None:
 def test_cst_retains_flow_machine_state_and_interface_signatures() -> None:
     result = parse_file_cst(
         "flow ingest(input: Text) -> Result[Text, Err]:\n"
-        "    output = input\n"
+        "    output = read(input) idempotent by input compensate rollback(input)\n"
         "machine Job(id: UInt64):\n"
         "    state Running(value: Text)\n"
         "interface Sized:\n"
@@ -236,10 +236,19 @@ def test_cst_retains_flow_machine_state_and_interface_signatures() -> None:
     )
 
     flow_header = result.declarations[0].children[0]
+    flow_step_header = result.declarations[0].children[1].children[0].children[0]
     machine_header = result.declarations[1].children[0]
     state_header = result.declarations[1].children[1].children[0].children[0]
     interface_method = result.declarations[2].children[1].children[0].children[0]
     assert [child.kind for child in flow_header.children] == ["parameters", "type"]
+    assert [
+        [token.text for token in child.tokens]
+        for child in flow_step_header.children
+        if child.kind == "expression"
+    ] == [
+        ["read", "(", "input", ")"],
+        ["input"],
+    ]
     assert [child.kind for child in machine_header.children] == ["parameters"]
     assert [child.kind for child in state_header.children] == ["parameters"]
     assert [child.kind for child in interface_method.children] == [

@@ -144,6 +144,10 @@
 - Routes record and machine invariant expressions through retained CST tokens
   and retains the target type of `impl Interface for Type` as a validated type
   region. These paths no longer re-lex or normalize line fragments directly.
+- Gives flow step values and `idempotent by` policies separate retained CST
+  expression regions. Flow parsing now consumes exact offsets, removes the last
+  production `source.find()` reconstruction, and rejects policy-only regions in
+  ordinary assignments.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

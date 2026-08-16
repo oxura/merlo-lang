@@ -44,8 +44,11 @@ constraints, record/enum payloads, and local annotations already consume
 retained CST tokens. Flow, machine, state, and interface method signatures use
 the same boundary, so production signature parsing no longer has a separate
 line-fragment parameter parser. Record/machine invariants and implementation
-target types also consume CST regions. Flow steps and policy expressions remain
-the final declaration-specific fragment migration boundary.
+target types also consume CST regions. Flow step values and `idempotent by`
+policies have independent expression regions, eliminating production
+`source.find()` offset reconstruction and expression fragment re-lexing from
+the Surface parser. The transitional line parser still dispatches statement
+grammar and remains the next replacement boundary.
 Elaboration constraints, call binding, diagnostics, inference state, and
 native lowering have separate owners under `merlo/elaboration` and
 `merlo/frontend`.
