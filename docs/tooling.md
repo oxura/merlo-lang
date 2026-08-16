@@ -2,7 +2,8 @@
 
 The production console script is `merlo`. Its project commands are:
 
-- `new`, `check`, `build`, `run`, and `test`;
+- `new`, `check`, `verify`, `build`, `run`, and `test`;
+- `obligations`, `holes`, and `explain-hole`;
 - `fmt`, `expand`, `explain`, `doc`, and `map`;
 - `inspect`, `refs`, `callers`, `callees`, `deps`, `impact`, `why`, and `context`;
 - `refactor rename|move|signature` and `add --path|--git`.
@@ -12,6 +13,15 @@ commands that emit structured payloads. `doc` writes generated API markdown to
 `docs/API.md` by default; use `-o` for another destination. `map` supports
 `text`, `dot`, and `json` projections. `fmt --stdout` prints formatted source;
 `fmt --check` reports drift without writing.
+
+`merlo verify` classifies the current typed obligations as automatically
+closed, runtime guarded, refuted, or unresolved. It succeeds only when none are
+refuted or unresolved. `merlo obligations` exposes each obligation together
+with bounded-symbolic and optional SMT evidence. `merlo holes` lists incomplete
+typed expressions, while `merlo explain-hole HOLE_ID` reports the expected
+type, visible bindings and callables, allowed effects, and capabilities. All
+four commands have deterministic `--json` output; `verify` and `obligations`
+also accept the same optional `--smt z3` settings as `check`.
 
 `merlo fmt` preserves the human Surface AST. It does not insert canonical
 keywords. `merlo expand` projects the typed Canonical AST with complete
@@ -40,4 +50,3 @@ python -m pytest tools/release/merlo/tests/
 python -m pytest research/archive/historical_protocol/tests/
 python -m pytest research/archive/alpha1/tests/
 ```
-
