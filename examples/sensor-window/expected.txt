@@ -1,0 +1,6 @@
+sensor-window
+readings=6
+minimum=18
+maximum=27
+total=130
+alerts=2

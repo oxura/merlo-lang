@@ -1,41 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Mapping
 
-from merlo.refactor import preview_change_signature, preview_move, preview_rename
+from merlo.refactor import (
+    ChangeIR,
+    preview_change_signature,
+    preview_move,
+    preview_rename,
+)
+from merlo.semantic_capsule import SemanticCapsule
 from merlo.semantic_world import SemanticWorld, WorldError
-
-
-@dataclass(frozen=True)
-class TaskCapsule:
-    goal: str
-    target: dict[str, Any]
-    source: str
-    signature: str
-    dependent_types: tuple[str, ...]
-    callers: tuple[str, ...]
-    dependencies: tuple[str, ...]
-    effects: tuple[str, ...]
-    capabilities: tuple[str, ...]
-    public_boundary: bool
-    tests: tuple[str, ...]
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "kind": "TaskCapsule",
-            "goal": self.goal,
-            "target": self.target,
-            "source": self.source,
-            "signature": self.signature,
-            "dependent_types": list(self.dependent_types),
-            "callers": list(self.callers),
-            "dependencies": list(self.dependencies),
-            "effects": list(self.effects),
-            "capabilities": list(self.capabilities),
-            "public_boundary": self.public_boundary,
-            "tests": list(self.tests),
-        }
 
 
 class AlphaProtocol:
@@ -77,64 +51,234 @@ class AlphaProtocol:
     def source(self, target: str) -> str:
         return self.world.source(target)
 
-    def compile_context(self, target: str, *, goal: str = "") -> TaskCapsule:
-        payload = self.world.compile_context(target, goal=goal)
-        return TaskCapsule(
-            goal=payload["goal"], target=payload["target"], source=payload["source"], signature=payload["signature"],
-            dependent_types=tuple(payload["dependent_types"]), callers=tuple(payload["callers"]), dependencies=tuple(payload["dependencies"]),
-            effects=tuple(payload["effects"]), capabilities=tuple(payload["capabilities"]), public_boundary=bool(payload["public_boundary"]), tests=tuple(payload["tests"]),
-        )
+    def compile_context(self, target: str, *, goal: str = "") -> SemanticCapsule:
+        return self.world.compile_context(target, goal=goal)
 
     def impact(self, target: str) -> dict[str, Any]:
         return self.world.impact(target)
 
+    def change_impact(
+        self,
+        change: ChangeIR | Mapping[str, Any],
+    ) -> dict[str, Any]:
+        bound = (
+            change
+            if isinstance(change, ChangeIR)
+            else ChangeIR.from_dict(
+                change,
+                world=self.world,
+            )
+        )
+        return self.world.change_impact(
+            bound
+        ).to_dict()
+
     def diagnostics_explain(self, diagnostic: str | Mapping[str, Any]) -> dict[str, Any]:
         return self.world.diagnostics_explain(diagnostic)
 
-    def call(self, operation: str, params: Mapping[str, Any] | None = None) -> Any:
-        values = params or {}
+    @staticmethod
+    def _mode(
+        operation: str,
+        params: Mapping[str, Any],
+    ) -> str:
+        explicit = (
+            "apply"
+            if operation.endswith(".apply")
+            else "preview"
+            if operation.endswith(".preview")
+            else None
+        )
+        requested = params.get("mode")
+        if (
+            requested is not None
+            and (
+                type(requested) is not str
+                or requested
+                not in {"preview", "apply"}
+            )
+        ):
+            raise WorldError(
+                "InvalidRefactorMode"
+            )
+        if (
+            explicit is not None
+            and requested is not None
+            and requested != explicit
+        ):
+            raise WorldError(
+                "ConflictingRefactorMode"
+            )
+        return explicit or requested or "preview"
+
+    def call(
+        self,
+        operation: str,
+        params: Mapping[str, Any] | None = None,
+    ) -> Any:
+        if type(operation) is not str:
+            raise WorldError("InvalidOperation")
         operation = operation.strip()
+        if not operation:
+            raise WorldError("InvalidOperation")
+        if params is None:
+            values: Mapping[str, Any] = {}
+        elif isinstance(params, Mapping):
+            values = params
+        else:
+            raise WorldError("InvalidParameters")
         if operation in {"world.search", "search"}:
-            return self.search(str(values.get("query", "")))
+            query = values.get("query", "")
+            if type(query) is not str:
+                raise WorldError("InvalidQuery")
+            return self.search(query)
         if operation in {"world.inspect", "inspect"}:
             return self.inspect(self._target(values))
         if operation in {"world.references", "refs", "references"}:
             return self.references(self._target(values))
         if operation in {"world.callers", "callers"}:
-            return self.callers(self._target(values), transitive=bool(values.get("transitive", False)))
+            transitive = values.get(
+                "transitive",
+                False,
+            )
+            if type(transitive) is not bool:
+                raise WorldError(
+                    "InvalidTransitiveFlag"
+                )
+            return self.callers(
+                self._target(values),
+                transitive=transitive,
+            )
         if operation in {"world.callees", "callees"}:
             return self.callees(self._target(values))
         if operation in {"world.dependencies", "deps", "dependencies"}:
-            return self.dependencies(self._target(values))
+            return self.dependencies(
+                self._target(values)
+            )
         if operation in {"world.effects", "effects"}:
-            return self.effects(values.get("target"))
+            target = values.get("target")
+            if target is not None and type(target) is not str:
+                raise WorldError("InvalidTarget")
+            return self.effects(target)
         if operation in {"world.capabilities", "capabilities"}:
-            return self.capabilities(values.get("target"))
+            target = values.get("target")
+            if target is not None and type(target) is not str:
+                raise WorldError("InvalidTarget")
+            return self.capabilities(target)
         if operation in {"world.source", "source"}:
             return self.source(self._target(values))
         if operation in {"world.map", "map"}:
-            return self.world.map(str(values.get("projection", values.get("format", "text"))))
+            projection = values.get(
+                "projection",
+                values.get("format", "text"),
+            )
+            if type(projection) is not str:
+                raise WorldError(
+                    "InvalidProjection"
+                )
+            return self.world.map(projection)
         if operation in {"context.compile", "context"}:
-            return self.compile_context(self._target(values), goal=str(values.get("goal", ""))).to_dict()
+            goal = values.get("goal", "")
+            if type(goal) is not str:
+                raise WorldError("InvalidGoal")
+            return self.compile_context(
+                self._target(values),
+                goal=goal,
+            ).to_dict()
         if operation in {"impact.analyze", "impact"}:
             return self.impact(self._target(values))
-        if operation in {"diagnostics.explain", "diagnostic.explain"}:
-            return self.diagnostics_explain(values.get("diagnostic", values.get("code", "")))
-        if operation in {"refactor.rename", "refactor.rename.preview", "refactor.rename.apply"}:
-            target = self._target(values)
-            new_name = values.get("new_name", values.get("name"))
-            if not isinstance(new_name, str):
-                raise WorldError("MissingRenameName: rename requires new_name")
-            transaction = preview_rename(self.world, target, new_name)
-            mode = "apply" if operation.endswith(".apply") else str(values.get("mode", "preview"))
-            return transaction.apply() if mode == "apply" else transaction.to_dict()
-        if operation in {"refactor.move", "refactor.move.preview", "refactor.move.apply"}:
-            result = preview_move(self.world, self._target(values), str(values.get("module", "")))
-            return result
-        if operation in {"refactor.signature", "refactor.change_signature", "refactor.signature.preview", "refactor.signature.apply"}:
-            result = preview_change_signature(self.world, self._target(values), str(values.get("signature", "")))
-            return result
-        raise WorldError(f"UnknownOperation: {operation}")
+        if operation == "impact.change":
+            change = values.get("change")
+            if not isinstance(
+                change,
+                (ChangeIR, Mapping),
+            ):
+                raise WorldError(
+                    "MissingChangeIR: impact.change requires change"
+                )
+            return self.change_impact(change)
+        if operation in {
+            "diagnostics.explain",
+            "diagnostic.explain",
+        }:
+            diagnostic = values.get(
+                "diagnostic",
+                values.get("code", ""),
+            )
+            if not isinstance(
+                diagnostic,
+                (str, Mapping),
+            ):
+                raise WorldError(
+                    "InvalidDiagnostic"
+                )
+            return self.diagnostics_explain(
+                diagnostic
+            )
+        if operation in {
+            "refactor.rename",
+            "refactor.rename.preview",
+            "refactor.rename.apply",
+        }:
+            new_name = values.get(
+                "new_name",
+                values.get("name"),
+            )
+            if type(new_name) is not str or not new_name:
+                raise WorldError(
+                    "MissingRenameName: rename requires new_name"
+                )
+            change = preview_rename(
+                self.world,
+                self._target(values),
+                new_name,
+            )
+            return (
+                change.apply()
+                if self._mode(operation, values)
+                == "apply"
+                else change.to_dict()
+            )
+        if operation in {
+            "refactor.move",
+            "refactor.move.preview",
+            "refactor.move.apply",
+        }:
+            module = values.get("module")
+            if type(module) is not str or not module:
+                raise WorldError(
+                    "MissingMoveModule"
+                )
+            self._mode(operation, values)
+            return preview_move(
+                self.world,
+                self._target(values),
+                module,
+            ).to_dict()
+        if operation in {
+            "refactor.signature",
+            "refactor.change_signature",
+            "refactor.signature.preview",
+            "refactor.signature.apply",
+            "refactor.change_signature.preview",
+            "refactor.change_signature.apply",
+        }:
+            signature = values.get("signature")
+            if (
+                type(signature) is not str
+                or not signature
+            ):
+                raise WorldError(
+                    "MissingSignature"
+                )
+            self._mode(operation, values)
+            return preview_change_signature(
+                self.world,
+                self._target(values),
+                signature,
+            ).to_dict()
+        raise WorldError(
+            f"UnknownOperation: {operation}"
+        )
 
 
-__all__ = ["AlphaProtocol", "TaskCapsule"]
+__all__ = ["AlphaProtocol", "SemanticCapsule"]

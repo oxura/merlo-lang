@@ -1,0 +1,8 @@
+module invoice_report
+
+export enum AppError:
+    InvalidPath: Text
+
+export main(path: Path) -> Result[Text, AppError]:
+    console.write("")
+    Ok("")

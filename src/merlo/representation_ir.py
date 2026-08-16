@@ -17,8 +17,8 @@ from merlo.ffi import pointer_type
 from merlo.type_parser import generic_parts, parse_type
 
 
-REPRESENTATION_IR_SCHEMA_VERSION = 1
-REPRESENTATION_IR_CONTRACT = "merlo.representation-ir.v1"
+REPRESENTATION_IR_SCHEMA_VERSION = 2
+REPRESENTATION_IR_CONTRACT = "merlo.representation-ir.v2"
 MAX_U64 = (1 << 64) - 1
 
 def _type_leaf(type_name: str) -> str:
@@ -49,6 +49,7 @@ class TypeDescriptor:
     key_type: str | None = None
     value_type: str | None = None
     length: int | None = None
+    invariants: tuple[tuple[str, int], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -77,6 +78,10 @@ class TypeDescriptor:
             "key_type": self.key_type,
             "value_type": self.value_type,
             "length": self.length,
+            "invariants": [
+                {"function": function, "line": line}
+                for function, line in self.invariants
+            ],
         }
 
 
@@ -597,13 +602,13 @@ class _DescriptorBuilder:
             resolved = tuple(self.get(item) for item in dependencies)
             descriptor = CallbackDesc(
                 type_name,
-                "callback",
+                "closure",
+                32,
                 8,
-                8,
-                "pointer",
-                "trivial",
-                "copy",
-                "trivial",
+                "aggregate",
+                "refcounted",
+                "move_then_invalidate",
+                "closure_environment",
                 (),
                 dependencies,
                 _stable_id(
@@ -772,6 +777,13 @@ class _DescriptorBuilder:
                 tuple(sorted(set(indirect))),
                 declaration.symbol_id,
                 fields=tuple(fields),
+                invariants=tuple(
+                    (
+                        invariant.function_name,
+                        invariant.source.line,
+                    )
+                    for invariant in declaration.invariants
+                ),
             )
         else:
             maximum_size = 0
@@ -992,6 +1004,7 @@ def build_drop_plans(descriptors: Iterable[TypeDescriptor], *, recursion_limit: 
 
 
 _HIR_TO_RIR = {
+    "TypedHole": "typed_hole",
     "RecordConstruct": "construct_record",
     "FieldAccess": "get_field",
     "SetField": "set_field",
@@ -999,6 +1012,8 @@ _HIR_TO_RIR = {
     "EnumTag": "read_enum_tag",
     "Match": "match_enum",
     "VecOperation": "vec_operation",
+    "CollectionOperation": "collection_operation",
+    "ImplicitCallable": "implicit_callable",
     "BoxOperation": "box_operation",
     "BytesTextOperation": "bytes_text_operation",
     "NumericIntrinsic": "numeric_intrinsic",
@@ -1026,6 +1041,7 @@ _HIR_TO_RIR = {
     "While": "while",
     "For": "for",
     "CallbackCall": "callback_call",
+    "ClosureCreate": "closure_create",
     "Literal": "const",
     "Name": "load_name",
     "Binary": "binary",

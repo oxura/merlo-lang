@@ -4,6 +4,27 @@
 Production operations include inspection, references, callers/callees,
 dependencies, impact, compile context, and diagnostic explanations.
 
+`context.compile` returns a canonical `merlo.semantic-capsule.v1` bound to the
+world and target revision. It contains only the target's source, dependencies,
+authority, contracts, holes, obligations, public tests, and filtered
+verification/property evidence; unrelated global evidence is excluded.
+`impact.change` accepts a canonical ChangeIR and returns a
+`merlo.semantic-impact.v1` report. The report partitions directly edited and
+transitively affected symbols and records callers, references, dependencies,
+files, interfaces, and relevant tests without changing source.
+
+Applied ChangeIR plans are materialized through a journaled
+`merlo.change-transaction.v1` transaction. The apply receipt exposes its
+transaction ID and digest; the persisted manifest supports exact rollback and
+replay only while every source is in a complete before or after state.
+
+Post-change `merlo.patch-evidence.v1` bundles bind the transaction receipt,
+before/after worlds and capsules, exact file hashes, target lineage, and
+carried verification provenance. `merlo.preservation-report.v1` separately
+checks behavioral contracts, effects, capabilities, obligations, and proof
+evidence; an authorized rename does not authorize any behavioral delta.
+
+
 Refactors are explicit and can be previewed before applying:
 
 ```console
@@ -14,8 +35,11 @@ merlo refactor signature app.main.helper "(value: UInt64) -> Text" PROJECT
 ```
 
 In alpha.2, exact rename plans are the only refactors that can become ready and
-be applied. `move` and `signature` are reserved protocol operations that return
-`UnsupportedMigration`; they do not edit source yet.
+be applied. Every preview is a canonical `merlo.change-ir.v1` envelope with a
+schema version, deterministic digest, world/target revisions, immutable
+metadata, and source-anchored edits. `move` and `signature` are reserved
+protocol operations that return the same envelope with `status: unsupported`;
+they do not edit source and cannot be applied.
 
 The CLI checks the affected semantic world and returns a diagnostic when a
 migration is unsupported, a target is missing, or an edit capability is not

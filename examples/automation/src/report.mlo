@@ -4,7 +4,7 @@ export Change:
     old_path: Text
     new_path: Text
 
-rename(change: Change) -> Text:
+rename(change):
     output = TextBuilder.new()
     output.append_text(change.old_path)
     output.append_text(" -> ")

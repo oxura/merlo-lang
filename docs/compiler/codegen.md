@@ -54,6 +54,28 @@ does not claim to interpret every MIR instruction as a direct instruction-by-
 instruction lowering proof. Planned `backend/c11.py` and `backend/toolchain.py`
 paths are not current imports.
 
+## Native core measurement
+
+Run the checked three-arm study with:
+
+```console
+python3 -m tools.benchmarks.merlo.native_core_benchmark \
+  --output tools/benchmarks/merlo/benchmarks/merlo_native_core.json
+```
+
+The study compiles seven frozen core workloads as generated Merlo C, independent
+C, and independent Rust. It verifies each frozen checksum, pins each invocation
+to one CPU, performs three warmups and fifteen randomized sequential
+measurements per arm, and retains every timing sample and source hash.
+
+On the checked workstation, the geometric-mean Merlo/best-native ratio was
+1.091. Six workloads were within 3% of their faster C/Rust arm; the
+shared-allocation workload was the outlier at 1.821. All relative MAD values
+were below 8%. These are observations of this frozen corpus and host, not a
+general C/Rust performance or language-superiority claim. Rust is compiled from
+the recorded `rust:1.88-slim` image; unavailable toolchains are errors rather
+than silently omitted arms.
+
 ## Verification commands
 
 ```console

@@ -13,6 +13,12 @@ Every subdirectory is a complete project with `merlo.toml`, a deterministic `mer
 | `csv` | Typed CSV aggregation |
 | `capacity-ledger` | Checked multi-lane capacity aggregation |
 | `ffi` | Explicit C ABI boundary |
+| `invoice-report` | Checked record and fixed-array accounting |
+| `access-log` | Streaming request and failure analysis |
+| `byte-stats` | Binary file iteration and checksums |
+| `inventory` | Vectors, predicates, and stock valuation |
+| `task-board` | Enum state aggregation |
+| `tree-walk` | Recursive boxed values and traversal |
 
 Run an example with the production CLI:
 

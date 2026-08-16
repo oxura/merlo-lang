@@ -15,33 +15,49 @@ from merlo.surface_ast import (
     SurfaceBinding,
     SurfaceCall,
     SurfaceCallArgument,
-    SurfaceComment,
     SurfaceCase,
+    SurfaceComment,
+    SurfaceContinue,
     SurfaceDeclaration,
     SurfaceEnum,
     SurfaceEnumVariant,
-    SurfaceContinue,
+    SurfaceEnsure,
     SurfaceExpression,
     SurfaceExpressionStatement,
     SurfaceField,
+    SurfaceFlow,
+    SurfaceFlowStep,
     SurfaceFor,
     SurfaceFunction,
+    SurfaceHole,
     SurfaceIf,
+    SurfaceImplementation,
+    SurfaceInterface,
+    SurfaceInterfaceMethod,
     SurfaceImplicitReceiver,
     SurfaceIndex,
+    SurfaceInvariant,
+    SurfaceLambda,
     SurfaceList,
     SurfaceLiteral,
+    SurfaceMachine,
     SurfaceMatch,
     SurfaceMember,
     SurfaceName,
+    SurfaceParallel,
     SurfaceParameter,
     SurfacePass,
+    SurfacePolicy,
     SurfacePrint,
     SurfaceRecord,
     SurfaceProgram,
+    SurfaceRequire,
     SurfaceReturn,
+    SurfaceState,
     SurfaceStatement,
+    SurfaceTransition,
     SurfaceTry,
+    SurfaceTypeParameter,
     SurfaceUnary,
     SurfaceUses,
     SurfaceWhile,
@@ -126,6 +142,12 @@ def _split_top_level_commas(source: str) -> tuple[str, ...]:
             start = index + 1
     parts.append(source[start:])
     return tuple(parts)
+
+
+_FUNCTION_HEADER = re.compile(
+    r"(?:(fn|task)\s+)?([A-Za-z_]\w*)(?:\[([^\]]+)\])?"
+    r"\((.*)\)\s*(?:->\s*([^:=]+))?\s*([:=])\s*(.*)"
+)
 
 class _ExpressionParser:
     _INFIX_PRECEDENCE = {
@@ -234,6 +256,19 @@ class _ExpressionParser:
         return text, precedence, 1
 
     def _expression(self, minimum: int) -> SurfaceExpression:
+        if (
+            minimum == 0
+            and self.current.kind == "identifier"
+            and self._peek().text == "=>"
+        ):
+            parameter = self._take()
+            self._take("=>")
+            body = self._expression(0)
+            return SurfaceLambda(
+                self._span(parameter.start, body.span.end_column - self.line.indent - self.base_column - 1),
+                (parameter.text,),
+                body,
+            )
         left = self._prefix()
         comparisons: list[SurfaceBinary] = []
         while True:
@@ -358,6 +393,11 @@ class _ExpressionParser:
 
     def _atom(self) -> SurfaceExpression:
         token = self.current
+        if token.text == "?":
+            self._take()
+            return SurfaceHole(
+                self._span(token.start, token.end)
+            )
         if token.text in {"{", "}"}:
             self._error("UnsupportedExpression", "DictOrSet", token.start)
         if token.text == ".":
@@ -632,24 +672,103 @@ class _Parser:
         raw = line.text
         exported = bool(re.match(r"export\s+", raw))
         raw = re.sub(r"^export\s+", "", raw)
+        flow_match = re.fullmatch(
+            r"(durable\s+)?flow\s+([a-z_]\w*)\((.*)\)\s*->\s*([^:]+)\s*:",
+            raw,
+        )
+        if flow_match:
+            return self._flow(flow_match, exported)
+        machine_match = re.fullmatch(r"machine\s+([A-Z]\w*)\((.*)\)\s*:", raw)
+        if machine_match:
+            return self._machine(machine_match, exported)
+        interface_match = re.fullmatch(r"interface\s+([A-Z]\w*)\s*:", raw)
+        if interface_match:
+            return self._interface(interface_match.group(1), exported)
+        implementation_match = re.fullmatch(r"impl\s+([A-Z]\w*)\s+for\s+(.+)\s*:", raw)
+        if implementation_match:
+            if exported:
+                raise SurfaceSyntaxError("ExportedImplementationForbidden", raw, _span(self.path, line))
+            return self._implementation(implementation_match.group(1), _type_name(implementation_match.group(2)))
         enum_match = re.fullmatch(r"enum\s+([A-Z]\w*)\s*:", raw)
         if enum_match:
             return self._enum(enum_match.group(1), exported)
         record_match = re.fullmatch(r"(?:record\s+)?([A-Z]\w*)\s*:", raw)
         if record_match:
             return self._record(record_match.group(1), exported)
-        function_match = re.fullmatch(
-            r"(?:(fn|task)\s+)?([A-Za-z_]\w*)\((.*)\)\s*(?:->\s*([^:=]+))?\s*([:=])\s*(.*)",
-            raw,
-        )
+        function_match = _FUNCTION_HEADER.fullmatch(raw)
         if function_match:
             return self._function(function_match, exported)
         raise SurfaceSyntaxError("ExpectedDeclaration", raw, _span(self.path, line))
 
-    def _record(self, name: str, exported: bool) -> SurfaceRecord:
+    def _flow_policies(
+        self, source: str, line: _Line, base_column: int
+    ) -> tuple[str, tuple[SurfacePolicy, ...]]:
+        matches = list(re.finditer(
+            r"\s+(timeout\s+\S+|retry\s+\d+\s+on\s+[A-Za-z_]\w*(?:\[[^\]]+\])?|"
+            r"idempotent\s+by\s+.+|compensate\s+.+)$",
+            source,
+        ))
+        if not matches:
+            return source.strip(), ()
+        # Policy clauses are deliberately parsed from the first recognized suffix;
+        # expressions may contain spaces and are retained verbatim.
+        starts = [m.start() for m in re.finditer(
+            r"\s+(?=(?:timeout|retry|idempotent|compensate)\b)", source
+        )]
+        cut = min(starts) if starts else len(source)
+        value = source[:cut].rstrip()
+        suffix = source[cut:].strip()
+        policies: list[SurfacePolicy] = []
+        clause_starts = list(re.finditer(
+            r"(?<!\w)(?:timeout|retry|idempotent|compensate)\b", suffix
+        ))
+        for index, marker in enumerate(clause_starts):
+            end = clause_starts[index + 1].start() if index + 1 < len(clause_starts) else len(suffix)
+            clause = suffix[marker.start():end].strip()
+            if clause.startswith("timeout "):
+                policies.append(SurfacePolicy(_span(self.path, line), "timeout", clause[8:].strip()))
+            elif clause.startswith("retry "):
+                retry = re.fullmatch(r"retry\s+(\d+)\s+on\s+(.+)", clause)
+                if retry is None:
+                    raise SurfaceSyntaxError("InvalidRetryPolicy", clause, _span(self.path, line))
+                policies.append(SurfacePolicy(
+                    _span(self.path, line), "retry", retry.group(1), _type_name(retry.group(2))
+                ))
+            elif clause.startswith("idempotent by "):
+                expression = clause[len("idempotent by "):].strip()
+                policies.append(SurfacePolicy(
+                    _span(self.path, line), "idempotent", expression,
+                    expression= _parse_expression(
+                        expression, self.path, line,
+                        base_column=base_column + source.find(expression),
+                    )
+                ))
+            elif clause.startswith("compensate "):
+                policies.append(SurfacePolicy(
+                    _span(self.path, line), "compensate", clause[len("compensate "):].strip()
+                ))
+        return value, tuple(policies)
+    def _flow_step(self, line: _Line) -> SurfaceFlowStep:
+        match = re.fullmatch(
+            r"(?:(let|var)\s+)?([A-Za-z_]\w*)(?:\s*:\s*([^=]+))?\s*=\s*(.+)",
+            line.text,
+        )
+        if match is None:
+            raise SurfaceSyntaxError("ExpectedFlowStep", line.text, _span(self.path, line))
+        kind, name, type_name, raw_value = match.groups()
+        value, policies = self._flow_policies(raw_value, line, match.start(4))
+        return SurfaceFlowStep(
+            _span(self.path, line), name,
+            _parse_expression(value, self.path, line, base_column=match.start(4)),
+            _type_name(type_name) if type_name else None,
+            policies,
+        )
+    def _flow(self, match: re.Match[str], exported: bool) -> SurfaceFlow:
         start = self.lines[self.index]
+        durable, name, raw_parameters, raw_return = match.groups()
+        parameters = self._parameters(raw_parameters, start, base_column=match.start(2))
         self.index += 1
-        fields = []
+        body: list[SurfaceStatement] = []
         while self.index < len(self.lines):
             line = self.lines[self.index]
             if _trivia(line):
@@ -658,15 +777,292 @@ class _Parser:
             if line.indent <= start.indent:
                 break
             if line.indent != start.indent + 4:
-                raise SurfaceSyntaxError("InvalidIndentation", "record field expected", _span(self.path, line))
+                raise SurfaceSyntaxError("InvalidIndentation", "flow body expected", _span(self.path, line))
+            if line.text == "parallel:":
+                parallel_start = line
+                self.index += 1
+                branches: list[SurfaceFlowStep] = []
+                while self.index < len(self.lines):
+                    branch = self.lines[self.index]
+                    if _trivia(branch):
+                        self.index += 1
+                        continue
+                    if branch.indent <= parallel_start.indent:
+                        break
+                    if branch.indent != parallel_start.indent + 4:
+                        raise SurfaceSyntaxError("InvalidIndentation", "parallel branch expected", _span(self.path, branch))
+                    branches.append(self._flow_step(branch))
+                    self.index += 1
+                if not branches:
+                    raise SurfaceSyntaxError("EmptyParallel", name, _span(self.path, parallel_start))
+                body.append(SurfaceParallel(
+                    _span(self.path, parallel_start, end_line=self.lines[self.index - 1]),
+                    tuple(branches),
+                ))
+                continue
+            if re.match(r"(?:(?:let|var)\s+)?[A-Za-z_]\w*(?:\s*:\s*[^=]+)?\s*=", line.text):
+                body.append(self._flow_step(line))
+                self.index += 1
+            else:
+                body.append(self._statement())
+        end = self.lines[self.index - 1] if self.index else start
+        return SurfaceFlow(
+            _span(self.path, start, end_line=end), name, parameters,
+            _type_name(raw_return), tuple(body), bool(durable), exported,
+        )
+
+    def _machine(self, match: re.Match[str], exported: bool) -> SurfaceMachine:
+        start = self.lines[self.index]
+        name, raw_parameters = match.groups()
+        parameters = self._parameters(raw_parameters, start, base_column=match.start(2))
+        self.index += 1
+        states: list[SurfaceState] = []
+        transitions: list[SurfaceTransition] = []
+        initial: str | None = None
+        invariant: SurfaceExpression | None = None
+        while self.index < len(self.lines):
+            line = self.lines[self.index]
+            if _trivia(line):
+                self.index += 1
+                continue
+            if line.indent <= start.indent:
+                break
+            if line.indent != start.indent + 4:
+                raise SurfaceSyntaxError("InvalidIndentation", "machine member expected", _span(self.path, line))
+            state_match = re.fullmatch(r"state\s+([A-Z]\w*)(?:\((.*)\))?", line.text)
+            if state_match:
+                fields = self._parameters(
+                    state_match.group(2) or "", line,
+                    base_column=state_match.start(2) if state_match.group(2) else 0,
+                )
+                if any(item.type_name is None for item in fields):
+                    raise SurfaceSyntaxError("StateFieldTypeRequired", state_match.group(1), _span(self.path, line))
+                states.append(SurfaceState(
+                    _span(self.path, line), state_match.group(1),
+                    tuple(SurfaceField(item.span, item.name, item.type_name or "Inferred") for item in fields),
+                ))
+                self.index += 1
+                continue
+            initial_match = re.fullmatch(r"initial\s+([A-Z]\w*)", line.text)
+            if initial_match:
+                initial = initial_match.group(1)
+                self.index += 1
+                continue
+            invariant_match = re.fullmatch(r"invariant\s+(.+)", line.text)
+            if invariant_match:
+                invariant = _parse_expression(
+                    invariant_match.group(1), self.path, line,
+                    base_column=invariant_match.start(1),
+                )
+                self.index += 1
+                continue
+            transition_match = re.fullmatch(
+                r"transition\s+([a-z_]\w*)\s+from\s+(.+?)\s*->\s*([A-Z]\w*)\s*:",
+                line.text,
+            )
+            if transition_match is None:
+                raise SurfaceSyntaxError("ExpectedMachineMember", line.text, _span(self.path, line))
+            transition_start = line
+            sources = tuple(item.strip() for item in transition_match.group(2).split("|"))
+            if not sources or any(re.fullmatch(r"[A-Z]\w*", item) is None for item in sources):
+                raise SurfaceSyntaxError("InvalidTransitionSource", line.text, _span(self.path, line))
+            target = transition_match.group(3)
+            self.index += 1
+            body = self._block(line.indent + 4)
+            transitions.append(SurfaceTransition(
+                _span(self.path, transition_start, end_line=self.lines[self.index - 1]),
+                transition_match.group(1), sources, target, body,
+            ))
+        if not states:
+            raise SurfaceSyntaxError("EmptyMachine", name, _span(self.path, start))
+        return SurfaceMachine(
+            _span(self.path, start, end_line=self.lines[self.index - 1]),
+            name, parameters, tuple(states), initial, invariant, tuple(transitions), exported,
+        )
+
+    def _interface(self, name: str, exported: bool) -> SurfaceInterface:
+        start = self.lines[self.index]
+        self.index += 1
+        methods: list[SurfaceInterfaceMethod] = []
+        while self.index < len(self.lines):
+            line = self.lines[self.index]
+            if _trivia(line):
+                self.index += 1
+                continue
+            if line.indent <= start.indent:
+                break
+            if line.indent != start.indent + 4:
+                raise SurfaceSyntaxError(
+                    "InvalidIndentation",
+                    "interface method expected",
+                    _span(self.path, line),
+                )
+            match = re.fullmatch(
+                r"(?:fn\s+)?([A-Za-z_]\w*)\((.*)\)\s*->\s*(.+)",
+                line.text,
+            )
+            if match is None:
+                raise SurfaceSyntaxError(
+                    "ExpectedInterfaceMethod",
+                    line.text,
+                    _span(self.path, line),
+                )
+            parameters = self._parameters(
+                match.group(2),
+                line,
+                base_column=match.start(2),
+            )
+            if any(item.type_name is None for item in parameters):
+                raise SurfaceSyntaxError(
+                    "InterfaceBoundaryAnnotationRequired",
+                    match.group(1),
+                    _span(self.path, line),
+                )
+            methods.append(
+                SurfaceInterfaceMethod(
+                    _span(self.path, line),
+                    match.group(1),
+                    parameters,
+                    _type_name(match.group(3)),
+                )
+            )
+            self.index += 1
+        if not methods:
+            raise SurfaceSyntaxError(
+                "EmptyInterface",
+                name,
+                _span(self.path, start),
+            )
+        if len({item.name for item in methods}) != len(methods):
+            raise SurfaceSyntaxError(
+                "DuplicateInterfaceMethod",
+                name,
+                _span(self.path, start),
+            )
+        return SurfaceInterface(
+            _span(self.path, start, end_line=self.lines[self.index - 1]),
+            name,
+            tuple(methods),
+            exported,
+        )
+
+    def _implementation(
+        self,
+        interface_name: str,
+        type_name: str,
+    ) -> SurfaceImplementation:
+        start = self.lines[self.index]
+        self.index += 1
+        methods: list[SurfaceFunction] = []
+        while self.index < len(self.lines):
+            line = self.lines[self.index]
+            if _trivia(line):
+                self.index += 1
+                continue
+            if line.indent <= start.indent:
+                break
+            if line.indent != start.indent + 4:
+                raise SurfaceSyntaxError(
+                    "InvalidIndentation",
+                    "implementation method expected",
+                    _span(self.path, line),
+                )
+            match = _FUNCTION_HEADER.fullmatch(line.text)
+            if match is None:
+                raise SurfaceSyntaxError(
+                    "ExpectedImplementationMethod",
+                    line.text,
+                    _span(self.path, line),
+                )
+            if match.group(1) not in {None, "fn"} or match.group(3) is not None:
+                raise SurfaceSyntaxError(
+                    "InvalidImplementationMethod",
+                    line.text,
+                    _span(self.path, line),
+                )
+            methods.append(self._function(match, False))
+        if not methods:
+            raise SurfaceSyntaxError(
+                "EmptyImplementation",
+                f"{interface_name} for {type_name}",
+                _span(self.path, start),
+            )
+        if len({item.name for item in methods}) != len(methods):
+            raise SurfaceSyntaxError(
+                "DuplicateImplementationMethod",
+                interface_name,
+                _span(self.path, start),
+            )
+        return SurfaceImplementation(
+            _span(self.path, start, end_line=self.lines[self.index - 1]),
+            interface_name,
+            type_name,
+            tuple(methods),
+        )
+
+
+    def _record(self, name: str, exported: bool) -> SurfaceRecord:
+        start = self.lines[self.index]
+        self.index += 1
+        fields = []
+        invariants = []
+        while self.index < len(self.lines):
+            line = self.lines[self.index]
+            if _trivia(line):
+                self.index += 1
+                continue
+            if line.indent <= start.indent:
+                break
+            if line.indent != start.indent + 4:
+                raise SurfaceSyntaxError(
+                    "InvalidIndentation",
+                    "record field or invariant expected",
+                    _span(self.path, line),
+                )
+            if match := re.fullmatch(r"invariant\s+(.+)", line.text):
+                invariants.append(
+                    SurfaceInvariant(
+                        _span(self.path, line),
+                        _parse_expression(
+                            match.group(1),
+                            self.path,
+                            line,
+                            base_column=line.text.index(match.group(1)),
+                        ),
+                    )
+                )
+                self.index += 1
+                continue
             match = re.fullmatch(r"([A-Za-z_]\w*)\s*:\s*(.+)", line.text)
             if match is None:
-                raise SurfaceSyntaxError("ExpectedRecordField", line.text, _span(self.path, line))
-            fields.append(SurfaceField(_span(self.path, line), match.group(1), _type_name(match.group(2))))
+                raise SurfaceSyntaxError(
+                    "ExpectedRecordFieldOrInvariant",
+                    line.text,
+                    _span(self.path, line),
+                )
+            if invariants:
+                raise SurfaceSyntaxError(
+                    "RecordFieldAfterInvariant",
+                    match.group(1),
+                    _span(self.path, line),
+                )
+            fields.append(
+                SurfaceField(
+                    _span(self.path, line),
+                    match.group(1),
+                    _type_name(match.group(2)),
+                )
+            )
             self.index += 1
         if not fields:
             raise SurfaceSyntaxError("EmptyRecord", name, _span(self.path, start))
-        return SurfaceRecord(_span(self.path, start, end_line=self.lines[self.index - 1]), name, tuple(fields), exported)
+        return SurfaceRecord(
+            _span(self.path, start, end_line=self.lines[self.index - 1]),
+            name,
+            tuple(fields),
+            exported,
+            tuple(invariants),
+        )
 
     def _enum(self, name: str, exported: bool) -> SurfaceEnum:
         start = self.lines[self.index]
@@ -727,11 +1123,16 @@ class _Parser:
 
     def _function(self, match: re.Match[str], exported: bool) -> SurfaceFunction:
         start = self.lines[self.index]
-        kind, name, raw_parameters, raw_return, delimiter, inline = match.groups()
+        kind, name, raw_type_parameters, raw_parameters, raw_return, delimiter, inline = match.groups()
+        type_parameters = self._type_parameters(
+            raw_type_parameters,
+            start,
+            base_column=match.start(3) if raw_type_parameters is not None else 0,
+        )
         parameters = self._parameters(
             raw_parameters,
             start,
-            base_column=match.start(3),
+            base_column=match.start(4),
         )
         return_type = _type_name(raw_return) if raw_return else None
         self.index += 1
@@ -741,11 +1142,11 @@ class _Parser:
                 inline.strip(),
                 self.path,
                 start,
-                base_column=match.start(6) + leading,
+                base_column=match.start(7) + leading,
             )
             return SurfaceFunction(
                 name, parameters, expression, "expression", exported,
-                _span(self.path, start), kind, return_type,
+                _span(self.path, start), kind, return_type, type_parameters,
             )
         if delimiter == "=":
             self._skip_blank()
@@ -774,6 +1175,7 @@ class _Parser:
                 _span(self.path, start, end_line=expression_line),
                 kind,
                 return_type,
+                type_parameters,
             )
         statements = self._block(start.indent + 4)
         if not statements:
@@ -792,7 +1194,68 @@ class _Parser:
             _span(self.path, start, end_line=end_line),
             kind,
             return_type,
+            type_parameters,
         )
+
+    def _type_parameters(
+        self,
+        source: str | None,
+        line: _Line,
+        *,
+        base_column: int,
+    ) -> tuple[SurfaceTypeParameter, ...]:
+        if source is None:
+            return ()
+        result: list[SurfaceTypeParameter] = []
+        cursor = 0
+        for raw in _split_top_level_commas(source):
+            start = source.find(raw, cursor)
+            cursor = start + len(raw)
+            text = raw.strip()
+            name, separator, constraints_text = text.partition(":")
+            name = name.strip()
+            if re.fullmatch(r"[A-Z][A-Za-z0-9_]*", name) is None:
+                raise SurfaceSyntaxError(
+                    "InvalidTypeParameter",
+                    f"generic type parameter must start with an uppercase letter: {name!r}",
+                    _span(self.path, line),
+                )
+            constraints = tuple(
+                item.strip()
+                for item in constraints_text.split("+")
+                if item.strip()
+            ) if separator else ()
+            if separator and (
+                not constraints
+                or any(re.fullmatch(r"[A-Z][A-Za-z0-9_]*", item) is None for item in constraints)
+            ):
+                raise SurfaceSyntaxError(
+                    "InvalidTypeConstraint",
+                    text,
+                    _span(self.path, line),
+                )
+            lexical_start = base_column + start + (len(raw) - len(raw.lstrip()))
+            lexical_end = base_column + start + len(raw.rstrip())
+            result.append(
+                SurfaceTypeParameter(
+                    SourceSpan(
+                        self.path,
+                        line.number,
+                        line.indent + lexical_start + 1,
+                        line.number,
+                        line.indent + lexical_end + 1,
+                    ),
+                    name,
+                    constraints,
+                )
+            )
+        if len({item.name for item in result}) != len(result):
+            raise SurfaceSyntaxError(
+                "DuplicateTypeParameter",
+                "generic type parameters must be unique",
+                _span(self.path, line),
+            )
+        return tuple(result)
 
     def _block(self, indent: int) -> tuple[SurfaceStatement, ...]:
         statements = []
@@ -977,6 +1440,28 @@ class _Parser:
         if line.text == "pass":
             self.index += 1
             return SurfacePass(_span(self.path, line))
+        if match := re.fullmatch(r"require\s+(.+)", line.text):
+            self.index += 1
+            return SurfaceRequire(
+                _span(self.path, line),
+                _parse_expression(
+                    match.group(1),
+                    self.path,
+                    line,
+                    base_column=match.start(1),
+                ),
+            )
+        if match := re.fullmatch(r"ensure\s+(.+)", line.text):
+            self.index += 1
+            return SurfaceEnsure(
+                _span(self.path, line),
+                _parse_expression(
+                    match.group(1),
+                    self.path,
+                    line,
+                    base_column=match.start(1),
+                ),
+            )
         if match := re.fullmatch(r"return(?:\s+(.+))?", line.text):
             self.index += 1
             return SurfaceReturn(
@@ -1003,7 +1488,7 @@ class _Parser:
         if match := re.fullmatch(
             r"(?:(let|var)\s+)?([A-Za-z_]\w*)"
             r"(?:\s*:\s*([^=]+))?\s*"
-            r"(\+=|-=|\*=|/=|(?<![=!<>])=(?!=))\s*(.+)",
+            r"(\+=|-=|\*=|/=|(?<![=!<>])=(?![=>]))\s*(.+)",
             line.text,
         ):
             self.index += 1

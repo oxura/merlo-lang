@@ -64,7 +64,7 @@ def layers():
 
 def test_structured_hir_is_typed_structural_and_source_mapped(layers):
     hir, _representation, _mir, _optimized = layers
-    assert hir.contract == "merlo.structured-typed-hir.v2"
+    assert hir.contract == "merlo.structured-typed-hir.v6"
     assert hir.path.endswith("general_json.mlo")
     assert {item.name for item in hir.types} == {
         "ErrorKind",
@@ -106,7 +106,7 @@ def test_structured_hir_is_typed_structural_and_source_mapped(layers):
 
 def test_representation_ir_describes_layout_ownership_and_drop(layers):
     hir, representation, _mir, _optimized = layers
-    assert representation.contract == "merlo.representation-ir.v1"
+    assert representation.contract == "merlo.representation-ir.v2"
     assert representation.source_hir_digest == hir.digest
     assert isinstance(representation.descriptor("UInt64"), ScalarDesc)
     assert isinstance(representation.descriptor("JsonField"), RecordDesc)
@@ -210,7 +210,7 @@ def test_invalid_input_returns_typed_offset_and_cleans_partial_ast(layers):
 
 def test_mir_is_cfg_with_explicit_memory_and_keeps_drop_glue(layers):
     hir, representation, mir, optimized = layers
-    assert mir.contract == "merlo.performance-mir.general-representation.v1"
+    assert mir.contract == "merlo.performance-mir.general-representation.v2"
     assert mir.source_hir_digest == hir.digest
     assert mir.representation_ir_digest == representation.digest
     assert optimized.optimized is True

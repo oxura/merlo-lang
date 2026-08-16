@@ -34,10 +34,13 @@ semantic meanings in this release.
 
 ## Explicit alpha limits
 
-The target is Linux x86-64 only. Native compilation expects C11 Clang or GCC.
-I/O is synchronous. Capturing closures, `async`, a registry, macros, and traits
-are absent. There is no cycle collector and no self-hosting implementation.
-These are limitations, not promises about a future release.
+The supported target is Linux x86-64. Native compilation expects C11 Clang or
+GCC and production host I/O is synchronous. Restricted immutable and owned
+captures are supported; arbitrary closure capture, language-level `async`,
+macros, cycle collection, and a hosted public registry are absent. The staged
+self-host subset remains an experiment and the production compiler still uses
+the Python bootstrap. These are limitations, not promises about a future
+release.
 
 ## Next investigations
 

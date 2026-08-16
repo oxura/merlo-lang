@@ -1,0 +1,4 @@
+access-log
+requests=4
+get_requests=3
+server_errors=1

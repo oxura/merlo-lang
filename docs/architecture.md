@@ -60,6 +60,10 @@ their source, fixture, toolchain, and protocol locks match.
 
 ## Deliberate constraints
 
-The alpha has one native target. It does not include async, a cycle collector,
-self-hosting, a registry, macros, traits, or capturing closures. Stabilization
-takes priority over adding any of them.
+The alpha has one supported native target. Production I/O remains synchronous,
+there is no cycle collector or macro system, and the public package registry is
+not a stable service. Restricted capturing closures and a staged self-host
+subset exist. Machine, flow, async, parallel, synthesis, registry, and WASM
+modules remain experimental until their source semantics reach the supported
+native pipeline and release gates. Stabilization takes priority over widening
+those claims.

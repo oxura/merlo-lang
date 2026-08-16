@@ -1,0 +1,44 @@
+module policy
+
+export enum Role:
+    Viewer
+    Editor
+    Owner
+
+export Principal:
+    role: Role
+    active: Bool
+
+can_write(principal):
+    if not principal.active:
+        return false
+    match principal.role:
+        case Role.Viewer:
+            return false
+        case Role.Editor:
+            return true
+        case Role.Owner:
+            return true
+
+export report() -> Text:
+    principals: Array[Principal,5] = [
+        Principal(Role.Viewer, true),
+        Principal(Role.Editor, true),
+        Principal(Role.Owner, true),
+        Principal(Role.Editor, false),
+        Principal(Role.Viewer, false),
+    ]
+    active: UInt64 = 0
+    writers: UInt64 = 0
+    for principal in principals:
+        if principal.active:
+            active = active + 1
+        if can_write(principal):
+            writers = writers + 1
+    output: TextBuilder = TextBuilder.new()
+    output.append_text("access-policy\nprincipals=5\nactive=")
+    output.append_uint64(active)
+    output.append_text("\nwriters=")
+    output.append_uint64(writers)
+    output.append_byte(10)
+    output.finish()

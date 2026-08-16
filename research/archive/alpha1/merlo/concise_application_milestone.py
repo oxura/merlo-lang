@@ -702,12 +702,14 @@ def _falsification(root: Path, compilation: Any) -> dict[str, Any]:
                         for effect in interface["effects"]
                         if effect != "fs.read"
                     ),
-                    tuple(
-                        capability
-                        for capability in interface["capabilities"]
-                        if capability != "fs.read"
-                    ),
-                ).to_dict()
+                        tuple(
+                            capability
+                            for capability in interface["capabilities"]
+                            if capability != "fs.read"
+                        ),
+                        tuple(interface.get("requirements", ())),
+                        tuple(interface.get("ensures", ())),
+                    ).to_dict()
         lock_path.write_text(
             json.dumps(lock, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",

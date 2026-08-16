@@ -164,3 +164,16 @@ def test_file_close_effect_matches_handle_mode() -> None:
 def test_use_after_explicit_resource_close_is_rejected(source: str) -> None:
     with pytest.raises(StructuredHIRCompileError, match="UseAfterMove"):
         compile_structured_hir(source, entry_function="bad")
+
+
+def test_consuming_instance_method_invalidates_receiver() -> None:
+    source = (
+        "task bad() -> Text:\n"
+        "    let builder: TextBuilder = TextBuilder.new()\n"
+        "    let text: Text = builder.finish()\n"
+        "    builder.append_text(\"use after finish\")\n"
+        "    return text\n"
+    )
+
+    with pytest.raises(StructuredHIRCompileError, match="UseAfterMove: builder"):
+        compile_structured_hir(source, entry_function="bad")

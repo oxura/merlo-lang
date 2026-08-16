@@ -84,18 +84,23 @@ These outputs are fixtures from the examples; they are not performance claims.
 - whole-function `let`/`var` inference and tail results
 - experimental effect, capability, and typed-error inference
 - immutable values, ownership checks, borrowing, moves, and generated drop glue
+- statically specialized generic functions, static interfaces, and restricted
+  capturing closures with owned closure environments
 - modules, projects, lockfiles, packages, and deterministic semantic identities
 - `Text`, `Bytes`, `Vec`, `Map`, arrays, slices, boxes, and streaming file input
 - HIR, Representation IR, MIR, C11 lowering, and native executable generation
 - CLI commands for `new`, `check`, `fmt`, `test`, `build`, `run`, `map`, and
   `inspect`
-- an LSP server, editor grammar, FFI boundary, standard library, and nine
+- an LSP server, editor grammar, FFI boundary, standard library, and twenty
   runnable example projects
 
 The supported alpha target is Linux x86-64 with a C11-capable Clang or GCC
-toolchain. I/O is synchronous. Capturing closures, `async`, a package registry,
-macros, traits, cycle collection, self-hosting, and production stability
-guarantees are outside this release. See
+toolchain. Production host I/O is synchronous. Arbitrary closure capture,
+language-level `async`, macros, cycle collection, a hosted public registry, and
+production stability guarantees are outside this release. A staged self-host
+subset and experimental machine, flow, parallel, synthesis, registry, and
+WASM components are present as research surfaces; they are not all production
+native language routes. See
 [Known limitations](docs/limitations.md) for the exact boundary.
 
 > **Security note:** Merlo capabilities constrain checked program behavior, but

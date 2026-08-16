@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
+from merlo.bounded_symbolic import BoundedSymbolicReport, verify_bounded
 from merlo.frontend_model import (
     ConciseApplicationElaboration,
     ConciseApplicationError,
@@ -13,7 +14,21 @@ from merlo.frontend_model import (
 from merlo.concise_services import elaborate_concise_application
 from merlo.modules import ModuleError, ModuleGraph
 from merlo.native_c_backend import NativeBuildResult, compile_c_source
+from merlo.parallel_ir import (
+    ParallelIR,
+    lower_performance_mir,
+)
 from merlo.project import Project
+from merlo.obligation_ir import (
+    ObligationProgram,
+    build_obligation_ir,
+    extend_obligations,
+)
+from merlo.property_evidence import (
+    PropertyEvidenceReport,
+    generate_property_evidence,
+)
+from merlo.range_analysis import RangeAnalysisResult, analyze_constant_ranges
 from merlo.representation_c_backend import GeneratedC, emit_general_c
 from merlo.representation_ir import RepresentationProgram, lower_structured_hir_to_rir
 from merlo.representation_mir import (
@@ -21,11 +36,17 @@ from merlo.representation_mir import (
     lower_rir_to_performance_mir,
     optimize_general_mir,
 )
+from merlo.verification_metrics import (
+    VerificationMetricsReport,
+    measure_verification_metrics,
+)
+from merlo.smt_backend import SMTReport, verify_smt
 from merlo.structured_hir_v2 import (
     StructuredHIRProgram,
     compile_canonical_hir,
 )
 from merlo.version import VERSIONS, CompilerVersions
+from merlo.wasm_backend import WasmArtifact, WasmBackend, WasmCompileError
 
 
 @dataclass(frozen=True)
@@ -57,13 +78,21 @@ class ProjectCompilation:
     elaborated: ConciseApplicationElaboration
     module_graph: ModuleGraph
     hir: StructuredHIRProgram
+    obligations: ObligationProgram
+    range_analysis: RangeAnalysisResult
+    bounded_symbolic: BoundedSymbolicReport
+    smt: SMTReport
+    property_evidence: PropertyEvidenceReport
+    verification_metrics: VerificationMetricsReport
     representation: RepresentationProgram
     mir: GeneralPerformanceMIR
     optimized_mir: GeneralPerformanceMIR
+    parallel_ir: ParallelIR
     generated: GeneratedC
     generated_c: str
     artifacts: Mapping[str, StageArtifact]
     native: NativeBuildResult | None = None
+    wasm: WasmArtifact | None = None
     @property
     def diagnostic_source_map(self) -> tuple[dict[str, Any], ...]:
         result = []
@@ -96,7 +125,73 @@ class ProjectCompilation:
                 name: artifact.to_dict()
                 for name, artifact in self.artifacts.items()
             },
+            "obligations": {
+                "digest": self.obligations.digest,
+                "count": len(self.obligations.obligations),
+                "unresolved": len(self.obligations.unresolved),
+            },
+            "range_analysis": {
+                "digest": self.range_analysis.digest,
+                "fact_count": len(self.range_analysis.facts),
+                "unreachable_branch_count": len(
+                    self.range_analysis.unreachable_branch_ids
+                ),
+            },
+            "bounded_symbolic": {
+                "digest": self.bounded_symbolic.digest,
+                "result_count": len(self.bounded_symbolic.results),
+                "proven_count": sum(
+                    item.status.value == "proven"
+                    for item in self.bounded_symbolic.results
+                ),
+            },
+            "smt": {
+                "digest": self.smt.digest,
+                "backend": self.smt.backend,
+                "backend_version": self.smt.backend_version,
+                "timeout_ms": self.smt.timeout_ms,
+                "max_paths": self.smt.max_paths,
+                "result_count": len(self.smt.results),
+                "proven_count": sum(
+                    item.status.value == "proven"
+                    for item in self.smt.results
+                ),
+                "results": [
+                    item.to_dict() for item in self.smt.results
+                ],
+            },
+            "property_evidence": {
+                "digest": self.property_evidence.digest,
+                "property_count": len(
+                    self.property_evidence.properties
+                ),
+                "exhaustive_count": sum(
+                    item.exhaustive
+                    for item in self.property_evidence.properties
+                ),
+                "counterexample_count": len(
+                    self.property_evidence.counterexamples
+                ),
+            },
+            "verification_metrics": {
+                "digest": self.verification_metrics.digest,
+                "total_obligations": (
+                    self.verification_metrics.total_obligations
+                ),
+                "automatically_closed": (
+                    self.verification_metrics.automatically_closed
+                ),
+                "refuted": self.verification_metrics.refuted,
+                "runtime_guarded": (
+                    self.verification_metrics.runtime_guarded
+                ),
+                "unresolved": self.verification_metrics.unresolved,
+                "closed_rate_basis_points": (
+                    self.verification_metrics.closed_rate_basis_points
+                ),
+            },
             "native": self.native.to_dict() if self.native is not None else None,
+            "wasm": self.wasm.to_dict() if self.wasm is not None else None,
         }
 
 
@@ -159,6 +254,12 @@ def compile_project(
     emit_native: bool = False,
     release: bool = False,
     output: str | Path | None = None,
+    emit_wasm: bool = False,
+    wasm_entry: str | None = None,
+    wasm_output: str | Path | None = None,
+    smt_backend: str | None = None,
+    smt_timeout_ms: int = 1000,
+    smt_max_paths: int = 256,
     require_interface_lock: bool = True,
 ) -> ProjectCompilation:
     _validate_project_lock(path)
@@ -178,9 +279,36 @@ def compile_project(
             elaborated.canonical_program,
             entry_function="main",
         )
+        range_analysis = analyze_constant_ranges(hir)
+        obligations = extend_obligations(
+            build_obligation_ir(hir),
+            range_analysis.obligations,
+        )
+        bounded_symbolic = verify_bounded(hir, obligations)
+        smt = verify_smt(
+            hir,
+            obligations,
+            backend=smt_backend,
+            timeout_ms=smt_timeout_ms,
+            max_paths=smt_max_paths,
+        )
         representation = lower_structured_hir_to_rir(hir)
+        property_evidence = generate_property_evidence(
+            hir,
+            obligations,
+            bounded_symbolic,
+            smt,
+        )
+        verification_metrics = measure_verification_metrics(
+            obligations,
+            bounded_symbolic,
+            smt,
+        )
         mir = lower_rir_to_performance_mir(hir, representation)
         optimized = optimize_general_mir(mir)
+        parallel_ir = lower_performance_mir(
+            optimized
+        )
         generated = emit_general_c(hir, representation, optimized)
         generated_c = generated.source
     except (TypeError, ValueError) as exc:
@@ -221,6 +349,48 @@ def compile_project(
         hir.to_json(),
         canonical,
     )
+    range_artifact = _artifact(
+        "ranges",
+        range_analysis.contract,
+        range_analysis.schema_version,
+        range_analysis.to_json(),
+        hir_artifact,
+    )
+    obligation_artifact = _artifact(
+        "obligations",
+        obligations.contract,
+        obligations.schema_version,
+        obligations.to_json(),
+        hir_artifact,
+    )
+    symbolic_artifact = _artifact(
+        "bounded-symbolic",
+        bounded_symbolic.contract,
+        bounded_symbolic.schema_version,
+        bounded_symbolic.to_json(),
+        obligation_artifact,
+    )
+    smt_artifact = _artifact(
+        "smt",
+        smt.contract,
+        smt.schema_version,
+        smt.to_json(),
+        obligation_artifact,
+    )
+    property_artifact = _artifact(
+        "property-evidence",
+        property_evidence.contract,
+        property_evidence.schema_version,
+        property_evidence.to_json(),
+        obligation_artifact,
+    )
+    metrics_artifact = _artifact(
+        "verification-metrics",
+        verification_metrics.contract,
+        verification_metrics.schema_version,
+        verification_metrics.to_json(),
+        obligation_artifact,
+    )
     rir_artifact = _artifact(
         "rir",
         representation.contract,
@@ -242,6 +412,13 @@ def compile_project(
         optimized.to_json(),
         mir_artifact,
     )
+    parallel_artifact = _artifact(
+        "parallel_ir",
+        parallel_ir.contract,
+        parallel_ir.schema_version,
+        parallel_ir.to_json(),
+        optimized_artifact,
+    )
     c_artifact = _artifact(
         "c11",
         "merlo.c11.runtime-abi",
@@ -256,14 +433,53 @@ def compile_project(
             concise,
             canonical,
             hir_artifact,
+            obligation_artifact,
+            range_artifact,
+            symbolic_artifact,
+            smt_artifact,
+            property_artifact,
+            metrics_artifact,
             rir_artifact,
             mir_artifact,
             optimized_artifact,
+            parallel_artifact,
             c_artifact,
         )
     }
 
     native: NativeBuildResult | None = None
+    wasm = None
+    if emit_wasm:
+        try:
+            wasm = WasmBackend().compile(
+                optimized,
+                source=elaborated.canonical_source,
+                entry=wasm_entry,
+            )
+        except WasmCompileError as exc:
+            raise ConciseApplicationError(
+                f"{entry}: wasm build failed: {exc}"
+            ) from exc
+        if wasm_output is not None:
+            destination = Path(wasm_output).resolve()
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(wasm.wasm)
+    if emit_native:
+        holes = tuple(
+            node
+            for function in hir.functions
+            for node in function.walk()
+            if node.kind == "TypedHole"
+        )
+        if holes:
+            identifiers = ", ".join(
+                str(node.attribute_map.get("hole_id"))
+                for node in holes
+            )
+            raise ConciseApplicationError(
+                f"{entry}: TypedHoleNotExecutable: "
+                f"{identifiers}"
+            )
     if emit_native:
         destination = (
             Path(output).resolve()
@@ -288,13 +504,21 @@ def compile_project(
         elaborated=elaborated,
         module_graph=module_graph,
         hir=hir,
+        obligations=obligations,
+        range_analysis=range_analysis,
+        bounded_symbolic=bounded_symbolic,
+        smt=smt,
+        property_evidence=property_evidence,
+        verification_metrics=verification_metrics,
         representation=representation,
         mir=mir,
         optimized_mir=optimized,
+        parallel_ir=parallel_ir,
         generated=generated,
         generated_c=generated_c,
         artifacts=artifacts,
         native=native,
+        wasm=wasm,
     )
 
 

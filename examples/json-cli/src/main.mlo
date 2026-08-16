@@ -7,7 +7,7 @@ export enum AppError:
     InvalidPath: Text
     ReadFailure: Text
 
-summarize(data: Bytes) -> Text:
+summarize(data: Bytes):
     parsed = json.parse(data.to_text().view())
     output = TextBuilder.new()
     output.append_text("json-bytes=")

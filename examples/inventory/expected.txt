@@ -1,0 +1,5 @@
+inventory
+items=3
+units=14
+reorder=2
+value_cents=15000

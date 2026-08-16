@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from merlo.collection_protocol import COLLECTION_OPERATIONS
 from merlo.canonical_ast import CanonicalProgram
 from merlo.elaboration.diagnostics import SurfaceElaborationError
 from merlo import native_syntax as ast
@@ -13,6 +14,7 @@ from merlo.surface_ast import (
     SurfaceCase,
     SurfaceComment,
     SurfaceContinue,
+    SurfaceEnsure,
     SurfaceEnum,
     SurfaceExpression,
     SurfaceExpressionStatement,
@@ -21,7 +23,9 @@ from merlo.surface_ast import (
     SurfaceIf,
     SurfaceImplicitReceiver,
     SurfaceIndex,
+    SurfaceHole,
     SurfaceList,
+    SurfaceLambda,
     SurfaceLiteral,
     SurfaceMatch,
     SurfaceMember,
@@ -30,6 +34,7 @@ from merlo.surface_ast import (
     SurfacePrint,
     SurfaceProgram,
     SurfaceRecord,
+    SurfaceRequire,
     SurfaceReturn,
     SurfaceStatement,
     SurfaceTry,
@@ -84,6 +89,7 @@ class _SurfaceNativeBuilder:
             item.name: item for item in canonical.functions
         }
         self.callable_index = 0
+        self.closure_index = 0
         self.current_function = ""
         self.local_types: dict[str, str] = {}
 
@@ -123,6 +129,42 @@ class _SurfaceNativeBuilder:
         return self._loc(ast.Name(id=name, ctx=ctx), span)
 
     def _expr(self, expression: SurfaceExpression) -> ast.expr:
+        if isinstance(expression, SurfaceHole):
+            metadata = next(
+                (
+                    item
+                    for item in self.canonical_functions[
+                        self.current_function
+                    ].holes
+                    if item.span == expression.span
+                ),
+                None,
+            )
+            if metadata is None:
+                raise SurfaceElaborationError(
+                    "MissingTypedHoleMetadata"
+                )
+            return self._loc(
+                ast.Hole(
+                    hole_id=metadata.hole_id,
+                    expected_type=metadata.expected_type,
+                    context=tuple(
+                        (
+                            item.name,
+                            item.type_name,
+                            item.ownership,
+                        )
+                        for item in metadata.context
+                    ),
+                    callables=tuple(
+                        item.to_payload()
+                        for item in metadata.callables
+                    ),
+                    effects=metadata.effects,
+                    capabilities=metadata.capabilities,
+                ),
+                expression.span,
+            )
         if isinstance(expression, SurfaceName):
             return self._name(expression.name, expression.span)
         if isinstance(expression, SurfaceLiteral):
@@ -136,6 +178,45 @@ class _SurfaceNativeBuilder:
                 ),
                 expression.span,
             )
+        if isinstance(expression, SurfaceLambda):
+            closures = self.canonical_functions[self.current_function].closures
+            if self.closure_index >= len(closures):
+                raise SurfaceElaborationError("MissingClosureMetadata")
+            metadata = closures[self.closure_index]
+            self.closure_index += 1
+            arguments = ast.arguments(
+                posonlyargs=[],
+                args=[
+                    self._loc(
+                        ast.arg(
+                            arg=name,
+                            annotation=self._annotation(type_name, expression.span),
+                        ),
+                        expression.span,
+                    )
+                    for name, type_name in metadata.parameters
+                ],
+                kwonlyargs=[],
+                kw_defaults=[],
+                defaults=[],
+                vararg=None,
+                kwarg=None,
+            )
+            result = self._loc(
+                ast.Lambda(args=arguments, body=self._expr(expression.body)),
+                expression.span,
+            )
+            result._merlo_closure_metadata = (
+                metadata.closure_id,
+                metadata.parameters,
+                metadata.return_type,
+                tuple(
+                    (item.name, item.type_name, item.ownership)
+                    for item in metadata.captures
+                ),
+                self.current_function,
+            )
+            return result
         if isinstance(expression, SurfaceList):
             return self._loc(
                 ast.List(elts=[self._expr(item) for item in expression.items], ctx=ast.Load()),
@@ -243,27 +324,33 @@ class _SurfaceNativeBuilder:
                         args.append(self._expr(argument.value))
             else:
                 args = [self._expr(argument.value) for argument in expression.arguments]
-            if isinstance(expression.callee, SurfaceMember) and expression.callee.field in {
-                "where", "map", "count"
-            }:
-                for index, argument in enumerate(expression.arguments):
-                    if any(isinstance(item, SurfaceImplicitReceiver) for item in argument.value.walk()):
-                        if self.callable_index >= len(
-                            self.canonical_functions[self.current_function].implicit_callables
-                        ):
-                            raise SurfaceElaborationError("MissingImplicitCallableMetadata")
-                        metadata = self.canonical_functions[
-                            self.current_function
-                        ].implicit_callables[self.callable_index]
-                        self.callable_index += 1
-                        candidate = args[index] if index < len(args) else self._expr(argument.value)
-                        candidate._merlo_implicit_callable = (
-                            metadata.callable_id,
-                            metadata.parameter,
-                            metadata.parameter_type,
-                            metadata.return_type,
-                            metadata.expression,
-                        )
+            if (
+                isinstance(expression.callee, SurfaceMember)
+                and expression.callee.field in COLLECTION_OPERATIONS
+            ):
+                if self.callable_index >= len(
+                    self.canonical_functions[
+                        self.current_function
+                    ].implicit_callables
+                ):
+                    raise SurfaceElaborationError(
+                        "MissingImplicitCallableMetadata"
+                    )
+                metadata = self.canonical_functions[
+                    self.current_function
+                ].implicit_callables[self.callable_index]
+                self.callable_index += 1
+                if len(args) != 1:
+                    raise SurfaceElaborationError(
+                        "InvalidCollectionCallableArity"
+                    )
+                args[0]._merlo_implicit_callable = (
+                    metadata.callable_id,
+                    metadata.parameter,
+                    metadata.parameter_type,
+                    metadata.return_type,
+                    metadata.expression,
+                )
             return self._loc(
                 ast.Call(func=callee, args=args, keywords=[]),
                 expression.span,
@@ -398,6 +485,14 @@ class _SurfaceNativeBuilder:
                 ast.Return(value=self._expr(statement.expression) if statement.expression else None),
                 statement.span,
             )
+        if isinstance(statement, SurfaceRequire):
+            return self._loc(
+                ast.Contract(
+                    condition=self._expr(statement.condition),
+                    kind="require",
+                ),
+                statement.span,
+            )
         if isinstance(statement, SurfaceBreak):
             return self._loc(ast.Break(), statement.span)
         if isinstance(statement, SurfaceContinue):
@@ -503,7 +598,10 @@ class _SurfaceNativeBuilder:
         executable = tuple(
             statement
             for statement in statements
-            if not isinstance(statement, (SurfaceUses, SurfaceComment))
+            if not isinstance(
+                statement,
+                (SurfaceUses, SurfaceComment, SurfaceEnsure),
+            )
         )
         return [
             self._statement(
@@ -545,6 +643,62 @@ class _SurfaceNativeBuilder:
                         declaration.span,
                     )
                 )
+                self.current_function = declaration.name
+                self.local_types = {
+                    field.name: field.type_name
+                    for field in declaration.fields
+                }
+                for index, invariant in enumerate(
+                    declaration.invariants
+                ):
+                    invariant_name = (
+                        f"__merlo_invariant_{declaration.name}_{index}"
+                    )
+                    function = self._loc(
+                        ast.FunctionDef(
+                            name=invariant_name,
+                            args=ast.arguments(
+                                posonlyargs=[],
+                                args=[
+                                    self._loc(
+                                        ast.arg(
+                                            arg=field.name,
+                                            annotation=self._annotation(
+                                                field.type_name,
+                                                field.span,
+                                            ),
+                                        ),
+                                        field.span,
+                                    )
+                                    for field in declaration.fields
+                                ],
+                                kwonlyargs=[],
+                                kw_defaults=[],
+                                defaults=[],
+                                vararg=None,
+                                kwarg=None,
+                            ),
+                            body=[
+                                self._loc(
+                                    ast.Return(
+                                        self._expr(
+                                            invariant.condition
+                                        )
+                                    ),
+                                    invariant.span,
+                                )
+                            ],
+                            decorator_list=[],
+                            returns=self._annotation(
+                                "Bool",
+                                invariant.span,
+                            ),
+                            type_comment=None,
+                        ),
+                        invariant.span,
+                    )
+                    function._merlo_invariant_owner = declaration.name
+                    body.append(function)
             elif isinstance(declaration, SurfaceEnum):
                 declaration_kinds.append((declaration.name, "enum"))
                 variants: list[ast.stmt] = []
@@ -587,6 +741,7 @@ class _SurfaceNativeBuilder:
             canonical = self.canonical_functions[declaration.name]
             self.current_function = declaration.name
             self.callable_index = 0
+            self.closure_index = 0
             self.local_types = dict(canonical.parameters)
             args = [
                 self._loc(
@@ -626,6 +781,15 @@ class _SurfaceNativeBuilder:
                     type_comment=None,
                 ),
                 declaration.span,
+            )
+            function._merlo_ensures = tuple(
+                self._expr(statement.condition)
+                for statement in (
+                    declaration.body
+                    if declaration.body_kind == "block"
+                    else ()
+                )
+                if isinstance(statement, SurfaceEnsure)
             )
             body.append(function)
             for statement in declaration.body if declaration.body_kind == "block" else ():

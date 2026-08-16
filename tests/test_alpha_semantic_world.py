@@ -47,6 +47,27 @@ def test_world_exact_resolution_and_stale_rejection(tmp_path: Path) -> None:
         world.require_fresh()
 
 
+def test_world_freshness_hashes_raw_source_bytes(
+    tmp_path: Path,
+) -> None:
+    from merlo.semantic_world import SemanticWorld
+
+    source = _entry(tmp_path)
+    source.write_bytes(
+        _main_source().replace(
+            "\n",
+            "\r\n",
+        ).encode("utf-8")
+    )
+
+    world = SemanticWorld.build(
+        source,
+        require_interface_lock=False,
+    )
+
+    world.require_fresh()
+
+
 def test_world_save_load_and_private_edit_locality(tmp_path: Path) -> None:
     from merlo.semantic_world import SemanticWorld
 
@@ -98,10 +119,12 @@ def test_protocol_operations_and_minimal_capsule(tmp_path: Path) -> None:
         result = protocol.call(operation, params)
         assert result is not None
     capsule = protocol.call("context.compile", {"target": "app.main.main", "goal": "inspect"})
-    assert set(capsule) == {
-        "kind", "goal", "target", "source", "signature", "dependent_types",
-        "callers", "dependencies", "effects", "capabilities", "public_boundary", "tests",
-    }
+    assert capsule["schema_version"] == 1
+    assert capsule["contract"] == "merlo.semantic-capsule.v1"
+    assert capsule["digest"]
+    assert capsule["world_digest"]
+    assert capsule["target"]["revision_id"]
+    assert "verification" in capsule
 
 
 def test_world_uses_custom_lockfile_provenance(tmp_path: Path) -> None:
@@ -136,3 +159,52 @@ def test_world_indexes_calls_in_imported_modules(tmp_path: Path) -> None:
     world = SemanticWorld.build(source, require_interface_lock=False)
     helper = world.resolve("app.lib.helper")
     assert any(item["source"]["path"] == str(imported.resolve()) for item in world.references(helper["symbol_id"]))
+
+
+def test_world_resolves_duplicate_names_by_module(
+    tmp_path: Path,
+) -> None:
+    from merlo.semantic_world import SemanticWorld
+
+    source = _entry(tmp_path)
+    imported = tmp_path / "app" / "lib.mlo"
+    source.write_text(
+        "module app.main\n"
+        "use app.lib\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "fn helper(path: Path) -> Text:\n"
+        "    \"local\"\n\n"
+        "export task main(path: Path) -> "
+        "Result[Text, AppError]:\n"
+        "    uses console.write\n"
+        "    console.write(\"main\")\n"
+        "    return Ok(helper(path))\n",
+        encoding="utf-8",
+    )
+    imported.write_text(
+        "module app.lib\n\n"
+        "export fn helper(value: Byte) -> Byte:\n"
+        "    helper(value)\n",
+        encoding="utf-8",
+    )
+
+    world = SemanticWorld.build(
+        source,
+        require_interface_lock=False,
+    )
+    local = world.resolve("app.main.helper")
+    external = world.resolve("app.lib.helper")
+
+    assert {
+        item["owner_id"]
+        for item in world.references(local["symbol_id"])
+    } == {
+        world.resolve("app.main.main")["symbol_id"]
+    }
+    assert {
+        item["owner_id"]
+        for item in world.references(
+            external["symbol_id"]
+        )
+    } == {external["symbol_id"]}

@@ -1,0 +1,317 @@
+module lexer
+use syntax
+LexerState:
+    source: Text
+    tokens: Vec[Token]
+    indent_width: UInt64
+    index: UInt64
+    line: UInt64
+    column: UInt64
+    at_line_start: Bool
+    indent_bytes: UInt64
+
+is_digit(value: UInt64) -> Bool:
+    value >= 48 and value <= 57
+
+is_alpha(value: UInt64) -> Bool:
+    value >= 65 and value <= 90 or value >= 97 and value <= 122 or value == 95
+
+is_alphanumeric(value: UInt64) -> Bool:
+    is_alpha(value) or is_digit(value)
+
+is_hex(value: UInt64) -> Bool:
+    value >= 48 and value <= 57 or value >= 65 and value <= 70 or value >= 97 and value <= 102
+
+is_escape(value: UInt64) -> Bool:
+    value == 34 or value == 39 or value == 92 or value == 110 or value == 114 or value == 116 or value == 98 or value == 102 or value == 48
+
+push_token(state: LexerState, kind: UInt64, start: UInt64, length: UInt64, line: UInt64, column: UInt64) -> Unit:
+    state.tokens.push(Token(kind, start, length, line, column))
+
+lexer_advance(state: LexerState) -> Unit:
+    state.index = state.index + 1
+    state.column = state.column + 1
+
+consume_comment(state: LexerState) -> Unit:
+    while state.index < state.source.len():
+        byte = state.source.byte(state.index)
+        if byte == 10 or byte == 13:
+            return
+        lexer_advance(state)
+
+prepare_line(state: LexerState) -> Unit:
+    if state.at_line_start:
+        start = state.index
+        width: UInt64 = 0
+        while state.index < state.source.len():
+            byte = state.source.byte(state.index)
+            if byte == 32:
+                width = width + 1
+                state.indent_bytes = state.indent_bytes + 1
+                lexer_advance(state)
+            else:
+                if byte == 9:
+                    width = width + 4
+                    state.indent_bytes = state.indent_bytes + 1
+                    lexer_advance(state)
+                else:
+                    break
+        if state.index < state.source.len():
+            next = state.source.byte(state.index)
+            if next == 10 or next == 13 or next == 35:
+                if next == 35:
+                    consume_comment(state)
+                return
+        if state.index < state.source.len():
+            if width % 4 != 0:
+                push_token(state, token_invalid_kind(), start, state.indent_bytes, state.line, 1)
+            else:
+                if width > state.indent_width:
+                    while state.indent_width < width:
+                        state.indent_width = state.indent_width + 4
+                        push_token(state, token_indent_kind(), start, 0, state.line, 1)
+                else:
+                    if width < state.indent_width:
+                        while state.indent_width > width:
+                            state.indent_width = state.indent_width - 4
+                            push_token(state, token_dedent_kind(), start, 0, state.line, 1)
+                        if width != state.indent_width:
+                            push_token(state, token_invalid_kind(), start, state.indent_bytes, state.line, 1)
+            state.at_line_start = false
+
+scan_identifier(state: LexerState) -> Unit:
+    start = state.index
+    start_line = state.line
+    start_column = state.column
+    while state.index < state.source.len() and is_alphanumeric(state.source.byte(state.index)):
+        lexer_advance(state)
+    word = state.source.as_view().slice_bytes(start, state.index - start).to_text()
+    kind = token_keyword_kind(word)
+    push_token(state, kind, start, state.index - start, start_line, start_column)
+
+scan_integer(state: LexerState) -> Unit:
+    start = state.index
+    start_line = state.line
+    start_column = state.column
+    while state.index < state.source.len() and is_digit(state.source.byte(state.index)):
+        lexer_advance(state)
+    if state.index < state.source.len() and is_alpha(state.source.byte(state.index)):
+        while state.index < state.source.len() and is_alphanumeric(state.source.byte(state.index)):
+            lexer_advance(state)
+        push_token(state, token_invalid_kind(), start, state.index - start, start_line, start_column)
+    else:
+        push_token(state, token_integer_kind(), start, state.index - start, start_line, start_column)
+
+scan_string(state: LexerState) -> Unit:
+    start = state.index
+    start_line = state.line
+    start_column = state.column
+    quote = state.source.byte(state.index)
+    lexer_advance(state)
+    valid = true
+    closed = false
+    while state.index < state.source.len():
+        byte = state.source.byte(state.index)
+        if byte == quote:
+            lexer_advance(state)
+            closed = true
+            break
+        if byte == 10 or byte == 13:
+            break
+        if byte < 32:
+            valid = false
+            lexer_advance(state)
+        else:
+            if byte == 92:
+                lexer_advance(state)
+                if state.index >= state.source.len():
+                    valid = false
+                else:
+                    escaped = state.source.byte(state.index)
+                    if escaped == 117:
+                        lexer_advance(state)
+                        digits: UInt64 = 0
+                        while digits < 4 and state.index < state.source.len():
+                            hex_byte = state.source.byte(state.index)
+                            if hex_byte == 10 or hex_byte == 13:
+                                valid = false
+                                break
+                            else:
+                                if not is_hex(hex_byte):
+                                    valid = false
+                                lexer_advance(state)
+                                digits = digits + 1
+                        if digits < 4:
+                            valid = false
+                    else:
+                        if escaped == 10 or escaped == 13:
+                            valid = false
+                        else:
+                            if not is_escape(escaped):
+                                valid = false
+                            lexer_advance(state)
+            else:
+                lexer_advance(state)
+    if closed and valid:
+        push_token(state, token_string_kind(), start, state.index - start, start_line, start_column)
+    else:
+        push_token(state, token_invalid_kind(), start, state.index - start, start_line, start_column)
+
+scan_operator(state: LexerState) -> Unit:
+    start = state.index
+    start_line = state.line
+    start_column = state.column
+    byte = state.source.byte(state.index)
+    kind = token_invalid_kind()
+    width: UInt64 = 1
+    if byte == 58:
+        kind = token_colon_kind()
+    else:
+        if byte == 44:
+            kind = token_comma_kind()
+        else:
+            if byte == 40:
+                kind = token_lparen_kind()
+            else:
+                if byte == 41:
+                    kind = token_rparen_kind()
+                else:
+                    if byte == 91:
+                        kind = token_lbracket_kind()
+                    else:
+                        if byte == 93:
+                            kind = token_rbracket_kind()
+                        else:
+                            if byte == 123:
+                                kind = token_lbrace_kind()
+                            else:
+                                if byte == 125:
+                                    kind = token_rbrace_kind()
+                                else:
+                                    if byte == 43:
+                                        kind = token_plus_kind()
+                                    else:
+                                        if byte == 45:
+                                            kind = token_minus_kind()
+                                            if state.index + 1 < state.source.len() and state.source.byte(state.index + 1) == 62:
+                                                kind = token_arrow_kind()
+                                                width = 2
+                                        else:
+                                            if byte == 42:
+                                                kind = token_star_kind()
+                                            else:
+                                                if byte == 47:
+                                                    kind = token_slash_kind()
+                                                    if state.index + 1 < state.source.len() and state.source.byte(state.index + 1) == 47:
+                                                        kind = token_double_slash_kind()
+                                                        width = 2
+                                                else:
+                                                    if byte == 37:
+                                                        kind = token_percent_kind()
+                                                    else:
+                                                        if byte == 60:
+                                                            kind = token_less_kind()
+                                                            if state.index + 1 < state.source.len() and state.source.byte(state.index + 1) == 61:
+                                                                kind = token_less_equal_kind()
+                                                                width = 2
+                                                            else:
+                                                                if state.index + 1 < state.source.len() and state.source.byte(state.index + 1) == 60:
+                                                                    kind = token_left_shift_kind()
+                                                                    width = 2
+                                                        else:
+                                                            if byte == 62:
+                                                                kind = token_greater_kind()
+                                                                if state.index + 1 < state.source.len() and state.source.byte(state.index + 1) == 61:
+                                                                    kind = token_greater_equal_kind()
+                                                                    width = 2
+                                                                else:
+                                                                    if state.index + 1 < state.source.len() and state.source.byte(state.index + 1) == 62:
+                                                                        kind = token_right_shift_kind()
+                                                                        width = 2
+                                                            else:
+                                                                if byte == 61:
+                                                                    kind = token_equal_kind()
+                                                                    if state.index + 1 < state.source.len() and state.source.byte(state.index + 1) == 61:
+                                                                        kind = token_double_equal_kind()
+                                                                        width = 2
+                                                                    else:
+                                                                        if state.index + 1 < state.source.len() and state.source.byte(state.index + 1) == 62:
+                                                                            kind = token_fat_arrow_kind()
+                                                                            width = 2
+                                                                else:
+                                                                    if byte == 33:
+                                                                        kind = token_bang_kind()
+                                                                        if state.index + 1 < state.source.len() and state.source.byte(state.index + 1) == 61:
+                                                                            kind = token_not_equal_kind()
+                                                                            width = 2
+                                                                    else:
+                                                                        if byte == 63:
+                                                                            kind = token_question_kind()
+                                                                        else:
+                                                                            if byte == 46:
+                                                                                kind = token_dot_kind()
+                                                                            else:
+                                                                                if byte == 38:
+                                                                                    kind = token_ampersand_kind()
+                                                                                else:
+                                                                                    if byte == 124:
+                                                                                        kind = token_pipe_kind()
+                                                                                    else:
+                                                                                        if byte == 59:
+                                                                                            kind = token_semicolon_kind()
+                                                                                        else:
+                                                                                            if byte == 126:
+                                                                                                kind = token_tilde_kind()
+    count: UInt64 = 0
+    while count < width:
+        lexer_advance(state)
+        count = count + 1
+    push_token(state, kind, start, width, start_line, start_column)
+
+consume_newline(state: LexerState) -> Unit:
+    start = state.index
+    start_column = state.column
+    length: UInt64 = 1
+    if state.source.byte(state.index) == 13 and state.index + 1 < state.source.len() and state.source.byte(state.index + 1) == 10:
+        length = 2
+    count: UInt64 = 0
+    while count < length:
+        state.index = state.index + 1
+        count = count + 1
+    push_token(state, token_newline_kind(), start, length, state.line, start_column)
+    state.line = state.line + 1
+    state.column = 1
+    state.at_line_start = true
+    state.indent_bytes = 0
+
+export lex(source: Text) -> Vec[Token]:
+    state = LexerState(source, Vec.new(), 0, 0, 1, 1, true, 0)
+    while state.index < state.source.len():
+        if state.at_line_start:
+            prepare_line(state)
+        if state.index < state.source.len():
+            byte = state.source.byte(state.index)
+            if byte == 10 or byte == 13:
+                consume_newline(state)
+            else:
+                if byte == 35:
+                    consume_comment(state)
+                else:
+                    if byte == 32 or byte == 9:
+                        lexer_advance(state)
+                    else:
+                        if is_alpha(byte):
+                            scan_identifier(state)
+                        else:
+                            if is_digit(byte):
+                                scan_integer(state)
+                            else:
+                                if byte == 34 or byte == 39:
+                                    scan_string(state)
+                                else:
+                                    scan_operator(state)
+    while state.indent_width > 0:
+        state.indent_width = state.indent_width - 4
+        push_token(state, token_dedent_kind(), state.index, 0, state.line, state.column)
+    push_token(state, token_eof_kind(), state.index, 0, state.line, state.column)
+    state.tokens

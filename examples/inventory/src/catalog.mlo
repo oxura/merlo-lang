@@ -1,0 +1,31 @@
+module catalog
+
+export Item:
+    sku: UInt64
+    stock: UInt64
+    reorder_at: UInt64
+    unit_cents: UInt64
+
+needs_reorder(item):
+    item.stock < item.reorder_at
+
+export report() -> Text:
+    items: Vec[Item] = Vec.new()
+    items.push(Item(101, 4, 5, 1250))
+    items.push(Item(102, 8, 5, 700))
+    items.push(Item(103, 2, 4, 2200))
+    reorder: UInt64 = items.count(needs_reorder)
+    units: UInt64 = 0
+    value: UInt64 = 0
+    for item in items:
+        units = units + item.stock
+        value = value + item.stock * item.unit_cents
+    output: TextBuilder = TextBuilder.new()
+    output.append_text("inventory\nitems=3\nunits=")
+    output.append_uint64(units)
+    output.append_text("\nreorder=")
+    output.append_uint64(reorder)
+    output.append_text("\nvalue_cents=")
+    output.append_uint64(value)
+    output.append_byte(10)
+    output.finish()

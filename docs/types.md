@@ -15,6 +15,16 @@ The alpha has these scalar descriptors:
 checked overflow produces a diagnostic rather than silently changing the
 source contract. Wrapping operations are distinct operations.
 
+Core integer `+`, `-`, `*`, unary negation, division, remainder, and left
+shift trap on overflow instead of relying on C undefined behavior. Integer
+division by zero and invalid shift counts have distinct traps. `/` truncates
+signed integers toward zero; `//` rounds toward negative infinity; `%` has the
+divisor's sign. Signed right shift also rounds toward negative infinity.
+`wrapping_add`, `wrapping_sub`, and `wrapping_mul` are the explicit modular
+alternatives. Floating-point arithmetic follows IEEE 754; `//`, `%`, and
+bitwise operators require integer operands. Numeric casts are explicit and
+checked when converting to an integer range.
+
 Structured values include:
 
 - `Text`, `Bytes`, and `Path` values;
@@ -25,6 +35,18 @@ Structured values include:
 - `Box[T]` for indirection where recursive layout needs it.
 
 Fixed arrays carry their length. `match` over sum values must be exhaustive.
+
+`Vec[T]`, `Array[T, N]`, `Slice[T]`, `Borrow[Vec[T]]`, `Bytes`,
+`BytesView`, `Text`, and `TextView` share the General sequential collection
+protocol. They support bounds-checked indexing, `for` iteration, and the
+`where`, `map`, and `count` operations. `where` and `map` return `Vec`; `count`
+returns `UInt64`. Text collections expose their UTF-8 storage as `Byte`
+elements. Fixed array lengths remain compile-time constants; other lengths
+come from the collection view.
+Eligible direct `where`/`map`/`count` chains over copy scalars fuse into one
+native loop. A terminal `count` allocates no intermediate vectors; a terminal
+`where` or `map` materializes only its final `Vec`.
+
 Casts, indexing, and result propagation remain visible in the checked semantic
 pipeline. The alpha does not provide a dynamic `Any` escape hatch in concise
 application elaboration.
@@ -35,6 +57,11 @@ patterns, and tail expressions. Conflicting constraints are errors; unresolved
 constraints are errors. Recursive call groups require at least one explicit
 boundary. Exported interfaces become explicit, content-addressed contracts once
 locked.
+
+Bare `?` is an incomplete expression only when its context determines one exact
+type. The compiler records that expected type and the visible typed scope as a
+completion obligation. It never treats a hole as `Any`, zero, `None`, or another
+runtime fallback.
 
 `T?` is the human spelling of `Option[T]`. `option or fallback` is accepted only
 when the left side is `Option[T]` and the right side is `T`; `Bool or Bool`

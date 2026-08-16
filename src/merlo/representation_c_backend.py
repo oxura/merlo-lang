@@ -15,6 +15,12 @@ from pathlib import Path
 from typing import Any
 
 from merlo import native_syntax as ast
+from merlo.collection_protocol import (
+    COLLECTION_OPERATIONS,
+    FUSIBLE_COLLECTION_ELEMENTS,
+    collection_result_type,
+    collection_shape,
+)
 from merlo.ffi import pointer_type, validate_ffi
 from merlo.representation_ir import RepresentationProgram, TypeDescriptor
 from merlo.intrinsics import (
@@ -34,8 +40,8 @@ from merlo.version import VERSIONS
 from merlo.type_parser import generic_parts, parse_type
 
 
-C_BACKEND_SCHEMA_VERSION = 1
-C_BACKEND_CONTRACT = "merlo.general-representation-c11.v1"
+C_BACKEND_SCHEMA_VERSION = 2
+C_BACKEND_CONTRACT = "merlo.general-representation-c11.v2"
 RUNTIME_ABI_VERSION = VERSIONS.runtime_abi
 RUNTIME_ABI_CONTRACT = "merlo.runtime-abi.v2"
 _FROZEN_GENERAL_JSON_SHA256 = (
@@ -132,6 +138,9 @@ def _c_name(type_name: str) -> str:
     pointer = pointer_type(type_name)
     if pointer is not None:
         return f"{_c_name(pointer.pointee)} *"
+    borrowed = generic_parts(type_name, "Borrow", arity=1)
+    if borrowed is not None:
+        return f"{_c_name(borrowed[0])} *"
     aliases = {
         "Unit": "void",
         "Bool": "bool",
@@ -207,6 +216,12 @@ class GeneralCEmitter:
         self.function_nodes = {
             item.name: item for item in self.module.body if isinstance(item, ast.FunctionDef)
         }
+        self.closure_nodes = tuple(
+            node
+            for node in ast.walk(self.module)
+            if isinstance(node, ast.Lambda)
+            and getattr(node, "_merlo_closure_metadata", None) is not None
+        )
         self.current_function: HIRFunction | None = None
         self.env_types: dict[str, str] = {}
         self.pointer_values: set[str] = set()
@@ -222,6 +237,8 @@ class GeneralCEmitter:
         self.expression_context = "statement"
         self.returning_borrowed = False
         self.assigning_borrowed = False
+        self.current_ensures: tuple[ast.AST, ...] = ()
+        self.contract_result_name: str | None = None
         self.frozen_general_json = (
             hashlib.sha256(hir.source.encode()).hexdigest()
             == _FROZEN_GENERAL_JSON_SHA256
@@ -235,11 +252,14 @@ class GeneralCEmitter:
             self._forward_declarations(),
             self._vec_box_types(),
             self._nominal_types(),
+            self._late_array_types(),
+            self._closure_types(),
             self._function_prototypes(),
             self._primitive_runtime(),
             self._effect_runtime(),
             self._file_runtime(),
             self._move_drop_glue(),
+            self._closure_runtime(),
             self._constructors(),
             self._vec_box_runtime(),
             self._map_runtime(),
@@ -386,6 +406,30 @@ static void merlo_overflow_trap(const char *message) {
     fprintf(stderr, "MerloOverflow:%s\\n", message);
     abort();
 }
+static void merlo_contract_trap(
+    const char *kind,
+    const char *function_name,
+    uint64_t line
+) {
+    fprintf(
+        stderr,
+        "MerloContractViolation:%s:%s:%" PRIu64 "\\n",
+        kind,
+        function_name,
+        line
+    );
+    abort();
+}
+static void merlo_division_by_zero_trap(const char *type_name) {
+    fprintf(stderr, "MerloDivisionByZero:%s\\n", type_name);
+    abort();
+}
+
+static void merlo_invalid_shift_trap(const char *type_name) {
+    fprintf(stderr, "MerloInvalidShift:%s\\n", type_name);
+    abort();
+}
+
 static uint8_t merlo_checked_byte_add(uint8_t left, uint8_t right) {
     if (left > UINT8_MAX - right) merlo_overflow_trap("ByteAdd");
     return (uint8_t)(left + right);
@@ -446,6 +490,120 @@ static int64_t merlo_checked_int64_mult(int64_t left, int64_t right) {
     }
     return left * right;
 }
+static uint8_t merlo_checked_byte_div(uint8_t left, uint8_t right) {
+    if (right == 0) merlo_division_by_zero_trap("Byte");
+    return (uint8_t)(left / right);
+}
+
+static uint8_t merlo_checked_byte_mod(uint8_t left, uint8_t right) {
+    if (right == 0) merlo_division_by_zero_trap("Byte");
+    return (uint8_t)(left % right);
+}
+
+static uint64_t merlo_checked_uint64_div(uint64_t left, uint64_t right) {
+    if (right == 0) merlo_division_by_zero_trap("UInt64");
+    return left / right;
+}
+
+static uint64_t merlo_checked_uint64_mod(uint64_t left, uint64_t right) {
+    if (right == 0) merlo_division_by_zero_trap("UInt64");
+    return left % right;
+}
+
+static int64_t merlo_checked_int64_div(int64_t left, int64_t right) {
+    if (right == 0) merlo_division_by_zero_trap("Int64");
+    if (left == INT64_MIN && right == -1) {
+        merlo_overflow_trap("Int64Div");
+    }
+    return left / right;
+}
+
+static int64_t merlo_checked_int64_floor_div(
+    int64_t left,
+    int64_t right
+) {
+    int64_t quotient = merlo_checked_int64_div(left, right);
+    int64_t remainder = left % right;
+    if (remainder != 0 && ((remainder < 0) != (right < 0))) {
+        --quotient;
+    }
+    return quotient;
+}
+
+static int64_t merlo_checked_int64_mod(int64_t left, int64_t right) {
+    (void)merlo_checked_int64_div(left, right);
+    int64_t remainder = left % right;
+    if (remainder != 0 && ((remainder < 0) != (right < 0))) {
+        remainder += right;
+    }
+    return remainder;
+}
+
+static uint8_t merlo_checked_byte_lshift(uint8_t value, uint8_t shift) {
+    if (shift >= 8) merlo_invalid_shift_trap("Byte");
+    if (value > (uint8_t)(UINT8_MAX >> shift)) {
+        merlo_overflow_trap("ByteShift");
+    }
+    return (uint8_t)(value << shift);
+}
+
+static uint8_t merlo_checked_byte_rshift(uint8_t value, uint8_t shift) {
+    if (shift >= 8) merlo_invalid_shift_trap("Byte");
+    return (uint8_t)(value >> shift);
+}
+
+static uint64_t merlo_checked_uint64_lshift(
+    uint64_t value,
+    uint64_t shift
+) {
+    if (shift >= 64) merlo_invalid_shift_trap("UInt64");
+    if (value > (UINT64_MAX >> shift)) {
+        merlo_overflow_trap("UInt64Shift");
+    }
+    return value << shift;
+}
+
+static uint64_t merlo_checked_uint64_rshift(
+    uint64_t value,
+    uint64_t shift
+) {
+    if (shift >= 64) merlo_invalid_shift_trap("UInt64");
+    return value >> shift;
+}
+
+static int64_t merlo_checked_int64_lshift(int64_t value, int64_t shift) {
+    if (shift < 0 || shift >= 64) merlo_invalid_shift_trap("Int64");
+    if (shift == 0) return value;
+    if (shift == 63) {
+        if (value == 0) return 0;
+        if (value == -1) return INT64_MIN;
+        merlo_overflow_trap("Int64Shift");
+    }
+    int64_t factor = (int64_t)(UINT64_C(1) << (uint64_t)shift);
+    if (
+        (value > 0 && value > INT64_MAX / factor) ||
+        (value < 0 && value < INT64_MIN / factor)
+    ) {
+        merlo_overflow_trap("Int64Shift");
+    }
+    return value * factor;
+}
+
+static int64_t merlo_checked_int64_rshift(int64_t value, int64_t shift) {
+    if (shift < 0 || shift >= 64) merlo_invalid_shift_trap("Int64");
+    if (shift == 0) return value;
+    if (shift == 63) return value < 0 ? -1 : 0;
+    int64_t factor = (int64_t)(UINT64_C(1) << (uint64_t)shift);
+    int64_t quotient = value / factor;
+    if (value % factor < 0) --quotient;
+    return quotient;
+}
+
+static int64_t merlo_checked_int64_neg(int64_t value) {
+    if (value == INT64_MIN) merlo_overflow_trap("Int64Neg");
+    return -value;
+}
+
 
 static uint8_t merlo_cast_byte(uint64_t value) {
     if (value > UINT8_MAX) merlo_overflow_trap("ByteCast");
@@ -574,6 +732,11 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 )
             elif descriptor.kind == "array":
                 assert descriptor.element_type is not None
+                if self.descriptors[descriptor.element_type].kind in {
+                    "record",
+                    "enum",
+                }:
+                    continue
                 assert descriptor.length is not None
                 lines.append(
                     f"typedef struct {{ {_c_name(descriptor.element_type)} "
@@ -585,7 +748,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     f"typedef struct {{ const {_c_name(descriptor.element_type)} *data; "
                     f"uint64_t length; }} {_c_name(descriptor.name)};"
                 )
-            elif descriptor.kind == "callback":
+            elif descriptor.kind in {"callback", "closure"}:
                 callback = _callback_parts(descriptor.name)
                 assert callback is not None
                 parameter_types, return_type = callback
@@ -599,10 +762,49 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 parameters = ", ".join(
                     _c_name(item) for item in parameter_types
                 )
+                name = _c_name(descriptor.name)
+                signature = "void *" + (f", {parameters}" if parameters else "")
                 lines.append(
-                    f"typedef {_c_name(return_type)} (*{_c_name(descriptor.name)})"
-                    f"({parameters or 'void'});"
+                    f"typedef {_c_name(return_type)} (*{name}Call)"
+                    f"({signature});"
                 )
+                lines.append(
+                    f"typedef struct {{ {name}Call call; void *environment; "
+                    f"void (*retain)(void *); void (*release)(void *); }} {name};"
+                )
+        return "\n".join(lines)
+    def _late_array_types(self) -> str:
+        lines = []
+        for descriptor in self.representation.descriptors:
+            if (
+                descriptor.kind == "array"
+                and descriptor.element_type is not None
+                and self.descriptors[descriptor.element_type].kind
+                in {"record", "enum"}
+            ):
+                assert descriptor.length is not None
+                lines.append(
+                    f"typedef struct {{ {_c_name(descriptor.element_type)} "
+                    f"data[{max(1, descriptor.length)}]; }} "
+                    f"{_c_name(descriptor.name)};"
+                )
+        return "\n".join(lines)
+
+
+    def _closure_types(self) -> str:
+        lines: list[str] = []
+        for node in self.closure_nodes:
+            closure_id, _parameters, _return_type, captures, _owner = (
+                node._merlo_closure_metadata
+            )
+            fields = " ".join(
+                f"{_c_name(type_name)} {name};"
+                for name, type_name, _ownership in captures
+            )
+            lines.append(
+                f"typedef struct {{ uint64_t references; {fields} }} "
+                f"MerloClosureEnv_{closure_id};"
+            )
         return "\n".join(lines)
 
     def _nominal_types(self) -> str:
@@ -878,7 +1080,9 @@ static void merlo_text_builder_reserve(MerloTextBuilder *builder, uint64_t addit
     uint64_t doubled = builder->capacity > UINT64_MAX / 2 ? UINT64_MAX : builder->capacity * 2;
     uint64_t capacity = required > doubled ? required : doubled;
     if (capacity < 32) capacity = 32;
-    if (capacity > SIZE_MAX) merlo_overflow_trap("TextBuilderCapacity");
+    if (capacity > (uint64_t)SIZE_MAX || capacity > (uint64_t)PTRDIFF_MAX) {
+        merlo_overflow_trap("TextBuilderCapacity");
+    }
     uint8_t *next = (uint8_t *)realloc(builder->data, (size_t)capacity);
     if (next == NULL) merlo_allocation_trap();
     if (builder->data == NULL) { ++merlo_allocations; }
@@ -1714,6 +1918,188 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             lines.extend(self._emit_zero_move_drop(descriptor))
         return "\n".join(lines)
 
+    def _closure_runtime(self) -> str:
+        lines: list[str] = []
+        for function in self.hir.functions:
+            callback_type = "Fn[" + ",".join(
+                (*[item.type_name for item in function.parameters], function.return_type)
+            ) + "]"
+            descriptor = self.descriptors.get(callback_type)
+            if descriptor is None or descriptor.kind not in {"callback", "closure"}:
+                continue
+            if any(
+                _is_owner(self.descriptors[item.type_name])
+                for item in function.parameters
+            ):
+                continue
+            parameters = ", ".join(
+                f"{_c_name(item.type_name)} {item.name}"
+                for item in function.parameters
+            )
+            signature = "void *environment" + (
+                f", {parameters}" if parameters else ""
+            )
+            lines.append(
+                f"static {_c_name(function.return_type)} "
+                f"merlo_closure_adapter_{function.name}({signature}) {{"
+            )
+            lines.append("    (void)environment;")
+            call = f"merlo_fn_{function.name}(" + ", ".join(
+                item.name for item in function.parameters
+            ) + ")"
+            if function.return_type == "Unit":
+                lines.extend([f"    {call};", "}"])
+            else:
+                lines.extend([f"    return {call};", "}"])
+
+        for node in self.closure_nodes:
+            closure_id, parameters, return_type, captures, owner = (
+                node._merlo_closure_metadata
+            )
+            callback_type = "Fn[" + ",".join(
+                (*[type_name for _name, type_name in parameters], return_type)
+            ) + "]"
+            ctype = _c_name(callback_type)
+            environment_type = f"MerloClosureEnv_{closure_id}"
+            lines.extend(
+                [
+                    f"static void merlo_closure_retain_{closure_id}(void *raw) {{",
+                    f"    {environment_type} *environment = ({environment_type} *)raw;",
+                    "    if (environment != NULL) ++environment->references;",
+                    "}",
+                    f"static void merlo_closure_release_{closure_id}(void *raw) {{",
+                    f"    {environment_type} *environment = ({environment_type} *)raw;",
+                    "    if (environment == NULL || --environment->references != 0) return;",
+                ]
+            )
+            for name, type_name, ownership in captures:
+                if ownership == "owned":
+                    lines.append(
+                        f"    merlo_drop_{_identifier(type_name)}"
+                        f"(&environment->{name});"
+                    )
+            lines.extend(
+                [
+                    "    free(environment);",
+                    "    ++merlo_frees;",
+                    "}",
+                ]
+            )
+
+            parameter_declarations = ", ".join(
+                f"{_c_name(type_name)} {name}"
+                for name, type_name in parameters
+            )
+            call_signature = "void *raw" + (
+                f", {parameter_declarations}" if parameter_declarations else ""
+            )
+            lines.extend(
+                [
+                    f"static {_c_name(return_type)} "
+                    f"merlo_closure_call_{closure_id}({call_signature}) {{",
+                    f"    {environment_type} *environment = "
+                    f"({environment_type} *)raw;",
+                ]
+            )
+            if not captures:
+                lines.append("    (void)environment;")
+            for name, type_name, _ownership in captures:
+                lines.append(
+                    f"    {_c_name(type_name)} {name} = environment->{name};"
+                )
+
+            previous_function = self.current_function
+            previous_types = self.env_types
+            previous_pointers = self.pointer_values
+            previous_owned = self.owned_locals
+            previous_pending_lines = self.pending_expression_lines
+            previous_pending_drops = self.pending_expression_drops
+            self.current_function = self.functions[owner]
+            self.env_types = {
+                **{name: type_name for name, type_name, _ownership in captures},
+                **dict(parameters),
+            }
+            self.pointer_values = set()
+            self.owned_locals = {}
+            self.pending_expression_lines = []
+            self.pending_expression_drops = []
+            try:
+                body = self._expression(node.body, expected=return_type)
+                if (
+                    isinstance(node.body, ast.Name)
+                    and any(
+                        name == node.body.id and ownership == "owned"
+                        for name, _type_name_, ownership in captures
+                    )
+                ):
+                    body = (
+                        f"merlo_clone_{_identifier(return_type)}"
+                        f"(&{node.body.id})"
+                    )
+                lines.extend(self.pending_expression_lines)
+                if return_type == "Unit":
+                    lines.extend([f"    (void)({body});", "    return;"])
+                else:
+                    lines.append(f"    {_c_name(return_type)} result = {body};")
+                lines.extend(self.pending_expression_drops)
+                if return_type != "Unit":
+                    lines.append("    return result;")
+                lines.append("}")
+            finally:
+                self.current_function = previous_function
+                self.env_types = previous_types
+                self.pointer_values = previous_pointers
+                self.owned_locals = previous_owned
+                self.pending_expression_lines = previous_pending_lines
+                self.pending_expression_drops = previous_pending_drops
+
+            make_parameters = []
+            for name, type_name, ownership in captures:
+                pointer = "const " if ownership == "owned" else ""
+                suffix = " *" if ownership == "owned" else " "
+                make_parameters.append(
+                    f"{pointer}{_c_name(type_name)}{suffix}{name}"
+                )
+            lines.append(
+                f"static {ctype} merlo_closure_make_{closure_id}"
+                f"({', '.join(make_parameters) if make_parameters else 'void'}) {{"
+            )
+            if not captures:
+                lines.extend(
+                    [
+                        f"    return ({ctype}){{ "
+                        f"merlo_closure_call_{closure_id}, NULL, NULL, NULL }};",
+                        "}",
+                    ]
+                )
+                continue
+            lines.extend(
+                [
+                    f"    {environment_type} *environment = "
+                    f"({environment_type} *)malloc(sizeof({environment_type}));",
+                    "    if (environment == NULL) merlo_allocation_trap();",
+                    "    environment->references = UINT64_C(1);",
+                ]
+            )
+            for name, type_name, ownership in captures:
+                value = (
+                    f"merlo_clone_{_identifier(type_name)}({name})"
+                    if ownership == "owned"
+                    else name
+                )
+                lines.append(f"    environment->{name} = {value};")
+            lines.extend(
+                [
+                    "    ++merlo_allocations;",
+                    f"    return ({ctype}){{ "
+                    f"merlo_closure_call_{closure_id}, environment, "
+                    f"merlo_closure_retain_{closure_id}, "
+                    f"merlo_closure_release_{closure_id} }};",
+                    "}",
+                ]
+            )
+        return "\n".join(lines)
+
     def _emit_zero_move_drop(self, descriptor: TypeDescriptor) -> list[str]:
         ctype = _c_name(descriptor.name)
         suffix = _identifier(descriptor.name)
@@ -1740,7 +2126,15 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 f"static void merlo_drop_{suffix}({ctype} *value) {{",
             ]
         )
-        if descriptor.kind == "text":
+        if descriptor.kind == "closure":
+            lines.extend([
+                "    if (value->environment == NULL) return;",
+                "    if (value->release != NULL) value->release(value->environment);",
+                "    value->call = NULL; value->environment = NULL;",
+                "    value->retain = NULL; value->release = NULL;",
+                "    ++merlo_drop_calls;",
+            ])
+        elif descriptor.kind == "text":
             lines.extend([
                 "    if (value->data == NULL) return;",
                 "    free(value->data);",
@@ -1850,7 +2244,17 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 "    ++merlo_ast_nodes_freed; ++merlo_drop_calls;",
             ])
         lines.append("}")
-        if descriptor.kind == "text":
+        if descriptor.kind == "closure":
+            lines.extend([
+                f"static {ctype} merlo_clone_{suffix}(const {ctype} *value) {{",
+                f"    {ctype} result = *value;",
+                "    if (result.environment != NULL && result.retain != NULL) {",
+                "        result.retain(result.environment);",
+                "    }",
+                "    return result;",
+                "}",
+            ])
+        elif descriptor.kind == "text":
             lines.extend([
                 f"static {ctype} merlo_clone_{suffix}(const {ctype} *value) {{",
                 "    return merlo_text_clone(value);",
@@ -1930,6 +2334,21 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             if descriptor.kind == "record" and descriptor.name != "TextBuilder":
                 parameters = ", ".join(f"{_c_name(type_name)} {name}" for name, type_name, _ in descriptor.fields) or "void"
                 lines.append(f"static {_c_name(descriptor.name)} merlo_make_{_identifier(descriptor.name)}({parameters}) {{")
+                invariant_arguments = ", ".join(
+                    (
+                        f"&{field_name}"
+                        if _is_owner(self.descriptors[field_type])
+                        else field_name
+                    )
+                    for field_name, field_type, _ in descriptor.fields
+                )
+                for function_name, line in descriptor.invariants:
+                    lines.append(
+                        "    if (!merlo_fn_"
+                        f"{function_name}({invariant_arguments})) "
+                        'merlo_contract_trap("invariant", '
+                        f'"{descriptor.name}", UINT64_C({line}));'
+                    )
                 lines.append(f"    {_c_name(descriptor.name)} result;")
                 for field_name, field_type, _ in descriptor.fields:
                     lines.append(f"    result.{field_name} = {field_name};")
@@ -2159,6 +2578,10 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         function: HIRFunction,
     ) -> str:
         self.current_function = function
+        self.current_ensures = tuple(
+            getattr(node, "_merlo_ensures", ())
+        )
+        self.contract_result_name = None
         self.env_types = {
             item.name: item.type_name for item in function.parameters
         }
@@ -2228,6 +2651,20 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         body = []
         for statement in node.body:
             body.extend(self._statement(statement))
+        if (
+            function.return_type == "Unit"
+            and not any(
+                isinstance(item, ast.Return)
+                for item in ast.walk(node)
+            )
+        ):
+            body.extend(
+                self._contract_checks(
+                    self.current_ensures,
+                    "ensure",
+                    "    ",
+                )
+            )
         if function.return_type == "Unit" and not any(isinstance(item, ast.Return) for item in ast.walk(node)):
             body.extend(self._drop_owned_lines("    "))
             body.append("    return;")
@@ -2554,6 +2991,49 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             self.owned_locals[target] = ok_type
         return lines
 
+    def _contract_checks(
+        self,
+        conditions: tuple[ast.AST, ...],
+        kind: str,
+        pad: str,
+    ) -> list[str]:
+        if self.current_function is None:
+            raise RepresentationCBackendError(
+                "contract emitted outside a function"
+            )
+        if kind not in {"require", "ensure"}:
+            raise RepresentationCBackendError(
+                f"unsupported contract kind: {kind}"
+            )
+        previous_result_type = self.env_types.get("result")
+        if (
+            kind == "ensure"
+            and self.current_function.return_type != "Unit"
+        ):
+            self.env_types["result"] = self.current_function.return_type
+        lines = []
+        try:
+            for condition in conditions:
+                expression = self._expression_in_context(
+                    condition,
+                    context="control_flow",
+                    expected="Bool",
+                )
+                line = getattr(condition, "lineno", 0)
+                lines.append(
+                    f'{pad}if (!({expression})) '
+                    f'merlo_contract_trap("{kind}", '
+                    f'"{self.current_function.name}", '
+                    f"UINT64_C({line}));"
+                )
+        finally:
+            if previous_result_type is None:
+                self.env_types.pop("result", None)
+            else:
+                self.env_types["result"] = previous_result_type
+        return lines
+
+
     def _statement(self, node: ast.stmt) -> list[str]:
         start = len(self.pending_expression_lines)
         drop_start = len(self.pending_expression_drops)
@@ -2566,7 +3046,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             return_indices = [
                 index
                 for index, line in enumerate(lines)
-                if line.lstrip().startswith("return")
+                if line.lstrip() == "return;" or line.lstrip().startswith("return ")
             ]
             for index in reversed(return_indices):
                 indent = lines[index][: len(lines[index]) - len(lines[index].lstrip())]
@@ -2585,6 +3065,12 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         ):
             return self._try_binding(None, node.value, "Unit")
         pad = self._pad()
+        if isinstance(node, ast.Contract):
+            return self._contract_checks(
+                (node.condition,),
+                node.kind,
+                pad,
+            )
         if (
             isinstance(node, ast.Expr)
             and isinstance(node.value, ast.Call)
@@ -2638,11 +3124,16 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             finally:
                 self.assigning_borrowed = previous_borrowed
             lines = []
-            if live_owner:
+            if live_owner and owning_binding:
+                self.temporary_ordinal += 1
+                replacement = f"__merlo_replacement_{self.temporary_ordinal}"
+                self.temporary_declarations.append((replacement, expected))
+                lines.append(f"{pad}{replacement} = {value};")
                 lines.append(
                     f"{pad}merlo_drop_{_identifier(self.owned_locals[node.target.id])}"
                     f"(&{node.target.id});"
                 )
+                value = f"merlo_move_{_identifier(expected)}(&{replacement})"
             lines.append(f"{pad}{node.target.id} = {value};")
             if node.value is not None and owning_binding:
                 self.owned_locals[node.target.id] = expected
@@ -2687,12 +3178,17 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             finally:
                 self.assigning_borrowed = previous_borrowed
             lines = []
-            if live_owner and named_target is not None:
+            if live_owner and owning_binding and named_target is not None and expected is not None:
+                self.temporary_ordinal += 1
+                replacement = f"__merlo_replacement_{self.temporary_ordinal}"
+                self.temporary_declarations.append((replacement, expected))
+                lines.append(f"{pad}{replacement} = {value};")
                 lines.append(
                     f"{pad}merlo_drop_"
                     f"{_identifier(self.owned_locals[named_target])}"
                     f"(&{named_target});"
                 )
+                value = f"merlo_move_{_identifier(expected)}(&{replacement})"
             lines.append(f"{pad}{target} = {value};")
             if owning_binding and named_target is not None and expected is not None:
                 self.owned_locals[named_target] = expected
@@ -2844,6 +3340,61 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 ]
             )
             return lines
+        direct_shape = collection_shape(self._expression_type(node.iter))
+        if (
+            isinstance(node.target, ast.Name)
+            and direct_shape is not None
+            and not node.orelse
+            and not (
+                isinstance(node.iter, ast.Call)
+                and isinstance(node.iter.func, ast.Attribute)
+                and node.iter.func.attr == "view"
+            )
+        ):
+            pad = self._pad()
+            self.loop_ordinal += 1
+            ordinal = self.loop_ordinal
+            index = f"__merlo_collection_index_{ordinal}"
+            loop_exit = f"__merlo_loop_exit_{ordinal}"
+            self.loop_exit_labels.append(loop_exit)
+            target = node.target.id
+            receiver = self._address_expression(node.iter)
+            length = (
+                f"UINT64_C({direct_shape.fixed_length})"
+                if direct_shape.fixed_length is not None
+                else f"({receiver})->length"
+            )
+            self.env_types[target] = direct_shape.element_type
+            element = self.descriptors[direct_shape.element_type]
+            pointer = _is_owner(element)
+            if pointer:
+                self.pointer_values.add(target)
+            declaration = (
+                f"{_c_name(direct_shape.element_type)} *{target} = "
+                f"&({receiver})->data[{index}];"
+                if pointer
+                else f"{_c_name(direct_shape.element_type)} {target} = "
+                f"({receiver})->data[{index}];"
+            )
+            lines = [
+                f"{pad}for (uint64_t {index} = 0; "
+                f"{index} < {length}; ++{index}) {{",
+                f"{pad}    {declaration}",
+            ]
+            iteration_owned = set(self.owned_locals)
+            self.indent += 1
+            for statement in node.body:
+                lines.extend(self._statement(statement))
+            lines.extend(
+                self._drop_new_iteration_locals(
+                    iteration_owned,
+                    f"{pad}    ",
+                )
+            )
+            self.indent -= 1
+            self.loop_exit_labels.pop()
+            lines.extend([f"{pad}}}", f"{pad}{loop_exit}:;"])
+            return lines
         if (
             isinstance(node.target, ast.Name)
             and isinstance(node.iter, ast.Call)
@@ -2970,7 +3521,21 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 expression = self._move_expression(node.value, return_type)
             else:
                 expression = self._expression(node.value, expected=return_type)
-            lines.append(f"{pad}{_c_name(self.current_function.return_type)} {result_name} = {expression};")
+            lines.append(
+                f"{pad}{_c_name(return_type)} "
+                f"{result_name} = {expression};"
+            )
+            self.contract_result_name = result_name
+        try:
+            lines.extend(
+                self._contract_checks(
+                    self.current_ensures,
+                    "ensure",
+                    pad,
+                )
+            )
+        finally:
+            self.contract_result_name = None
         for name, type_name in reversed(tuple(self.owned_locals.items())):
             lines.append(f"{pad}merlo_drop_{_identifier(type_name)}(&{name});")
         self.returning_borrowed = False
@@ -3111,6 +3676,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             ast.Sub: "-",
             ast.Mult: "*",
             ast.Div: "/",
+            ast.FloorDiv: "/",
             ast.Mod: "%",
             ast.BitXor: "^",
             ast.BitAnd: "&",
@@ -3133,16 +3699,31 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 ast.Add: "merlo_checked_byte_add",
                 ast.Sub: "merlo_checked_byte_sub",
                 ast.Mult: "merlo_checked_byte_mult",
+                ast.Div: "merlo_checked_byte_div",
+                ast.FloorDiv: "merlo_checked_byte_div",
+                ast.Mod: "merlo_checked_byte_mod",
+                ast.LShift: "merlo_checked_byte_lshift",
+                ast.RShift: "merlo_checked_byte_rshift",
             },
             "UInt64": {
                 ast.Add: "merlo_checked_uint64_add",
                 ast.Sub: "merlo_checked_uint64_sub",
                 ast.Mult: "merlo_checked_uint64_mult",
+                ast.Div: "merlo_checked_uint64_div",
+                ast.FloorDiv: "merlo_checked_uint64_div",
+                ast.Mod: "merlo_checked_uint64_mod",
+                ast.LShift: "merlo_checked_uint64_lshift",
+                ast.RShift: "merlo_checked_uint64_rshift",
             },
             "Int64": {
                 ast.Add: "merlo_checked_int64_add",
                 ast.Sub: "merlo_checked_int64_sub",
                 ast.Mult: "merlo_checked_int64_mult",
+                ast.Div: "merlo_checked_int64_div",
+                ast.FloorDiv: "merlo_checked_int64_floor_div",
+                ast.Mod: "merlo_checked_int64_mod",
+                ast.LShift: "merlo_checked_int64_lshift",
+                ast.RShift: "merlo_checked_int64_rshift",
             },
         }.get(arithmetic_type or "", {}).get(type(operation))
         frozen_fnv_multiply = (
@@ -3249,7 +3830,10 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         descriptor = self.descriptors.get(type_name)
         if descriptor is None or not _is_owner(descriptor):
             return False
-        if isinstance(node, (ast.Call, ast.Constant, ast.List, ast.Tuple, ast.BinOp)):
+        if isinstance(
+            node,
+            (ast.Call, ast.Constant, ast.List, ast.Tuple, ast.BinOp, ast.Lambda),
+        ):
             return True
         return (
             isinstance(node, ast.Attribute)
@@ -3343,7 +3927,26 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         if node is None:
             return "0"
         if isinstance(node, ast.Name):
+            if (
+                node.id == "result"
+                and self.contract_result_name is not None
+            ):
+                return (
+                    f"&{self.contract_result_name}"
+                    if want_pointer
+                    else self.contract_result_name
+                )
             if node.id in self.functions and node.id not in self.env_types:
+                descriptor = self.descriptors.get(expected or "")
+                if (
+                    descriptor is not None
+                    and descriptor.kind in {"callback", "closure"}
+                ):
+                    value = (
+                        f"({_c_name(expected or '')}){{ "
+                        f"merlo_closure_adapter_{node.id}, NULL, NULL, NULL }}"
+                    )
+                    return f"&({value})" if want_pointer else value
                 return f"merlo_fn_{node.id}"
             if node.id in self.pointer_values:
                 if want_pointer:
@@ -3352,6 +3955,36 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     return f"(*{node.id})"
                 return node.id
             return f"&{node.id}" if want_pointer else node.id
+        if isinstance(node, ast.Lambda):
+            metadata = getattr(node, "_merlo_closure_metadata", None)
+            if metadata is None:
+                raise RepresentationCBackendError(
+                    "capturing closure metadata is required"
+                )
+            closure_id, _parameters, _return_type, captures, _owner = metadata
+            arguments = []
+            for name, type_name, ownership in captures:
+                capture = ast.Name(id=name, ctx=ast.Load())
+                for attribute in (
+                    "lineno",
+                    "col_offset",
+                    "end_lineno",
+                    "end_col_offset",
+                    "_merlo_path",
+                ):
+                    if hasattr(node, attribute):
+                        setattr(capture, attribute, getattr(node, attribute))
+                arguments.append(
+                    self._expression(
+                        capture,
+                        expected=type_name,
+                        want_pointer=ownership == "owned",
+                    )
+                )
+            return (
+                f"merlo_closure_make_{closure_id}"
+                f"({', '.join(arguments)})"
+            )
         if isinstance(node, ast.Constant):
             if node.value is None and expected:
                 descriptor = self.descriptors.get(expected)
@@ -3477,6 +4110,27 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     f"(({index}) < ({length}) ? ({access}) : "
                     f"(merlo_bounds_trap({index}, {length}), ({access})))"
                 )
+            shape = collection_shape(owner_type)
+            if shape is not None and shape.kind in {
+                "vec",
+                "bytes",
+                "bytes_view",
+                "text",
+                "text_view",
+            }:
+                index = self._expression(node.slice, expected="UInt64")
+                owner = self._address_expression(node.value)
+                access = f"({owner})->data[{index}]"
+                length = f"({owner})->length"
+                if want_pointer:
+                    return (
+                        f"(({index}) < ({length}) ? &({access}) : "
+                        f"(merlo_bounds_trap({index}, {length}), &({access})))"
+                    )
+                return (
+                    f"(({index}) < ({length}) ? ({access}) : "
+                    f"(merlo_bounds_trap({index}, {length}), ({access})))"
+                )
             raise RepresentationCBackendError(
                 f"unsupported indexed type: {owner_type or 'unknown'}"
             )
@@ -3554,17 +4208,415 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 return piece[1:-1] if piece.startswith("(") and piece.endswith(")") else piece
             return "(" + " && ".join(pieces) + ")"
         if isinstance(node, ast.UnaryOp):
-            operator = (
-                "!"
-                if isinstance(node.op, ast.Not)
-                else "-"
-                if isinstance(node.op, ast.USub)
-                else "+"
+            operand_type = (
+                expected
+                if expected in {
+                    "Byte",
+                    "UInt64",
+                    "Int64",
+                    "Float32",
+                    "Float64",
+                }
+                else self._expression_type(node.operand)
             )
-            return f"({operator}({self._expression(node.operand)}))"
+            if isinstance(node.op, ast.Not):
+                return f"(!({self._expression(node.operand, expected='Bool')}))"
+            if isinstance(node.op, ast.Invert):
+                if operand_type not in {"Byte", "UInt64", "Int64"}:
+                    raise RepresentationCBackendError(
+                        f"bitwise invert requires an integer, got {operand_type}"
+                    )
+                operand = self._expression(
+                    node.operand,
+                    expected=operand_type,
+                )
+                return f"(({_c_name(operand_type)})~({operand}))"
+            if isinstance(node.op, ast.USub):
+                if (
+                    operand_type == "Int64"
+                    and isinstance(node.operand, ast.Constant)
+                    and node.operand.value == 9223372036854775808
+                ):
+                    return "INT64_MIN"
+                operand = self._expression(
+                    node.operand,
+                    expected=operand_type,
+                )
+                if operand_type == "Int64":
+                    return f"merlo_checked_int64_neg({operand})"
+                if operand_type in {"Float32", "Float64"}:
+                    return f"(-({operand}))"
+                raise RepresentationCBackendError(
+                    f"unsigned negation forbidden: {operand_type}"
+                )
+            operand = self._expression(
+                node.operand,
+                expected=operand_type,
+            )
+            return f"(+({operand}))"
         if isinstance(node, ast.Call):
             return self._call_expression(node, expected=expected, want_pointer=want_pointer)
         raise RepresentationCBackendError(f"unsupported C expression: {type(node).__name__}@{getattr(node, 'lineno', 0)}")
+
+    def _collection_callback_expression(
+        self,
+        node: ast.expr,
+        parameter: str,
+        return_type: str,
+    ) -> str:
+        if isinstance(node, ast.Name) and node.id in self.functions:
+            callback_call = ast.Call(
+                func=node,
+                args=[ast.Name(id=parameter, ctx=ast.Load())],
+                keywords=[],
+            )
+            return self._call_expression(
+                callback_call,
+                expected=return_type,
+                want_pointer=False,
+            )
+        return self._expression(node, expected=return_type)
+
+    def _collection_pipeline(
+        self,
+        node: ast.Call,
+    ) -> tuple[
+        ast.expr,
+        Any,
+        tuple[tuple[ast.Call, str, tuple[Any, ...]], ...],
+    ] | None:
+        stages_reversed: list[
+            tuple[ast.Call, str, tuple[Any, ...]]
+        ] = []
+        current: ast.expr = node
+        while (
+            isinstance(current, ast.Call)
+            and isinstance(current.func, ast.Attribute)
+            and current.func.attr in COLLECTION_OPERATIONS
+            and len(current.args) == 1
+        ):
+            metadata = getattr(
+                current.args[0],
+                "_merlo_implicit_callable",
+                None,
+            )
+            if metadata is None:
+                return None
+            stages_reversed.append(
+                (current, current.func.attr, metadata)
+            )
+            current = current.func.value
+        if len(stages_reversed) < 2:
+            return None
+        stages = tuple(reversed(stages_reversed))
+        operations = tuple(stage[1] for stage in stages)
+        if "count" in operations[:-1]:
+            return None
+        shape = collection_shape(self._expression_type(current))
+        if shape is None:
+            return None
+        element_type = shape.element_type
+        for _call, operation, metadata in stages:
+            (
+                _callable_id,
+                _parameter,
+                parameter_type,
+                return_type,
+                _text,
+            ) = metadata
+            descriptor = self.descriptors.get(element_type)
+            if (
+                element_type not in FUSIBLE_COLLECTION_ELEMENTS
+                or parameter_type != element_type
+                or descriptor is None
+                or _is_owner(descriptor)
+            ):
+                return None
+            if operation in {"where", "count"}:
+                if return_type != "Bool":
+                    return None
+            else:
+                element_type = return_type
+                result_descriptor = self.descriptors.get(element_type)
+                if (
+                    element_type not in FUSIBLE_COLLECTION_ELEMENTS
+                    or result_descriptor is None
+                    or _is_owner(result_descriptor)
+                ):
+                    return None
+        return current, shape, stages
+
+    def _fused_collection_expression(
+        self,
+        node: ast.Call,
+    ) -> str | None:
+        pipeline = self._collection_pipeline(node)
+        if pipeline is None:
+            return None
+        base, shape, stages = pipeline
+        self.temporary_ordinal += 1
+        ordinal = self.temporary_ordinal
+        result = f"__merlo_fused_collection_{ordinal}"
+        index = f"__merlo_fused_index_{ordinal}"
+        source_value = f"__merlo_fused_value_{ordinal}"
+        source = self._address_expression(base)
+        length = (
+            f"UINT64_C({shape.fixed_length})"
+            if shape.fixed_length is not None
+            else f"({source})->length"
+        )
+        final_operation = stages[-1][1]
+        result_element = shape.element_type
+        for _call, operation, metadata in stages:
+            if operation == "map":
+                result_element = metadata[3]
+        result_type = collection_result_type(
+            final_operation,
+            result_element,
+        )
+        pad = self._pad()
+        lines: list[str] = []
+        if final_operation == "count":
+            lines.append(f"{pad}uint64_t {result} = UINT64_C(0);")
+        else:
+            lines.extend(
+                [
+                    f"{pad}{_c_name(result_type)} {result} = "
+                    "{ NULL, UINT64_C(0), UINT64_C(0), UINT64_C(0) };",
+                    f"{pad}if ({length} != 0) {{",
+                    f"{pad}    {result}.data = "
+                    f"({_c_name(result_element)} *)malloc("
+                    f"(size_t){length} * "
+                    f"sizeof({_c_name(result_element)}));",
+                    f"{pad}    if ({result}.data == NULL) "
+                    "merlo_allocation_trap();",
+                    f"{pad}    {result}.capacity = {length};",
+                    f"{pad}    ++merlo_allocations; "
+                    "++merlo_vec_allocations;",
+                    f"{pad}}}",
+                ]
+            )
+        lines.extend(
+            [
+                f"{pad}for (uint64_t {index} = UINT64_C(0); "
+                f"{index} < {length}; ++{index}) {{",
+                f"{pad}    {_c_name(shape.element_type)} "
+                f"{source_value} = ({source})->data[{index}];",
+            ]
+        )
+
+        def emit_stage(
+            stage_index: int,
+            value: str,
+            indent: str,
+        ) -> None:
+            call, operation, metadata = stages[stage_index]
+            (
+                _callable_id,
+                parameter,
+                parameter_type,
+                return_type,
+                _text,
+            ) = metadata
+            lines.append(f"{indent}{{")
+            if value != parameter:
+                lines.append(
+                    f"{indent}    {_c_name(parameter_type)} {parameter} = "
+                    f"{value};"
+                )
+            previous_type = self.env_types.get(parameter)
+            self.env_types[parameter] = parameter_type
+            try:
+                callback = self._collection_callback_expression(
+                    call.args[0],
+                    parameter,
+                    return_type,
+                )
+            finally:
+                if previous_type is None:
+                    self.env_types.pop(parameter, None)
+                else:
+                    self.env_types[parameter] = previous_type
+            last = stage_index == len(stages) - 1
+            if operation == "where":
+                lines.append(f"{indent}    if ({callback}) {{")
+                if last:
+                    lines.append(
+                        f"{indent}        {result}.data"
+                        f"[{result}.length++] = {parameter};"
+                    )
+                else:
+                    emit_stage(
+                        stage_index + 1,
+                        parameter,
+                        indent + "        ",
+                    )
+                lines.append(f"{indent}    }}")
+            elif operation == "map":
+                mapped = (
+                    f"__merlo_fused_mapped_{ordinal}_{stage_index}"
+                )
+                lines.append(
+                    f"{indent}    {_c_name(return_type)} {mapped} = "
+                    f"{callback};"
+                )
+                if last:
+                    lines.append(
+                        f"{indent}    {result}.data"
+                        f"[{result}.length++] = {mapped};"
+                    )
+                else:
+                    emit_stage(
+                        stage_index + 1,
+                        mapped,
+                        indent + "    ",
+                    )
+            else:
+                lines.append(
+                    f"{indent}    if ({callback}) ++{result};"
+                )
+            lines.append(f"{indent}}}")
+
+        emit_stage(
+            0,
+            source_value,
+            f"{pad}    ",
+        )
+        lines.append(f"{pad}}}")
+        self.pending_expression_lines.extend(lines)
+        return result
+
+    def _general_collection_expression(
+        self,
+        node: ast.Call,
+        shape,
+        operation: str,
+    ) -> str:
+        if (
+            self.mir.optimized
+            and "collection_pipeline_fusion"
+            in self.mir.optimization_passes
+        ):
+            fused = self._fused_collection_expression(node)
+            if fused is not None:
+                return fused
+        if len(node.args) != 1:
+            raise RepresentationCBackendError(
+                f"{operation} expects one collection callable"
+            )
+        metadata = getattr(node.args[0], "_merlo_implicit_callable", None)
+        if metadata is None:
+            raise RepresentationCBackendError(
+                "typed collection callable metadata required"
+            )
+        _callable_id, parameter, parameter_type, return_type, _text = metadata
+        if parameter_type != shape.element_type:
+            raise RepresentationCBackendError(
+                "collection callable element type mismatch"
+            )
+        self.temporary_ordinal += 1
+        ordinal = self.temporary_ordinal
+        result = f"__merlo_collection_{ordinal}"
+        index = f"__merlo_collection_index_{ordinal}"
+        source = self._address_expression(node.func.value)
+        length = (
+            f"UINT64_C({shape.fixed_length})"
+            if shape.fixed_length is not None
+            else f"({source})->length"
+        )
+        data = f"({source})->data"
+        pad = self._pad()
+        lines: list[str] = []
+        result_element = (
+            return_type if operation == "map" else shape.element_type
+        )
+        result_type = collection_result_type(operation, result_element)
+        if operation == "count":
+            lines.append(f"{pad}uint64_t {result} = UINT64_C(0);")
+        else:
+            lines.extend(
+                [
+                    f"{pad}{_c_name(result_type)} {result} = "
+                    "{ NULL, UINT64_C(0), UINT64_C(0), UINT64_C(0) };",
+                    f"{pad}if ({length} != 0) {{",
+                    f"{pad}    {result}.data = "
+                    f"({_c_name(result_element)} *)malloc("
+                    f"(size_t){length} * sizeof({_c_name(result_element)}));",
+                    f"{pad}    if ({result}.data == NULL) "
+                    "merlo_allocation_trap();",
+                    f"{pad}    {result}.capacity = {length};",
+                    f"{pad}    ++merlo_allocations; ++merlo_vec_allocations;",
+                    f"{pad}}}",
+                ]
+            )
+        lines.append(
+            f"{pad}for (uint64_t {index} = UINT64_C(0); "
+            f"{index} < {length}; ++{index}) {{"
+        )
+        lines.append(
+            f"{pad}    {_c_name(shape.element_type)} {parameter} = "
+            f"{data}[{index}];"
+        )
+        previous_type = self.env_types.get(parameter)
+        self.env_types[parameter] = shape.element_type
+        try:
+            explicit_function = (
+                isinstance(node.args[0], ast.Name)
+                and node.args[0].id in self.functions
+            )
+            callback = self._collection_callback_expression(
+                node.args[0],
+                parameter,
+                return_type,
+            )
+            if operation == "count":
+                lines.append(
+                    f"{pad}    if ({callback}) ++{result};"
+                )
+            elif operation == "where":
+                value = parameter
+                descriptor = self.descriptors[shape.element_type]
+                if _is_owner(descriptor):
+                    value = (
+                        f"merlo_clone_{_identifier(shape.element_type)}"
+                        f"(&{parameter})"
+                    )
+                lines.extend(
+                    [
+                        f"{pad}    if ({callback}) {{",
+                        f"{pad}        {result}.data[{result}.length++] = "
+                        f"{value};",
+                        f"{pad}    }}",
+                    ]
+                )
+            else:
+                value = callback
+                descriptor = self.descriptors[result_element]
+                if _is_owner(descriptor) and not explicit_function:
+                    root: ast.AST = node.args[0]
+                    while isinstance(root, (ast.Attribute, ast.Subscript)):
+                        root = root.value
+                    if isinstance(root, ast.Name) and root.id == parameter:
+                        value = (
+                            f"merlo_clone_{_identifier(result_element)}"
+                            f"({self._address_expression(node.args[0])})"
+                        )
+                    else:
+                        value = self._move_expression(
+                            node.args[0],
+                            result_element,
+                        )
+                lines.append(
+                    f"{pad}    {result}.data[{result}.length++] = {value};"
+                )
+        finally:
+            if previous_type is None:
+                self.env_types.pop(parameter, None)
+            else:
+                self.env_types[parameter] = previous_type
+        lines.append(f"{pad}}}")
+        self.pending_expression_lines.extend(lines)
+        return result
 
     def _call_expression(self, node: ast.Call, *, expected: str | None, want_pointer: bool) -> str:
         if isinstance(node.func, ast.Name):
@@ -3590,7 +4642,12 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                         strict=True,
                     )
                 )
-                return f"{name}({arguments})"
+                operator = "->" if name in self.pointer_values else "."
+                prefix = f"{name}{operator}"
+                forwarded = f", {arguments}" if arguments else ""
+                return (
+                    f"{prefix}call({prefix}environment{forwarded})"
+                )
             if name not in self.functions and name in {
                 "wrapping_add",
                 "wrapping_sub",
@@ -3737,6 +4794,17 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         if isinstance(node.func, ast.Attribute):
             receiver_text = ast.unparse(node.func.value)
             method = node.func.attr
+            receiver_type = self._expression_type(node.func.value)
+            shape = collection_shape(receiver_type)
+            if (
+                method in COLLECTION_OPERATIONS
+                and shape is not None
+            ):
+                return self._general_collection_expression(
+                    node,
+                    shape,
+                    method,
+                )
             callee = f"{receiver_text}.{method}"
             intrinsic = intrinsic_signature(callee)
             if intrinsic is None and receiver_text in {
@@ -4033,9 +5101,12 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             if generic and generic[0] == "Vec":
                 suffix = _identifier(receiver_type)
                 if method == "view":
+                    if expected == f"Borrow[{receiver_type}]":
+                        return receiver
                     if expected is None or not expected.startswith("Slice["):
                         raise RepresentationCBackendError(
-                            "Vec.view requires contextual Slice type"
+                            "Vec.view requires contextual Borrow[Vec[T]] "
+                            "or Slice[T] type"
                         )
                     return (
                         f"({_c_name(expected)}){{ ({receiver})->data, "
@@ -4229,6 +5300,14 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
     def _expression_type(self, node: ast.AST) -> str | None:
         if isinstance(node, ast.Name):
             return self.env_types.get(node.id)
+        if isinstance(node, ast.Lambda):
+            metadata = getattr(node, "_merlo_closure_metadata", None)
+            if metadata is None:
+                return None
+            _closure_id, parameters, return_type, _captures, _owner = metadata
+            return "Fn[" + ",".join(
+                (*[type_name for _name, type_name in parameters], return_type)
+            ) + "]"
         if isinstance(node, ast.Constant):
             return (
                 "Bool"
@@ -4259,13 +5338,8 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             return None
         if isinstance(node, ast.Subscript):
             owner_type = self._expression_type(node.value)
-            array = _array_parts(owner_type or "")
-            if array is not None:
-                return array[0]
-            generic = _generic(owner_type or "")
-            if generic and generic[0] in {"Vec", "Slice"}:
-                return generic[1]
-            return None
+            shape = collection_shape(owner_type)
+            return shape.element_type if shape is not None else None
         if isinstance(node, ast.Call):
             if isinstance(node.func, ast.Name):
                 if node.func.id == "__merlo_try__" and len(node.args) == 1:
@@ -4293,6 +5367,23 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 if receiver_text in self.descriptors and self.descriptors[receiver_text].kind == "enum":
                     return receiver_text
                 receiver_type = self._expression_type(node.func.value)
+                if method in COLLECTION_OPERATIONS:
+                    shape = collection_shape(receiver_type)
+                    metadata = (
+                        getattr(node.args[0], "_merlo_implicit_callable", None)
+                        if len(node.args) == 1
+                        else None
+                    )
+                    if shape is not None and metadata is not None:
+                        result_element = (
+                            metadata[3]
+                            if method == "map"
+                            else shape.element_type
+                        )
+                        return collection_result_type(
+                            method,
+                            result_element,
+                        )
                 signature = intrinsic_signature(f"{receiver_text}.{method}")
                 if signature is not None:
                     result_parts = self._result_parts(signature.result_type)
@@ -4363,7 +5454,10 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         return None
 
     def _expression_is_pointer(self, node: ast.AST) -> bool:
-        return isinstance(node, ast.Name) and node.id in self.pointer_values
+        if isinstance(node, ast.Name) and node.id in self.pointer_values:
+            return True
+        type_name = self._expression_type(node)
+        return generic_parts(type_name or "", "Borrow", arity=1) is not None
 
     def _address_expression(self, node: ast.AST) -> str:
         if isinstance(node, ast.Subscript):
@@ -4886,6 +5980,30 @@ def emit_general_c(
     representation: RepresentationProgram,
     mir: GeneralPerformanceMIR,
 ) -> GeneratedC:
+    holes = tuple(
+        node
+        for function in hir.functions
+        for node in function.walk()
+        if node.kind == "TypedHole"
+    )
+    if holes:
+        lines = [
+            (
+                '#error "TypedHoleNotExecutable:'
+                f"{node.attribute_map.get('hole_id')}:"
+                f'{node.type_name}"'
+            )
+            for node in holes
+        ]
+        source = "\n".join(lines) + "\n"
+        return GeneratedC(
+            source,
+            hashlib.sha256(source.encode()).hexdigest(),
+            (),
+            len(lines),
+            0,
+            (),
+        )
     return GeneralCEmitter(hir, representation, mir).emit()
 
 

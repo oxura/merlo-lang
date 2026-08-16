@@ -6,18 +6,27 @@ import os
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, TYPE_CHECKING
 
+from merlo.semantic_capsule import (
+    SemanticCapsule,
+    extract_semantic_capsule,
+)
 from merlo.modules import ModuleGraph
 from merlo.version import VERSIONS
 
+if TYPE_CHECKING:
+    from merlo.refactor import ChangeIR
+    from merlo.semantic_impact import (
+        SemanticImpactReport,
+    )
+
 WORLD_SCHEMA_VERSION = VERSIONS.semantic_world
-WORLD_CONTRACT = "merlo.semantic-world.v1"
+WORLD_CONTRACT = "merlo.semantic-world.v14"
 
 
 class WorldError(ValueError):
     """A semantic world cannot answer an exact query."""
-
 
 class StaleWorldError(WorldError):
     """The source or compiler inputs no longer match a saved world."""
@@ -57,7 +66,9 @@ def _source_hashes(graph: ModuleGraph, root: Path) -> dict[str, str]:
             key = str(path.relative_to(root))
         except ValueError:
             key = str(path)
-        result[key] = hashlib.sha256(module.source.encode("utf-8")).hexdigest()
+        result[key] = hashlib.sha256(
+            path.read_bytes()
+        ).hexdigest()
     return dict(sorted(result.items()))
 
 
@@ -133,6 +144,10 @@ class SemanticWorld:
             (str(Path(item.source.path).resolve()), item.source.line): item
             for item in compilation.hir.functions
         }
+        hir_type_by_location = {
+            (str(Path(item.source.path).resolve()), item.source.line): item
+            for item in compilation.hir.types
+        }
         task_by_location = {
             (str(Path(item.path).resolve()), item.line): item
             for item in compilation.elaborated.tasks
@@ -151,6 +166,14 @@ class SemanticWorld:
                 location = (str(Path(module.path).resolve()), item.line)
                 hir = hir_by_location.get(location)
                 task = task_by_location.get(location)
+                hir_type = hir_type_by_location.get(location)
+                obligation_owner = (
+                    hir.symbol_id
+                    if hir is not None
+                    else hir_type.symbol_id
+                    if hir_type is not None
+                    else None
+                )
                 source_span = {
                     "path": module.path,
                     "line": start,
@@ -177,6 +200,34 @@ class SemanticWorld:
                     "types": sorted({getattr(parameter, "type_name", "") for parameter in getattr(hir, "parameters", ())} | ({getattr(hir, "return_type", "")} if hir is not None else set()) - {""}),
                     "effects": list(effects),
                     "capabilities": list(capabilities),
+                    "requirements": [
+                        item.expression
+                        for item in hir.requirements
+                    ] if hir is not None else [],
+                    "ensures": [
+                        item.expression
+                        for item in hir.ensures
+                    ] if hir is not None else [],
+                    "invariants": [
+                        item.expression
+                        for item in hir_type.invariants
+                    ] if hir_type is not None else [],
+                    "holes": [
+                        {
+                            **node.attribute_map,
+                            "source": node.source.to_dict(),
+                            "node_id": node.id,
+                        }
+                        for node in hir.walk()
+                        if node.kind == "TypedHole"
+                    ] if hir is not None else [],
+                    "obligations": [
+                        obligation.obligation_id
+                        for obligation
+                        in compilation.obligations.obligations
+                        if obligation.owner_symbol_id
+                        == obligation_owner
+                    ],
                     "ownership": sorted({getattr(parameter, "ownership", "") for parameter in getattr(hir, "parameters", ())} - {""}),
                     "resources": sorted({attribute.get("resource") for node in hir.walk() for attribute in [node.attribute_map] if attribute.get("resource") is not None}) if hir is not None else [],
                 }
@@ -199,32 +250,119 @@ class SemanticWorld:
 
         refs: list[dict[str, Any]] = []
         calls: list[dict[str, Any]] = []
-        hir_symbol_ids = {
-            function.name: symbol_by_location.get(
-                (str(Path(function.source.path).resolve()), function.source.line)
-            )
-            for function in compilation.hir.functions
+        records_by_id = {
+            item["symbol_id"]: item
+            for item in symbols
         }
+        qualified_symbols = {
+            item["qualified_name"]: item["symbol_id"]
+            for item in symbols
+        }
+        imports_by_module = {
+            item["name"]: tuple(item["imports"])
+            for item in modules
+        }
+        hir_name_candidates: dict[
+            str,
+            set[str],
+        ] = {}
         for function in compilation.hir.functions:
-            caller_id = hir_symbol_ids.get(function.name)
+            function_id = symbol_by_location.get(
+                (
+                    str(
+                        Path(
+                            function.source.path
+                        ).resolve()
+                    ),
+                    function.source.line,
+                )
+            )
+            if function_id is not None:
+                hir_name_candidates.setdefault(
+                    function.name,
+                    set(),
+                ).add(function_id)
+
+        def resolve_callee(
+            caller_id: str,
+            callee_name: str,
+        ) -> str | None:
+            caller = records_by_id[caller_id]
+            qualified = qualified_symbols.get(
+                callee_name
+            )
+            if qualified is not None:
+                return qualified
+            hir_candidates = (
+                hir_name_candidates.get(
+                    callee_name,
+                    set(),
+                )
+            )
+            if len(hir_candidates) == 1:
+                return next(iter(hir_candidates))
+            local = qualified_symbols.get(
+                f"{caller['module']}.{callee_name}"
+            )
+            if local is not None:
+                return local
+            imported = tuple(
+                qualified_symbols[
+                    f"{module}.{callee_name}"
+                ]
+                for module in imports_by_module.get(
+                    caller["module"],
+                    (),
+                )
+                if f"{module}.{callee_name}"
+                in qualified_symbols
+            )
+            return (
+                imported[0]
+                if len(imported) == 1
+                else None
+            )
+
+        for function in compilation.hir.functions:
+            location = (
+                str(Path(function.source.path).resolve()),
+                function.source.line,
+            )
+            caller_id = symbol_by_location.get(location)
             if caller_id is None:
                 continue
             for node in function.walk():
                 attributes = node.attribute_map
                 callee_text = attributes.get("callee")
-                if not callee_text or node.kind not in {
-                    "DirectCall",
-                    "CallbackCall",
-                    "ResultPropagation",
-                }:
+                if (
+                    not callee_text
+                    or node.kind
+                    not in {
+                        "DirectCall",
+                        "CallbackCall",
+                        "ResultPropagation",
+                    }
+                ):
                     continue
-                callee_id = hir_symbol_ids.get(str(callee_text))
+                callee_id = resolve_callee(
+                    caller_id,
+                    str(callee_text),
+                )
                 if callee_id is None:
                     continue
-                span = _concise_span(compilation, node, compilation.hir.path)
+                span = _concise_span(
+                    compilation,
+                    node,
+                    compilation.hir.path,
+                )
                 reference = {
                     "reference_id": _digest(
-                        (caller_id, callee_id, span, node.kind)
+                        (
+                            caller_id,
+                            callee_id,
+                            span,
+                            node.kind,
+                        )
                     )[:24],
                     "target_id": callee_id,
                     "owner_id": caller_id,
@@ -236,7 +374,9 @@ class SemanticWorld:
                 refs.append(reference)
                 calls.append(
                     {
-                        "call_id": reference["reference_id"],
+                        "call_id": reference[
+                            "reference_id"
+                        ],
                         "caller_id": caller_id,
                         "callee_id": callee_id,
                         "source": span,
@@ -291,6 +431,17 @@ class SemanticWorld:
             "ownership": sorted([[item["symbol_id"], value] for item in symbols for value in item["ownership"]]),
             "resources": sorted({value for item in symbols for value in item["resources"]}),
             "interfaces": sorted(interfaces, key=lambda item: (item.get("module", ""), item.get("name", ""))),
+            "obligations": [
+                item.to_dict()
+                for item in compilation.obligations.obligations
+            ],
+            "range_analysis": compilation.range_analysis.to_dict(),
+            "bounded_symbolic": compilation.bounded_symbolic.to_dict(),
+            "smt": compilation.smt.to_dict(),
+            "property_evidence": compilation.property_evidence.to_dict(),
+            "verification_metrics": (
+                compilation.verification_metrics.to_dict()
+            ),
             "tests": tests,
         }
         payload["world_digest"] = _digest(payload)
@@ -421,6 +572,20 @@ class SemanticWorld:
         tests = tuple(self.data.get("tests", ())) if symbol["exported"] else ()
         return {"target": symbol, "references": list(refs), "callers": list(callers), "callees": list(self.callees(identifier)), "dependencies": list(self.dependencies(identifier)), "interface_impact": {"exported": symbol["exported"], "interface_revision_id": interface}, "tests": list(tests), "files": sorted({item["source"]["path"] for item in refs} | {symbol["source"]["path"]})}
 
+    def change_impact(
+        self,
+        change_ir: ChangeIR,
+    ) -> SemanticImpactReport:
+        from merlo.semantic_impact import (
+            compute_semantic_impact,
+        )
+
+        return compute_semantic_impact(
+            self,
+            change_ir,
+        )
+
+
     def map(self, projection: str = "text") -> str | dict[str, Any]:
         if projection == "json":
             return self.to_dict()
@@ -439,10 +604,13 @@ class SemanticWorld:
                 lines.append(f"  {self._symbols[identifier]['qualified_name']} {self._symbols[identifier]['signature']}")
         return "\n".join(lines)
 
-    def compile_context(self, target: str, *, goal: str = "") -> dict[str, Any]:
-        symbol = self.resolve(target)
-        impact = self.impact(symbol["symbol_id"])
-        return {"kind": "TaskCapsule", "goal": goal, "target": {"symbol_id": symbol["symbol_id"], "qualified_name": symbol["qualified_name"], "module": symbol["module"], "name": symbol["name"]}, "source": self.source(symbol["symbol_id"]), "signature": symbol["signature"], "dependent_types": symbol["types"], "callers": [item["symbol_id"] for item in impact["callers"]], "dependencies": [item["symbol_id"] for item in impact["dependencies"]], "effects": list(symbol["effects"]), "capabilities": list(symbol["capabilities"]), "public_boundary": symbol["exported"], "tests": [item["path"] for item in self.data.get("tests", ())] if symbol["exported"] else []}
+    def compile_context(
+        self,
+        target: str,
+        *,
+        goal: str = "",
+    ) -> SemanticCapsule:
+        return extract_semantic_capsule(self, target, goal=goal)
 
     def diagnostics_explain(self, diagnostic: str | Mapping[str, Any]) -> dict[str, Any]:
         code = diagnostic.get("code") if isinstance(diagnostic, Mapping) else str(diagnostic).split(":", 1)[0]

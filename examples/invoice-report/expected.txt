@@ -1,0 +1,5 @@
+invoice-report
+items=3
+subtotal_cents=3949
+tax_cents=289
+total_cents=4238

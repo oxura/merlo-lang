@@ -26,6 +26,17 @@ EXAMPLE_NAMES = (
     "ffi",
     "capacity-ledger",
     "packages",
+    "invoice-report",
+    "access-log",
+    "byte-stats",
+    "inventory",
+    "task-board",
+    "tree-walk",
+    "expense-report",
+    "sensor-window",
+    "shipping-batch",
+    "access-policy",
+    "invoice-summary",
 )
 
 _INPUTS = {
@@ -38,6 +49,17 @@ _INPUTS = {
     "ffi": "input.txt",
     "packages": "input.txt",
     "capacity-ledger": "input.txt",
+    "invoice-report": "input.txt",
+    "access-log": "input.log",
+    "byte-stats": "input.bin",
+    "inventory": "input.txt",
+    "task-board": "input.txt",
+    "tree-walk": "input.txt",
+    "expense-report": "input.txt",
+    "sensor-window": "input.txt",
+    "shipping-batch": "input.txt",
+    "access-policy": "input.txt",
+    "invoice-summary": "input.txt",
 }
 
 
@@ -49,7 +71,7 @@ def _sources(project: Path) -> tuple[Path, ...]:
     return tuple(sorted(project.rglob("*.mlo")))
 
 
-def test_exactly_nine_independent_projects_have_complete_contract() -> None:
+def test_exactly_twenty_independent_projects_have_complete_contract() -> None:
     names = tuple(sorted(path.name for path in EXAMPLES.iterdir() if path.is_dir()))
     assert names == tuple(sorted(EXAMPLE_NAMES))
     for name in EXAMPLE_NAMES:
@@ -86,6 +108,17 @@ def test_manifests_locks_imports_and_business_source_audit() -> None:
     packages_manifest = (_project("packages") / "merlo.toml").read_text(encoding="utf-8")
     assert 'greeting = { path = "vendor/greeting"' in packages_manifest
     assert 'use greeting' in (_project("packages") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use billing' in (_project("invoice-report") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use analytics' in (_project("access-log") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use metrics' in (_project("byte-stats") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use catalog' in (_project("inventory") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use board' in (_project("task-board") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use tree' in (_project("tree-walk") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use expenses' in (_project("expense-report") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use sensor' in (_project("sensor-window") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use shipping' in (_project("shipping-batch") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use policy' in (_project("access-policy") / "src/main.mlo").read_text(encoding="utf-8")
+    assert 'use invoices' in (_project("invoice-summary") / "src/main.mlo").read_text(encoding="utf-8")
 
 
 def test_project_compile_reuses_the_validated_module_graph(
@@ -100,6 +133,29 @@ def test_project_compile_reuses_the_validated_module_graph(
         require_interface_lock=False,
     )
     assert compilation.module_graph.modules
+    assert compilation.artifacts["ranges"].content == (
+        compilation.range_analysis.to_json()
+    )
+    assert compilation.artifacts["bounded-symbolic"].content == (
+        compilation.bounded_symbolic.to_json()
+    )
+    assert compilation.artifacts["smt"].content == (
+        compilation.smt.to_json()
+    )
+    assert compilation.artifacts["property-evidence"].content == (
+        compilation.property_evidence.to_json()
+    )
+    assert compilation.artifacts["verification-metrics"].content == (
+        compilation.verification_metrics.to_json()
+    )
+    assert compilation.smt.backend == "disabled"
+    assert {
+        item.obligation_id
+        for item in compilation.range_analysis.obligations
+    } <= {
+        item.obligation_id
+        for item in compilation.obligations.obligations
+    }
 
 
 @pytest.mark.parametrize("name", EXAMPLE_NAMES)
@@ -115,6 +171,19 @@ def test_each_example_uses_production_compile_world_index_and_inspect(name: str,
     )
     world.save()
     assert world.map("json")["modules"]
+    assert world.data["range_analysis"] == (
+        compilation.range_analysis.to_dict()
+    )
+    assert world.data["bounded_symbolic"] == (
+        compilation.bounded_symbolic.to_dict()
+    )
+    assert world.data["smt"] == compilation.smt.to_dict()
+    assert world.data["property_evidence"] == (
+        compilation.property_evidence.to_dict()
+    )
+    assert world.data["verification_metrics"] == (
+        compilation.verification_metrics.to_dict()
+    )
     inspected = world.inspect("main.main")
     assert inspected["symbol"]["qualified_name"] == "main.main"
     assert world.search("main")

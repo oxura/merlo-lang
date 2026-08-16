@@ -231,6 +231,11 @@ def _assemble_core(
                 _public_type_name(function.return_type, public_names) or "?",
                 function.effects,
                 function.capabilities,
+                tuple(
+                    item.expression
+                    for item in function.requirements
+                ),
+                tuple(item.expression for item in function.ensures),
                 path,
                 line,
                 public,

@@ -120,6 +120,18 @@ GtE = _define("GtE", cmpop)
 
 Name = _define("Name", expr, ("id", "ctx"))
 Constant = _define("Constant", expr, ("value", "kind"))
+Hole = _define(
+    "Hole",
+    expr,
+    (
+        "hole_id",
+        "expected_type",
+        "context",
+        "callables",
+        "effects",
+        "capabilities",
+    ),
+)
 Attribute = _define("Attribute", expr, ("value", "attr", "ctx"))
 Subscript = _define("Subscript", expr, ("value", "slice", "ctx"))
 List = _define("List", expr, ("elts", "ctx"))
@@ -132,6 +144,7 @@ Call = _define("Call", expr, ("func", "args", "keywords"))
 Lambda = _define("Lambda", expr, ("args", "body"))
 Expr = _define("Expr", stmt, ("value",))
 Return = _define("Return", stmt, ("value",))
+Contract = _define("Contract", stmt, ("condition", "kind"))
 Assign = _define("Assign", stmt, ("targets", "value", "type_comment"))
 AnnAssign = _define("AnnAssign", stmt, ("target", "annotation", "value", "simple"))
 AugAssign = _define("AugAssign", stmt, ("target", "op", "value"))
@@ -239,6 +252,8 @@ def unparse(node: AST | None) -> str:
     if isinstance(node, BoolOp):
         symbol = " and " if isinstance(node.op, And) else " or "
         return symbol.join(unparse(item) for item in node.values)
+    if isinstance(node, Hole):
+        return "?"
     if isinstance(node, Compare):
         result = unparse(node.left)
         for operation, comparator in zip(node.ops, node.comparators, strict=True):
@@ -258,6 +273,8 @@ def unparse(node: AST | None) -> str:
         return unparse(node.value)
     if isinstance(node, Return):
         return "return" + (f" {unparse(node.value)}" if node.value is not None else "")
+    if isinstance(node, Contract):
+        return f"{node.kind} {unparse(node.condition)}"
     if isinstance(node, Assign):
         return f"{unparse(node.targets[0])} = {unparse(node.value)}"
     if isinstance(node, AnnAssign):
