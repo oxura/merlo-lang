@@ -114,6 +114,10 @@
   those CST anchors. The semantic parser now fails closed if its line cursor
   and CST disagree, including for module-body line offsets; statement and
   expression grammar migration remains incremental.
+- Requires every executable statement parsed through a Surface block to
+  consume the CST node at the same source line and with the same structural kind. Nested
+  control-flow bodies, `else` branches, `match` cases, transition bodies, and
+  module-body offsets fail closed on missing or inconsistent anchors.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

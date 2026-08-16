@@ -76,12 +76,52 @@ def test_surface_declarations_require_and_dispatch_through_cst_anchors(
 
 def test_cst_anchor_lines_compose_with_module_body_offsets() -> None:
     program = parse_surface(
-        "value() = 1\n",
+        "value():\n"
+        "    return 1\n",
         path="offset.mlo",
         line_offset=9,
     )
 
     assert program.declarations[0].span.start_line == 10
+
+
+def test_surface_statement_blocks_fail_closed_on_cst_disagreement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = "value():\n    return 1\n"
+    cst = parse_file_cst(source, path="statement-anchor.mlo")
+    declaration = cst.declarations[0]
+    header, block = declaration.children
+    statement = block.children[0]
+
+    missing_block = replace(block, children=())
+    missing_declaration = replace(
+        declaration,
+        children=(header, missing_block),
+    )
+    missing = replace(cst, declarations=(missing_declaration,))
+    monkeypatch.setattr(
+        surface_parser_module,
+        "parse_file_cst",
+        lambda _source, *, path: missing,
+    )
+    with pytest.raises(SurfaceSyntaxError, match="CSTStatementMismatch"):
+        parse_surface(source, path="statement-anchor.mlo")
+
+    wrong_statement = replace(statement, kind="expression_statement")
+    wrong_block = replace(block, children=(wrong_statement,))
+    wrong_declaration = replace(
+        declaration,
+        children=(header, wrong_block),
+    )
+    wrong = replace(cst, declarations=(wrong_declaration,))
+    monkeypatch.setattr(
+        surface_parser_module,
+        "parse_file_cst",
+        lambda _source, *, path: wrong,
+    )
+    with pytest.raises(SurfaceSyntaxError, match="CSTStatementMismatch"):
+        parse_surface(source, path="statement-anchor.mlo")
 
 
 def test_parser_recognizes_records_optional_types_and_tail_expressions() -> None:

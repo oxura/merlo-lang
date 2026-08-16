@@ -414,9 +414,16 @@ def _construct_kind(
         first = texts[1]
     if first == "durable" and len(texts) > 1 and texts[1] == "flow":
         return "flow"
-    if first in _DECLARATION_KEYWORDS or first in {"use"}:
+    if top_level and (first in _DECLARATION_KEYWORDS or first in {"use"}):
         return first
-    if not top_level and first in _STATEMENT_KEYWORDS:
+    if (
+        not top_level
+        and first in _STATEMENT_KEYWORDS
+        and (
+            len(significant) == 1
+            or significant[1].text not in {".", "=", "["}
+        )
+    ):
         return first
     if (
         not top_level

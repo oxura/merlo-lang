@@ -629,6 +629,25 @@ class _Parser:
         self.cst = cst
         self.line_offset = line_offset
         self.lines = _lines(source, path, line_offset=line_offset)
+        self.statement_anchors: dict[int, SyntaxNode] = {}
+        for declaration in cst.declarations:
+            for node in declaration.walk()[1:]:
+                if node.kind in {
+                    "header", "block", "parameters", "type", "expression",
+                }:
+                    continue
+                line = next(
+                    token.line
+                    for token in node.tokens
+                    if token.start == node.start
+                ) + line_offset
+                if line in self.statement_anchors:
+                    raise SurfaceSyntaxError(
+                        "CSTStatementMismatch",
+                        f"multiple CST statement anchors on line {line}",
+                        SourceSpan(path, line, 1, line, 1),
+                    )
+                self.statement_anchors[line] = node
         self.index = 0
 
     def _skip_blank(self) -> None:
@@ -1313,6 +1332,36 @@ class _Parser:
             )
         return tuple(result)
 
+    @staticmethod
+    def _expected_statement_kind(line: _Line) -> str:
+        first = line.text.split(maxsplit=1)[0].rstrip(":") if line.text else ""
+        if first in {
+            "let", "return", "if", "elif", "else", "for", "while",
+            "match", "case", "require", "ensure", "uses", "break",
+            "continue", "yield",
+        }:
+            return first
+        if re.fullmatch(r"[A-Za-z_]\w*\s*:\s*[^=]+", line.text):
+            return "field"
+        return "expression_statement"
+
+    def _statement_anchor(self, line: _Line, *, kind: str | None = None) -> SyntaxNode:
+        anchor = self.statement_anchors.get(line.number)
+        if anchor is None:
+            raise SurfaceSyntaxError(
+                "CSTStatementMismatch",
+                "semantic statement has no CST anchor",
+                _span(self.path, line),
+            )
+        expected = kind or self._expected_statement_kind(line)
+        if anchor.kind != expected:
+            raise SurfaceSyntaxError(
+                "CSTStatementMismatch",
+                f"expected CST {expected!r} anchor, found {anchor.kind!r}",
+                _span(self.path, line),
+            )
+        return anchor
+
     def _block(self, indent: int) -> tuple[SurfaceStatement, ...]:
         statements = []
         while self.index < len(self.lines):
@@ -1328,10 +1377,13 @@ class _Parser:
                     "statement indentation mismatch",
                     _span(self.path, line),
                 )
-            statements.append(self._statement())
+            if line.text.strip().startswith("#"):
+                statements.append(self._statement())
+                continue
+            statements.append(self._statement(self._statement_anchor(line)))
         return tuple(statements)
 
-    def _statement(self) -> SurfaceStatement:
+    def _statement(self, anchor: SyntaxNode | None = None) -> SurfaceStatement:
         line = self.lines[self.index]
         if line.text.strip().startswith("#"):
             self.index += 1
@@ -1339,6 +1391,8 @@ class _Parser:
                 _span(self.path, line),
                 line.text.strip(),
             )
+        if anchor is None:
+            anchor = self._statement_anchor(line)
         if match := re.fullmatch(r"for\s+([A-Za-z_]\w*)\s+in\s+(.+)\s*:", line.text):
             self.index += 1
             body = self._block(line.indent + 4)
@@ -1359,6 +1413,7 @@ class _Parser:
             body = self._block(line.indent + 4)
             otherwise = ()
             if self.index < len(self.lines) and self.lines[self.index].indent == line.indent and self.lines[self.index].text == "else:":
+                self._statement_anchor(self.lines[self.index], kind="else")
                 self.index += 1
                 otherwise = self._block(line.indent + 4)
             end = self.lines[self.index - 1]
@@ -1409,6 +1464,7 @@ class _Parser:
                         case_line.text,
                         _span(self.path, case_line),
                     )
+                self._statement_anchor(case_line, kind="case")
                 self.index += 1
                 body = self._block(case_line.indent + 4)
                 if not body:

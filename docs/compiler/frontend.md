@@ -63,10 +63,13 @@ the complete semantic grammar for declarations, types, statements, and
 expressions; the CST is not yet the sole parser. Its top-level declaration
 cursor and kind dispatch do consume CST anchors, including source line offsets,
 and reject any CST/parser disagreement instead of silently reparsing a
-different boundary. Module binding transforms Surface nodes structurally, and
-HIR lowering projects the retained Surface tree into Merlo-owned native syntax
-nodes, so no canonical or module source is reparsed and no CPython AST is
-created on the production frontend path.
+different boundary. Statement blocks also require a same-line, same-kind CST
+node for every executable statement; comment-only lines remain lossless trivia,
+while nested `else` and `case` headers are checked as structural anchors.
+Module binding transforms Surface nodes structurally,
+and HIR lowering projects the retained Surface tree into Merlo-owned native
+syntax nodes, so no canonical or module source is reparsed and no CPython AST
+is created on the production frontend path.
 
 ## Verification commands
 
