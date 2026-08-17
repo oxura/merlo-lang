@@ -144,11 +144,6 @@ def _split_top_level_commas(source: str) -> tuple[str, ...]:
     return tuple(parts)
 
 
-_FUNCTION_HEADER = re.compile(
-    r"(?:(fn|task)\s+)?([A-Za-z_]\w*)(?:\[([^\]]+)\])?"
-    r"\((.*)\)\s*(?:->\s*([^:=]+))?\s*([:=])\s*(.*)"
-)
-
 class _ExpressionParser:
     _INFIX_PRECEDENCE = {
         "or": 1,
@@ -798,9 +793,7 @@ class _Parser:
             )
             return self._record(name, exported)
         elif kind in {"fn", "task"}:
-            match = _FUNCTION_HEADER.fullmatch(raw)
-            if match:
-                return self._function(match, exported, anchor)
+            return self._function(exported, anchor)
         elif kind == "statement":
             if (
                 len(retained_tokens) == 2
@@ -809,9 +802,8 @@ class _Parser:
                 and retained_texts[1] == ":"
             ):
                 return self._record(retained_texts[0], exported)
-            function_match = _FUNCTION_HEADER.fullmatch(raw)
-            if function_match:
-                return self._function(function_match, exported, anchor)
+            if any(token.text == "(" for token in retained_tokens):
+                return self._function(exported, anchor)
         raise SurfaceSyntaxError("ExpectedDeclaration", raw, _span(self.path, line))
 
     def _nominal_declaration_name(
@@ -1087,25 +1079,39 @@ class _Parser:
                     "interface method expected",
                     _span(self.path, line),
                 )
-            match = re.fullmatch(
-                r"(?:fn\s+)?([A-Za-z_]\w*)\((.*)\)\s*->\s*(.+)",
-                line.text,
+            method_anchor = self._statement_anchor(
+                line,
+                kind="expression_statement",
             )
-            if match is None:
+            (
+                declared_kind,
+                method_name,
+                has_type_parameters,
+                has_return,
+                _delimiter,
+                _inline,
+            ) = self._cst_function_header(
+                method_anchor,
+                line,
+                body_required=False,
+            )
+            if declared_kind not in {None, "fn"} or has_type_parameters:
                 raise SurfaceSyntaxError(
                     "ExpectedInterfaceMethod",
                     line.text,
                     _span(self.path, line),
                 )
-            method_anchor = self._statement_anchor(
-                line,
-                kind="expression_statement",
-            )
+            if not has_return:
+                raise SurfaceSyntaxError(
+                    "CSTTypeMismatch",
+                    "interface method requires a retained return type",
+                    _span(self.path, line),
+                )
             parameters = self._cst_function_parameters(method_anchor, line)
             if any(item.type_name is None for item in parameters):
                 raise SurfaceSyntaxError(
                     "InterfaceBoundaryAnnotationRequired",
-                    match.group(1),
+                    method_name,
                     _span(self.path, line),
                 )
             return_type = self._cst_function_return_type(
@@ -1122,7 +1128,7 @@ class _Parser:
             methods.append(
                 SurfaceInterfaceMethod(
                     _span(self.path, line),
-                    match.group(1),
+                    method_name,
                     parameters,
                     return_type,
                 )
@@ -1175,20 +1181,18 @@ class _Parser:
                     "implementation method expected",
                     _span(self.path, line),
                 )
-            match = _FUNCTION_HEADER.fullmatch(line.text)
-            if match is None:
-                raise SurfaceSyntaxError(
-                    "ExpectedImplementationMethod",
-                    line.text,
-                    _span(self.path, line),
+            method_anchor = self._statement_anchor(
+                line,
+                kind="expression_statement",
+            )
+            methods.append(
+                self._function(
+                    False,
+                    method_anchor,
+                    allowed_kinds=frozenset({None, "fn"}),
+                    allow_type_parameters=False,
                 )
-            if match.group(1) not in {None, "fn"} or match.group(3) is not None:
-                raise SurfaceSyntaxError(
-                    "InvalidImplementationMethod",
-                    line.text,
-                    _span(self.path, line),
-                )
-            methods.append(self._function(match, False))
+            )
         if not methods:
             raise SurfaceSyntaxError(
                 "EmptyImplementation",
@@ -1589,32 +1593,149 @@ class _Parser:
             )
         return tuple(result)
 
+    def _cst_function_header(
+        self,
+        owner: SyntaxNode,
+        line: _Line,
+        *,
+        body_required: bool = True,
+    ) -> tuple[str | None, str, bool, bool, str, bool]:
+        tokens = list(self._retained_header_tokens(owner))
+        if tokens and tokens[0].text == "export":
+            tokens.pop(0)
+        declared_kind = None
+        if tokens and tokens[0].text in {"fn", "task"}:
+            declared_kind = tokens.pop(0).text
+        if not tokens or tokens[0].kind != "identifier":
+            raise SurfaceSyntaxError(
+                "CSTDeclarationMismatch",
+                "function header has no retained identifier",
+                _span(self.path, line),
+            )
+        name = tokens[0].text
+        open_index = next(
+            (
+                index
+                for index, token in enumerate(tokens)
+                if token.text == "("
+            ),
+            None,
+        )
+        if open_index is None:
+            raise SurfaceSyntaxError(
+                "CSTDeclarationMismatch",
+                f"function {name!r} has no retained parameter list",
+                _span(self.path, line),
+            )
+        has_type_parameters = open_index > 1 and tokens[1].text == "["
+        delimiters: list[str] = []
+        pairs = {"(": ")", "[": "]", "{": "}"}
+        close_index: int | None = None
+        for index in range(open_index, len(tokens)):
+            text = tokens[index].text
+            if text in pairs:
+                delimiters.append(text)
+            elif text in pairs.values():
+                if not delimiters or pairs[delimiters[-1]] != text:
+                    raise SurfaceSyntaxError(
+                        "CSTDeclarationMismatch",
+                        f"function {name!r} has mismatched delimiters",
+                        _span(self.path, line),
+                    )
+                delimiters.pop()
+                if not delimiters:
+                    close_index = index
+                    break
+        if close_index is None:
+            raise SurfaceSyntaxError(
+                "CSTDeclarationMismatch",
+                f"function {name!r} has no closing parameter delimiter",
+                _span(self.path, line),
+            )
+        suffix = tokens[close_index + 1 :]
+        has_return = (
+            len(suffix) >= 2
+            and suffix[0].text == "-"
+            and suffix[1].text == ">"
+        )
+        delimiter_index = next(
+            (
+                index
+                for index, token in enumerate(suffix)
+                if token.text in {"=", ":"}
+            ),
+            None,
+        )
+        if delimiter_index is None and body_required:
+            raise SurfaceSyntaxError(
+                "CSTDeclarationMismatch",
+                f"function {name!r} has no body delimiter",
+                _span(self.path, line),
+            )
+        delimiter = suffix[delimiter_index].text if delimiter_index is not None else ""
+        inline = (
+            bool(suffix[delimiter_index + 1 :])
+            if delimiter_index is not None
+            else False
+        )
+        if owner.kind in {"fn", "task"} and declared_kind != owner.kind:
+            raise SurfaceSyntaxError(
+                "CSTDeclarationMismatch",
+                f"retained {owner.kind!r} disagrees with function keyword",
+                _span(self.path, line),
+            )
+        return (
+            declared_kind,
+            name,
+            has_type_parameters,
+            has_return,
+            delimiter,
+            inline,
+        )
+
     def _function(
         self,
-        match: re.Match[str],
         exported: bool,
-        anchor: SyntaxNode | None = None,
+        anchor: SyntaxNode,
+        *,
+        allowed_kinds: frozenset[str | None] | None = None,
+        allow_type_parameters: bool = True,
     ) -> SurfaceFunction:
         start = self.lines[self.index]
-        kind, name, raw_type_parameters, raw_parameters, raw_return, delimiter, inline = match.groups()
-        function_anchor = anchor or self._statement_anchor(
-            start,
-            kind="expression_statement",
-        )
+        (
+            kind,
+            name,
+            has_type_parameters,
+            has_return,
+            delimiter,
+            inline,
+        ) = self._cst_function_header(anchor, start)
+        if allowed_kinds is not None and kind not in allowed_kinds:
+            raise SurfaceSyntaxError(
+                "InvalidImplementationMethod",
+                f"function kind {kind!r} is not allowed here",
+                _span(self.path, start),
+            )
+        if has_type_parameters and not allow_type_parameters:
+            raise SurfaceSyntaxError(
+                "InvalidImplementationMethod",
+                "generic implementation methods are not supported",
+                _span(self.path, start),
+            )
         type_parameters = self._cst_function_type_parameters(
-            function_anchor,
+            anchor,
             start,
-            expected=raw_type_parameters is not None,
+            expected=has_type_parameters,
         )
-        parameters = self._cst_function_parameters(function_anchor, start)
+        parameters = self._cst_function_parameters(anchor, start)
         return_type = self._cst_function_return_type(
-            function_anchor,
+            anchor,
             start,
-            expected=raw_return is not None,
+            expected=has_return,
         )
         self.index += 1
-        if delimiter == "=" and inline.strip():
-            expression = self._parse_cst_expression(function_anchor, start)
+        if delimiter == "=" and inline:
+            expression = self._parse_cst_expression(anchor, start)
             return SurfaceFunction(
                 name, parameters, expression, "expression", exported,
                 _span(self.path, start), kind, return_type, type_parameters,
