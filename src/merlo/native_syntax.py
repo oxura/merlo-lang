@@ -9,7 +9,25 @@ objects.  ``parse`` exists only for the legacy direct-source test boundary.
 from __future__ import annotations
 
 import ast as _python_ast
+import json
+import math
+from collections.abc import Mapping
 from typing import Iterator
+
+
+NATIVE_SYNTAX_SCHEMA_VERSION = 1
+NATIVE_SYNTAX_CONTRACT = "merlo.native-syntax.v1"
+_SERIALIZED_ATTRIBUTES = (
+    "lineno",
+    "col_offset",
+    "end_lineno",
+    "end_col_offset",
+    "_merlo_path",
+    "_merlo_closure_metadata",
+    "_merlo_ensures",
+    "_merlo_implicit_callable",
+    "_merlo_invariant_owner",
+)
 
 
 class AST:
@@ -323,8 +341,182 @@ def validate_module(module: Module) -> None:
             raise TypeError(f"invalid native syntax child {type(node).__name__}")
 
 
+def _encode_value(value: object) -> object:
+    if isinstance(value, AST):
+        attributes = {
+            name: _encode_value(getattr(value, name))
+            for name in _SERIALIZED_ATTRIBUTES
+            if hasattr(value, name)
+        }
+        unknown = set(value.__dict__) - set(value._fields) - set(attributes)
+        if unknown:
+            raise TypeError(
+                f"unsupported native syntax attributes on {type(value).__name__}: "
+                f"{sorted(unknown)}"
+            )
+        return {
+            "$kind": "node",
+            "type": type(value).__name__,
+            "fields": {
+                name: _encode_value(getattr(value, name, None))
+                for name in value._fields
+            },
+            "attributes": attributes,
+        }
+    if isinstance(value, tuple):
+        return {"$kind": "tuple", "items": [_encode_value(item) for item in value]}
+    if isinstance(value, list):
+        return [_encode_value(item) for item in value]
+    if isinstance(value, bytes):
+        return {"$kind": "bytes", "hex": value.hex()}
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise TypeError("non-finite native syntax constants are not serializable")
+        return {"$kind": "float", "hex": value.hex()}
+    if isinstance(value, Mapping):
+        if not all(isinstance(key, str) for key in value):
+            raise TypeError("native syntax mapping keys must be strings")
+        return {
+            "$kind": "mapping",
+            "items": {
+                key: _encode_value(value[key])
+                for key in sorted(value)
+            },
+        }
+    if value is None or isinstance(value, (bool, int, str)):
+        return value
+    raise TypeError(f"unsupported native syntax value: {type(value).__name__}")
+
+
+def _exact_keys(value: Mapping[str, object], expected: set[str], label: str) -> None:
+    actual = set(value)
+    if actual != expected:
+        raise ValueError(
+            f"invalid {label} keys: expected {sorted(expected)}, got {sorted(actual)}"
+        )
+
+
+def _decode_value(value: object) -> object:
+    if isinstance(value, list):
+        return [_decode_value(item) for item in value]
+    if not isinstance(value, Mapping):
+        if value is None or isinstance(value, (bool, int, str)):
+            return value
+        raise ValueError(f"invalid native syntax scalar: {type(value).__name__}")
+    kind = value.get("$kind")
+    if kind == "tuple":
+        _exact_keys(value, {"$kind", "items"}, "native tuple")
+        items = value["items"]
+        if not isinstance(items, list):
+            raise ValueError("native tuple items must be a list")
+        return tuple(_decode_value(item) for item in items)
+    if kind == "bytes":
+        _exact_keys(value, {"$kind", "hex"}, "native bytes")
+        encoded = value["hex"]
+        if not isinstance(encoded, str):
+            raise ValueError("native bytes encoding must be text")
+        try:
+            return bytes.fromhex(encoded)
+        except ValueError as exc:
+            raise ValueError("invalid native bytes encoding") from exc
+    if kind == "float":
+        _exact_keys(value, {"$kind", "hex"}, "native float")
+        encoded = value["hex"]
+        if not isinstance(encoded, str):
+            raise ValueError("native float encoding must be text")
+        try:
+            result = float.fromhex(encoded)
+        except ValueError as exc:
+            raise ValueError("invalid native float encoding") from exc
+        if not math.isfinite(result) or result.hex() != encoded:
+            raise ValueError("non-canonical native float encoding")
+        return result
+    if kind == "mapping":
+        _exact_keys(value, {"$kind", "items"}, "native mapping")
+        items = value["items"]
+        if not isinstance(items, Mapping) or not all(
+            isinstance(key, str) for key in items
+        ):
+            raise ValueError("native mapping items must be a string-keyed object")
+        return {key: _decode_value(items[key]) for key in sorted(items)}
+    if kind != "node":
+        raise ValueError(f"unknown native syntax encoding kind: {kind!r}")
+    _exact_keys(value, {"$kind", "type", "fields", "attributes"}, "native node")
+    type_name = value["type"]
+    fields = value["fields"]
+    attributes = value["attributes"]
+    node_type = globals().get(type_name) if isinstance(type_name, str) else None
+    if not isinstance(node_type, type) or not issubclass(node_type, AST):
+        raise ValueError(f"unknown native syntax node type: {type_name!r}")
+    if not isinstance(fields, Mapping) or set(fields) != set(node_type._fields):
+        raise ValueError(f"invalid fields for native syntax node {type_name}")
+    if not isinstance(attributes, Mapping) or not all(
+        isinstance(name, str) and name in _SERIALIZED_ATTRIBUTES
+        for name in attributes
+    ):
+        raise ValueError(f"invalid attributes for native syntax node {type_name}")
+    node = node_type(
+        **{name: _decode_value(fields[name]) for name in node_type._fields}
+    )
+    for name, item in attributes.items():
+        setattr(node, name, _decode_value(item))
+    return node
+
+
+def module_to_dict(module: Module) -> dict[str, object]:
+    """Return the canonical, complete backend-visible syntax artifact."""
+    validate_module(module)
+    encoded = _encode_value(module)
+    assert isinstance(encoded, dict)
+    return {
+        "schema_version": NATIVE_SYNTAX_SCHEMA_VERSION,
+        "contract": NATIVE_SYNTAX_CONTRACT,
+        "module": encoded,
+    }
+
+
+def module_to_json(module: Module) -> str:
+    return json.dumps(
+        module_to_dict(module),
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+        allow_nan=False,
+    )
+
+
+def module_from_dict(value: Mapping[str, object]) -> Module:
+    _exact_keys(value, {"schema_version", "contract", "module"}, "native artifact")
+    if value["schema_version"] != NATIVE_SYNTAX_SCHEMA_VERSION:
+        raise ValueError("native syntax schema version drift")
+    if value["contract"] != NATIVE_SYNTAX_CONTRACT:
+        raise ValueError("native syntax contract drift")
+    module = _decode_value(value["module"])
+    if not isinstance(module, Module):
+        raise ValueError("native syntax artifact root must be Module")
+    validate_module(module)
+    if module_to_dict(module) != dict(value):
+        raise ValueError("non-canonical native syntax artifact")
+    return module
+
+
+def module_from_json(payload: str) -> Module:
+    try:
+        value = json.loads(payload)
+    except json.JSONDecodeError as exc:
+        raise ValueError("invalid native syntax JSON") from exc
+    if not isinstance(value, Mapping):
+        raise ValueError("native syntax JSON root must be an object")
+    module = module_from_dict(value)
+    if module_to_json(module) != payload:
+        raise ValueError("native syntax JSON must use canonical encoding")
+    return module
+
+
 __all__ = [
     "AST", "expr", "stmt", "pattern", "operator", "unaryop", "boolop",
     "cmpop", "expr_context", "fix_missing_locations", "iter_child_nodes",
-    "parse", "unparse", "validate_module", "walk",
+    "module_from_dict", "module_from_json", "module_to_dict", "module_to_json",
+    "NATIVE_SYNTAX_CONTRACT", "NATIVE_SYNTAX_SCHEMA_VERSION", "parse", "unparse",
+    "validate_module", "walk",
 ] + [name for name, value in globals().items() if isinstance(value, type) and issubclass(value, AST)]

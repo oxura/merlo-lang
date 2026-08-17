@@ -21,7 +21,11 @@ The production coordinator currently records this checked artifact chain:
 6. generated C11, followed optionally by a native executable.
 
 The recorded intermediate artifacts through generated C11 carry a contract,
-schema version, digest, and parent digest. The optional native executable has
+schema version, digest, and parent digest. Structured HIR also carries the
+canonical native-syntax adapter tree and typed FFI declarations consumed by
+the C backend; both survive strict JSON round trips and contribute to its
+digest. The backend never reparses raw HIR source or trusts an unbound in-memory
+syntax object. The optional native executable has
 separate compiler and binary metadata but is not part of that provenance
 chain. `compiler.py` coordinates compilation; the CLI, LSP, and SemanticWorld
 consume its results.

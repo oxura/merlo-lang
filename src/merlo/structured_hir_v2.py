@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
@@ -24,7 +25,6 @@ from merlo.canonical_ast import (
     CanonicalParallel,
     CanonicalProgram,
 )
-from merlo.surface_ast import SurfaceProgram
 from merlo.type_parser import generic_parts, parse_type, validate_type_expr
 from merlo.intrinsics import (
     CONTRACT_GRAPH,
@@ -35,8 +35,8 @@ from merlo.intrinsics import (
 from merlo.type_properties import TypePropertyResolver
 
 
-STRUCTURED_HIR_SCHEMA_VERSION = 6
-STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v6"
+STRUCTURED_HIR_SCHEMA_VERSION = 7
+STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v7"
 _SCALAR_TYPES = frozenset(
     {
         "Bool",
@@ -84,6 +84,70 @@ def _type_compatible(actual: str, expected: str) -> bool:
 
 class StructuredHIRCompileError(ValueError):
     """Typed source/HIR construction failure."""
+
+
+def _artifact_keys(
+    value: object,
+    expected: set[str],
+    label: str,
+) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping) or not all(
+        isinstance(key, str) for key in value
+    ):
+        raise ValueError(f"{label} must be an object")
+    if set(value) != expected:
+        raise ValueError(f"invalid {label} keys")
+    return value
+
+
+def _artifact_text(value: object, label: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be text")
+    return value
+
+
+def _artifact_int(value: object, label: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ValueError(f"{label} must be an integer")
+    return value
+
+
+def _artifact_bool(value: object, label: str) -> bool:
+    if not isinstance(value, bool):
+        raise ValueError(f"{label} must be a boolean")
+    return value
+
+
+def _artifact_list(value: object, label: str) -> list[Any]:
+    if not isinstance(value, list):
+        raise ValueError(f"{label} must be a list")
+    return value
+
+
+def _artifact_optional_text(value: object, label: str) -> str | None:
+    if value is None:
+        return None
+    return _artifact_text(value, label)
+
+
+def _freeze_json(value: object, label: str = "artifact value") -> Any:
+    if isinstance(value, list):
+        return tuple(_freeze_json(item, label) for item in value)
+    if isinstance(value, Mapping):
+        if not all(isinstance(key, str) for key in value):
+            raise ValueError(f"{label} keys must be text")
+        return {key: _freeze_json(value[key], label) for key in sorted(value)}
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    raise ValueError(f"unsupported {label}: {type(value).__name__}")
+
+
+def _json_payload(value: object) -> Any:
+    if isinstance(value, (list, tuple)):
+        return [_json_payload(item) for item in value]
+    if isinstance(value, Mapping):
+        return {key: _json_payload(value[key]) for key in sorted(value)}
+    return value
 
 
 @dataclass(frozen=True)
@@ -232,7 +296,7 @@ class HIRNode:
             "effects": list(self.effects),
             "symbol_id": self.symbol_id,
             "revision_id": self.revision_id,
-            "attributes": dict(self.attributes),
+            "attributes": _json_payload(dict(self.attributes)),
             "children": [item.to_dict() for item in self.children],
         }
 
@@ -354,6 +418,281 @@ class HIRMachine:
             "revision_id": self.revision_id,
         }
 
+
+def _source_span_from_dict(value: object) -> SourceSpan:
+    raw = _artifact_keys(
+        value,
+        {"path", "line", "column", "end_line", "end_column"},
+        "source span",
+    )
+    return SourceSpan(
+        _artifact_text(raw["path"], "source path"),
+        _artifact_int(raw["line"], "source line"),
+        _artifact_int(raw["column"], "source column"),
+        _artifact_int(raw["end_line"], "source end line"),
+        _artifact_int(raw["end_column"], "source end column"),
+    )
+
+
+def _field_from_dict(value: object) -> HIRField:
+    raw = _artifact_keys(
+        value,
+        {"name", "type", "source", "symbol_id", "revision_id"},
+        "HIR field",
+    )
+    return HIRField(
+        _artifact_text(raw["name"], "field name"),
+        _artifact_text(raw["type"], "field type"),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["symbol_id"], "field symbol"),
+        _artifact_text(raw["revision_id"], "field revision"),
+    )
+
+
+def _variant_from_dict(value: object) -> HIRVariant:
+    raw = _artifact_keys(
+        value,
+        {"name", "payload_type", "tag", "source", "symbol_id", "revision_id"},
+        "HIR variant",
+    )
+    return HIRVariant(
+        _artifact_text(raw["name"], "variant name"),
+        _artifact_optional_text(raw["payload_type"], "variant payload"),
+        _artifact_int(raw["tag"], "variant tag"),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["symbol_id"], "variant symbol"),
+        _artifact_text(raw["revision_id"], "variant revision"),
+    )
+
+
+def _invariant_from_dict(value: object) -> HIRInvariant:
+    raw = _artifact_keys(
+        value,
+        {"function_name", "expression", "source", "revision_id"},
+        "HIR invariant",
+    )
+    return HIRInvariant(
+        _artifact_text(raw["function_name"], "invariant function"),
+        _artifact_text(raw["expression"], "invariant expression"),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["revision_id"], "invariant revision"),
+    )
+
+
+def _type_decl_from_dict(value: object) -> HIRTypeDecl:
+    raw = _artifact_keys(
+        value,
+        {
+            "name", "kind", "source", "symbol_id", "revision_id", "fields",
+            "variants", "invariants",
+        },
+        "HIR type",
+    )
+    return HIRTypeDecl(
+        _artifact_text(raw["name"], "type name"),
+        _artifact_text(raw["kind"], "type kind"),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["symbol_id"], "type symbol"),
+        _artifact_text(raw["revision_id"], "type revision"),
+        tuple(
+            _field_from_dict(item)
+            for item in _artifact_list(raw["fields"], "type fields")
+        ),
+        tuple(
+            _variant_from_dict(item)
+            for item in _artifact_list(raw["variants"], "type variants")
+        ),
+        tuple(
+            _invariant_from_dict(item)
+            for item in _artifact_list(raw["invariants"], "type invariants")
+        ),
+    )
+
+
+def _parameter_from_dict(value: object) -> HIRParameter:
+    raw = _artifact_keys(
+        value,
+        {"name", "type", "ownership", "source", "symbol_id", "revision_id"},
+        "HIR parameter",
+    )
+    return HIRParameter(
+        _artifact_text(raw["name"], "parameter name"),
+        _artifact_text(raw["type"], "parameter type"),
+        _artifact_text(raw["ownership"], "parameter ownership"),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["symbol_id"], "parameter symbol"),
+        _artifact_text(raw["revision_id"], "parameter revision"),
+    )
+
+
+def _node_from_dict(value: object) -> HIRNode:
+    raw = _artifact_keys(
+        value,
+        {
+            "id", "kind", "source", "scope_id", "type", "ownership", "effects",
+            "symbol_id", "revision_id", "attributes", "children",
+        },
+        "HIR node",
+    )
+    attributes = raw["attributes"]
+    if not isinstance(attributes, Mapping) or not all(
+        isinstance(key, str) for key in attributes
+    ):
+        raise ValueError("HIR node attributes must be a string-keyed object")
+    return HIRNode(
+        _artifact_text(raw["id"], "node id"),
+        _artifact_text(raw["kind"], "node kind"),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["scope_id"], "node scope"),
+        _artifact_optional_text(raw["type"], "node type"),
+        _artifact_text(raw["ownership"], "node ownership"),
+        tuple(
+            _artifact_text(item, "node effect")
+            for item in _artifact_list(raw["effects"], "node effects")
+        ),
+        _artifact_optional_text(raw["symbol_id"], "node symbol"),
+        _artifact_text(raw["revision_id"], "node revision"),
+        tuple(
+            (key, _freeze_json(attributes[key], "HIR attribute"))
+            for key in sorted(attributes)
+        ),
+        tuple(
+            _node_from_dict(item)
+            for item in _artifact_list(raw["children"], "node children")
+        ),
+    )
+
+
+def _contract_from_dict(value: object) -> HIRContract:
+    raw = _artifact_keys(
+        value,
+        {"kind", "expression", "condition", "source"},
+        "HIR contract",
+    )
+    return HIRContract(
+        _artifact_text(raw["kind"], "contract kind"),
+        _artifact_text(raw["expression"], "contract expression"),
+        _node_from_dict(raw["condition"]),
+        _source_span_from_dict(raw["source"]),
+    )
+
+
+def _function_from_dict(value: object) -> HIRFunction:
+    raw = _artifact_keys(
+        value,
+        {
+            "name", "parameters", "return_type", "effects", "requirements",
+            "ensures", "body", "source", "scope_id", "symbol_id", "revision_id",
+        },
+        "HIR function",
+    )
+    return HIRFunction(
+        _artifact_text(raw["name"], "function name"),
+        tuple(
+            _parameter_from_dict(item)
+            for item in _artifact_list(raw["parameters"], "function parameters")
+        ),
+        _artifact_text(raw["return_type"], "function return type"),
+        tuple(
+            _artifact_text(item, "function effect")
+            for item in _artifact_list(raw["effects"], "function effects")
+        ),
+        tuple(
+            _contract_from_dict(item)
+            for item in _artifact_list(raw["requirements"], "requirements")
+        ),
+        tuple(
+            _contract_from_dict(item)
+            for item in _artifact_list(raw["ensures"], "ensures")
+        ),
+        tuple(
+            _node_from_dict(item)
+            for item in _artifact_list(raw["body"], "function body")
+        ),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["scope_id"], "function scope"),
+        _artifact_text(raw["symbol_id"], "function symbol"),
+        _artifact_text(raw["revision_id"], "function revision"),
+    )
+
+
+def _flow_from_dict(value: object) -> HIRFlow:
+    raw = _artifact_keys(
+        value,
+        {
+            "name", "parameters", "return_type", "durable", "effects",
+            "capabilities", "body", "source", "symbol_id", "revision_id",
+        },
+        "HIR flow",
+    )
+    return HIRFlow(
+        _artifact_text(raw["name"], "flow name"),
+        tuple(
+            _parameter_from_dict(item)
+            for item in _artifact_list(raw["parameters"], "flow parameters")
+        ),
+        _artifact_text(raw["return_type"], "flow return type"),
+        _artifact_bool(raw["durable"], "flow durable"),
+        tuple(
+            _artifact_text(item, "flow effect")
+            for item in _artifact_list(raw["effects"], "flow effects")
+        ),
+        tuple(
+            _artifact_text(item, "flow capability")
+            for item in _artifact_list(raw["capabilities"], "flow capabilities")
+        ),
+        tuple(
+            _node_from_dict(item)
+            for item in _artifact_list(raw["body"], "flow body")
+        ),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["symbol_id"], "flow symbol"),
+        _artifact_text(raw["revision_id"], "flow revision"),
+    )
+
+
+def _machine_from_dict(value: object) -> HIRMachine:
+    raw = _artifact_keys(
+        value,
+        {
+            "name", "parameters", "states", "initial", "invariant", "transitions",
+            "source", "symbol_id", "revision_id",
+        },
+        "HIR machine",
+    )
+    states = []
+    for item in _artifact_list(raw["states"], "machine states"):
+        state = _artifact_keys(item, {"name", "fields"}, "machine state")
+        fields = []
+        for field_value in _artifact_list(state["fields"], "machine state fields"):
+            field = _artifact_list(field_value, "machine state field")
+            if len(field) != 2:
+                raise ValueError("machine state field must have name and type")
+            fields.append(
+                (
+                    _artifact_text(field[0], "machine field name"),
+                    _artifact_text(field[1], "machine field type"),
+                )
+            )
+        states.append((_artifact_text(state["name"], "state name"), tuple(fields)))
+    return HIRMachine(
+        _artifact_text(raw["name"], "machine name"),
+        tuple(
+            _parameter_from_dict(item)
+            for item in _artifact_list(raw["parameters"], "machine parameters")
+        ),
+        tuple(states),
+        _artifact_optional_text(raw["initial"], "machine initial state"),
+        _artifact_optional_text(raw["invariant"], "machine invariant"),
+        tuple(
+            _node_from_dict(item)
+            for item in _artifact_list(raw["transitions"], "machine transitions")
+        ),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["symbol_id"], "machine symbol"),
+        _artifact_text(raw["revision_id"], "machine revision"),
+    )
+
 @dataclass(frozen=True)
 class StructuredHIRProgram:
     source: str
@@ -362,16 +701,31 @@ class StructuredHIRProgram:
     types: tuple[HIRTypeDecl, ...]
     functions: tuple[HIRFunction, ...]
     entry_function: str
+    native_syntax_json: str
+    ffi_program: FFIProgram
     schema_version: int = STRUCTURED_HIR_SCHEMA_VERSION
     contract: str = STRUCTURED_HIR_CONTRACT
     native_module: ast.Module | None = field(default=None, repr=False, compare=False)
-    surface_program: SurfaceProgram | None = field(default=None, repr=False, compare=False)
     flows: tuple[HIRFlow, ...] = ()
     machines: tuple[HIRMachine, ...] = ()
 
     def __post_init__(self) -> None:
         if self.schema_version != STRUCTURED_HIR_SCHEMA_VERSION:
             raise ValueError("Structured HIR schema version drift")
+        if self.contract != STRUCTURED_HIR_CONTRACT:
+            raise ValueError("Structured HIR contract drift")
+        if hashlib.sha256(self.source.encode()).hexdigest() != self.source_sha256:
+            raise ValueError("Structured HIR source digest mismatch")
+        try:
+            artifact_module = ast.module_from_json(self.native_syntax_json)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("invalid Structured HIR native syntax artifact") from exc
+        if self.native_module is not None and (
+            ast.module_to_json(self.native_module) != self.native_syntax_json
+        ):
+            raise ValueError("Structured HIR hidden native module mismatch")
+        if not isinstance(self.ffi_program, FFIProgram):
+            raise ValueError("invalid Structured HIR FFI artifact")
         type_names = [item.name for item in self.types]
         function_names = [item.name for item in self.functions]
         if len(type_names) != len(set(type_names)):
@@ -395,6 +749,13 @@ class StructuredHIRProgram:
         }
         if actual & forbidden:
             raise ValueError("CFG or raw-memory detail escaped into Structured HIR")
+        artifact_functions = [
+            item.name
+            for item in artifact_module.body
+            if isinstance(item, ast.FunctionDef)
+        ]
+        if artifact_functions != function_names:
+            raise ValueError("Structured HIR/native syntax function mismatch")
 
     @property
     def digest(self) -> str:
@@ -406,13 +767,28 @@ class StructuredHIRProgram:
     def function(self, name: str) -> HIRFunction:
         return next(item for item in self.functions if item.name == name)
 
+    def backend_module(self) -> ast.Module:
+        """Restore backend syntax only from the digest-bound artifact.
+
+        A retained in-memory module is accepted solely as a consistency witness;
+        it is never the object consumed by code generation.
+        """
+        if self.native_module is not None and (
+            ast.module_to_json(self.native_module) != self.native_syntax_json
+        ):
+            raise ValueError("Structured HIR hidden native module mismatch")
+        return ast.module_from_json(self.native_syntax_json)
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema_version": self.schema_version,
             "contract": self.contract,
             "path": self.path,
+            "source": self.source,
             "source_sha256": self.source_sha256,
             "entry_function": self.entry_function,
+            "native_syntax": json.loads(self.native_syntax_json),
+            "ffi": self.ffi_program.to_dict(),
             "types": [item.to_dict() for item in self.types],
             "functions": [item.to_dict() for item in self.functions],
             "flows": [item.to_dict() for item in self.flows],
@@ -431,7 +807,99 @@ class StructuredHIRProgram:
         }
 
     def to_json(self) -> str:
-        return json.dumps(self.to_dict(), ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        return json.dumps(
+            self.to_dict(),
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+            allow_nan=False,
+        )
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "StructuredHIRProgram":
+        invariants = {
+            "structured_program_tree": True,
+            "cfg_absent": True,
+            "raw_memory_absent": True,
+            "stable_symbol_ids": True,
+            "stable_revision_ids": True,
+            "source_scopes": True,
+            "source_mappings": True,
+            "ownership_modes": True,
+            "effect_sets": True,
+        }
+        raw = _artifact_keys(
+            value,
+            {
+                "schema_version", "contract", "path", "source", "source_sha256",
+                "entry_function", "native_syntax", "ffi", "types", "functions",
+                "flows", "machines", "invariants",
+            },
+            "Structured HIR",
+        )
+        if raw["schema_version"] != STRUCTURED_HIR_SCHEMA_VERSION:
+            raise ValueError("Structured HIR schema version drift")
+        if raw["contract"] != STRUCTURED_HIR_CONTRACT:
+            raise ValueError("Structured HIR contract drift")
+        if raw["invariants"] != invariants:
+            raise ValueError("Structured HIR invariants drift")
+        native = _artifact_keys(
+            raw["native_syntax"],
+            {"schema_version", "contract", "module"},
+            "native syntax artifact",
+        )
+        native_module = ast.module_from_dict(native)
+        native_json = ast.module_to_json(native_module)
+        ffi = _artifact_keys(
+            raw["ffi"],
+            {"abi", "extern_functions", "repr_c_records", "unsafe_operations"},
+            "FFI artifact",
+        )
+        program = cls(
+            _artifact_text(raw["source"], "Structured HIR source"),
+            _artifact_text(raw["path"], "Structured HIR path"),
+            _artifact_text(raw["source_sha256"], "Structured HIR source digest"),
+            tuple(
+                _type_decl_from_dict(item)
+                for item in _artifact_list(raw["types"], "HIR types")
+            ),
+            tuple(
+                _function_from_dict(item)
+                for item in _artifact_list(raw["functions"], "HIR functions")
+            ),
+            _artifact_text(raw["entry_function"], "HIR entry function"),
+            native_json,
+            FFIProgram.from_dict(ffi),
+            flows=tuple(
+                _flow_from_dict(item)
+                for item in _artifact_list(raw["flows"], "HIR flows")
+            ),
+            machines=tuple(
+                _machine_from_dict(item)
+                for item in _artifact_list(raw["machines"], "HIR machines")
+            ),
+        )
+        if program.to_dict() != dict(value):
+            raise ValueError("non-canonical Structured HIR artifact")
+        return program
+
+    @classmethod
+    def from_json(cls, payload: str) -> "StructuredHIRProgram":
+        def decode_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+            result: dict[str, Any] = {}
+            for key, item in pairs:
+                if key in result:
+                    raise ValueError(f"duplicate Structured HIR JSON key: {key}")
+                result[key] = item
+            return result
+
+        try:
+            value = json.loads(payload, object_pairs_hook=decode_object)
+        except json.JSONDecodeError as exc:
+            raise ValueError("invalid Structured HIR JSON") from exc
+        if not isinstance(value, Mapping):
+            raise ValueError("Structured HIR JSON root must be an object")
+        return cls.from_dict(value)
 
 
 @dataclass(frozen=True)
@@ -2956,6 +3424,9 @@ def compile_structured_hir(
         tuple(types.values()),
         functions,
         entry_function,
+        ast.module_to_json(module),
+        ffi_program,
+        native_module=module,
     )
 
 
@@ -2984,6 +3455,10 @@ def compile_canonical_hir(
         program.surface_program,
         program,
     )
+    try:
+        ffi_program = validate_ffi(source, path=path)
+    except FFICompileError as exc:
+        raise StructuredHIRCompileError(str(exc)) from exc
     preprocessed = _Preprocessed(
         source,
         dict(declaration_kinds),
@@ -3031,8 +3506,9 @@ def compile_canonical_hir(
         tuple(types.values()),
         functions,
         entry_function,
+        ast.module_to_json(module),
+        ffi_program,
         native_module=module,
-        surface_program=program.surface_program,
         flows=flows,
         machines=machines,
     )

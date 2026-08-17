@@ -218,12 +218,12 @@ def test_dual_license_and_alpha_limitations_are_explicit() -> None:
 def test_roadmap_and_normative_models_match_active_contract_versions() -> None:
     from merlo.version import VERSIONS
 
-    assert VERSIONS.canonical == VERSIONS.hir
     roadmap = (ROOT / "ROADMAP.md").read_text(encoding="utf-8")
     for expected in (
         f"language `{VERSIONS.language}`",
         f"frontend `{VERSIONS.frontend}`",
-        f"canonical/HIR `{VERSIONS.canonical}`",
+        f"canonical `{VERSIONS.canonical}`",
+        f"HIR `{VERSIONS.hir}`",
         f"runtime ABI `{VERSIONS.runtime_abi}`",
         f"SemanticWorld `{VERSIONS.semantic_world}`",
     ):

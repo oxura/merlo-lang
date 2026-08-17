@@ -19,7 +19,7 @@ Status labels:
 | --- | --- | --- |
 | Language contract `0.3` | Production | Alpha compatibility may still change before release. |
 | Frontend contract `8` | Production | Lossless CST anchors declarations, statements, and statement expressions; the transitional line parser still owns remaining grammar. |
-| Canonical/HIR contracts `6` | Production | Typed lowering is Merlo-owned, but an AST-shaped native-syntax adapter remains. |
+| Canonical contract `6`, HIR contract `7` | Production | Typed lowering is Merlo-owned; the digest-bound AST-shaped native-syntax artifact remains as a backend adapter. |
 | C11 native backend, runtime ABI `2` | Production | Linux x86-64 through Clang or GCC. |
 | Ownership, moves, borrows, recursive drop | Production | Safe subset is checked and [Memory Model v1](spec/memory-model.md) is normative for that subset. |
 | Capturing closures | Production | Checked immutable scalar and owned captures only. |
@@ -37,7 +37,7 @@ Status labels:
 | macOS, Windows, Linux ARM64 | Absent | Linux x86-64 is the only supported target. |
 
 The published prerelease remains `0.1.0-alpha.2`. Main is the
-`0.1.0-alpha.3-dev` line with language `0.3`, frontend `8`, canonical/HIR `6`,
+`0.1.0-alpha.3-dev` line with language `0.3`, frontend `8`, canonical `6`, HIR `7`,
 RIR/MIR `2`, runtime ABI `2`, and SemanticWorld `14`.
 
 ## Milestone 1: Alpha.3 Deep Core Gate
