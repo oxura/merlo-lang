@@ -67,8 +67,18 @@ different boundary. Statement blocks also require a same-line, same-kind CST
 node for every executable statement; comment-only lines remain lossless trivia,
 while nested `else` and `case` headers are checked as structural anchors.
 Statement expression regions reuse their retained CST tokens, including across
-physical lines inside open delimiters, and reject missing or inconsistent token
-coverage instead of silently re-lexing the fragment.
+physical lines inside open delimiters. The file lexer validates typed delimiter
+pairs, so `([)]`, stray closers, and unclosed openers fail with distinct,
+source-located diagnostics. Expression parsing rebases the retained absolute
+token offsets directly and validates each token against the original file; it
+does not search repeated token text to reconstruct positions or silently
+re-lex the fragment. Inline function declarations retain separate parameter,
+return-type, and body-expression regions. Both inline and indented
+expression-bodied functions consume those anchored expression tokens instead
+of invoking the expression lexer a second time. Function parameter lists own
+structural parameter children and per-parameter type regions. Surface function
+signatures validate and consume those nodes plus the retained return-type
+region instead of locating parameter fragments in the line text.
 Module binding transforms Surface nodes structurally,
 and HIR lowering projects the retained Surface tree into Merlo-owned native
 syntax nodes, so no canonical or module source is reparsed and no CPython AST

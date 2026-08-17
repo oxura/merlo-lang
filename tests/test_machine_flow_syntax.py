@@ -1,3 +1,6 @@
+import pytest
+
+import merlo.surface_parser as surface_parser_module
 from merlo.surface_ast import SurfaceFlow, SurfaceMachine, SurfaceParallel
 from merlo.surface_elaborator import elaborate_surface
 from merlo.surface_parser import parse_surface
@@ -23,10 +26,14 @@ machine Job(id: UInt64):
 
 
 def test_flow_and_machine_parse_and_elaborate_to_canonical_nodes() -> None:
+    assert not hasattr(surface_parser_module._Parser, "_parameters")
     program = parse_surface(SOURCE, path="machine-flow.mlo")
     assert isinstance(program.declarations[0], SurfaceFlow)
     assert isinstance(program.declarations[1], SurfaceMachine)
     assert isinstance(program.declarations[0].body[1], SurfaceParallel)
+    assert program.declarations[0].parameters[0].type_name == "Text"
+    assert program.declarations[0].return_type == "Result[Text,Err]"
+    assert program.declarations[1].parameters[0].type_name == "UInt64"
     first = elaborate_surface(program).canonical
     second = elaborate_surface(parse_surface(SOURCE, path="machine-flow.mlo")).canonical
     assert len(first.flows) == 1
@@ -73,3 +80,20 @@ def test_retry_requires_idempotency() -> None:
         assert "RetryRequiresIdempotency" in str(exc)
     else:
         raise AssertionError("retry without idempotency was accepted")
+
+
+def test_flow_step_and_policy_expressions_consume_cst_regions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        surface_parser_module,
+        "lex_expression",
+        lambda _source: (_ for _ in ()).throw(AssertionError("re-lexed")),
+    )
+
+    flow = parse_surface(SOURCE, path="machine-flow.mlo").declarations[0]
+    assert flow.body[0].value is not None
+    idempotent = next(
+        policy for policy in flow.body[0].policies if policy.kind == "idempotent"
+    )
+    assert idempotent.expression is not None

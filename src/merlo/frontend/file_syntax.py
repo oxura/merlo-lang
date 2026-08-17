@@ -8,6 +8,10 @@ from dataclasses import dataclass, field
 from merlo.frontend.lexer import ExpressionLexError, ExpressionToken, lex_expression
 
 
+_OPEN_TO_CLOSE = {"(": ")", "[": "]", "{": "}"}
+_CLOSING_DELIMITERS = frozenset(_OPEN_TO_CLOSE.values())
+
+
 @dataclass(frozen=True)
 class FileDiagnostic:
     code: str
@@ -199,7 +203,7 @@ def lex_file(source: str, *, path: str = "main.mlo") -> FileLexResult:
     tokens: list[FileToken] = []
     diagnostics: list[FileDiagnostic] = []
     indentation = [0]
-    delimiter_depth = 0
+    delimiters: list[FileToken] = []
     offset = 0
     lines = source.splitlines(keepends=True)
     if source and (not lines or sum(len(line) for line in lines) < len(source)):
@@ -223,7 +227,7 @@ def lex_file(source: str, *, path: str = "main.mlo") -> FileLexResult:
                 )
             )
         width = sum(4 if character == "\t" else 1 for character in prefix)
-        continuation = delimiter_depth > 0
+        continuation = bool(delimiters)
         if not blank and not continuation:
             if width > indentation[-1]:
                 if "\t" not in prefix and width % 4:
@@ -285,10 +289,39 @@ def lex_file(source: str, *, path: str = "main.mlo") -> FileLexResult:
             for token in body_tokens:
                 if token.kind != "operator":
                     continue
-                if token.text in {"(", "[", "{"}:
-                    delimiter_depth += 1
-                elif token.text in {")", "]", "}"}:
-                    delimiter_depth = max(0, delimiter_depth - 1)
+                if token.text in _OPEN_TO_CLOSE:
+                    delimiters.append(token)
+                    continue
+                if token.text not in _CLOSING_DELIMITERS:
+                    continue
+                if not delimiters:
+                    diagnostics.append(
+                        FileDiagnostic(
+                            "UnexpectedClosingDelimiter",
+                            f"unexpected closing delimiter {token.text!r}",
+                            token.start,
+                            token.end,
+                            token.line,
+                            token.column,
+                        )
+                    )
+                    continue
+                opening = delimiters.pop()
+                expected = _OPEN_TO_CLOSE[opening.text]
+                if token.text != expected:
+                    diagnostics.append(
+                        FileDiagnostic(
+                            "MismatchedDelimiter",
+                            (
+                                f"closing delimiter {token.text!r} does not match "
+                                f"{opening.text!r}; expected {expected!r}"
+                            ),
+                            token.start,
+                            token.end,
+                            token.line,
+                            token.column,
+                        )
+                    )
         if newline:
             tokens.append(
                 _token(
@@ -302,6 +335,20 @@ def lex_file(source: str, *, path: str = "main.mlo") -> FileLexResult:
             )
         offset += len(raw)
     eof_line = len(lines) + 1 if lines else 1
+    for opening in reversed(delimiters):
+        diagnostics.append(
+            FileDiagnostic(
+                "UnclosedDelimiter",
+                (
+                    f"delimiter {opening.text!r} is not closed; "
+                    f"expected {_OPEN_TO_CLOSE[opening.text]!r}"
+                ),
+                opening.start,
+                opening.end,
+                opening.line,
+                opening.column,
+            )
+        )
     while len(indentation) > 1:
         indentation.pop()
         tokens.append(_token("dedent", "", offset, offset, eof_line, 1, synthetic=True))
@@ -348,7 +395,7 @@ def _logical_lines(tokens: tuple[FileToken, ...]) -> tuple[_LogicalLine, ...]:
     layout_start = 0
     first: int | None = None
     first_depth: int | None = None
-    delimiter_depth = 0
+    delimiters: list[str] = []
     for index, token in enumerate(tokens):
         if token.kind == "indent":
             depth += 1
@@ -357,7 +404,7 @@ def _logical_lines(tokens: tuple[FileToken, ...]) -> tuple[_LogicalLine, ...]:
             depth = max(0, depth - 1)
             continue
         if token.kind == "newline":
-            if first is not None and delimiter_depth == 0:
+            if first is not None and not delimiters:
                 lines.append(
                     _LogicalLine(
                         first_depth if first_depth is not None else depth,
@@ -376,10 +423,12 @@ def _logical_lines(tokens: tuple[FileToken, ...]) -> tuple[_LogicalLine, ...]:
             first = index
             first_depth = depth
         if token.kind == "operator":
-            if token.text in {"(", "[", "{"}:
-                delimiter_depth += 1
-            elif token.text in {")", "]", "}"}:
-                delimiter_depth = max(0, delimiter_depth - 1)
+            if token.text in _OPEN_TO_CLOSE:
+                delimiters.append(token.text)
+            elif token.text in _CLOSING_DELIMITERS and delimiters:
+                # lex_file already owns diagnostics. Pop one opener even on a
+                # mismatch so the recovered CST remains locally bounded.
+                delimiters.pop()
     if first is not None:
         lines.append(
             _LogicalLine(
@@ -432,6 +481,15 @@ def _construct_kind(
         return first
     if (
         not top_level
+        and len(significant) >= 2
+        and significant[0].kind == "identifier"
+        and significant[1].text == ":"
+        and (first not in _STATEMENT_KEYWORDS or len(significant) > 2)
+        and not any(token.text == "=" for token in significant)
+    ):
+        return "field"
+    if (
+        not top_level
         and first in _STATEMENT_KEYWORDS
         and (
             len(significant) == 1
@@ -439,14 +497,6 @@ def _construct_kind(
         )
     ):
         return first
-    if (
-        not top_level
-        and len(significant) >= 2
-        and significant[0].kind == "identifier"
-        and significant[1].text == ":"
-        and not any(token.text == "=" for token in significant)
-    ):
-        return "field"
     return "statement" if top_level else "expression_statement"
 
 
@@ -473,6 +523,146 @@ def _leaf_node(
     )
 
 
+def _parameter_nodes(
+    tokens: tuple[FileToken, ...],
+    *,
+    parent_id: str,
+) -> tuple[SyntaxNode, ...]:
+    significant = list(_significant(tokens))
+    if len(significant) < 2 or significant[0].text != "(" or significant[-1].text != ")":
+        return ()
+    ranges: list[tuple[int, int]] = []
+    start = 1
+    delimiters: list[str] = []
+    type_delimiters = {**_OPEN_TO_CLOSE, "<": ">"}
+    for index in range(1, len(significant) - 1):
+        text = significant[index].text
+        if text in type_delimiters:
+            delimiters.append(text)
+        elif text in type_delimiters.values() and delimiters:
+            if text == type_delimiters[delimiters[-1]]:
+                delimiters.pop()
+        elif text == "," and not delimiters:
+            ranges.append((start, index))
+            start = index + 1
+    if start < len(significant) - 1:
+        ranges.append((start, len(significant) - 1))
+
+    output: list[SyntaxNode] = []
+    for ordinal, (start, end) in enumerate(ranges):
+        selected = tuple(significant[start:end])
+        if not selected:
+            continue
+        syntax_id = _digest(
+            "syntax-v2-parameter",
+            parent_id,
+            ordinal,
+            _semantic_key(selected),
+        )
+        colon = next(
+            (index for index, token in enumerate(selected) if token.text == ":"),
+            None,
+        )
+        children: tuple[SyntaxNode, ...] = ()
+        if colon is not None:
+            type_node = _leaf_node(
+                "type",
+                selected[colon + 1 :],
+                parent_id=syntax_id,
+                ordinal=0,
+            )
+            if type_node is not None:
+                children = (type_node,)
+        output.append(
+            SyntaxNode(
+                "parameter",
+                syntax_id,
+                selected[0].start,
+                selected[-1].end,
+                selected,
+                children,
+            )
+        )
+    return tuple(output)
+
+
+def _type_parameter_nodes(
+    tokens: tuple[FileToken, ...],
+    *,
+    parent_id: str,
+) -> tuple[SyntaxNode, ...]:
+    significant = list(_significant(tokens))
+    if (
+        len(significant) < 2
+        or significant[0].text != "["
+        or significant[-1].text != "]"
+    ):
+        return ()
+    ranges: list[tuple[int, int]] = []
+    start = 1
+    delimiters: list[str] = []
+    type_delimiters = {**_OPEN_TO_CLOSE, "<": ">"}
+    for index in range(1, len(significant) - 1):
+        text = significant[index].text
+        if text in type_delimiters:
+            delimiters.append(text)
+        elif text in type_delimiters.values() and delimiters:
+            if text == type_delimiters[delimiters[-1]]:
+                delimiters.pop()
+        elif text == "," and not delimiters:
+            ranges.append((start, index))
+            start = index + 1
+    if start < len(significant) - 1:
+        ranges.append((start, len(significant) - 1))
+
+    output: list[SyntaxNode] = []
+    for ordinal, (start, end) in enumerate(ranges):
+        selected = tuple(significant[start:end])
+        node = _leaf_node(
+            "type_parameter",
+            selected,
+            parent_id=parent_id,
+            ordinal=ordinal,
+        )
+        if node is not None:
+            output.append(node)
+    return tuple(output)
+
+
+def _flow_policy_markers(
+    texts: list[str],
+    *,
+    start: int,
+) -> tuple[int, ...]:
+    markers: list[int] = []
+    delimiters: list[str] = []
+    for index in range(start, len(texts)):
+        text = texts[index]
+        if text in _OPEN_TO_CLOSE:
+            delimiters.append(text)
+            continue
+        if text in _CLOSING_DELIMITERS:
+            if delimiters and text == _OPEN_TO_CLOSE[delimiters[-1]]:
+                delimiters.pop()
+            continue
+        if delimiters:
+            continue
+        suffix = texts[index:]
+        if (
+            (text == "timeout" and len(suffix) >= 2 and suffix[1] not in {"+", "-", "*", "/"})
+            or (
+                text == "retry"
+                and len(suffix) >= 4
+                and suffix[1].isdigit()
+                and suffix[2] == "on"
+            )
+            or (text == "idempotent" and len(suffix) >= 3 and suffix[1] == "by")
+            or (text == "compensate" and len(suffix) >= 2 and suffix[1] not in {"+", "-", "*", "/"})
+        ):
+            markers.append(index)
+    return tuple(markers)
+
+
 def _header_parts(
     kind: str,
     tokens: tuple[FileToken, ...],
@@ -495,40 +685,130 @@ def _header_parts(
             ordinal=len(parts),
         )
         if node is not None:
+            if part_kind == "parameters":
+                node = SyntaxNode(
+                    node.kind,
+                    node.syntax_id,
+                    node.start,
+                    node.end,
+                    node.tokens,
+                    _parameter_nodes(node.tokens, parent_id=node.syntax_id),
+                    node.diagnostic_codes,
+                )
+            elif part_kind == "type_parameters":
+                node = SyntaxNode(
+                    node.kind,
+                    node.syntax_id,
+                    node.start,
+                    node.end,
+                    node.tokens,
+                    _type_parameter_nodes(node.tokens, parent_id=node.syntax_id),
+                    node.diagnostic_codes,
+                )
             parts.append(node)
+
+    def add_assignment_expressions(equals: int) -> None:
+        markers = _flow_policy_markers(texts, start=equals + 1)
+        add("expression", equals + 1, markers[0] if markers else len(texts))
+        for marker_index, marker in enumerate(markers):
+            if texts[marker : marker + 2] != ["idempotent", "by"]:
+                continue
+            end = markers[marker_index + 1] if marker_index + 1 < len(markers) else len(texts)
+            add("expression", marker + 2, end)
 
     texts = [token.text for token in significant]
     trailing_colon = len(texts) - 1 if texts[-1] == ":" else len(texts)
-    if kind in {"fn", "task", "flow", "extern"}:
+    function_header = kind in {
+        "fn", "task", "flow", "machine", "state", "extern", "statement",
+    }
+    if kind == "expression_statement" and "(" in texts and ")" in texts:
+        last_close = len(texts) - 1 - texts[::-1].index(")")
+        function_header = (
+            texts[0] in {"fn", "task"}
+            or texts[-1] == ":"
+            or "=" in texts[last_close + 1 :]
+            or texts[last_close + 1 : last_close + 3] == ["-", ">"]
+        )
+    if function_header:
         try:
             open_index = texts.index("(")
-            close_index = len(texts) - 1 - texts[::-1].index(")")
         except ValueError:
-            open_index = close_index = -1
+            open_index = -1
+        close_index = -1
+        depth = 0
+        for index in range(open_index, len(texts)) if open_index >= 0 else ():
+            if texts[index] == "(":
+                depth += 1
+            elif texts[index] == ")":
+                depth -= 1
+                if depth == 0:
+                    close_index = index
+                    break
         if 0 <= open_index < close_index:
+            generic_open = next(
+                (
+                    index
+                    for index in range(open_index)
+                    if texts[index] == "["
+                ),
+                None,
+            )
+            if generic_open is not None:
+                generic_depth = 0
+                generic_close = -1
+                for index in range(generic_open, open_index):
+                    if texts[index] == "[":
+                        generic_depth += 1
+                    elif texts[index] == "]":
+                        generic_depth -= 1
+                        if generic_depth == 0:
+                            generic_close = index
+                            break
+                if generic_close == open_index - 1:
+                    add("type_parameters", generic_open, generic_close + 1)
             add("parameters", open_index, close_index + 1)
+            equals = next(
+                (
+                    index
+                    for index in range(close_index + 1, len(texts))
+                    if texts[index] == "="
+                ),
+                None,
+            )
+            signature_end = equals if equals is not None else trailing_colon
             arrow = next(
                 (
                     index
-                    for index in range(close_index + 1, trailing_colon - 1)
+                    for index in range(close_index + 1, signature_end - 1)
                     if texts[index : index + 2] == ["-", ">"]
                 ),
                 None,
             )
             if arrow is not None:
-                add("type", arrow + 2, trailing_colon)
+                add("type", arrow + 2, signature_end)
+            if equals is not None:
+                add("expression", equals + 1, len(texts))
     if kind in {"let", "var"}:
         equals = next((index for index, text in enumerate(texts) if text == "="), None)
         colon = next((index for index, text in enumerate(texts) if text == ":"), None)
         if colon is not None:
             add("type", colon + 1, equals if equals is not None else len(texts))
         if equals is not None:
-            add("expression", equals + 1, len(texts))
+            add_assignment_expressions(equals)
     elif kind == "field":
         colon = next((index for index, text in enumerate(texts) if text == ":"), None)
         if colon is not None:
             add("type", colon + 1, len(texts))
-    elif kind in {"return", "require", "ensure", "yield", "print"}:
+    elif kind == "impl":
+        for_index = next(
+            (index for index, text in enumerate(texts) if text == "for"),
+            None,
+        )
+        if for_index is not None:
+            add("type", for_index + 1, trailing_colon)
+    elif kind in {
+        "return", "require", "ensure", "invariant", "yield", "print",
+    }:
         add("expression", 1, trailing_colon)
     elif kind == "for":
         in_index = next(
@@ -539,8 +819,18 @@ def _header_parts(
             add("expression", in_index + 1, trailing_colon)
     elif kind in {"if", "elif", "while", "match", "case"}:
         add("expression", 1, trailing_colon)
-    elif kind == "expression_statement" and "=" in texts:
+    elif (
+        kind == "expression_statement"
+        and not function_header
+        and "=" in texts
+    ):
         equals = texts.index("=")
+        colon = next(
+            (index for index, text in enumerate(texts[:equals]) if text == ":"),
+            None,
+        )
+        if colon is not None:
+            add("type", colon + 1, equals)
         target_end = (
             equals - 1
             if equals and texts[equals - 1] in {"+", "-", "*", "/"}
@@ -551,8 +841,8 @@ def _header_parts(
             and any(text in {".", "["} for text in texts[:target_end])
         ):
             add("expression", 0, target_end)
-        add("expression", equals + 1, len(texts))
-    elif kind == "expression_statement":
+        add_assignment_expressions(equals)
+    elif kind == "expression_statement" and not function_header:
         add("expression", 0, trailing_colon)
     return tuple(parts)
 

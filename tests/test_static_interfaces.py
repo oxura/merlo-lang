@@ -49,6 +49,17 @@ def test_parser_retains_interface_and_implementation_contracts() -> None:
     assert implementation.methods[0].name == "size"
 
 
+def test_interface_method_without_fn_consumes_retained_signature() -> None:
+    interface = parse_surface(
+        "interface Sized:\n"
+        "    size(value: Self) -> UInt64\n",
+        path="interfaces.mlo",
+    ).declarations[0]
+
+    assert interface.methods[0].parameters[0].type_name == "Self"
+    assert interface.methods[0].return_type == "UInt64"
+
+
 def test_interface_call_becomes_one_direct_concrete_call_before_hir() -> None:
     source = INTERFACE + (
         "fn main(value: Text) -> UInt64:\n"

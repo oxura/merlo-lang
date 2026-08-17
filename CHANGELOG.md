@@ -122,6 +122,32 @@
   into the Surface expression parser instead of lexing those fragments again.
   Delimited multiline expressions now remain one CST region and do not emit
   indentation layout while `()`, `[]`, or `{}` are open.
+- Replaces delimiter depth counters with typed delimiter stacks and reports
+  mismatched, unexpected, and unclosed delimiters at retained token spans.
+  Statement expressions now rebase exact CST offsets directly, removing the
+  repeated-text `source.find()` reconstruction path.
+- Retains inline function-body expressions and return-type regions under
+  declaration headers. Inline and indented expression-bodied functions now
+  consume their CST expression regions and fail closed when an anchor is absent.
+- Adds structural parameter nodes with retained per-parameter type regions.
+  Function parameter and return types now come from validated CST offsets;
+  missing or inconsistent regions fail with `CSTTypeMismatch`.
+- Adds retained generic-parameter nodes under function headers. Generic names,
+  interface constraints, and exact spans now come from the same CST token
+  stream; the old function-signature `source.find()` path has been removed.
+- Routes record fields, enum payloads, local annotations, and annotated
+  bindings through retained CST type regions. Missing or extra regions fail
+  closed instead of falling back to line-fragment type parsing.
+- Routes flow, machine, state, and interface method signatures through retained
+  parameter and return-type nodes, including interface methods without an
+  explicit `fn`. The transitional string-based `_parameters()` parser is gone.
+- Routes record and machine invariant expressions through retained CST tokens
+  and retains the target type of `impl Interface for Type` as a validated type
+  region. These paths no longer re-lex or normalize line fragments directly.
+- Gives flow step values and `idempotent by` policies separate retained CST
+  expression regions. Flow parsing now consumes exact offsets, removes the last
+  production `source.find()` reconstruction, and rejects policy-only regions in
+  ordinary assignments.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.
