@@ -1,0 +1,37 @@
+# Default owner. Add independent maintainers or teams before enabling required
+# code-owner approval; CODEOWNERS routes review but does not create independence.
+* @oxura
+
+# Compiler frontend and semantic core
+/src/merlo/frontend/ @oxura
+/src/merlo/surface_ast.py @oxura
+/src/merlo/surface_parser.py @oxura
+/src/merlo/surface_binding.py @oxura
+/src/merlo/surface_elaborator.py @oxura
+/src/merlo/elaboration/ @oxura
+/src/merlo/structured_hir_v2.py @oxura
+/src/merlo/intrinsics.py @oxura
+
+# Ownership, representation, runtime, native and FFI boundaries
+/src/merlo/representation_ir.py @oxura
+/src/merlo/representation_mir.py @oxura
+/src/merlo/representation_c_backend.py @oxura
+/src/merlo/native_c_backend.py @oxura
+/src/merlo/*runtime*.py @oxura
+/src/merlo/ffi.py @oxura
+/runtime/ @oxura
+/spec/memory-model.md @oxura
+/spec/ownership.md @oxura
+/spec/ffi.md @oxura
+
+# Verification, semantic change, packages and release security
+/src/merlo/*obligation*.py @oxura
+/src/merlo/*symbolic*.py @oxura
+/src/merlo/smt_backend.py @oxura
+/src/merlo/refactor.py @oxura
+/src/merlo/evolve_protocol.py @oxura
+/src/merlo/transaction.py @oxura
+/src/merlo/package*.py @oxura
+/.github/workflows/ @oxura
+/tools/release/ @oxura
+/SECURITY.md @oxura

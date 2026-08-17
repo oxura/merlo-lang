@@ -36,7 +36,7 @@ DOC_PATHS = tuple(f"docs/{name}.md" for name in (
     "limitations",
 ))
 SPEC_PATHS = tuple(f"spec/{name}.md" for name in (
-    "README", "language", "ownership", "effects", "packages", "ffi",
+    "README", "language", "ownership", "memory-model", "effects", "packages", "ffi",
     "semantic-world", "alpha-protocol",
 ))
 RESEARCH_PATHS = tuple(f"research/{name}.md" for name in (
@@ -213,6 +213,36 @@ def test_dual_license_and_alpha_limitations_are_explicit() -> None:
         "no future facets",
     ):
         assert statement in public_text
+
+
+def test_roadmap_and_normative_models_match_active_contract_versions() -> None:
+    from merlo.version import VERSIONS
+
+    assert VERSIONS.canonical == VERSIONS.hir
+    roadmap = (ROOT / "ROADMAP.md").read_text(encoding="utf-8")
+    for expected in (
+        f"language `{VERSIONS.language}`",
+        f"frontend `{VERSIONS.frontend}`",
+        f"canonical/HIR `{VERSIONS.canonical}`",
+        f"runtime ABI `{VERSIONS.runtime_abi}`",
+        f"SemanticWorld `{VERSIONS.semantic_world}`",
+    ):
+        assert expected in roadmap
+
+    memory_model = (ROOT / "spec/memory-model.md").read_text(encoding="utf-8")
+    concurrency_model = (
+        ROOT / "rfcs/0002-concurrency-model-v1.md"
+    ).read_text(encoding="utf-8")
+    review_policy = (
+        ROOT / ".github/REVIEW_POLICY.md"
+    ).read_text(encoding="utf-8")
+    assert "normative" in memory_model.casefold()
+    assert "use-after-free" in memory_model
+    assert "data race" in memory_model
+    assert "Status: proposed" in concurrency_model
+    assert "does not make `async`" in concurrency_model
+    assert "Required CI gates" in review_policy
+    assert (ROOT / ".github/CODEOWNERS").is_file()
 
 
 def test_readme_commands_are_real_production_parser_commands() -> None:
