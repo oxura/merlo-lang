@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 
 from merlo.frontend.lexer import ExpressionLexError, ExpressionToken, lex_expression
-from merlo.frontend.file_syntax import FileCST, SyntaxNode, parse_file_cst
+from merlo.frontend.file_syntax import FileCST, FileToken, SyntaxNode, parse_file_cst
 from merlo.module_syntax import ModuleSyntaxError, parse_module_prelude
 from merlo.surface_ast import (
     SourceSpan,
@@ -1591,15 +1591,32 @@ class _Parser:
         )
 
     @staticmethod
-    def _expected_statement_kind(line: _Line) -> str:
-        first = line.text.split(maxsplit=1)[0].rstrip(":") if line.text else ""
+    def _retained_statement_kind(anchor: SyntaxNode) -> str:
+        header = next(
+            (child for child in anchor.children if child.kind == "header"),
+            None,
+        )
+        tokens = tuple(
+            token
+            for token in (header.tokens if header is not None else ())
+            if token.kind not in {"whitespace", "comment", "newline", "eof"}
+        )
+        if not tokens:
+            return "error"
+        first = tokens[0].text
         if first in {
             "let", "return", "if", "elif", "else", "for", "while",
             "match", "case", "require", "ensure", "uses", "break",
             "continue", "yield", "print", "pass", "var",
         }:
             return first
-        if re.fullmatch(r"[A-Za-z_]\w*\s*:\s*[^=]+", line.text):
+        texts = tuple(token.text for token in tokens)
+        if (
+            len(tokens) >= 2
+            and tokens[0].kind == "identifier"
+            and texts[1] == ":"
+            and "=" not in texts
+        ):
             return "field"
         return "expression_statement"
 
@@ -1611,7 +1628,7 @@ class _Parser:
                 "semantic statement has no CST anchor",
                 _span(self.path, line),
             )
-        expected = kind or self._expected_statement_kind(line)
+        expected = kind or self._retained_statement_kind(anchor)
         if anchor.kind != expected:
             raise SurfaceSyntaxError(
                 "CSTStatementMismatch",
@@ -1623,15 +1640,10 @@ class _Parser:
     def _parse_statement_expression(
         self,
         statement: SyntaxNode,
-        source: str,
         line: _Line,
         *,
-        base_column: int = 0,
         ordinal: int = 0,
     ) -> SurfaceExpression:
-        # source/base_column remain until the transitional statement parser is
-        # removed. The retained CST region is the expression source of truth.
-        del source, base_column
         return self._parse_cst_expression(statement, line, ordinal=ordinal)
 
     def _parse_cst_expression(
@@ -1641,28 +1653,11 @@ class _Parser:
         *,
         ordinal: int = 0,
     ) -> SurfaceExpression:
-        header = next(
-            (child for child in owner.children if child.kind == "header"),
-            None,
+        expression = self._cst_expression_region(
+            owner,
+            line,
+            ordinal=ordinal,
         )
-        expressions = (
-            tuple(child for child in header.children if child.kind == "expression")
-            if header is not None
-            else ()
-        )
-        if ordinal >= len(expressions):
-            raise SurfaceSyntaxError(
-                "CSTExpressionMismatch",
-                f"semantic expression {ordinal + 1} has no CST region",
-                _span(self.path, line),
-            )
-        expression = expressions[ordinal]
-        if not expression.tokens:
-            raise SurfaceSyntaxError(
-                "CSTExpressionMismatch",
-                "CST expression region is empty",
-                _span(self.path, line),
-            )
         converted: list[ExpressionToken] = []
         previous_end = expression.start
         for token in expression.tokens:
@@ -1702,6 +1697,47 @@ class _Parser:
             tokens=tuple(converted),
         )
 
+    def _cst_expression_region(
+        self,
+        owner: SyntaxNode,
+        line: _Line,
+        *,
+        ordinal: int = 0,
+    ) -> SyntaxNode:
+        header = next(
+            (child for child in owner.children if child.kind == "header"),
+            None,
+        )
+        expressions = (
+            tuple(child for child in header.children if child.kind == "expression")
+            if header is not None
+            else ()
+        )
+        if ordinal >= len(expressions):
+            raise SurfaceSyntaxError(
+                "CSTExpressionMismatch",
+                f"semantic expression {ordinal + 1} has no CST region",
+                _span(self.path, line),
+            )
+        expression = expressions[ordinal]
+        if not expression.tokens:
+            raise SurfaceSyntaxError(
+                "CSTExpressionMismatch",
+                "CST expression region is empty",
+                _span(self.path, line),
+            )
+        return expression
+
+    def _cst_expression_count(self, owner: SyntaxNode) -> int:
+        header = next(
+            (child for child in owner.children if child.kind == "header"),
+            None,
+        )
+        return sum(
+            child.kind == "expression"
+            for child in (header.children if header is not None else ())
+        )
+
     def _require_cst_expression_count(
         self,
         owner: SyntaxNode,
@@ -1726,6 +1762,89 @@ class _Parser:
                 f"expected {expected} CST expression regions, found {actual}",
                 _span(self.path, line),
             )
+
+    @staticmethod
+    def _retained_header_tokens(owner: SyntaxNode) -> tuple[FileToken, ...]:
+        header = next(
+            (child for child in owner.children if child.kind == "header"),
+            None,
+        )
+        return tuple(
+            token
+            for token in (header.tokens if header is not None else ())
+            if token.kind not in {"whitespace", "comment", "newline", "eof"}
+        )
+
+    def _cst_assignment_header(
+        self,
+        owner: SyntaxNode,
+        line: _Line,
+    ) -> tuple[str | None, str | None, str, bool, bool] | None:
+        tokens = self._retained_header_tokens(owner)
+        delimiters: list[str] = []
+        pairs = {"(": ")", "[": "]", "{": "}"}
+        equals: int | None = None
+        for index, token in enumerate(tokens):
+            text = token.text
+            if text in pairs:
+                delimiters.append(text)
+            elif text in pairs.values():
+                if delimiters and pairs[delimiters[-1]] == text:
+                    delimiters.pop()
+            elif not delimiters and text in {"=", "+=", "-=", "*=", "/="}:
+                equals = index
+                break
+        if equals is None:
+            if owner.kind in {"let", "var"}:
+                raise SurfaceSyntaxError(
+                    "CSTStatementMismatch",
+                    "retained binding header has no top-level operator",
+                    _span(self.path, line),
+                )
+            return None
+        operator = tokens[equals].text
+        target_end = equals
+        if operator == "=" and equals > 0 and tokens[equals - 1].text in {
+            "+", "-", "*", "/",
+        }:
+            target_end -= 1
+            operator = f"{tokens[equals - 1].text}="
+        prefix = list(tokens[:target_end])
+        binding_kind = None
+        if prefix and prefix[0].text in {"let", "var"}:
+            binding_kind = prefix.pop(0).text
+        delimiters.clear()
+        colon: int | None = None
+        for index, token in enumerate(prefix):
+            if token.text in pairs:
+                delimiters.append(token.text)
+            elif token.text in pairs.values():
+                if delimiters and pairs[delimiters[-1]] == token.text:
+                    delimiters.pop()
+            elif not delimiters and token.text == ":":
+                colon = index
+                break
+        target = prefix[:colon] if colon is not None else prefix
+        simple = len(target) == 1 and target[0].kind == "identifier"
+        if binding_kind is not None and not simple:
+            raise SurfaceSyntaxError(
+                "CSTStatementMismatch",
+                f"{binding_kind} requires a retained identifier target",
+                _span(self.path, line),
+            )
+        if not target:
+            raise SurfaceSyntaxError(
+                "CSTStatementMismatch",
+                "retained assignment target is empty",
+                _span(self.path, line),
+            )
+        return (
+            binding_kind,
+            target[0].text if simple else None,
+            operator,
+            not simple,
+            colon is not None,
+        )
 
     def _block(self, indent: int) -> tuple[SurfaceStatement, ...]:
         statements = []
@@ -1758,22 +1877,42 @@ class _Parser:
             )
         if anchor is None:
             anchor = self._statement_anchor(line)
-        if match := re.fullmatch(r"for\s+([A-Za-z_]\w*)\s+in\s+(.+)\s*:", line.text):
+        if anchor.kind == "for":
+            header = next(child for child in anchor.children if child.kind == "header")
+            tokens = tuple(
+                token
+                for token in header.tokens
+                if token.kind not in {"whitespace", "comment", "newline", "eof"}
+            )
+            in_index = next(
+                (index for index, token in enumerate(tokens) if token.text == "in"),
+                None,
+            )
+            if (
+                in_index != 2
+                or len(tokens) < 5
+                or tokens[1].kind != "identifier"
+                or tokens[-1].text != ":"
+            ):
+                raise SurfaceSyntaxError(
+                    "CSTStatementMismatch",
+                    "invalid retained for-statement header",
+                    _span(self.path, line),
+                )
             self.index += 1
             body = self._block(line.indent + 4)
             end = self.lines[self.index - 1]
             return SurfaceFor(
                 _span(self.path, line, end_line=end),
-                match.group(1),
+                tokens[1].text,
                 self._parse_statement_expression(
                     anchor,
-                    match.group(2),
                     line,
-                    base_column=match.start(2),
                 ),
                 body,
             )
-        if match := re.fullmatch(r"if\s+(.+)\s*:", line.text):
+        if anchor.kind == "if":
+            self._require_cst_expression_count(anchor, line, expected=1)
             self.index += 1
             body = self._block(line.indent + 4)
             otherwise = ()
@@ -1786,27 +1925,25 @@ class _Parser:
                 _span(self.path, line, end_line=end),
                 self._parse_statement_expression(
                     anchor,
-                    match.group(1),
                     line,
-                    base_column=match.start(1),
                 ),
                 body,
                 otherwise,
             )
-        if match := re.fullmatch(r"while\s+(.+)\s*:", line.text):
+        if anchor.kind == "while":
+            self._require_cst_expression_count(anchor, line, expected=1)
             self.index += 1
             body = self._block(line.indent + 4)
             return SurfaceWhile(
                 _span(self.path, line, end_line=self.lines[self.index - 1]),
                 self._parse_statement_expression(
                     anchor,
-                    match.group(1),
                     line,
-                    base_column=match.start(1),
                 ),
                 body,
             )
-        if match := re.fullmatch(r"match\s+(.+)\s*:", line.text):
+        if anchor.kind == "match":
+            self._require_cst_expression_count(anchor, line, expected=1)
             self.index += 1
             cases: list[SurfaceCase] = []
             while self.index < len(self.lines):
@@ -1822,32 +1959,36 @@ class _Parser:
                         "case indentation mismatch",
                         _span(self.path, case_line),
                     )
-                case_match = re.fullmatch(r"case\s+(.+)\s*:", case_line.text)
-                if case_match is None:
+                case_anchor = self._statement_anchor(case_line, kind="case")
+                if self._cst_expression_count(case_anchor) != 1:
                     raise SurfaceSyntaxError(
                         "ExpectedCase",
                         case_line.text,
                         _span(self.path, case_line),
                     )
-                self._statement_anchor(case_line, kind="case")
+                pattern_region = self._cst_expression_region(
+                    case_anchor,
+                    case_line,
+                )
                 self.index += 1
                 body = self._block(case_line.indent + 4)
                 if not body:
                     raise SurfaceSyntaxError(
                         "EmptyCase",
-                        case_match.group(1),
+                        self.cst.source[pattern_region.start:pattern_region.end],
                         _span(self.path, case_line),
                     )
-                pattern = case_match.group(1).strip()
-                pattern_start = case_match.start(1) + (
-                    len(case_match.group(1)) - len(case_match.group(1).lstrip())
-                )
+                pattern = self.cst.source[
+                    pattern_region.start:pattern_region.end
+                ].strip()
+                first_pattern_token = pattern_region.tokens[0]
+                last_pattern_token = pattern_region.tokens[-1]
                 pattern_span = SourceSpan(
                     self.path,
-                    case_line.number,
-                    case_line.indent + pattern_start + 1,
-                    case_line.number,
-                    case_line.indent + pattern_start + len(pattern) + 1,
+                    first_pattern_token.line + self.line_offset,
+                    first_pattern_token.column,
+                    last_pattern_token.line + self.line_offset,
+                    last_pattern_token.column + len(last_pattern_token.text),
                 )
                 cases.append(
                     SurfaceCase(
@@ -1862,9 +2003,10 @@ class _Parser:
                     )
                 )
             if not cases:
+                subject = self._cst_expression_region(anchor, line)
                 raise SurfaceSyntaxError(
                     "EmptyMatch",
-                    match.group(1),
+                    self.cst.source[subject.start:subject.end],
                     _span(self.path, line),
                 )
             return SurfaceMatch(
@@ -1875,15 +2017,24 @@ class _Parser:
                 ),
                 self._parse_statement_expression(
                     anchor,
-                    match.group(1),
                     line,
-                    base_column=match.start(1),
                 ),
                 tuple(cases),
             )
-        if match := re.fullmatch(r"uses\s+(.+)", line.text):
+        if anchor.kind == "uses":
+            header = next(child for child in anchor.children if child.kind == "header")
+            tokens = tuple(
+                token
+                for token in header.tokens
+                if token.kind not in {"whitespace", "comment", "newline", "eof"}
+            )
+            retained_effects = (
+                self.cst.source[tokens[1].start:tokens[-1].end]
+                if len(tokens) > 1
+                else ""
+            )
             effects = tuple(
-                sorted(item.strip() for item in match.group(1).split(","))
+                sorted(item.strip() for item in retained_effects.split(","))
             )
             if not effects or any(
                 re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*", effect)
@@ -1897,85 +2048,136 @@ class _Parser:
                 )
             self.index += 1
             return SurfaceUses(_span(self.path, line), effects)
-        if match := re.fullmatch(r"print\s+(.+)", line.text):
+        if anchor.kind == "print":
+            self._require_cst_expression_count(anchor, line, expected=1)
             self.index += 1
             return SurfacePrint(
                 _span(self.path, line),
                 self._parse_statement_expression(
                     anchor,
-                    match.group(1),
                     line,
-                    base_column=match.start(1),
                 ),
             )
-        if line.text == "continue":
+        if anchor.kind == "continue":
             self.index += 1
             return SurfaceContinue(_span(self.path, line))
-        if line.text == "break":
+        if anchor.kind == "break":
             self.index += 1
             return SurfaceBreak(_span(self.path, line))
-        if line.text == "pass":
+        if anchor.kind == "pass":
             self.index += 1
             return SurfacePass(_span(self.path, line))
-        if match := re.fullmatch(r"require\s+(.+)", line.text):
+        if anchor.kind == "require":
+            self._require_cst_expression_count(anchor, line, expected=1)
             self.index += 1
             return SurfaceRequire(
                 _span(self.path, line),
                 self._parse_statement_expression(
                     anchor,
-                    match.group(1),
                     line,
-                    base_column=match.start(1),
                 ),
             )
-        if match := re.fullmatch(r"ensure\s+(.+)", line.text):
+        if anchor.kind == "ensure":
+            self._require_cst_expression_count(anchor, line, expected=1)
             self.index += 1
             return SurfaceEnsure(
                 _span(self.path, line),
                 self._parse_statement_expression(
                     anchor,
-                    match.group(1),
                     line,
-                    base_column=match.start(1),
                 ),
             )
-        if match := re.fullmatch(r"return(?:\s+(.+))?", line.text):
+        if anchor.kind == "return":
+            header = next(child for child in anchor.children if child.kind == "header")
+            retained_tokens = tuple(
+                token
+                for token in header.tokens
+                if token.kind not in {"whitespace", "comment", "newline", "eof"}
+            )
+            expression_count = self._cst_expression_count(anchor)
+            expected_count = 1 if len(retained_tokens) > 1 else 0
+            if expression_count != expected_count:
+                raise SurfaceSyntaxError(
+                    "CSTExpressionMismatch",
+                    "return retained expression count does not match its "
+                    f"tokens: {expression_count} != {expected_count}",
+                    _span(self.path, line),
+                )
             self.index += 1
             return SurfaceReturn(
                 _span(self.path, line),
                 self._parse_statement_expression(
                     anchor,
-                    match.group(1),
                     line,
-                    base_column=match.start(1),
                 )
-                if match.group(1)
+                if expression_count == 1
                 else None,
             )
-        if match := re.fullmatch(
-            r"([A-Za-z_]\w*)\s*:\s*([^=]+)",
-            line.text,
-        ):
+        if anchor.kind == "field":
+            header = next(child for child in anchor.children if child.kind == "header")
+            tokens = tuple(
+                token
+                for token in header.tokens
+                if token.kind not in {"whitespace", "comment", "newline", "eof"}
+            )
+            if not tokens or tokens[0].kind != "identifier":
+                raise SurfaceSyntaxError(
+                    "CSTStatementMismatch",
+                    "local annotation has no retained identifier",
+                    _span(self.path, line),
+                )
             self.index += 1
             return SurfaceAnnotation(
                 _span(self.path, line),
-                match.group(1),
+                tokens[0].text,
                 self._cst_type_region(anchor, line, expected=True) or "",
             )
-        if match := re.fullmatch(
-            r"(?:(let|var)\s+)?([A-Za-z_]\w*)"
-            r"(?:\s*:\s*([^=]+))?\s*"
-            r"(\+=|-=|\*=|/=|(?<![=!<>])=(?![=>]))\s*(.+)",
-            line.text,
-        ):
+        assignment = self._cst_assignment_header(anchor, line)
+        if assignment is not None:
+            (
+                binding_kind,
+                name,
+                operator,
+                complex_target,
+                has_type,
+            ) = assignment
+            if anchor.kind not in {
+                binding_kind
+                if binding_kind is not None
+                else "expression_statement"
+            }:
+                raise SurfaceSyntaxError(
+                    "CSTStatementMismatch",
+                    f"retained {anchor.kind!r} cannot decode assignment",
+                    _span(self.path, line),
+                )
             self.index += 1
-            kind, name, type_name, operator, value = match.groups()
+            if complex_target:
+                self._require_cst_expression_count(anchor, line, expected=2)
+                return SurfaceAssignment(
+                    _span(self.path, line),
+                    self._parse_statement_expression(
+                        anchor,
+                        line,
+                        ordinal=0,
+                    ),
+                    self._parse_statement_expression(
+                        anchor,
+                        line,
+                        ordinal=1,
+                    ),
+                    operator,
+                )
+            if name is None:
+                raise SurfaceSyntaxError(
+                    "CSTStatementMismatch",
+                    "simple retained assignment has no identifier",
+                    _span(self.path, line),
+                )
             self._require_cst_expression_count(anchor, line, expected=1)
             expression = self._parse_statement_expression(
                 anchor,
-                value,
                 line,
-                base_column=match.start(5),
             )
             if operator == "=":
                 return SurfaceBinding(
@@ -1985,9 +2187,9 @@ class _Parser:
                     self._cst_type_region(
                         anchor,
                         line,
-                        expected=type_name is not None,
+                        expected=has_type,
                     ),
-                    kind,
+                    binding_kind,
                 )
             return SurfaceAssignment(
                 _span(self.path, line),
@@ -1995,37 +2197,16 @@ class _Parser:
                 expression,
                 operator,
             )
-        if match := re.fullmatch(
-            r"([A-Za-z_]\w*(?:\.[A-Za-z_]\w*"
-            r"|\[[^\]]+\])+)\s*"
-            r"(\+=|-=|\*=|/=|(?<![=!<>])=(?!=))\s*(.+)",
-            line.text,
-        ):
-            target, operator, value = match.groups()
-            self.index += 1
-            self._require_cst_expression_count(anchor, line, expected=2)
-            return SurfaceAssignment(
+        if anchor.kind != "expression_statement":
+            raise SurfaceSyntaxError(
+                "CSTStatementMismatch",
+                f"unsupported retained statement kind {anchor.kind!r}",
                 _span(self.path, line),
-                self._parse_statement_expression(
-                    anchor,
-                    target,
-                    line,
-                    base_column=match.start(1),
-                    ordinal=0,
-                ),
-                self._parse_statement_expression(
-                    anchor,
-                    value,
-                    line,
-                    base_column=match.start(3),
-                    ordinal=1,
-                ),
-                operator,
             )
         self.index += 1
         return SurfaceExpressionStatement(
             _span(self.path, line),
-            self._parse_statement_expression(anchor, line.text, line),
+            self._parse_statement_expression(anchor, line),
         )
 
 
