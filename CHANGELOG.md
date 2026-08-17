@@ -115,6 +115,13 @@
   HIR result ownership and effects, ownership consumption, and backend result
   inference now read the same instantiated contracts while retaining the
   existing checked native operation families.
+- Centralizes the supported `Bytes`, `BytesView`, `Text`, `TextView`,
+  `TextBuilder`, and `Path.to_text` instance contracts. Borrowed views and
+  slices, bounds checks, owned text copies, builder mutation, and allocation
+  effects now flow from ContractGraph into HIR metadata and function effects.
+  The existing context-directed numeric result behavior for length, capacity,
+  and byte access is explicit in the same contracts instead of hidden in the
+  Surface elaborator.
 - Replaces the flat declaration-only CST projection with a lossless hierarchy
   of declarations, headers, blocks, statements, and conservative type and
   expression regions. Recovery is represented by explicit error nodes, while

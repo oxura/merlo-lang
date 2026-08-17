@@ -74,8 +74,13 @@ Their Surface signatures, HIR ownership/effects, move checks, and backend result
 types now share one declaration, while the proven `VecOperation`,
 `MapOperation`, and `BoxOperation` native lowerings remain explicit. Collection
 constructors, `Map.increment`, and several non-collection builtins still have
-type-directed rules outside the graph; this alpha does not claim that every
-builtin is generated from one declaration yet.
+type-directed rules outside the graph. The graph now also owns the supported
+`Bytes`/`BytesView`, `Text`/`TextView`, `TextBuilder`, and `Path.to_text`
+contracts, including view borrows, checked slicing/indexing, owned copies, and
+builder allocation effects. Length, capacity, and byte access retain the
+alpha compatibility rule that a numeric expected type may specialize their
+canonical `UInt64` result; ContractGraph records that rule explicitly. This
+alpha does not claim that every builtin is generated from one declaration yet.
 
 ## Ownership and runtime
 
