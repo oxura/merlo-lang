@@ -942,13 +942,13 @@ class _Elaborator:
         signature = CONTRACT_GRAPH.method(receiver_type or "", method)
         if signature is None or signature.static:
             return None
-        if len(expression.arguments) != signature.arity:
+        if not signature.accepts_arity(len(expression.arguments)):
             raise SurfaceElaborationError(
                 f"ArityMismatch: {receiver_type}.{method}"
             )
         for argument, parameter_type in zip(
             expression.arguments,
-            signature.parameters,
+            signature.parameters_for(len(expression.arguments)),
             strict=True,
         ):
             self._expression(argument.value, function, parameter_type)

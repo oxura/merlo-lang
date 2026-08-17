@@ -171,6 +171,22 @@ def test_binder_and_elaborator_contract_views_are_derived() -> None:
     assert map_insert.parameters == ("Text", "UInt64")
     assert map_insert.receiver_ownership == "borrow_mut"
     assert map_insert.operation_family == "map"
+    map_increment = CONTRACT_GRAPH.method(
+        "Map[Text,UInt64]",
+        "increment",
+    )
+    assert map_increment is not None
+    assert map_increment.parameters == ("Text", "UInt64")
+    assert map_increment.minimum_arity == 1
+    assert map_increment.accepts_arity(1)
+    assert map_increment.accepts_arity(2)
+    assert not map_increment.accepts_arity(0)
+    assert not map_increment.accepts_arity(3)
+    assert map_increment.parameters_for(1) == ("Text",)
+    assert map_increment.ownership_for(1) == ("borrow",)
+    assert map_increment.result_type == "Unit"
+    assert map_increment.receiver_ownership == "borrow_mut"
+    assert CONTRACT_GRAPH.method("Map[Text,Byte]", "increment") is None
     map_entries = CONTRACT_GRAPH.method(
         "Map[Text,UInt64]",
         "entries",
@@ -393,6 +409,34 @@ def test_contextual_numeric_method_results_remain_compatible() -> None:
         if node.attribute_map.get("contract_symbol") == "Text.len"
     )
     assert length.type_name == "Int64"
+
+
+def test_optional_map_increment_contract_drives_both_arities() -> None:
+    hir = compile_structured_hir(
+        "fn update(counts: Map[Text,UInt64], key: Text) -> Unit:\n"
+        "    counts.increment(key)\n"
+        "    counts.increment(key, 4)\n",
+        entry_function="update",
+    )
+    increments = [
+        node
+        for node in hir.function("update").walk()
+        if node.attribute_map.get("contract_symbol")
+        == "Map[Text,UInt64].increment"
+    ]
+    assert len(increments) == 2
+    assert {len(node.children) for node in increments} == {2, 3}
+    assert all(node.kind == "MapOperation" for node in increments)
+    assert all(node.type_name == "Unit" for node in increments)
+    assert all(node.attribute_map["receiver_ownership"] == "borrow_mut" for node in increments)
+    assert all(set(node.effects) == {"allocate", "copy", "may_fail"} for node in increments)
+
+    with pytest.raises(StructuredHIRCompileError, match="ArityMismatch.*increment"):
+        compile_structured_hir(
+            "fn bad(counts: Map[Text,UInt64], key: Text) -> Unit:\n"
+            "    counts.increment(key, 1, 2)\n",
+            entry_function="bad",
+        )
 
 
 def test_generic_predicates_lower_to_native_enum_tags(
