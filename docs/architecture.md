@@ -60,8 +60,9 @@ been removed. Flow and machine names, parameters, return boundaries, durability,
 and body delimiters now use retained header tokens too. `_Line` remains only as
 the block/trivia/span cursor. Flow step dispatch, parallel groups, machine
 states, initial states, invariants, and transitions also consume retained CST
-identities and tokens. Flow policy clause splitting is the next remaining
-line-decoding boundary.
+identities and tokens. Flow policies have their own retained CST regions, so
+their kinds, values, error types, and idempotency expressions are no longer
+rediscovered from reconstructed line text.
 Elaboration constraints, call binding, diagnostics, inference state, and
 native lowering have separate owners under `merlo/elaboration` and
 `merlo/frontend`.

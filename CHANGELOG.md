@@ -28,6 +28,9 @@
 - Routes flow-step and parallel dispatch plus machine states, initial states,
   invariants, and transitions through retained CST kinds and tokens, removing
   their line-regex grammar and validating transition topology structurally.
+- Gives every flow policy a retained CST region and decodes timeout, retry,
+  idempotency, compensation, and associated expression/type evidence without
+  regex suffix splitting or reconstructed line fragments.
 - Moves `Vec.new`, `Map.new`, `Box.new`, and `FileReader.lines` into the typed
   ContractGraph, including generic result inference, constructor effects,
   consuming Box payloads, resource borrows, and HIR/RIR lowering metadata.

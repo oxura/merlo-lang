@@ -711,9 +711,10 @@ def _header_parts(
         markers = _flow_policy_markers(texts, start=equals + 1)
         add("expression", equals + 1, markers[0] if markers else len(texts))
         for marker_index, marker in enumerate(markers):
+            end = markers[marker_index + 1] if marker_index + 1 < len(markers) else len(texts)
+            add("policy", marker, end)
             if texts[marker : marker + 2] != ["idempotent", "by"]:
                 continue
-            end = markers[marker_index + 1] if marker_index + 1 < len(markers) else len(texts)
             add("expression", marker + 2, end)
 
     texts = [token.text for token in significant]
