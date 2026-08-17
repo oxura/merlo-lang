@@ -879,26 +879,25 @@ class _Parser:
         line: _Line,
         anchor: SyntaxNode,
     ) -> SurfaceFlowStep:
-        match = re.fullmatch(
-            r"(?:(let|var)\s+)?([A-Za-z_]\w*)(?:\s*:\s*([^=]+))?\s*=\s*(.+)",
-            line.text,
-        )
-        if match is None:
+        assignment = self._cst_assignment_header(anchor, line)
+        if assignment is None:
             raise SurfaceSyntaxError("ExpectedFlowStep", line.text, _span(self.path, line))
-        kind, name, type_name, raw_value = match.groups()
-        value, policies = self._flow_policies(
-            raw_value,
+        _kind, name, operator, complex_target, has_type = assignment
+        if name is None or complex_target or operator != "=":
+            raise SurfaceSyntaxError("ExpectedFlowStep", line.text, _span(self.path, line))
+        expression_region = self._cst_expression_region(anchor, line)
+        _, policies = self._flow_policies(
+            self.cst.source[expression_region.start:anchor.children[0].end],
             line,
             anchor,
         )
-        del value
         return SurfaceFlowStep(
             _span(self.path, line), name,
             self._parse_cst_expression(anchor, line),
             self._cst_type_region(
                 anchor,
                 line,
-                expected=type_name is not None,
+                expected=has_type,
             ),
             policies,
         )
@@ -979,7 +978,15 @@ class _Parser:
                 break
             if line.indent != start.indent + 4:
                 raise SurfaceSyntaxError("InvalidIndentation", "flow body expected", _span(self.path, line))
-            if line.text == "parallel:":
+            member_anchor = self._statement_anchor(line)
+            if member_anchor.kind == "parallel":
+                parallel_tokens = self._retained_header_tokens(member_anchor)
+                if tuple(token.text for token in parallel_tokens) != ("parallel", ":"):
+                    raise SurfaceSyntaxError(
+                        "CSTStatementMismatch",
+                        "invalid retained parallel header",
+                        _span(self.path, line),
+                    )
                 parallel_start = line
                 self.index += 1
                 branches: list[SurfaceFlowStep] = []
@@ -1006,16 +1013,17 @@ class _Parser:
                     tuple(branches),
                 ))
                 continue
-            if re.match(r"(?:(?:let|var)\s+)?[A-Za-z_]\w*(?:\s*:\s*[^=]+)?\s*=", line.text):
+            assignment = self._cst_assignment_header(member_anchor, line)
+            if assignment is not None and assignment[1] is not None and assignment[2] == "=":
                 body.append(
                     self._flow_step(
                         line,
-                        self._statement_anchor(line),
+                        member_anchor,
                     )
                 )
                 self.index += 1
             else:
-                body.append(self._statement())
+                body.append(self._statement(member_anchor))
         end = self.lines[self.index - 1] if self.index else start
         return SurfaceFlow(
             _span(self.path, start, end_line=end), name, parameters,
@@ -1048,51 +1056,95 @@ class _Parser:
                 break
             if line.indent != start.indent + 4:
                 raise SurfaceSyntaxError("InvalidIndentation", "machine member expected", _span(self.path, line))
-            state_match = re.fullmatch(r"state\s+([A-Z]\w*)(?:\((.*)\))?", line.text)
-            if state_match:
-                state_anchor = self._statement_anchor(line, kind="state")
+            member_anchor = self._statement_anchor(line)
+            tokens = self._retained_header_tokens(member_anchor)
+            texts = tuple(token.text for token in tokens)
+            if member_anchor.kind == "state":
+                if (
+                    len(tokens) < 2
+                    or tokens[0].text != "state"
+                    or tokens[1].kind != "identifier"
+                    or not tokens[1].text[:1].isupper()
+                    or (len(tokens) > 2 and (tokens[2].text != "(" or tokens[-1].text != ")"))
+                ):
+                    raise SurfaceSyntaxError(
+                        "CSTStatementMismatch",
+                        "invalid retained machine state",
+                        _span(self.path, line),
+                    )
+                state_name = tokens[1].text
+                has_fields = len(tokens) > 2
                 fields = (
-                    self._cst_function_parameters(state_anchor, line)
-                    if state_match.group(2) is not None
+                    self._cst_function_parameters(member_anchor, line)
+                    if has_fields
                     else ()
                 )
                 if any(item.type_name is None for item in fields):
-                    raise SurfaceSyntaxError("StateFieldTypeRequired", state_match.group(1), _span(self.path, line))
+                    raise SurfaceSyntaxError("StateFieldTypeRequired", state_name, _span(self.path, line))
                 states.append(SurfaceState(
-                    _span(self.path, line), state_match.group(1),
+                    _span(self.path, line), state_name,
                     tuple(SurfaceField(item.span, item.name, item.type_name or "Inferred") for item in fields),
                 ))
                 self.index += 1
                 continue
-            initial_match = re.fullmatch(r"initial\s+([A-Z]\w*)", line.text)
-            if initial_match:
-                initial = initial_match.group(1)
+            if texts[:1] == ("initial",):
+                if (
+                    len(tokens) != 2
+                    or tokens[1].kind != "identifier"
+                    or not tokens[1].text[:1].isupper()
+                ):
+                    raise SurfaceSyntaxError(
+                        "CSTStatementMismatch",
+                        "invalid retained initial state",
+                        _span(self.path, line),
+                    )
+                initial = tokens[1].text
                 self.index += 1
                 continue
-            invariant_match = re.fullmatch(r"invariant\s+(.+)", line.text)
-            if invariant_match:
+            if member_anchor.kind == "invariant":
+                self._require_cst_expression_count(member_anchor, line, expected=1)
                 invariant = self._parse_cst_expression(
-                    self._statement_anchor(line, kind="invariant"),
+                    member_anchor,
                     line,
                 )
                 self.index += 1
                 continue
-            transition_match = re.fullmatch(
-                r"transition\s+([a-z_]\w*)\s+from\s+(.+?)\s*->\s*([A-Z]\w*)\s*:",
-                line.text,
-            )
-            if transition_match is None:
+            if member_anchor.kind != "transition":
                 raise SurfaceSyntaxError("ExpectedMachineMember", line.text, _span(self.path, line))
+            if (
+                len(tokens) < 7
+                or tokens[0].text != "transition"
+                or tokens[1].kind != "identifier"
+                or not (tokens[1].text[:1].islower() or tokens[1].text.startswith("_"))
+                or tokens[2].text != "from"
+                or texts[-4:-2] != ("-", ">")
+                or texts[-1] != ":"
+            ):
+                raise SurfaceSyntaxError(
+                    "CSTStatementMismatch",
+                    "invalid retained transition header",
+                    _span(self.path, line),
+                )
             transition_start = line
-            sources = tuple(item.strip() for item in transition_match.group(2).split("|"))
-            if not sources or any(re.fullmatch(r"[A-Z]\w*", item) is None for item in sources):
+            source_tokens = tokens[3:-4]
+            if not source_tokens or any(
+                (index % 2 == 0 and (
+                    token.kind != "identifier" or not token.text[:1].isupper()
+                ))
+                or (index % 2 == 1 and token.text != "|")
+                for index, token in enumerate(source_tokens)
+            ) or len(source_tokens) % 2 == 0:
                 raise SurfaceSyntaxError("InvalidTransitionSource", line.text, _span(self.path, line))
-            target = transition_match.group(3)
+            target_token = tokens[-2]
+            if target_token.kind != "identifier" or not target_token.text[:1].isupper():
+                raise SurfaceSyntaxError("InvalidTransitionTarget", line.text, _span(self.path, line))
+            sources = tuple(token.text for token in source_tokens[::2])
+            target = target_token.text
             self.index += 1
             body = self._block(line.indent + 4)
             transitions.append(SurfaceTransition(
                 _span(self.path, transition_start, end_line=self.lines[self.index - 1]),
-                transition_match.group(1), sources, target, body,
+                tokens[1].text, sources, target, body,
             ))
         if not states:
             raise SurfaceSyntaxError("EmptyMachine", name, _span(self.path, start))
@@ -1840,6 +1892,10 @@ class _Parser:
         )
         if not tokens:
             return "error"
+        if anchor.kind in {
+            "field", "parallel", "transition", "state", "initial", "compensate",
+        }:
+            return anchor.kind
         first = tokens[0].text
         if first in {
             "let", "return", "if", "elif", "else", "for", "while",
