@@ -59,6 +59,7 @@ class InstanceMethodSignature:
     operation_family: str | None = None
     contextual_numeric_result: bool = False
     optional_parameters: int = 0
+    fallback_result_type: str | None = None
 
     def __post_init__(self) -> None:
         if not self.parameter_ownership:
@@ -89,6 +90,7 @@ class InstanceMethodSignature:
             "map",
             "box",
             "bytes_text",
+            "resource",
         }:
             raise ValueError(
                 f"invalid operation family for {self.receiver_type}.{self.name}"
@@ -101,6 +103,11 @@ class InstanceMethodSignature:
         if not 0 <= self.optional_parameters <= len(self.parameters):
             raise ValueError(
                 f"invalid optional parameter count for "
+                f"{self.receiver_type}.{self.name}"
+            )
+        if self.fallback_result_type is not None and not self.static:
+            raise ValueError(
+                "fallback result type is only valid for static methods: "
                 f"{self.receiver_type}.{self.name}"
             )
 
@@ -216,6 +223,42 @@ INTRINSIC_SIGNATURES: Mapping[str, IntrinsicSignature] = MappingProxyType(
 
 
 _INSTANCE_METHOD_ROWS = (
+    InstanceMethodSignature(
+        "Vec",
+        "new",
+        (),
+        "Vec[T]",
+        result_ownership="owned",
+        effects=("allocate", "may_fail"),
+        static=True,
+        representation_lowering="vec_new",
+        operation_family="vec",
+        fallback_result_type="Vec[Inferred]",
+    ),
+    InstanceMethodSignature(
+        "Map",
+        "new",
+        (),
+        "Map[K,V]",
+        result_ownership="owned",
+        effects=("allocate", "may_fail"),
+        static=True,
+        representation_lowering="map_new",
+        operation_family="map",
+        fallback_result_type="Map[Text,UInt64]",
+    ),
+    InstanceMethodSignature(
+        "Box",
+        "new",
+        ("T",),
+        "Box[T]",
+        parameter_ownership=("consuming",),
+        result_ownership="owned",
+        effects=("allocate", "may_fail"),
+        static=True,
+        representation_lowering="box_new",
+        operation_family="box",
+    ),
     InstanceMethodSignature(
         "Text",
         "from_bytes",
@@ -442,7 +485,17 @@ _INSTANCE_METHOD_ROWS = (
         receiver_ownership="borrow_mut", effects=("allocate", "may_fail"),
         operation_family="bytes_text",
     ),
-    InstanceMethodSignature("FileReader", "lines", (), "FileLines", receiver_ownership="borrow_mut"),
+    InstanceMethodSignature(
+        "FileReader",
+        "lines",
+        (),
+        "FileLines",
+        result_ownership="borrow",
+        receiver_ownership="borrow_mut",
+        effects=("borrow",),
+        representation_lowering="file_lines",
+        operation_family="resource",
+    ),
     InstanceMethodSignature("FileLines", "count_text", (), "Text", result_ownership="owned", receiver_ownership="borrow_mut"),
     InstanceMethodSignature(
         "Option[T]",
@@ -780,6 +833,122 @@ class BuiltinContractGraph:
     ) -> InstanceMethodSignature | None:
         signature = self.method(receiver_type, name)
         return signature if signature is not None and signature.static else None
+
+    @staticmethod
+    def _bind_type_pattern(
+        pattern: str,
+        actual: str | None,
+        substitutions: dict[str, str],
+    ) -> bool:
+        if actual is None or actual == "Inferred":
+            return True
+        if (actual, pattern) in {
+            ("Bytes", "BytesView"),
+            ("Text", "TextView"),
+        }:
+            return True
+        if re.fullmatch(r"[A-Z]", pattern):
+            previous = substitutions.get(pattern)
+            if previous is not None and previous != actual:
+                return False
+            substitutions[pattern] = actual
+            return True
+        constructor, separator, _rest = pattern.partition("[")
+        if not separator:
+            return pattern == actual
+        pattern_parts = generic_parts(pattern, constructor)
+        actual_parts = generic_parts(
+            actual,
+            constructor,
+            arity=len(pattern_parts) if pattern_parts is not None else None,
+        )
+        if pattern_parts is None or actual_parts is None:
+            return False
+        return all(
+            BuiltinContractGraph._bind_type_pattern(
+                pattern_part,
+                actual_part,
+                substitutions,
+            )
+            for pattern_part, actual_part in zip(
+                pattern_parts,
+                actual_parts,
+                strict=True,
+            )
+        )
+
+    @staticmethod
+    def _instantiate_type_pattern(
+        pattern: str,
+        substitutions: Mapping[str, str],
+    ) -> str:
+        result = pattern
+        for variable, concrete in substitutions.items():
+            result = re.sub(
+                rf"\b{re.escape(variable)}\b",
+                concrete,
+                result,
+            )
+        return result
+
+    def resolve_static_method(
+        self,
+        receiver_type: str,
+        name: str,
+        argument_types: tuple[str | None, ...],
+        expected: str | None = None,
+    ) -> InstanceMethodSignature | None:
+        """Instantiate one static contract from arguments and result context.
+
+        A missing concrete substitution is accepted only when the contract
+        declares a deterministic fallback. This keeps `Map.new()` backwards
+        compatible, permits deferred `Vec.new()` inference, and leaves an
+        untyped `Box.new()` payload explicitly ambiguous.
+        """
+        signature = self.static_method(receiver_type, name)
+        if signature is None:
+            return None
+        if not signature.accepts_arity(len(argument_types)):
+            raise ValueError(
+                f"arity mismatch for {receiver_type}.{name}: "
+                f"{len(argument_types)}"
+            )
+        substitutions: dict[str, str] = {}
+        if expected is not None and not self._bind_type_pattern(
+            signature.result_type,
+            expected,
+            substitutions,
+        ):
+            raise ValueError(
+                f"result type mismatch for {receiver_type}.{name}: {expected}"
+            )
+        for parameter, actual in zip(
+            signature.parameters_for(len(argument_types)),
+            argument_types,
+            strict=True,
+        ):
+            if not self._bind_type_pattern(parameter, actual, substitutions):
+                raise ValueError(
+                    f"argument type mismatch for {receiver_type}.{name}: "
+                    f"{actual} does not match {parameter}"
+                )
+        parameters = tuple(
+            self._instantiate_type_pattern(parameter, substitutions)
+            for parameter in signature.parameters
+        )
+        result_type = self._instantiate_type_pattern(
+            signature.result_type,
+            substitutions,
+        )
+        if re.search(r"\b[A-Z]\b", result_type):
+            if signature.fallback_result_type is None:
+                return None
+            result_type = signature.fallback_result_type
+        return replace(
+            signature,
+            parameters=parameters,
+            result_type=result_type,
+        )
 
     def has_representation_method(self, name: str) -> bool:
         return any(

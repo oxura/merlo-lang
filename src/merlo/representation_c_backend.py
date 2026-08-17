@@ -4985,34 +4985,58 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 )
                 arguments = [] if payload_type is None else [self._move_expression(node.args[0], payload_type)]
                 return f"merlo_make_{_identifier(receiver_text)}_{method}({', '.join(arguments)})"
-            if receiver_text == "Vec" and method == "new":
+            static_contract = CONTRACT_GRAPH.resolve_static_method(
+                receiver_text,
+                method,
+                tuple(self._expression_type(argument) for argument in node.args),
+                expected,
+            )
+            static_lowering = (
+                static_contract.representation_lowering
+                if static_contract is not None
+                else None
+            )
+            if static_lowering == "vec_new":
                 if expected is None or not expected.startswith("Vec["):
-                    raise RepresentationCBackendError("Vec.new requires contextual monomorphized type")
+                    raise RepresentationCBackendError(
+                        "Vec.new requires contextual monomorphized type"
+                    )
                 return f"merlo_{_identifier(expected)}_new()"
-            if receiver_text == "Box" and method == "new":
-                if expected is None or not expected.startswith("Box["):
-                    raise RepresentationCBackendError("Box.new requires contextual monomorphized type")
-                payload_type = _generic(expected)[1]
-                return f"merlo_{_identifier(expected)}_new({self._move_expression(node.args[0], payload_type)})"
-            if receiver_text == "Map" and method == "new":
-                if _map_types(expected or "") is None:
+            if static_lowering == "box_new":
+                box_type = static_contract.result_type
+                if not box_type.startswith("Box[") or "Inferred" in box_type:
+                    raise RepresentationCBackendError(
+                        "Box.new requires contextual monomorphized type"
+                    )
+                payload_type = _generic(box_type)[1]
+                return (
+                    f"merlo_{_identifier(box_type)}_new("
+                    f"{self._move_expression(node.args[0], payload_type)})"
+                )
+            if static_lowering == "map_new":
+                map_type = static_contract.result_type
+                if _map_types(map_type) is None:
                     raise RepresentationCBackendError(
                         "Map.new requires a contextual concrete Map type"
                     )
-                return f"merlo_{_identifier(expected or '')}_new()"
-            if receiver_text == "Text" and method == "from_bytes":
+                return f"merlo_{_identifier(map_type)}_new()"
+            if static_contract is not None and static_contract.abi_lowering == (
+                "merlo_text_from_bytes"
+            ):
                 source = self._borrow_view_argument(
                     node.args[0], "BytesView", want_pointer=True
                 )
                 if source is None:
                     source = self._address_expression(node.args[0])
                 return (
-                    f"merlo_text_from_bytes({source}, "
+                    f"{static_contract.abi_lowering}({source}, "
                     f"{self._expression(node.args[1])}, "
                     f"{self._expression(node.args[2])})"
                 )
-            if receiver_text == "TextBuilder" and method == "new":
-                return "merlo_text_builder_new()"
+            if static_contract is not None and static_contract.abi_lowering == (
+                "merlo_text_builder_new"
+            ):
+                return f"{static_contract.abi_lowering}()"
             receiver_type = self._expression_type(node.func.value)
             method_contract = CONTRACT_GRAPH.method(
                 receiver_type or "",
@@ -5376,6 +5400,16 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 if receiver_text in self.descriptors and self.descriptors[receiver_text].kind == "enum":
                     return receiver_text
                 receiver_type = self._expression_type(node.func.value)
+                static_contract = CONTRACT_GRAPH.resolve_static_method(
+                    receiver_text,
+                    method,
+                    tuple(
+                        self._expression_type(argument)
+                        for argument in node.args
+                    ),
+                )
+                if static_contract is not None:
+                    return static_contract.result_type
                 method_contract = CONTRACT_GRAPH.method(
                     receiver_type or "",
                     method,
@@ -5410,12 +5444,6 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                                 host_error = current_parts[1]
                         return f"Result[{result_parts[0]},{host_error}]"
                     return signature.result_type
-                if method in {"contains", "contains_ascii_case_insensitive", "starts_with", "ends_with"}:
-                    return "Bool"
-                if receiver_type == "FileReader" and method == "lines":
-                    return "FileLines"
-                if receiver_text == "Map" and method == "new":
-                    return None
                 descriptor = self.descriptors.get(receiver_type or "")
                 if descriptor is not None and descriptor.kind == "enum":
                     variants = {
@@ -5427,39 +5455,8 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                             return "Bool"
                         if method == "unwrap":
                             return variants["Some"]
-                generic = _generic(receiver_type or "")
-                if generic and generic[0] in {"Vec", "Box"} and method in {"get", "get_mut"}:
-                    return generic[1]
-                map_types = _map_types(receiver_type or "")
-                if map_types is not None:
-                    if method == "get":
-                        return map_types[1]
-                    if method == "increment":
-                        return "UInt64"
-                    if method == "insert":
-                        return "Unit"
-                    if method == "entries":
-                        return f"Borrow[{receiver_type}]"
                 if method in {"len", "capacity", "byte", "tag"}:
                     return "UInt64"
-                if method in {"contains", "contains_ascii_case_insensitive"}:
-                    return "Bool"
-                if receiver_text == "Text" and method == "from_bytes":
-                    return "Text"
-                if receiver_type == "Path" and method == "to_text":
-                    return "Text"
-                if receiver_type == "Text" and method in {"as_view", "view"}:
-                    return "TextView"
-                if receiver_type == "Text" and method == "clone":
-                    return "Text"
-                if receiver_text == "TextBuilder" and method == "new":
-                    return "TextBuilder"
-                if receiver_type == "TextBuilder" and method == "finish":
-                    return "Text"
-                if receiver_type in {"Text", "TextView"} and method == "slice_bytes":
-                    return "TextView"
-                if receiver_type == "TextView" and method == "to_text":
-                    return "Text"
         if isinstance(node, (ast.Compare, ast.BoolOp)):
             return "Bool"
         if isinstance(node, ast.UnaryOp):
@@ -6016,9 +6013,16 @@ __MERLO_CAPS__
         }
         implementations.update(
             {
-                f"{receiver}.{method}": signature.abi_lowering
+                f"{receiver}.{method}": (
+                    signature.abi_lowering
+                    or signature.representation_lowering
+                )
                 for (receiver, method), signature in CONTRACT_GRAPH.methods.items()
-                if signature.static and signature.abi_lowering is not None
+                if signature.static
+                and (
+                    signature.abi_lowering is not None
+                    or signature.representation_lowering is not None
+                )
             }
         )
         present = {entry[0] for entry in normalized_entries}

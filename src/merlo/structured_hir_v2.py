@@ -818,37 +818,23 @@ class _OwnershipChecker:
                     method,
                 )
                 if static_signature is not None:
-                    return static_signature.result_type
+                    resolved_static = CONTRACT_GRAPH.resolve_static_method(
+                        receiver_text,
+                        method,
+                        tuple(self._expr_type(argument) for argument in node.args),
+                        expected,
+                    )
+                    return (
+                        resolved_static.result_type
+                        if resolved_static is not None
+                        else expected
+                    )
                 method_signature = CONTRACT_GRAPH.method(
                     receiver or "",
                     method,
                 )
                 if method_signature is not None:
                     return method_signature.result_for(expected)
-                if receiver_text == "Vec" and method == "new":
-                    return expected or "Vec[Inferred]"
-                if receiver_text == "Map" and method == "new":
-                    return expected or _DEFAULT_MAP
-                if receiver_text == "Box" and method == "new":
-                    return expected or "Box[Inferred]"
-                if method == "as_view" and receiver == "Text":
-                    return "TextView"
-                if method == "view" and receiver == "Bytes":
-                    return "BytesView"
-                if method == "view" and receiver and receiver.startswith("Vec["):
-                    return f"Borrow[{receiver}]"
-                if method in {"get", "get_mut"} and receiver:
-                    vec_parts = generic_parts(receiver, "Vec", arity=1)
-                    if vec_parts is not None:
-                        return vec_parts[0]
-                if method == "get" and (map_types := _map_types(receiver)) is not None:
-                    return map_types[1]
-                if method == "entries" and receiver and receiver.startswith("Map["):
-                    return f"Borrow[{receiver}]"
-                if method == "to_text" and receiver == "Path":
-                    return "Text"
-                if method == "finish" and receiver == "TextBuilder":
-                    return "Text"
         if isinstance(node, ast.Subscript):
             owner = self._expr_type(node.value)
             shape = collection_shape(owner)
@@ -959,13 +945,21 @@ class _OwnershipChecker:
                 if receiver_type is not None and method
                 else None
             )
+            if method_signature is None and method:
+                static_receiver = _ast_qualified_name(receiver)
+                static_signature = CONTRACT_GRAPH.static_method(
+                    static_receiver,
+                    method,
+                )
+                if static_signature is not None:
+                    method_signature = static_signature
             if method_signature is not None:
                 if not method_signature.accepts_arity(len(node.args)):
                     self._error(
                         "ArityMismatch",
                         f"{receiver_type}.{method}",
                     )
-                if receiver_root is not None:
+                if receiver_root is not None and not method_signature.static:
                     if method_signature.receiver_ownership == "borrow_mut":
                         self._check_mutation(receiver_root, state)
                     elif method_signature.receiver_ownership == "consuming":
@@ -1017,11 +1011,6 @@ class _OwnershipChecker:
                 element = vec_parts[0] if vec_parts is not None else None
                 if self._owner(element) and isinstance(node.args[0], ast.Name):
                     self._consume(node.args[0].id, state)
-            elif (receiver_text := _ast_qualified_name(receiver)) :
-                if receiver_text == "Box" and method == "new" and node.args:
-                    argument = node.args[0]
-                    if isinstance(argument, ast.Name) and self._owner(self._expr_type(argument)):
-                        self._consume(argument.id, state)
             result_type = self._expr_type(node, expected)
             self._borrow_result(node.func.value if receiver is not None else node, result_type, state)
             return result_type
@@ -1900,14 +1889,31 @@ class _HIRBuilder:
             method = node.func.attr
             callee = f"{receiver_text}.{method}"
             signature = intrinsic_signature(callee)
-            static_signature = CONTRACT_GRAPH.static_method(
+            static_contract = CONTRACT_GRAPH.static_method(
                 receiver_text,
                 method,
             )
+            static_signature = static_contract
+            if (
+                static_contract is not None
+                and static_contract.accepts_arity(len(arguments))
+            ):
+                try:
+                    static_signature = CONTRACT_GRAPH.resolve_static_method(
+                        receiver_text,
+                        method,
+                        tuple(argument.type_name for argument in arguments),
+                        expected,
+                    )
+                except ValueError as exc:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: "
+                        f"StaticContractMismatch: {callee}: {exc}"
+                    ) from exc
             if (
                 receiver_type is None
                 and signature is None
-                and static_signature is None
+                and static_contract is None
             ):
                 receiver_type = self.expression(
                     node.func.value
@@ -2070,7 +2076,12 @@ class _HIRBuilder:
                 raise StructuredHIRCompileError(
                     f"{self.path}:{node.lineno}: UnknownIntrinsic: {callee}"
                 )
-            elif static_signature is not None:
+            elif static_contract is not None:
+                if static_signature is None:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: "
+                        f"AmbiguousType: {callee}"
+                    )
                 if len(arguments) != static_signature.arity:
                     raise StructuredHIRCompileError(
                         f"{self.path}:{node.lineno}: {callee} expects "
@@ -2096,11 +2107,39 @@ class _HIRBuilder:
                             f"{index} expects {parameter_type}, got "
                             f"{argument.type_name}"
                         )
-                kind = "BytesTextOperation"
+                kind = {
+                    "vec": "VecOperation",
+                    "map": "MapOperation",
+                    "box": "BoxOperation",
+                }.get(
+                    static_signature.operation_family,
+                    "BytesTextOperation",
+                )
                 type_name = static_signature.result_type
                 ownership = static_signature.result_ownership
                 effects.update(static_signature.effects)
-                call_attributes["contract_symbol"] = callee
+                call_attributes.update(
+                    {
+                        "contract_symbol": callee,
+                        "parameter_ownership": list(
+                            static_signature.parameter_ownership
+                        ),
+                        "result_ownership": (
+                            static_signature.result_ownership
+                        ),
+                    }
+                )
+                if static_signature.operation_family is not None:
+                    call_attributes["operation_family"] = (
+                        static_signature.operation_family
+                    )
+                if static_signature.operation_family == "map":
+                    call_attributes.update(
+                        {
+                            "map_operation": method,
+                            "map_specialization": type_name,
+                        }
+                    )
                 if static_signature.abi_lowering is not None:
                     call_attributes["abi_lowering"] = (
                         static_signature.abi_lowering
@@ -2113,6 +2152,38 @@ class _HIRBuilder:
                     f"{self.path}:{node.lineno}: UnknownCall: "
                     f"{receiver_type or 'unresolved'}.{method}"
                 )
+            elif (
+                method_signature is not None
+                and method_signature.operation_family == "resource"
+            ):
+                receiver = self.expression(node.func.value)
+                kind = (
+                    "FileLines"
+                    if method_signature.representation_lowering == "file_lines"
+                    else "DirectCall"
+                )
+                type_name = method_signature.result_for(expected)
+                ownership = method_signature.result_ownership
+                effects.update(method_signature.effects)
+                operation_children = (receiver,) + arguments
+                call_attributes.update(
+                    {
+                        "contract_symbol": f"{receiver_type}.{method}",
+                        "representation_lowering": (
+                            method_signature.representation_lowering
+                        ),
+                        "resource": type_name,
+                        "borrowed_from": receiver_text,
+                    }
+                )
+            elif (
+                method_signature is not None
+                and method_signature.operation_family == "bytes_text"
+            ):
+                kind = "BytesTextOperation"
+                operation_children = (
+                    self.expression(node.func.value),
+                ) + arguments
             elif (
                 method_signature is not None
                 and method_signature.representation_lowering is not None
@@ -2155,23 +2226,12 @@ class _HIRBuilder:
                         ),
                     }
                 )
-            elif receiver_type == "FileReader" and method == "lines":
-                kind = "FileLines"
-                type_name = "FileLines"
-                ownership = "borrow"
-                effects.add("borrow")
-                operation_children = (self.expression(node.func.value),) + arguments
-                call_attributes.update({"resource": "FileLines", "borrowed_from": receiver_text})
-            elif receiver_text == "Map" or _map_types(receiver_type) is not None:
+            elif (
+                method_signature is not None
+                and method_signature.operation_family == "map"
+            ):
                 kind = "MapOperation"
-                static_call = receiver_text == "Map"
-                specialization = (
-                    expected
-                    if static_call and _map_types(expected) is not None
-                    else _DEFAULT_MAP
-                    if static_call
-                    else receiver_type
-                )
+                specialization = receiver_type
                 map_types = _map_types(specialization)
                 if map_types is None:
                     raise StructuredHIRCompileError(
@@ -2179,138 +2239,45 @@ class _HIRBuilder:
                         "a concrete specialization"
                     )
                 key_type, value_type = map_types
-                legacy_arities = {
-                    "new": {0},
-                }
-                contract_matches = (
-                    method_signature is not None
-                    and method_signature.operation_family == "map"
-                    and method_signature.accepts_arity(len(arguments))
-                )
-                legacy_matches = (
-                    method in legacy_arities
-                    and len(arguments) in legacy_arities[method]
-                )
-                if not contract_matches and not legacy_matches:
+                if not method_signature.accepts_arity(len(arguments)):
                     raise StructuredHIRCompileError(
                         f"{self.path}:{node.lineno}: unsupported Map operation "
                         f"{method}/{len(arguments)}"
-                    )
-                if static_call != (method == "new"):
-                    raise StructuredHIRCompileError(
-                        f"{self.path}:{node.lineno}: unsupported Map operation {name}"
                     )
                 if method == "increment" and value_type != "UInt64":
                     raise StructuredHIRCompileError(
                         f"{self.path}:{node.lineno}: Map.increment requires UInt64 values"
                     )
-                if not static_call:
-                    operation_children = (self.expression(node.func.value),) + arguments
-                    expected_types = (
-                        method_signature.parameters_for(len(arguments))
-                        if method_signature is not None
-                        else (key_type,)
-                    )
-                    for argument, expected_type in zip(arguments, expected_types):
-                        if argument.type_name not in {None, "Inferred", expected_type}:
-                            raise StructuredHIRCompileError(
-                                f"{self.path}:{node.lineno}: Map.{method} argument must be "
-                                f"{expected_type}, not {argument.type_name}"
-                            )
+                operation_children = (self.expression(node.func.value),) + arguments
+                expected_types = method_signature.parameters_for(len(arguments))
+                for argument, expected_type in zip(arguments, expected_types):
+                    if argument.type_name not in {None, "Inferred", expected_type}:
+                        raise StructuredHIRCompileError(
+                            f"{self.path}:{node.lineno}: Map.{method} argument must be "
+                            f"{expected_type}, not {argument.type_name}"
+                        )
                 call_attributes.update(
                     {"map_operation": method, "map_specialization": specialization}
                 )
-                if method_signature is not None:
-                    type_name = method_signature.result_for(expected)
-                    ownership = method_signature.result_ownership
-                    effects.update(method_signature.effects)
-                elif method == "new":
-                    type_name = specialization
-                    ownership = "owned"
-                    effects.update(("allocate", "may_fail"))
-                elif method == "insert":
-                    type_name = "Unit"
-                    effects.update(("allocate", "copy", "may_fail"))
-                elif method == "get":
-                    type_name = value_type
-                else:
-                    type_name = f"Borrow[{specialization}]"
-                    ownership = "borrow"
-            elif receiver_text == "Box" or (receiver_type or "").startswith("Box["):
+                type_name = method_signature.result_for(expected)
+                ownership = method_signature.result_ownership
+                effects.update(method_signature.effects)
+            elif (
+                method_signature is not None
+                and method_signature.operation_family == "box"
+            ):
                 kind = "BoxOperation"
-                if method == "new":
-                    effects.update(("allocate", "may_fail"))
-                    ownership = "owned"
-                    type_name = "Box[Inferred]"
-                elif (
-                    method_signature is not None
-                    and method_signature.operation_family == "box"
-                    and len(arguments) == method_signature.arity
-                ):
-                    type_name = method_signature.result_for(expected)
-                    ownership = method_signature.result_ownership
-                    effects.update(method_signature.effects)
-                else:
+                if not method_signature.accepts_arity(len(arguments)):
                     raise StructuredHIRCompileError(
                         f"{self.path}:{node.lineno}: unsupported Box operation "
                         f"{method}/{len(arguments)}"
                     )
-            elif receiver_type == "Path" and method == "to_text":
-                kind = "BytesTextOperation"
-                type_name = "Text"
-                ownership = "owned"
-                effects.update(("allocate", "copy", "may_fail"))
             elif (
-                receiver_text in {"Text", "TextBuilder"}
-                or receiver_type in {
-                    "Text",
-                    "TextBuilder",
-                    "Bytes",
-                    "BytesView",
-                    "TextView",
-                }
-                or method in {"append_byte", "append_scalar", "finish", "byte"}
-            ):
-                kind = "BytesTextOperation"
-                if method_signature is None:
-                    if receiver_type == "Bytes" and method == "view":
-                        type_name = "BytesView"
-                        ownership = "borrow"
-                    elif receiver_type == "Text" and method in {"as_view", "view"}:
-                        type_name = "TextView"
-                        ownership = "borrow"
-                    elif receiver_type == "Text" and method == "clone":
-                        type_name = "Text"
-                        ownership = "owned"
-                        effects.update(("allocate", "copy", "may_fail"))
-                    elif method == "finish":
-                        type_name = "Text"
-                        ownership = "owned"
-                    elif method == "byte":
-                        type_name = "UInt64"
-                        effects.add("bounds_check")
-                    elif method == "len":
-                        type_name = "UInt64"
-            elif (
-                receiver_text == "Vec"
-                or receiver_text.startswith("Vec[")
-                or (receiver_type or "").startswith("Vec[")
-                or method in {"push", "capacity", "get_mut", "view"}
+                method_signature is not None
+                and method_signature.operation_family == "vec"
             ):
                 kind = "VecOperation"
-                if method == "new":
-                    effects.update(("allocate", "may_fail"))
-                    type_name = "Vec[Inferred]"
-                    ownership = "owned"
-                elif (
-                    method_signature is not None
-                    and method_signature.operation_family == "vec"
-                    and len(arguments) == method_signature.arity
-                ):
-                    type_name = method_signature.result_for(expected)
-                    ownership = method_signature.result_ownership
-                    effects.update(method_signature.effects)
-                else:
+                if not method_signature.accepts_arity(len(arguments)):
                     raise StructuredHIRCompileError(
                         f"{self.path}:{node.lineno}: unsupported Vec operation "
                         f"{method}/{len(arguments)} for "
