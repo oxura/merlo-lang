@@ -11,7 +11,9 @@ from merlo.canonical_ast import CanonicalFunction, CanonicalProgram, CanonicalRe
 from merlo.frontend.file_syntax import parse_file_cst
 from merlo.surface_ast import (
     SourceSpan,
+    SurfaceAssignment,
     SurfaceBinary,
+    SurfaceBinding,
     SurfaceFunction,
     SurfaceImplicitReceiver,
     SurfaceName,
@@ -47,6 +49,26 @@ def test_parser_accepts_inferred_functions_with_exact_spans(
     assert function.span == SourceSpan(
         "sample.mlo", 1, 1, len(source.splitlines()), len(source.splitlines()[-1]) + 1
     )
+
+
+def test_statement_bindings_and_complex_assignments_decode_from_cst_tokens() -> None:
+    program = parse_surface(
+        "fn update(values: Vec[UInt64], index: UInt64) -> UInt64:\n"
+        "    let amount: UInt64 = (\n"
+        "        values[index] + 1\n"
+        "    )\n"
+        "    values[index] += amount\n"
+        "    return values[index]\n",
+        path="cst-statements.mlo",
+    )
+    function = program.declarations[0]
+    assert isinstance(function, SurfaceFunction)
+    binding, assignment, _returned = function.body
+    assert isinstance(binding, SurfaceBinding)
+    assert binding.name == "amount"
+    assert binding.type_name == "UInt64"
+    assert isinstance(assignment, SurfaceAssignment)
+    assert assignment.operator == "+="
 
 
 def test_surface_declarations_require_and_dispatch_through_cst_anchors(

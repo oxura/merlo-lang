@@ -47,8 +47,12 @@ line-fragment parameter parser. Record/machine invariants and implementation
 target types also consume CST regions. Flow step values and `idempotent by`
 policies have independent expression regions, eliminating production
 `source.find()` offset reconstruction and expression fragment re-lexing from
-the Surface parser. The transitional line parser still dispatches statement
-grammar and remains the next replacement boundary.
+the Surface parser. Statement dispatch (`for`, `if`, `while`, `match`, `case`,
+contracts, uses, print, return, bindings, and assignments) now follows retained
+CST kinds, tokens, and exact expression/type/pattern regions. Statement grammar
+is no longer selected or decoded by line regexes. `_Line` remains only as the
+transitional block/trivia/span cursor while declaration-header dispatch moves
+to the same retained-token model.
 Elaboration constraints, call binding, diagnostics, inference state, and
 native lowering have separate owners under `merlo/elaboration` and
 `merlo/frontend`.

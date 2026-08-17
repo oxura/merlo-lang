@@ -19,6 +19,9 @@
 - Adds the lossless full-file token/CST boundary and replaces the production
   CPython AST compatibility adapter with Merlo-owned native syntax nodes shared
   by HIR and the C backend.
+- Routes all production statement dispatch, binding/assignment decoding, and
+  expression/type/pattern spans through retained CST nodes, removing line-regex
+  statement grammar and the obsolete source/base-column fragment interface.
 - Moves `Vec.new`, `Map.new`, `Box.new`, and `FileReader.lines` into the typed
   ContractGraph, including generic result inference, constructor effects,
   consuming Box payloads, resource borrows, and HIR/RIR lowering metadata.
