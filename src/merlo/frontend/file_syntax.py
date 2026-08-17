@@ -383,7 +383,7 @@ _STATEMENT_KEYWORDS = frozenset(
     {
         "let", "return", "if", "elif", "else", "for", "while", "match",
         "case", "require", "ensure", "invariant", "uses", "parallel",
-        "compensate", "transition", "state", "goal", "modify", "preserve",
+        "compensate", "transition", "state", "initial", "goal", "modify", "preserve",
         "forbid", "yield", "break", "continue", "print", "pass", "var",
     }
 )

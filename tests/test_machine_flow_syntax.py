@@ -97,3 +97,33 @@ def test_flow_step_and_policy_expressions_consume_cst_regions(
         policy for policy in flow.body[0].policies if policy.kind == "idempotent"
     )
     assert idempotent.expression is not None
+
+
+def test_machine_members_are_decoded_from_retained_tokens() -> None:
+    machine = parse_surface(
+        "machine Job():\n"
+        "    state Idle\n"
+        "    state Running(value: Text)\n"
+        "    initial Idle\n"
+        "    invariant true\n"
+        "    transition start from Idle | Running -> Running:\n"
+        "        pass\n",
+        path="retained-machine.mlo",
+    ).declarations[0]
+
+    assert isinstance(machine, SurfaceMachine)
+    assert tuple(state.name for state in machine.states) == ("Idle", "Running")
+    assert machine.initial == "Idle"
+    assert machine.transitions[0].sources == ("Idle", "Running")
+    assert machine.transitions[0].target == "Running"
+
+
+def test_machine_transition_rejects_malformed_retained_source_list() -> None:
+    with pytest.raises(surface_parser_module.SurfaceSyntaxError, match="InvalidTransitionSource"):
+        parse_surface(
+            "machine Job():\n"
+            "    state Idle\n"
+            "    transition start from Idle | -> Idle:\n"
+            "        pass\n",
+            path="bad-transition.mlo",
+        )

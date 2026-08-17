@@ -29,6 +29,9 @@
   full typed signatures and body form from retained CST tokens and regions.
 - Moves top-level `flow` and `machine` headers to retained CST tokens, including
   names, typed parameters, return boundaries, durability, and body delimiters.
+- Routes flow-step and parallel dispatch plus machine states, initial states,
+  invariants, and transitions through retained CST kinds and tokens, removing
+  their line-regex grammar and validating transition topology structurally.
 - Moves `Vec.new`, `Map.new`, `Box.new`, and `FileReader.lines` into the typed
   ContractGraph, including generic result inference, constructor effects,
   consuming Box payloads, resource borrows, and HIR/RIR lowering metadata.
