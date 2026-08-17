@@ -24,6 +24,9 @@
   statement grammar and the obsolete source/base-column fragment interface.
 - Routes nominal declaration dispatch and record/enum member decoding through
   retained CST header tokens for records, enums, interfaces, and implementations.
+- Removes the transitional function-header regex: `fn`/`task`, inferred
+  functions, interface methods, and implementation methods now decode their
+  full typed signatures and body form from retained CST tokens and regions.
 - Moves `Vec.new`, `Map.new`, `Box.new`, and `FileReader.lines` into the typed
   ContractGraph, including generic result inference, constructor effects,
   consuming Box payloads, resource borrows, and HIR/RIR lowering metadata.

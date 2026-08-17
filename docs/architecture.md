@@ -52,9 +52,12 @@ contracts, uses, print, return, bindings, and assignments) now follows retained
 CST kinds, tokens, and exact expression/type/pattern regions. Statement grammar
 is no longer selected or decoded by line regexes. Nominal declarations
 (`record`, shorthand record, `enum`, `interface`, and `impl`) and their
-record/enum members also dispatch from retained header tokens. `_Line` remains
-as the transitional block/trivia/span cursor; function, flow, and machine
-header decoding are the next declaration boundaries.
+record/enum members also dispatch from retained header tokens. Function and
+task declarations, inferred functions, interface methods, and implementation
+methods now decode names, generics, parameters, return types, delimiters, and
+inline bodies from the same CST; the transitional function-header regex has
+been removed. `_Line` remains as the block/trivia/span cursor, while flow and
+machine headers are the next declaration boundaries.
 Elaboration constraints, call binding, diagnostics, inference state, and
 native lowering have separate owners under `merlo/elaboration` and
 `merlo/frontend`.
