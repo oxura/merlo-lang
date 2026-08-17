@@ -56,6 +56,7 @@ class InstanceMethodSignature:
     static: bool = False
     abi_lowering: str | None = None
     representation_lowering: str | None = None
+    operation_family: str | None = None
 
     def __post_init__(self) -> None:
         if not self.parameter_ownership:
@@ -79,6 +80,10 @@ class InstanceMethodSignature:
         if self.static and self.receiver_ownership != "borrow":
             raise ValueError(
                 f"static method cannot own a receiver: {self.receiver_type}.{self.name}"
+            )
+        if self.operation_family not in {None, "vec", "map", "box"}:
+            raise ValueError(
+                f"invalid operation family for {self.receiver_type}.{self.name}"
             )
 
     @property
@@ -267,6 +272,109 @@ _INSTANCE_METHOD_ROWS = (
         result_ownership="payload_clone",
         effects=("allocate", "copy", "may_fail"),
         representation_lowering="result_unwrap_err_clone",
+    ),
+    InstanceMethodSignature(
+        "Vec[T]",
+        "clone",
+        (),
+        "Vec[T]",
+        result_ownership="owned",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="vec",
+    ),
+    InstanceMethodSignature(
+        "Vec[T]",
+        "push",
+        ("T",),
+        "Unit",
+        parameter_ownership=("consuming",),
+        receiver_ownership="borrow_mut",
+        effects=("allocate", "may_fail"),
+        operation_family="vec",
+    ),
+    InstanceMethodSignature(
+        "Vec[T]",
+        "len",
+        (),
+        "UInt64",
+        operation_family="vec",
+    ),
+    InstanceMethodSignature(
+        "Vec[T]",
+        "capacity",
+        (),
+        "UInt64",
+        operation_family="vec",
+    ),
+    InstanceMethodSignature(
+        "Vec[T]",
+        "get",
+        ("UInt64",),
+        "T",
+        result_ownership="borrow",
+        effects=("bounds_check",),
+        operation_family="vec",
+    ),
+    InstanceMethodSignature(
+        "Vec[T]",
+        "get_mut",
+        ("UInt64",),
+        "T",
+        result_ownership="borrow_mut",
+        receiver_ownership="borrow_mut",
+        effects=("bounds_check",),
+        operation_family="vec",
+    ),
+    InstanceMethodSignature(
+        "Vec[T]",
+        "view",
+        (),
+        "Borrow[Vec[T]]",
+        result_ownership="borrow",
+        operation_family="vec",
+    ),
+    InstanceMethodSignature(
+        "Map[K,V]",
+        "insert",
+        ("K", "V"),
+        "Unit",
+        parameter_ownership=("borrow", "value"),
+        receiver_ownership="borrow_mut",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="map",
+    ),
+    InstanceMethodSignature(
+        "Map[K,V]",
+        "get",
+        ("K",),
+        "V",
+        parameter_ownership=("borrow",),
+        operation_family="map",
+    ),
+    InstanceMethodSignature(
+        "Map[K,V]",
+        "entries",
+        (),
+        "Borrow[Map[K,V]]",
+        result_ownership="borrow",
+        operation_family="map",
+    ),
+    InstanceMethodSignature(
+        "Box[T]",
+        "get",
+        (),
+        "T",
+        result_ownership="borrow",
+        operation_family="box",
+    ),
+    InstanceMethodSignature(
+        "Box[T]",
+        "get_mut",
+        (),
+        "T",
+        result_ownership="borrow_mut",
+        receiver_ownership="borrow_mut",
+        operation_family="box",
     ),
 )
 INSTANCE_METHOD_SIGNATURES: Mapping[

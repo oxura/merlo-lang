@@ -916,6 +916,43 @@ class _Elaborator:
             )
         return term
 
+    def _contract_method_call(
+        self,
+        expression: SurfaceCall,
+        function: _Function,
+    ) -> str | None:
+        """Elaborate a resolved instance method from the canonical graph.
+
+        Returning ``None`` preserves narrow inference fallbacks for calls such
+        as ``Vec.new().push(value)`` whose receiver is not concrete yet.
+        """
+        assert isinstance(expression.callee, SurfaceMember)
+        method = expression.callee.field
+        receiver_expression = expression.callee.receiver
+        if method not in INSTANCE_METHOD_NAMES:
+            return None
+        if (
+            isinstance(receiver_expression, SurfaceName)
+            and f"{receiver_expression.name}.{method}" in _HOST_CALLS
+        ):
+            return None
+        receiver = self._expression(receiver_expression, function)
+        receiver_type = self.types.concrete.get(self.types.find(receiver))
+        signature = CONTRACT_GRAPH.method(receiver_type or "", method)
+        if signature is None or signature.static:
+            return None
+        if len(expression.arguments) != signature.arity:
+            raise SurfaceElaborationError(
+                f"ArityMismatch: {receiver_type}.{method}"
+            )
+        for argument, parameter_type in zip(
+            expression.arguments,
+            signature.parameters,
+            strict=True,
+        ):
+            self._expression(argument.value, function, parameter_type)
+        return self.types.typed(signature.result_type)
+
     def _collection_call(
         self,
         expression: SurfaceCall,
@@ -1649,6 +1686,13 @@ class _Elaborator:
                             "AmbiguousType: Box.new"
                         )
                     term = self.types.typed(box_type)
+                elif (
+                    contract_term := self._contract_method_call(
+                        expression,
+                        function,
+                    )
+                ) is not None:
+                    term = contract_term
                 elif method in COLLECTION_OPERATIONS:
                     term = self._collection_call(expression, function, expected)
                     expected = None

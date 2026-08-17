@@ -68,9 +68,14 @@ manifest. The graph also resolves generic receiver patterns for the pure
 their inline representation lowering. `unwrap/unwrap_err` use the same generic
 contracts with borrow-and-clone semantics: copy payloads are read by value,
 owning payloads are deep-cloned, and a tag mismatch traps before inactive union
-storage is read. Generic collection operations still have type- and
-ownership-directed rules outside that graph; this alpha does not claim that
-every builtin is generated from one declaration yet.
+storage is read. The graph also instantiates the supported generic `Vec`
+clone/push/access/view, `Map` insert/get/entries, and `Box` access contracts.
+Their Surface signatures, HIR ownership/effects, move checks, and backend result
+types now share one declaration, while the proven `VecOperation`,
+`MapOperation`, and `BoxOperation` native lowerings remain explicit. Collection
+constructors, `Map.increment`, and several non-collection builtins still have
+type-directed rules outside the graph; this alpha does not claim that every
+builtin is generated from one declaration yet.
 
 ## Ownership and runtime
 

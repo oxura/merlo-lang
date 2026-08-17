@@ -5380,10 +5380,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     receiver_type or "",
                     method,
                 )
-                if (
-                    method_contract is not None
-                    and method_contract.representation_lowering is not None
-                ):
+                if method_contract is not None:
                     return method_contract.result_type
                 if method in COLLECTION_OPERATIONS:
                     shape = collection_shape(receiver_type)

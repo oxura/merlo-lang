@@ -110,6 +110,11 @@
   borrow-and-clone payload ownership. Owning payloads are deep-cloned instead
   of aliasing the enum storage, fixing a reproducible native double-free;
   incorrect variants now trap before reading inactive C union members.
+- Moves the generic `Vec` clone/push/access/view, `Map` insert/get/entries, and
+  `Box` access contracts into ContractGraph. Surface arity and type checking,
+  HIR result ownership and effects, ownership consumption, and backend result
+  inference now read the same instantiated contracts while retaining the
+  existing checked native operation families.
 - Replaces the flat declaration-only CST projection with a lossless hierarchy
   of declarations, headers, blocks, statements, and conservative type and
   expression regions. Recovery is represented by explicit error nodes, while

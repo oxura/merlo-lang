@@ -823,10 +823,7 @@ class _OwnershipChecker:
                     receiver or "",
                     method,
                 )
-                if (
-                    method_signature is not None
-                    and method_signature.representation_lowering is not None
-                ):
+                if method_signature is not None:
                     return method_signature.result_type
                 if receiver_text == "Vec" and method == "new":
                     return expected or "Vec[Inferred]"
@@ -1005,7 +1002,12 @@ class _OwnershipChecker:
                     if self._owner(parameter_type) and returned and isinstance(argument, ast.Name):
                         if isinstance(argument, ast.Name):
                             self._consume(argument.id, state)
-            elif receiver_root and method == "push" and node.args:
+            elif (
+                method_signature is None
+                and receiver_root
+                and method == "push"
+                and node.args
+            ):
                 vec_parts = generic_parts(receiver_type, "Vec", arity=1)
                 element = vec_parts[0] if vec_parts is not None else None
                 if self._owner(element) and isinstance(node.args[0], ast.Name):
@@ -1909,6 +1911,26 @@ class _HIRBuilder:
                 receiver_type or "",
                 method,
             )
+            if method_signature is not None and not method_signature.static:
+                call_attributes.update(
+                    {
+                        "contract_symbol": f"{receiver_type}.{method}",
+                        "receiver_ownership": (
+                            method_signature.receiver_ownership
+                        ),
+                        "result_ownership": (
+                            method_signature.result_ownership
+                        ),
+                    }
+                )
+                if method_signature.operation_family is not None:
+                    call_attributes["operation_family"] = (
+                        method_signature.operation_family
+                    )
+                if method_signature.representation_lowering is None:
+                    type_name = method_signature.result_type
+                    ownership = method_signature.result_ownership
+                    effects.update(method_signature.effects)
             if method in COLLECTION_OPERATIONS:
                 receiver = self.expression(node.func.value)
                 receiver_type = receiver.type_name or receiver_type
@@ -2151,14 +2173,20 @@ class _HIRBuilder:
                         "a concrete specialization"
                     )
                 key_type, value_type = map_types
-                arities = {
+                legacy_arities = {
                     "new": {0},
                     "increment": {1, 2},
-                    "get": {1},
-                    "insert": {2},
-                    "entries": {0},
                 }
-                if method not in arities or len(arguments) not in arities[method]:
+                contract_matches = (
+                    method_signature is not None
+                    and method_signature.operation_family == "map"
+                    and len(arguments) == method_signature.arity
+                )
+                legacy_matches = (
+                    method in legacy_arities
+                    and len(arguments) in legacy_arities[method]
+                )
+                if not contract_matches and not legacy_matches:
                     raise StructuredHIRCompileError(
                         f"{self.path}:{node.lineno}: unsupported Map operation "
                         f"{method}/{len(arguments)}"
@@ -2174,8 +2202,8 @@ class _HIRBuilder:
                 if not static_call:
                     operation_children = (self.expression(node.func.value),) + arguments
                     expected_types = (
-                        (key_type, value_type)
-                        if method == "insert"
+                        method_signature.parameters
+                        if method_signature is not None
                         else (key_type, "UInt64")
                         if method == "increment" and len(arguments) == 2
                         else (key_type,)
@@ -2189,7 +2217,11 @@ class _HIRBuilder:
                 call_attributes.update(
                     {"map_operation": method, "map_specialization": specialization}
                 )
-                if method == "new":
+                if method_signature is not None:
+                    type_name = method_signature.result_type
+                    ownership = method_signature.result_ownership
+                    effects.update(method_signature.effects)
+                elif method == "new":
                     type_name = specialization
                     ownership = "owned"
                     effects.update(("allocate", "may_fail"))
@@ -2206,14 +2238,23 @@ class _HIRBuilder:
                     ownership = "borrow"
             elif receiver_text == "Box" or (receiver_type or "").startswith("Box["):
                 kind = "BoxOperation"
-                effects.update({"allocate", "may_fail"} if method == "new" else set())
-                ownership = "owned" if method == "new" else "borrow"
                 if method == "new":
+                    effects.update(("allocate", "may_fail"))
+                    ownership = "owned"
                     type_name = "Box[Inferred]"
-                elif receiver_type and method in {"get", "get_mut"}:
-                    box_parts = generic_parts(receiver_type, "Box", arity=1)
-                    if box_parts is not None:
-                        type_name = box_parts[0]
+                elif (
+                    method_signature is not None
+                    and method_signature.operation_family == "box"
+                    and len(arguments) == method_signature.arity
+                ):
+                    type_name = method_signature.result_type
+                    ownership = method_signature.result_ownership
+                    effects.update(method_signature.effects)
+                else:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: unsupported Box operation "
+                        f"{method}/{len(arguments)}"
+                    )
             elif receiver_type == "Path" and method == "to_text":
                 kind = "BytesTextOperation"
                 type_name = "Text"
@@ -2256,20 +2297,24 @@ class _HIRBuilder:
                 or method in {"push", "capacity", "get_mut", "view"}
             ):
                 kind = "VecOperation"
-                effects.update({"allocate", "may_fail"} if method in {"new", "push"} else {"bounds_check"} if method in {"get", "get_mut"} else set())
                 if method == "new":
+                    effects.update(("allocate", "may_fail"))
                     type_name = "Vec[Inferred]"
                     ownership = "owned"
-                elif method in {"len", "capacity"}:
-                    type_name = "UInt64"
-                elif method == "view":
-                    type_name = "Borrow[Inferred]"
-                    ownership = "borrow"
-                elif receiver_type and method in {"get", "get_mut"}:
-                    vec_parts = generic_parts(receiver_type, "Vec", arity=1)
-                    if vec_parts is not None:
-                        type_name = vec_parts[0]
-                    ownership = "borrow_mut" if method == "get_mut" else "borrow"
+                elif (
+                    method_signature is not None
+                    and method_signature.operation_family == "vec"
+                    and len(arguments) == method_signature.arity
+                ):
+                    type_name = method_signature.result_type
+                    ownership = method_signature.result_ownership
+                    effects.update(method_signature.effects)
+                else:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: unsupported Vec operation "
+                        f"{method}/{len(arguments)} for "
+                        f"{receiver_type or 'unresolved'}"
+                    )
             elif receiver_text in self.types and self.types[receiver_text].kind == "enum":
                 kind = "EnumConstruct"
                 type_name = receiver_text
