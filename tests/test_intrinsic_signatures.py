@@ -112,6 +112,48 @@ def test_binder_and_elaborator_contract_views_are_derived() -> None:
     assert CONTRACT_GRAPH.abi_lowering("TextBuilder.new") == (
         "merlo_text_builder_new"
     )
+    vec_new = CONTRACT_GRAPH.resolve_static_method(
+        "Vec",
+        "new",
+        (),
+        "Vec[Text]",
+    )
+    assert vec_new is not None
+    assert vec_new.result_type == "Vec[Text]"
+    assert vec_new.operation_family == "vec"
+    assert vec_new.result_ownership == "owned"
+    assert vec_new.effects == ("allocate", "may_fail")
+    inferred_vec_new = CONTRACT_GRAPH.resolve_static_method(
+        "Vec",
+        "new",
+        (),
+    )
+    assert inferred_vec_new is not None
+    assert inferred_vec_new.result_type == "Vec[Inferred]"
+    map_new = CONTRACT_GRAPH.resolve_static_method(
+        "Map",
+        "new",
+        (),
+        "Map[Text,Byte]",
+    )
+    assert map_new is not None
+    assert map_new.result_type == "Map[Text,Byte]"
+    default_map_new = CONTRACT_GRAPH.resolve_static_method(
+        "Map",
+        "new",
+        (),
+    )
+    assert default_map_new is not None
+    assert default_map_new.result_type == "Map[Text,UInt64]"
+    box_new = CONTRACT_GRAPH.resolve_static_method(
+        "Box",
+        "new",
+        ("Text",),
+    )
+    assert box_new is not None
+    assert box_new.parameters == ("Text",)
+    assert box_new.parameter_ownership == ("consuming",)
+    assert box_new.result_type == "Box[Text]"
     option_predicate = CONTRACT_GRAPH.method(
         "Option[Text]",
         "is_some",
@@ -344,6 +386,22 @@ def test_collection_contracts_drive_hir_types_ownership_and_effects() -> None:
     assert box_get.type_name == "Byte"
     assert box_get.ownership == "borrow"
 
+    vec_new = operations["Vec.new"]
+    assert vec_new.kind == "VecOperation"
+    assert vec_new.type_name == "Vec[Byte]"
+    assert vec_new.ownership == "owned"
+    assert set(vec_new.effects) == {"allocate", "may_fail"}
+
+    map_new = operations["Map.new"]
+    assert map_new.kind == "MapOperation"
+    assert map_new.type_name == "Map[Text,Byte]"
+    assert map_new.attribute_map["map_specialization"] == "Map[Text,Byte]"
+
+    box_new = operations["Box.new"]
+    assert box_new.kind == "BoxOperation"
+    assert box_new.type_name == "Box[Byte]"
+    assert box_new.attribute_map["result_ownership"] == "owned"
+
 
 def test_vec_push_consumes_an_owned_element() -> None:
     with pytest.raises(StructuredHIRCompileError, match="UseAfterMove: text"):
@@ -351,6 +409,16 @@ def test_vec_push_consumes_an_owned_element() -> None:
             "fn bad(text: Text) -> UInt64:\n"
             "    let values: Vec[Text] = Vec.new()\n"
             "    values.push(text)\n"
+            "    return text.len()\n",
+            entry_function="bad",
+        )
+
+
+def test_box_new_consumes_an_owned_payload() -> None:
+    with pytest.raises(StructuredHIRCompileError, match="UseAfterMove: text"):
+        compile_structured_hir(
+            "fn bad(text: Text) -> UInt64:\n"
+            "    let boxed: Box[Text] = Box.new(text)\n"
             "    return text.len()\n",
             entry_function="bad",
         )

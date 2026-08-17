@@ -73,16 +73,21 @@ clone/push/access/view, `Map` insert/get/entries, and `Box` access contracts.
 Their Surface signatures, HIR ownership/effects, move checks, and backend result
 types now share one declaration, while the proven `VecOperation`,
 `MapOperation`, and `BoxOperation` native lowerings remain explicit. Collection
-constructors and several non-collection builtins still have type-directed
-rules outside the graph. `Map[K,UInt64].increment` is contract-owned with an
-optional amount parameter; generic receiver matching distinguishes symbolic
-type variables from fixed type arguments. The graph now also owns the supported
+constructors `Vec.new`, `Map.new`, and `Box.new` now use the same generic static
+resolver. It combines argument types and expected result context, keeps the
+documented default `Map[Text,UInt64]`, permits deferred `Vec` inference, and
+marks an owning `Box` payload as consumed. `Map[K,UInt64].increment` is
+contract-owned with an optional amount parameter; generic receiver matching
+distinguishes symbolic type variables from fixed type arguments. The graph
+also owns `FileReader.lines`, including its mutable receiver borrow, borrowed
+result, HIR resource identity, and Representation IR lowering. It owns the supported
 `Bytes`/`BytesView`, `Text`/`TextView`, `TextBuilder`, and `Path.to_text`
 contracts, including view borrows, checked slicing/indexing, owned copies, and
 builder allocation effects. Length, capacity, and byte access retain the
 alpha compatibility rule that a numeric expected type may specialize their
 canonical `UInt64` result; ContractGraph records that rule explicitly. This
-alpha does not claim that every builtin is generated from one declaration yet.
+alpha does not claim that every builtin or user-defined operation is generated
+from one declaration yet.
 
 ## Ownership and runtime
 

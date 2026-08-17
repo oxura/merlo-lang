@@ -19,6 +19,9 @@
 - Adds the lossless full-file token/CST boundary and replaces the production
   CPython AST compatibility adapter with Merlo-owned native syntax nodes shared
   by HIR and the C backend.
+- Moves `Vec.new`, `Map.new`, `Box.new`, and `FileReader.lines` into the typed
+  ContractGraph, including generic result inference, constructor effects,
+  consuming Box payloads, resource borrows, and HIR/RIR lowering metadata.
 - Replaces `Vec`-specific transform lowering with one General collection
   protocol for `Vec`, fixed `Array`, `Slice`, borrowed vectors, bytes, and text;
   indexing, iteration, `where`, `map`, and `count` now share typed HIR and
