@@ -740,7 +740,13 @@ class _Parser:
     def _declaration(self, anchor: SyntaxNode) -> SurfaceDeclaration:
         line = self.lines[self.index]
         raw = line.text
-        exported = bool(re.match(r"export\s+", raw))
+        retained_tokens = list(self._retained_header_tokens(anchor))
+        exported = bool(
+            retained_tokens and retained_tokens[0].text == "export"
+        )
+        if exported:
+            retained_tokens.pop(0)
+        retained_texts = tuple(token.text for token in retained_tokens)
         raw = re.sub(r"^export\s+", "", raw)
         kind = anchor.kind
         if kind == "flow":
@@ -755,35 +761,79 @@ class _Parser:
             if match:
                 return self._machine(match, exported, anchor)
         elif kind == "interface":
-            match = re.fullmatch(r"interface\s+([A-Z]\w*)\s*:", raw)
-            if match:
-                return self._interface(match.group(1), exported)
+            name = self._nominal_declaration_name(
+                retained_tokens,
+                line,
+                keyword="interface",
+            )
+            return self._interface(name, exported)
         elif kind == "impl":
-            match = re.fullmatch(r"impl\s+([A-Z]\w*)\s+for\s+(.+)\s*:", raw)
-            if match:
-                if exported:
-                    raise SurfaceSyntaxError("ExportedImplementationForbidden", raw, _span(self.path, line))
-                return self._implementation(match.group(1), anchor)
+            if (
+                len(retained_tokens) < 5
+                or retained_texts[0] != "impl"
+                or retained_tokens[1].kind != "identifier"
+                or retained_texts[2] != "for"
+                or retained_texts[-1] != ":"
+            ):
+                raise SurfaceSyntaxError(
+                    "CSTDeclarationMismatch",
+                    "invalid retained implementation header",
+                    _span(self.path, line),
+                )
+            if exported:
+                raise SurfaceSyntaxError("ExportedImplementationForbidden", raw, _span(self.path, line))
+            return self._implementation(retained_texts[1], anchor)
         elif kind == "enum":
-            match = re.fullmatch(r"enum\s+([A-Z]\w*)\s*:", raw)
-            if match:
-                return self._enum(match.group(1), exported)
+            name = self._nominal_declaration_name(
+                retained_tokens,
+                line,
+                keyword="enum",
+            )
+            return self._enum(name, exported)
         elif kind == "record":
-            match = re.fullmatch(r"record\s+([A-Z]\w*)\s*:", raw)
-            if match:
-                return self._record(match.group(1), exported)
+            name = self._nominal_declaration_name(
+                retained_tokens,
+                line,
+                keyword="record",
+            )
+            return self._record(name, exported)
         elif kind in {"fn", "task"}:
             match = _FUNCTION_HEADER.fullmatch(raw)
             if match:
                 return self._function(match, exported, anchor)
         elif kind == "statement":
-            record_match = re.fullmatch(r"([A-Z]\w*)\s*:", raw)
-            if record_match:
-                return self._record(record_match.group(1), exported)
+            if (
+                len(retained_tokens) == 2
+                and retained_tokens[0].kind == "identifier"
+                and retained_tokens[0].text[:1].isupper()
+                and retained_texts[1] == ":"
+            ):
+                return self._record(retained_texts[0], exported)
             function_match = _FUNCTION_HEADER.fullmatch(raw)
             if function_match:
                 return self._function(function_match, exported, anchor)
         raise SurfaceSyntaxError("ExpectedDeclaration", raw, _span(self.path, line))
+
+    def _nominal_declaration_name(
+        self,
+        tokens: list[FileToken],
+        line: _Line,
+        *,
+        keyword: str,
+    ) -> str:
+        if (
+            len(tokens) != 3
+            or tokens[0].text != keyword
+            or tokens[1].kind != "identifier"
+            or not tokens[1].text[:1].isupper()
+            or tokens[2].text != ":"
+        ):
+            raise SurfaceSyntaxError(
+                "CSTDeclarationMismatch",
+                f"invalid retained {keyword} declaration header",
+                _span(self.path, line),
+            )
+        return tokens[1].text
 
     def _flow_policies(
         self,
@@ -1177,37 +1227,48 @@ class _Parser:
                     "record field or invariant expected",
                     _span(self.path, line),
                 )
-            if match := re.fullmatch(r"invariant\s+(.+)", line.text):
+            member_anchor = self._statement_anchor(line)
+            if member_anchor.kind == "invariant":
                 invariants.append(
                     SurfaceInvariant(
                         _span(self.path, line),
                         self._parse_cst_expression(
-                            self._statement_anchor(line, kind="invariant"),
+                            member_anchor,
                             line,
                         ),
                     )
                 )
                 self.index += 1
                 continue
-            match = re.fullmatch(r"([A-Za-z_]\w*)\s*:\s*(.+)", line.text)
-            if match is None:
+            if member_anchor.kind != "field":
                 raise SurfaceSyntaxError(
                     "ExpectedRecordFieldOrInvariant",
                     line.text,
                     _span(self.path, line),
                 )
             if invariants:
+                field_tokens = self._retained_header_tokens(member_anchor)
                 raise SurfaceSyntaxError(
                     "RecordFieldAfterInvariant",
-                    match.group(1),
+                    field_tokens[0].text if field_tokens else line.text,
                     _span(self.path, line),
                 )
-            anchor = self._statement_anchor(line, kind="field")
+            field_tokens = self._retained_header_tokens(member_anchor)
+            if not field_tokens or field_tokens[0].kind != "identifier":
+                raise SurfaceSyntaxError(
+                    "CSTStatementMismatch",
+                    "record field has no retained identifier",
+                    _span(self.path, line),
+                )
             fields.append(
                 SurfaceField(
                     _span(self.path, line),
-                    match.group(1),
-                    self._cst_type_region(anchor, line, expected=True) or "",
+                    field_tokens[0].text,
+                    self._cst_type_region(
+                        member_anchor,
+                        line,
+                        expected=True,
+                    ) or "",
                 )
             )
             self.index += 1
@@ -1232,20 +1293,36 @@ class _Parser:
                 continue
             if line.indent <= start.indent:
                 break
-            match = re.fullmatch(r"([A-Z]\w*)(?:\s*:\s*(.+))?", line.text)
-            if line.indent != start.indent + 4 or match is None:
+            if line.indent != start.indent + 4:
                 raise SurfaceSyntaxError("ExpectedEnumVariant", line.text, _span(self.path, line))
             anchor = self._statement_anchor(
                 line,
-                kind="field" if match.group(2) is not None else "expression_statement",
             )
+            tokens = self._retained_header_tokens(anchor)
+            has_payload = anchor.kind == "field"
+            if (
+                anchor.kind not in {"field", "expression_statement"}
+                or not tokens
+                or tokens[0].kind != "identifier"
+                or not tokens[0].text[:1].isupper()
+                or (
+                    has_payload
+                    and (len(tokens) < 3 or tokens[1].text != ":")
+                )
+                or (not has_payload and len(tokens) != 1)
+            ):
+                raise SurfaceSyntaxError(
+                    "ExpectedEnumVariant",
+                    line.text,
+                    _span(self.path, line),
+                )
             variants.append(SurfaceEnumVariant(
                 _span(self.path, line),
-                match.group(1),
+                tokens[0].text,
                 self._cst_type_region(
                     anchor,
                     line,
-                    expected=match.group(2) is not None,
+                    expected=has_payload,
                 ),
             ))
             self.index += 1
@@ -1606,7 +1683,7 @@ class _Parser:
         first = tokens[0].text
         if first in {
             "let", "return", "if", "elif", "else", "for", "while",
-            "match", "case", "require", "ensure", "uses", "break",
+            "match", "case", "require", "ensure", "invariant", "uses", "break",
             "continue", "yield", "print", "pass", "var",
         }:
             return first

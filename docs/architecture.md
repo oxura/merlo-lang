@@ -50,9 +50,11 @@ policies have independent expression regions, eliminating production
 the Surface parser. Statement dispatch (`for`, `if`, `while`, `match`, `case`,
 contracts, uses, print, return, bindings, and assignments) now follows retained
 CST kinds, tokens, and exact expression/type/pattern regions. Statement grammar
-is no longer selected or decoded by line regexes. `_Line` remains only as the
-transitional block/trivia/span cursor while declaration-header dispatch moves
-to the same retained-token model.
+is no longer selected or decoded by line regexes. Nominal declarations
+(`record`, shorthand record, `enum`, `interface`, and `impl`) and their
+record/enum members also dispatch from retained header tokens. `_Line` remains
+as the transitional block/trivia/span cursor; function, flow, and machine
+header decoding are the next declaration boundaries.
 Elaboration constraints, call binding, diagnostics, inference state, and
 native lowering have separate owners under `merlo/elaboration` and
 `merlo/frontend`.

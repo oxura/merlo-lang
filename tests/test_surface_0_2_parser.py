@@ -92,7 +92,7 @@ def test_surface_declarations_require_and_dispatch_through_cst_anchors(
         "parse_file_cst",
         lambda _source, *, path: wrong_dispatch,
     )
-    with pytest.raises(SurfaceSyntaxError, match="ExpectedDeclaration"):
+    with pytest.raises(SurfaceSyntaxError, match="CSTDeclarationMismatch"):
         parse_surface(source, path="anchored.mlo")
 
 
