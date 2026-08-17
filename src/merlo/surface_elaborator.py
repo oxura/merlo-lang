@@ -920,6 +920,7 @@ class _Elaborator:
         self,
         expression: SurfaceCall,
         function: _Function,
+        expected: str | None,
     ) -> str | None:
         """Elaborate a resolved instance method from the canonical graph.
 
@@ -951,7 +952,7 @@ class _Elaborator:
             strict=True,
         ):
             self._expression(argument.value, function, parameter_type)
-        return self.types.typed(signature.result_type)
+        return self.types.typed(signature.result_for(expected))
 
     def _collection_call(
         self,
@@ -1690,6 +1691,7 @@ class _Elaborator:
                     contract_term := self._contract_method_call(
                         expression,
                         function,
+                        expected,
                     )
                 ) is not None:
                     term = contract_term

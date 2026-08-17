@@ -182,6 +182,30 @@ def test_binder_and_elaborator_contract_views_are_derived() -> None:
     assert box_get.result_type == "Text"
     assert box_get.result_ownership == "borrow"
     assert CONTRACT_GRAPH.method("Map[Text,UInt64]", "push") is None
+    bytes_view = CONTRACT_GRAPH.method("Bytes", "view")
+    assert bytes_view is not None
+    assert bytes_view.result_type == "BytesView"
+    assert bytes_view.result_ownership == "borrow"
+    assert bytes_view.operation_family == "bytes_text"
+    text_slice = CONTRACT_GRAPH.method("TextView", "slice_bytes")
+    assert text_slice is not None
+    assert text_slice.parameters == ("UInt64", "UInt64")
+    assert text_slice.result_ownership == "borrow"
+    assert text_slice.effects == ("bounds_check",)
+    text_copy = CONTRACT_GRAPH.method("TextView", "to_text")
+    assert text_copy is not None
+    assert text_copy.result_ownership == "owned"
+    assert text_copy.effects == ("allocate", "copy", "may_fail")
+    append_text = CONTRACT_GRAPH.method("TextBuilder", "append_text")
+    assert append_text is not None
+    assert append_text.receiver_ownership == "borrow_mut"
+    assert append_text.parameter_ownership == ("borrow",)
+    assert append_text.effects == ("allocate", "copy", "may_fail")
+    text_len = CONTRACT_GRAPH.method("Text", "len")
+    assert text_len is not None
+    assert text_len.result_type == "UInt64"
+    assert text_len.result_for("Int64") == "Int64"
+    assert text_len.result_for("Bool") == "UInt64"
 
 
 def test_static_contracts_drive_hir_type_ownership_effects_and_abi() -> None:
@@ -314,6 +338,61 @@ def test_vec_push_consumes_an_owned_element() -> None:
             "    return text.len()\n",
             entry_function="bad",
         )
+
+
+def test_bytes_and_text_contracts_drive_hir_metadata() -> None:
+    hir = compile_structured_hir(
+        "fn inspect(data: Bytes, view: BytesView, text: Text, "
+        "text_view: TextView) -> Text:\n"
+        "    let data_view: BytesView = data.view()\n"
+        "    let copied: Text = data.to_text()\n"
+        "    let slice: BytesView = view.slice(0, view.len())\n"
+        "    let text_slice: TextView = text.slice_bytes(0, text.len())\n"
+        "    let byte: UInt64 = text_view.byte(0)\n"
+        "    let builder: TextBuilder = TextBuilder.new()\n"
+        "    builder.append_text(copied)\n"
+        "    builder.append_byte(byte)\n"
+        "    return builder.finish()\n",
+        entry_function="inspect",
+    )
+    operations = {
+        node.attribute_map.get("contract_symbol"): node
+        for function in hir.functions
+        for node in function.walk()
+        if node.attribute_map.get("operation_family") == "bytes_text"
+    }
+
+    assert operations["Bytes.view"].ownership == "borrow"
+    assert operations["Bytes.to_text"].ownership == "owned"
+    assert set(operations["Bytes.to_text"].effects) == {
+        "allocate",
+        "copy",
+        "may_fail",
+    }
+    assert operations["BytesView.slice"].ownership == "borrow"
+    assert operations["BytesView.slice"].effects == ("bounds_check",)
+    assert operations["Text.slice_bytes"].ownership == "borrow"
+    assert operations["TextView.byte"].effects == ("bounds_check",)
+    assert set(operations["TextBuilder.append_text"].effects) == {
+        "allocate",
+        "copy",
+        "may_fail",
+    }
+    assert operations["TextBuilder.finish"].ownership == "owned"
+
+
+def test_contextual_numeric_method_results_remain_compatible() -> None:
+    hir = compile_structured_hir(
+        "fn size(text: Text) -> Int64:\n"
+        "    return text.len()\n",
+        entry_function="size",
+    )
+    length = next(
+        node
+        for node in hir.function("size").walk()
+        if node.attribute_map.get("contract_symbol") == "Text.len"
+    )
+    assert length.type_name == "Int64"
 
 
 def test_generic_predicates_lower_to_native_enum_tags(

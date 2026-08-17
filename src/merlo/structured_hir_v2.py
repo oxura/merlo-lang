@@ -824,7 +824,7 @@ class _OwnershipChecker:
                     method,
                 )
                 if method_signature is not None:
-                    return method_signature.result_type
+                    return method_signature.result_for(expected)
                 if receiver_text == "Vec" and method == "new":
                     return expected or "Vec[Inferred]"
                 if receiver_text == "Map" and method == "new":
@@ -1928,7 +1928,7 @@ class _HIRBuilder:
                         method_signature.operation_family
                     )
                 if method_signature.representation_lowering is None:
-                    type_name = method_signature.result_type
+                    type_name = method_signature.result_for(expected)
                     ownership = method_signature.result_ownership
                     effects.update(method_signature.effects)
             if method in COLLECTION_OPERATIONS:
@@ -2218,7 +2218,7 @@ class _HIRBuilder:
                     {"map_operation": method, "map_specialization": specialization}
                 )
                 if method_signature is not None:
-                    type_name = method_signature.result_type
+                    type_name = method_signature.result_for(expected)
                     ownership = method_signature.result_ownership
                     effects.update(method_signature.effects)
                 elif method == "new":
@@ -2247,7 +2247,7 @@ class _HIRBuilder:
                     and method_signature.operation_family == "box"
                     and len(arguments) == method_signature.arity
                 ):
-                    type_name = method_signature.result_type
+                    type_name = method_signature.result_for(expected)
                     ownership = method_signature.result_ownership
                     effects.update(method_signature.effects)
                 else:
@@ -2272,24 +2272,25 @@ class _HIRBuilder:
                 or method in {"append_byte", "append_scalar", "finish", "byte"}
             ):
                 kind = "BytesTextOperation"
-                if receiver_type == "Bytes" and method == "view":
-                    type_name = "BytesView"
-                    ownership = "borrow"
-                elif receiver_type == "Text" and method in {"as_view", "view"}:
-                    type_name = "TextView"
-                    ownership = "borrow"
-                elif receiver_type == "Text" and method == "clone":
-                    type_name = "Text"
-                    ownership = "owned"
-                    effects.update(("allocate", "copy", "may_fail"))
-                elif method == "finish":
-                    type_name = "Text"
-                    ownership = "owned"
-                elif method == "byte":
-                    type_name = "UInt64"
-                    effects.add("bounds_check")
-                elif method == "len":
-                    type_name = "UInt64"
+                if method_signature is None:
+                    if receiver_type == "Bytes" and method == "view":
+                        type_name = "BytesView"
+                        ownership = "borrow"
+                    elif receiver_type == "Text" and method in {"as_view", "view"}:
+                        type_name = "TextView"
+                        ownership = "borrow"
+                    elif receiver_type == "Text" and method == "clone":
+                        type_name = "Text"
+                        ownership = "owned"
+                        effects.update(("allocate", "copy", "may_fail"))
+                    elif method == "finish":
+                        type_name = "Text"
+                        ownership = "owned"
+                    elif method == "byte":
+                        type_name = "UInt64"
+                        effects.add("bounds_check")
+                    elif method == "len":
+                        type_name = "UInt64"
             elif (
                 receiver_text == "Vec"
                 or receiver_text.startswith("Vec[")
@@ -2306,7 +2307,7 @@ class _HIRBuilder:
                     and method_signature.operation_family == "vec"
                     and len(arguments) == method_signature.arity
                 ):
-                    type_name = method_signature.result_type
+                    type_name = method_signature.result_for(expected)
                     ownership = method_signature.result_ownership
                     effects.update(method_signature.effects)
                 else:

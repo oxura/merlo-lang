@@ -57,6 +57,7 @@ class InstanceMethodSignature:
     abi_lowering: str | None = None
     representation_lowering: str | None = None
     operation_family: str | None = None
+    contextual_numeric_result: bool = False
 
     def __post_init__(self) -> None:
         if not self.parameter_ownership:
@@ -81,14 +82,36 @@ class InstanceMethodSignature:
             raise ValueError(
                 f"static method cannot own a receiver: {self.receiver_type}.{self.name}"
             )
-        if self.operation_family not in {None, "vec", "map", "box"}:
+        if self.operation_family not in {
+            None,
+            "vec",
+            "map",
+            "box",
+            "bytes_text",
+        }:
             raise ValueError(
                 f"invalid operation family for {self.receiver_type}.{self.name}"
+            )
+        if self.contextual_numeric_result and self.result_type != "UInt64":
+            raise ValueError(
+                "contextual numeric result requires canonical UInt64 for "
+                f"{self.receiver_type}.{self.name}"
             )
 
     @property
     def arity(self) -> int:
         return len(self.parameters)
+
+    def result_for(self, expected: str | None) -> str:
+        if self.contextual_numeric_result and expected in {
+            "Byte",
+            "UInt64",
+            "Int64",
+            "Float32",
+            "Float64",
+        }:
+            return expected
+        return self.result_type
 
 
 @dataclass(frozen=True)
@@ -187,35 +210,211 @@ _INSTANCE_METHOD_ROWS = (
         static=True,
         abi_lowering="merlo_text_builder_new",
     ),
-    InstanceMethodSignature("Path", "to_text", (), "Text", result_ownership="owned"),
-    InstanceMethodSignature("Bytes", "to_text", (), "Text", result_ownership="owned"),
-    InstanceMethodSignature("Bytes", "view", (), "BytesView"),
-    InstanceMethodSignature("BytesView", "slice", ("UInt64", "UInt64"), "BytesView"),
-    InstanceMethodSignature("Text", "as_view", (), "TextView"),
-    InstanceMethodSignature("Text", "view", (), "TextView"),
-    InstanceMethodSignature("Text", "contains", ("Text",), "Bool", ("borrow",)),
     InstanceMethodSignature(
-        "Text", "contains_ascii_case_insensitive", ("Text",), "Bool", ("borrow",)
+        "Path",
+        "to_text",
+        (),
+        "Text",
+        result_ownership="owned",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="bytes_text",
     ),
-    InstanceMethodSignature("Text", "starts_with", ("Text",), "Bool", ("borrow",)),
-    InstanceMethodSignature("Text", "ends_with", ("Text",), "Bool", ("borrow",)),
-    InstanceMethodSignature("Text", "slice_bytes", ("UInt64", "UInt64"), "TextView"),
-    InstanceMethodSignature("TextView", "parse_uint64", (), "Result[UInt64,UInt64]"),
-    InstanceMethodSignature("TextView", "is_ascii", (), "Bool"),
-    InstanceMethodSignature("TextView", "is_digits", (), "Bool"),
-    InstanceMethodSignature("TextView", "contains", ("Text",), "Bool", ("borrow",)),
     InstanceMethodSignature(
-        "TextView", "contains_ascii_case_insensitive", ("Text",), "Bool", ("borrow",)
+        "Bytes",
+        "to_text",
+        (),
+        "Text",
+        result_ownership="owned",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="bytes_text",
     ),
-    InstanceMethodSignature("TextView", "slice_bytes", ("UInt64", "UInt64"), "TextView"),
-    InstanceMethodSignature("TextView", "starts_with", ("Text",), "Bool", ("borrow",)),
-    InstanceMethodSignature("TextView", "ends_with", ("Text",), "Bool", ("borrow",)),
-    InstanceMethodSignature("TextView", "to_text", (), "Text", result_ownership="owned"),
-    InstanceMethodSignature("TextBuilder", "append_text", ("Text",), "Unit", ("borrow",), receiver_ownership="borrow_mut"),
-    InstanceMethodSignature("TextBuilder", "append_byte", ("UInt64",), "Unit", receiver_ownership="borrow_mut"),
-    InstanceMethodSignature("TextBuilder", "append_scalar", ("UInt64",), "Unit", receiver_ownership="borrow_mut"),
-    InstanceMethodSignature("TextBuilder", "finish", (), "Text", result_ownership="owned", receiver_ownership="consuming"),
-    InstanceMethodSignature("TextBuilder", "append_uint64", ("UInt64",), "Unit", receiver_ownership="borrow_mut"),
+    InstanceMethodSignature(
+        "Bytes",
+        "len",
+        (),
+        "UInt64",
+        operation_family="bytes_text",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "Bytes",
+        "view",
+        (),
+        "BytesView",
+        result_ownership="borrow",
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "BytesView",
+        "len",
+        (),
+        "UInt64",
+        operation_family="bytes_text",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "BytesView",
+        "byte",
+        ("UInt64",),
+        "UInt64",
+        effects=("bounds_check",),
+        operation_family="bytes_text",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "BytesView",
+        "slice",
+        ("UInt64", "UInt64"),
+        "BytesView",
+        result_ownership="borrow",
+        effects=("bounds_check",),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text",
+        "clone",
+        (),
+        "Text",
+        result_ownership="owned",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text",
+        "len",
+        (),
+        "UInt64",
+        operation_family="bytes_text",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "Text",
+        "byte",
+        ("UInt64",),
+        "UInt64",
+        effects=("bounds_check",),
+        operation_family="bytes_text",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "Text",
+        "as_view",
+        (),
+        "TextView",
+        result_ownership="borrow",
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text",
+        "view",
+        (),
+        "TextView",
+        result_ownership="borrow",
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text",
+        "contains",
+        ("Text",),
+        "Bool",
+        parameter_ownership=("borrow",),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text",
+        "contains_ascii_case_insensitive",
+        ("Text",),
+        "Bool",
+        parameter_ownership=("borrow",),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text", "starts_with", ("Text",), "Bool",
+        parameter_ownership=("borrow",), operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text", "ends_with", ("Text",), "Bool",
+        parameter_ownership=("borrow",), operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text", "slice_bytes", ("UInt64", "UInt64"), "TextView",
+        result_ownership="borrow", effects=("bounds_check",),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "parse_uint64", (), "Result[UInt64,UInt64]",
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "is_ascii", (), "Bool", operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "is_digits", (), "Bool", operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "len", (), "UInt64", operation_family="bytes_text",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "TextView", "byte", ("UInt64",), "UInt64",
+        effects=("bounds_check",), operation_family="bytes_text",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "TextView", "contains", ("Text",), "Bool",
+        parameter_ownership=("borrow",), operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView",
+        "contains_ascii_case_insensitive",
+        ("Text",),
+        "Bool",
+        parameter_ownership=("borrow",),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "slice_bytes", ("UInt64", "UInt64"), "TextView",
+        result_ownership="borrow", effects=("bounds_check",),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "starts_with", ("Text",), "Bool",
+        parameter_ownership=("borrow",), operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "ends_with", ("Text",), "Bool",
+        parameter_ownership=("borrow",), operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "to_text", (), "Text", result_ownership="owned",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextBuilder", "append_text", ("Text",), "Unit",
+        parameter_ownership=("borrow",), receiver_ownership="borrow_mut",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextBuilder", "append_byte", ("UInt64",), "Unit",
+        receiver_ownership="borrow_mut", effects=("allocate", "may_fail"),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextBuilder", "append_scalar", ("UInt64",), "Unit",
+        receiver_ownership="borrow_mut", effects=("allocate", "may_fail"),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextBuilder", "finish", (), "Text", result_ownership="owned",
+        receiver_ownership="consuming", operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextBuilder", "append_uint64", ("UInt64",), "Unit",
+        receiver_ownership="borrow_mut", effects=("allocate", "may_fail"),
+        operation_family="bytes_text",
+    ),
     InstanceMethodSignature("FileReader", "lines", (), "FileLines", receiver_ownership="borrow_mut"),
     InstanceMethodSignature("FileLines", "count_text", (), "Text", result_ownership="owned", receiver_ownership="borrow_mut"),
     InstanceMethodSignature(
@@ -298,6 +497,7 @@ _INSTANCE_METHOD_ROWS = (
         (),
         "UInt64",
         operation_family="vec",
+        contextual_numeric_result=True,
     ),
     InstanceMethodSignature(
         "Vec[T]",
@@ -305,6 +505,7 @@ _INSTANCE_METHOD_ROWS = (
         (),
         "UInt64",
         operation_family="vec",
+        contextual_numeric_result=True,
     ),
     InstanceMethodSignature(
         "Vec[T]",

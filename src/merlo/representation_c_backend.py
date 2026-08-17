@@ -5381,7 +5381,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     method,
                 )
                 if method_contract is not None:
-                    return method_contract.result_type
+                    return method_contract.result_for(None)
                 if method in COLLECTION_OPERATIONS:
                     shape = collection_shape(receiver_type)
                     metadata = (
