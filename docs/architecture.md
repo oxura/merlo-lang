@@ -56,8 +56,10 @@ record/enum members also dispatch from retained header tokens. Function and
 task declarations, inferred functions, interface methods, and implementation
 methods now decode names, generics, parameters, return types, delimiters, and
 inline bodies from the same CST; the transitional function-header regex has
-been removed. `_Line` remains as the block/trivia/span cursor, while flow and
-machine headers are the next declaration boundaries.
+been removed. Flow and machine names, parameters, return boundaries, durability,
+and body delimiters now use retained header tokens too. `_Line` remains only as
+the block/trivia/span cursor; flow policies and machine members are the next
+remaining line-decoding boundaries.
 Elaboration constraints, call binding, diagnostics, inference state, and
 native lowering have separate owners under `merlo/elaboration` and
 `merlo/frontend`.

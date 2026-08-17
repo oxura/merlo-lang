@@ -745,16 +745,9 @@ class _Parser:
         raw = re.sub(r"^export\s+", "", raw)
         kind = anchor.kind
         if kind == "flow":
-            match = re.fullmatch(
-                r"(durable\s+)?flow\s+([a-z_]\w*)\((.*)\)\s*->\s*([^:]+)\s*:",
-                raw,
-            )
-            if match:
-                return self._flow(match, exported, anchor)
+            return self._flow(exported, anchor)
         elif kind == "machine":
-            match = re.fullmatch(r"machine\s+([A-Z]\w*)\((.*)\)\s*:", raw)
-            if match:
-                return self._machine(match, exported, anchor)
+            return self._machine(exported, anchor)
         elif kind == "interface":
             name = self._nominal_declaration_name(
                 retained_tokens,
@@ -909,15 +902,60 @@ class _Parser:
             ),
             policies,
         )
+
+    def _cst_named_parameter_header(
+        self,
+        anchor: SyntaxNode,
+        line: _Line,
+        *,
+        keyword: str,
+        allow_durable: bool = False,
+        require_return: bool = False,
+    ) -> tuple[str, bool]:
+        tokens = list(self._retained_header_tokens(anchor))
+        if tokens and tokens[0].text == "export":
+            tokens.pop(0)
+        durable = False
+        if allow_durable and tokens and tokens[0].text == "durable":
+            durable = True
+            tokens.pop(0)
+        if (
+            len(tokens) < 4
+            or tokens[0].text != keyword
+            or tokens[1].kind != "identifier"
+            or tokens[2].text != "("
+            or tokens[-1].text != ":"
+        ):
+            raise SurfaceSyntaxError(
+                "CSTDeclarationMismatch",
+                f"invalid retained {keyword} header",
+                _span(self.path, line),
+            )
+        has_arrow = any(
+            tokens[index].text == "-" and tokens[index + 1].text == ">"
+            for index in range(len(tokens) - 1)
+        )
+        if has_arrow != require_return:
+            raise SurfaceSyntaxError(
+                "CSTTypeMismatch",
+                f"{keyword} return boundary disagrees with retained tokens",
+                _span(self.path, line),
+            )
+        return tokens[1].text, durable
+
     def _flow(
         self,
-        match: re.Match[str],
         exported: bool,
         anchor: SyntaxNode,
     ) -> SurfaceFlow:
         start = self.lines[self.index]
-        durable, name, raw_parameters, raw_return = match.groups()
-        del raw_parameters
+        name, durable = self._cst_named_parameter_header(
+            anchor,
+            start,
+            keyword="flow",
+            allow_durable=True,
+            require_return=True,
+        )
         parameters = self._cst_function_parameters(anchor, start)
         return_type = self._cst_function_return_type(
             anchor,
@@ -930,7 +968,6 @@ class _Parser:
                 "flow return type is missing from the CST",
                 _span(self.path, start),
             )
-        del raw_return
         self.index += 1
         body: list[SurfaceStatement] = []
         while self.index < len(self.lines):
@@ -982,18 +1019,20 @@ class _Parser:
         end = self.lines[self.index - 1] if self.index else start
         return SurfaceFlow(
             _span(self.path, start, end_line=end), name, parameters,
-            return_type, tuple(body), bool(durable), exported,
+            return_type, tuple(body), durable, exported,
         )
 
     def _machine(
         self,
-        match: re.Match[str],
         exported: bool,
         anchor: SyntaxNode,
     ) -> SurfaceMachine:
         start = self.lines[self.index]
-        name, raw_parameters = match.groups()
-        del raw_parameters
+        name, _durable = self._cst_named_parameter_header(
+            anchor,
+            start,
+            keyword="machine",
+        )
         parameters = self._cst_function_parameters(anchor, start)
         self.index += 1
         states: list[SurfaceState] = []
