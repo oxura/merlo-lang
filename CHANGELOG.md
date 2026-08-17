@@ -118,6 +118,10 @@
   The existing context-directed numeric result behavior for length, capacity,
   and byte access is explicit in the same contracts instead of hidden in the
   Surface elaborator.
+- Centralizes `Map[K,UInt64].increment` with one optional amount parameter,
+  exact generic receiver constraints, mutable receiver ownership, and
+  allocation/copy/failure effects. One- and two-argument calls now share the
+  same contract; other map value types fail closed.
 - Replaces the flat declaration-only CST projection with a lossless hierarchy
   of declarations, headers, blocks, statements, and conservative type and
   expression regions. Recovery is represented by explicit error nodes, while

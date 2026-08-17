@@ -960,6 +960,11 @@ class _OwnershipChecker:
                 else None
             )
             if method_signature is not None:
+                if not method_signature.accepts_arity(len(node.args)):
+                    self._error(
+                        "ArityMismatch",
+                        f"{receiver_type}.{method}",
+                    )
                 if receiver_root is not None:
                     if method_signature.receiver_ownership == "borrow_mut":
                         self._check_mutation(receiver_root, state)
@@ -967,7 +972,7 @@ class _OwnershipChecker:
                         self._consume(receiver_root, state)
                 for argument, parameter_ownership in zip(
                     node.args,
-                    method_signature.parameter_ownership,
+                    method_signature.ownership_for(len(node.args)),
                     strict=True,
                 ):
                     root = self._root_name(argument)
@@ -2112,10 +2117,11 @@ class _HIRBuilder:
                 method_signature is not None
                 and method_signature.representation_lowering is not None
             ):
-                if len(arguments) != method_signature.arity:
+                if not method_signature.accepts_arity(len(arguments)):
                     raise StructuredHIRCompileError(
                         f"{self.path}:{node.lineno}: {receiver_type}.{method} "
-                        f"expects {method_signature.arity} argument(s), "
+                        f"expects {method_signature.minimum_arity}.."
+                        f"{method_signature.arity} argument(s), "
                         f"got {len(arguments)}"
                     )
                 receiver = self.expression(node.func.value)
@@ -2175,12 +2181,11 @@ class _HIRBuilder:
                 key_type, value_type = map_types
                 legacy_arities = {
                     "new": {0},
-                    "increment": {1, 2},
                 }
                 contract_matches = (
                     method_signature is not None
                     and method_signature.operation_family == "map"
-                    and len(arguments) == method_signature.arity
+                    and method_signature.accepts_arity(len(arguments))
                 )
                 legacy_matches = (
                     method in legacy_arities
@@ -2202,10 +2207,8 @@ class _HIRBuilder:
                 if not static_call:
                     operation_children = (self.expression(node.func.value),) + arguments
                     expected_types = (
-                        method_signature.parameters
+                        method_signature.parameters_for(len(arguments))
                         if method_signature is not None
-                        else (key_type, "UInt64")
-                        if method == "increment" and len(arguments) == 2
                         else (key_type,)
                     )
                     for argument, expected_type in zip(arguments, expected_types):
@@ -2225,9 +2228,6 @@ class _HIRBuilder:
                     type_name = specialization
                     ownership = "owned"
                     effects.update(("allocate", "may_fail"))
-                elif method == "increment":
-                    type_name = "UInt64"
-                    effects.update(("allocate", "copy", "may_fail"))
                 elif method == "insert":
                     type_name = "Unit"
                     effects.update(("allocate", "copy", "may_fail"))

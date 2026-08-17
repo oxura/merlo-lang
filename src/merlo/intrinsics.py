@@ -58,6 +58,7 @@ class InstanceMethodSignature:
     representation_lowering: str | None = None
     operation_family: str | None = None
     contextual_numeric_result: bool = False
+    optional_parameters: int = 0
 
     def __post_init__(self) -> None:
         if not self.parameter_ownership:
@@ -97,6 +98,11 @@ class InstanceMethodSignature:
                 "contextual numeric result requires canonical UInt64 for "
                 f"{self.receiver_type}.{self.name}"
             )
+        if not 0 <= self.optional_parameters <= len(self.parameters):
+            raise ValueError(
+                f"invalid optional parameter count for "
+                f"{self.receiver_type}.{self.name}"
+            )
 
     @property
     def arity(self) -> int:
@@ -112,6 +118,27 @@ class InstanceMethodSignature:
         }:
             return expected
         return self.result_type
+
+    @property
+    def minimum_arity(self) -> int:
+        return self.arity - self.optional_parameters
+
+    def accepts_arity(self, actual: int) -> bool:
+        return self.minimum_arity <= actual <= self.arity
+
+    def parameters_for(self, actual: int) -> tuple[str, ...]:
+        if not self.accepts_arity(actual):
+            raise ValueError(
+                f"arity mismatch for {self.receiver_type}.{self.name}: {actual}"
+            )
+        return self.parameters[:actual]
+
+    def ownership_for(self, actual: int) -> tuple[str, ...]:
+        if not self.accepts_arity(actual):
+            raise ValueError(
+                f"arity mismatch for {self.receiver_type}.{self.name}: {actual}"
+            )
+        return self.parameter_ownership[:actual]
 
 
 @dataclass(frozen=True)
@@ -553,6 +580,17 @@ _INSTANCE_METHOD_ROWS = (
         operation_family="map",
     ),
     InstanceMethodSignature(
+        "Map[K,UInt64]",
+        "increment",
+        ("K", "UInt64"),
+        "Unit",
+        parameter_ownership=("borrow", "value"),
+        receiver_ownership="borrow_mut",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="map",
+        optional_parameters=1,
+    ),
+    InstanceMethodSignature(
         "Map[K,V]",
         "entries",
         (),
@@ -699,7 +737,20 @@ class BuiltinContractGraph:
             )
             if pattern_parts is None or actual_parts is None:
                 continue
-            substitutions = dict(zip(pattern_parts, actual_parts, strict=True))
+            substitutions: dict[str, str] = {}
+            matched = True
+            for pattern_part, actual_part in zip(
+                pattern_parts,
+                actual_parts,
+                strict=True,
+            ):
+                if re.fullmatch(r"[A-Z]", pattern_part):
+                    substitutions[pattern_part] = actual_part
+                elif pattern_part != actual_part:
+                    matched = False
+                    break
+            if not matched:
+                continue
 
             def instantiate(type_name: str) -> str:
                 result = type_name

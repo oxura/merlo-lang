@@ -73,8 +73,10 @@ clone/push/access/view, `Map` insert/get/entries, and `Box` access contracts.
 Their Surface signatures, HIR ownership/effects, move checks, and backend result
 types now share one declaration, while the proven `VecOperation`,
 `MapOperation`, and `BoxOperation` native lowerings remain explicit. Collection
-constructors, `Map.increment`, and several non-collection builtins still have
-type-directed rules outside the graph. The graph now also owns the supported
+constructors and several non-collection builtins still have type-directed
+rules outside the graph. `Map[K,UInt64].increment` is contract-owned with an
+optional amount parameter; generic receiver matching distinguishes symbolic
+type variables from fixed type arguments. The graph now also owns the supported
 `Bytes`/`BytesView`, `Text`/`TextView`, `TextBuilder`, and `Path.to_text`
 contracts, including view borrows, checked slicing/indexing, owned copies, and
 builder allocation effects. Length, capacity, and byte access retain the
