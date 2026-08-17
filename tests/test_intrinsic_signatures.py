@@ -146,6 +146,42 @@ def test_binder_and_elaborator_contract_views_are_derived() -> None:
     assert result_unwrap_err.representation_lowering == (
         "result_unwrap_err_clone"
     )
+    vec_get = CONTRACT_GRAPH.method("Vec[Text]", "get")
+    assert vec_get is not None
+    assert vec_get.parameters == ("UInt64",)
+    assert vec_get.result_type == "Text"
+    assert vec_get.result_ownership == "borrow"
+    assert vec_get.effects == ("bounds_check",)
+    assert vec_get.operation_family == "vec"
+    vec_push = CONTRACT_GRAPH.method("Vec[Text]", "push")
+    assert vec_push is not None
+    assert vec_push.parameters == ("Text",)
+    assert vec_push.parameter_ownership == ("consuming",)
+    assert vec_push.receiver_ownership == "borrow_mut"
+    vec_clone = CONTRACT_GRAPH.method("Vec[Text]", "clone")
+    assert vec_clone is not None
+    assert vec_clone.result_type == "Vec[Text]"
+    assert vec_clone.result_ownership == "owned"
+    assert vec_clone.effects == ("allocate", "copy", "may_fail")
+    map_insert = CONTRACT_GRAPH.method(
+        "Map[Text,UInt64]",
+        "insert",
+    )
+    assert map_insert is not None
+    assert map_insert.parameters == ("Text", "UInt64")
+    assert map_insert.receiver_ownership == "borrow_mut"
+    assert map_insert.operation_family == "map"
+    map_entries = CONTRACT_GRAPH.method(
+        "Map[Text,UInt64]",
+        "entries",
+    )
+    assert map_entries is not None
+    assert map_entries.result_type == "Borrow[Map[Text,UInt64]]"
+    box_get = CONTRACT_GRAPH.method("Box[Text]", "get")
+    assert box_get is not None
+    assert box_get.result_type == "Text"
+    assert box_get.result_ownership == "borrow"
+    assert CONTRACT_GRAPH.method("Map[Text,UInt64]", "push") is None
 
 
 def test_static_contracts_drive_hir_type_ownership_effects_and_abi() -> None:
@@ -226,6 +262,58 @@ def test_generic_unwrap_contracts_derive_payload_ownership_and_effects() -> None
     assert scalar.type_name == "UInt64"
     assert scalar.ownership == "value"
     assert scalar.effects == ("may_fail",)
+
+
+def test_collection_contracts_drive_hir_types_ownership_and_effects() -> None:
+    hir = compile_structured_hir(
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let values: Vec[Byte] = Vec.new()\n"
+        "    values.push(Byte(7))\n"
+        "    let boxed: Box[Byte] = Box.new(values.get(0))\n"
+        "    let counts: Map[Text,Byte] = Map.new()\n"
+        '    counts.insert("key", boxed.get())\n'
+        '    return UInt64(counts.get("key"))\n',
+        entry_function="main",
+    )
+    operations = {
+        node.attribute_map.get("contract_symbol"): node
+        for function in hir.functions
+        for node in function.walk()
+        if node.attribute_map.get("operation_family")
+    }
+
+    vec_push = operations["Vec[Byte].push"]
+    assert vec_push.kind == "VecOperation"
+    assert vec_push.type_name == "Unit"
+    assert vec_push.attribute_map["receiver_ownership"] == "borrow_mut"
+    assert set(vec_push.effects) == {"allocate", "may_fail"}
+
+    vec_get = operations["Vec[Byte].get"]
+    assert vec_get.type_name == "Byte"
+    assert vec_get.ownership == "borrow"
+    assert vec_get.effects == ("bounds_check",)
+
+    map_insert = operations["Map[Text,Byte].insert"]
+    assert map_insert.kind == "MapOperation"
+    assert map_insert.type_name == "Unit"
+    assert map_insert.attribute_map["receiver_ownership"] == "borrow_mut"
+    assert set(map_insert.effects) == {"allocate", "copy", "may_fail"}
+
+    box_get = operations["Box[Byte].get"]
+    assert box_get.kind == "BoxOperation"
+    assert box_get.type_name == "Byte"
+    assert box_get.ownership == "borrow"
+
+
+def test_vec_push_consumes_an_owned_element() -> None:
+    with pytest.raises(StructuredHIRCompileError, match="UseAfterMove: text"):
+        compile_structured_hir(
+            "fn bad(text: Text) -> UInt64:\n"
+            "    let values: Vec[Text] = Vec.new()\n"
+            "    values.push(text)\n"
+            "    return text.len()\n",
+            entry_function="bad",
+        )
 
 
 def test_generic_predicates_lower_to_native_enum_tags(
