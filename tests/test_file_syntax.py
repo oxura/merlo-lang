@@ -250,6 +250,14 @@ def test_cst_retains_flow_machine_state_and_interface_signatures() -> None:
         ["input"],
     ]
     assert [child.kind for child in machine_header.children] == ["parameters"]
+    assert [
+        [token.text for token in child.tokens]
+        for child in flow_step_header.children
+        if child.kind == "policy"
+    ] == [
+        ["idempotent", "by", "input"],
+        ["compensate", "rollback", "(", "input", ")"],
+    ]
     assert [child.kind for child in state_header.children] == ["parameters"]
     assert [child.kind for child in interface_method.children] == [
         "parameters",

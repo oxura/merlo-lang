@@ -638,7 +638,7 @@ class _Parser:
             for node in declaration.walk()[1:]:
                 if node.kind in {
                     "header", "block", "parameters", "parameter", "type",
-                    "type_parameters", "type_parameter", "expression",
+                    "type_parameters", "type_parameter", "expression", "policy",
                 }:
                     continue
                 line = next(
@@ -822,46 +822,70 @@ class _Parser:
 
     def _flow_policies(
         self,
-        source: str,
         line: _Line,
         anchor: SyntaxNode,
-    ) -> tuple[str, tuple[SurfacePolicy, ...]]:
-        matches = list(re.finditer(
-            r"\s+(timeout\s+\S+|retry\s+\d+\s+on\s+[A-Za-z_]\w*(?:\[[^\]]+\])?|"
-            r"idempotent\s+by\s+.+|compensate\s+.+)$",
-            source,
-        ))
-        if not matches:
-            return source.strip(), ()
-        # Policy clauses are deliberately parsed from the first recognized suffix;
-        # expressions may contain spaces and are retained verbatim.
-        starts = [m.start() for m in re.finditer(
-            r"\s+(?=(?:timeout|retry|idempotent|compensate)\b)", source
-        )]
-        cut = min(starts) if starts else len(source)
-        value = source[:cut].rstrip()
-        suffix = source[cut:].strip()
+    ) -> tuple[SurfacePolicy, ...]:
+        header = next(
+            (child for child in anchor.children if child.kind == "header"),
+            None,
+        )
+        regions = tuple(
+            child for child in (header.children if header is not None else ())
+            if child.kind == "policy"
+        )
         policies: list[SurfacePolicy] = []
-        clause_starts = list(re.finditer(
-            r"(?<!\w)(?:timeout|retry|idempotent|compensate)\b", suffix
-        ))
         expression_ordinal = 1
-        for index, marker in enumerate(clause_starts):
-            end = clause_starts[index + 1].start() if index + 1 < len(clause_starts) else len(suffix)
-            clause = suffix[marker.start():end].strip()
-            if clause.startswith("timeout "):
-                policies.append(SurfacePolicy(_span(self.path, line), "timeout", clause[8:].strip()))
-            elif clause.startswith("retry "):
-                retry = re.fullmatch(r"retry\s+(\d+)\s+on\s+(.+)", clause)
-                if retry is None:
-                    raise SurfaceSyntaxError("InvalidRetryPolicy", clause, _span(self.path, line))
+        for region in regions:
+            tokens = tuple(
+                token for token in region.tokens
+                if token.kind not in {"whitespace", "comment", "newline", "eof"}
+            )
+            if len(tokens) < 2:
+                raise SurfaceSyntaxError(
+                    "CSTStatementMismatch",
+                    "retained flow policy is incomplete",
+                    _span(self.path, line),
+                )
+            kind = tokens[0].text
+            if kind == "timeout":
                 policies.append(SurfacePolicy(
-                    _span(self.path, line), "retry", retry.group(1), _type_name(retry.group(2))
+                    _span(self.path, line),
+                    "timeout",
+                    "".join(token.text for token in tokens[1:]),
                 ))
-            elif clause.startswith("idempotent by "):
-                expression = clause[len("idempotent by "):].strip()
+            elif kind == "retry":
+                if len(tokens) < 4 or not tokens[1].text.isdigit() or tokens[2].text != "on":
+                    raise SurfaceSyntaxError(
+                        "InvalidRetryPolicy",
+                        self._retained_node_text(region, line, code="CSTStatementMismatch"),
+                        _span(self.path, line),
+                    )
                 policies.append(SurfacePolicy(
-                    _span(self.path, line), "idempotent", expression,
+                    _span(self.path, line),
+                    "retry",
+                    tokens[1].text,
+                    _type_name("".join(token.text for token in tokens[3:])),
+                ))
+            elif kind == "idempotent":
+                if len(tokens) < 3 or tokens[1].text != "by":
+                    raise SurfaceSyntaxError(
+                        "CSTStatementMismatch",
+                        "invalid retained idempotency policy",
+                        _span(self.path, line),
+                    )
+                expression_region = self._cst_expression_region(
+                    anchor,
+                    line,
+                    ordinal=expression_ordinal,
+                )
+                policies.append(SurfacePolicy(
+                    _span(self.path, line),
+                    "idempotent",
+                    self._retained_node_text(
+                        expression_region,
+                        line,
+                        code="CSTExpressionMismatch",
+                    ),
                     expression=self._parse_cst_expression(
                         anchor,
                         line,
@@ -869,11 +893,27 @@ class _Parser:
                     ),
                 ))
                 expression_ordinal += 1
-            elif clause.startswith("compensate "):
+            elif kind == "compensate":
                 policies.append(SurfacePolicy(
-                    _span(self.path, line), "compensate", clause[len("compensate "):].strip()
+                    _span(self.path, line),
+                    "compensate",
+                    "".join(token.text for token in tokens[1:]),
                 ))
-        return value, tuple(policies)
+            else:
+                raise SurfaceSyntaxError(
+                    "CSTStatementMismatch",
+                    f"unknown retained flow policy {kind!r}",
+                    _span(self.path, line),
+                )
+        if self._cst_expression_count(anchor) != 1 + sum(
+            policy.kind == "idempotent" for policy in policies
+        ):
+            raise SurfaceSyntaxError(
+                "CSTExpressionMismatch",
+                "flow policy expressions disagree with retained policy regions",
+                _span(self.path, line),
+            )
+        return tuple(policies)
     def _flow_step(
         self,
         line: _Line,
@@ -885,12 +925,7 @@ class _Parser:
         _kind, name, operator, complex_target, has_type = assignment
         if name is None or complex_target or operator != "=":
             raise SurfaceSyntaxError("ExpectedFlowStep", line.text, _span(self.path, line))
-        expression_region = self._cst_expression_region(anchor, line)
-        _, policies = self._flow_policies(
-            self.cst.source[expression_region.start:anchor.children[0].end],
-            line,
-            anchor,
-        )
+        policies = self._flow_policies(line, anchor)
         return SurfaceFlowStep(
             _span(self.path, line), name,
             self._parse_cst_expression(anchor, line),
