@@ -35,6 +35,9 @@
 - Gives every flow policy a retained CST region and decodes timeout, retry,
   idempotency, compensation, and associated expression/type evidence without
   regex suffix splitting or reconstructed line fragments.
+- Removes the transitional source-scanning line builder. The temporary semantic
+  cursor is now projected from lossless CST root headers and comment tokens, so
+  indentation, multiline grouping, strings, and delimiters have one lexer owner.
 - Moves `Vec.new`, `Map.new`, `Box.new`, and `FileReader.lines` into the typed
   ContractGraph, including generic result inference, constructor effects,
   consuming Box payloads, resource borrows, and HIR/RIR lowering metadata.

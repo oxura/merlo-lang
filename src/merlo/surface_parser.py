@@ -532,91 +532,79 @@ def _parse_expression(
     return expression
 
 
-def _lines(
-    source: str,
-    path: str,
+def _cst_cursor_lines(
+    cst: FileCST,
     *,
     line_offset: int = 0,
 ) -> list[_Line]:
-    physical: list[_Line] = []
-    for number, raw in enumerate(source.splitlines(), 1 + line_offset):
-        if "\t" in raw[: len(raw) - len(raw.lstrip())]:
-            raise SurfaceSyntaxError(
-                "TabIndentationForbidden",
-                "use four spaces",
-                SourceSpan(path, number, 1, number, len(raw) + 1),
-            )
-        indent = len(raw) - len(raw.lstrip(" "))
-        if indent % 4:
-            raise SurfaceSyntaxError(
-                "InvalidIndentation",
-                "indentation must be a multiple of four spaces",
-                SourceSpan(path, number, 1, number, indent + 1),
-            )
-        physical.append(_Line(number, indent, raw[indent:], raw))
+    """Project CST construct headers into a temporary parser cursor.
 
-    def update_delimiters(text: str, stack: list[str]) -> None:
-        quote: str | None = None
-        escaped = False
-        for character in text:
-            if quote is not None:
-                if escaped:
-                    escaped = False
-                elif character == "\\":
-                    escaped = True
-                elif character == quote:
-                    quote = None
+    This view deliberately does not lex source text, count delimiters, or infer
+    indentation. Those decisions already belong to ``parse_file_cst``. The
+    cursor only preserves the small line-shaped compatibility surface needed
+    while semantic traversal is migrated to CST children.
+    """
+
+    physical = cst.source.splitlines()
+    entries: list[tuple[int, int, _Line]] = []
+    construct_lines: set[int] = set()
+    header_ranges: list[tuple[int, int]] = []
+
+    def visit(nodes: tuple[SyntaxNode, ...]) -> None:
+        for node in nodes:
+            header = next(
+                (child for child in node.children if child.kind == "header"),
+                None,
+            )
+            if header is None:
                 continue
-            if character in {'"', "'"}:
-                quote = character
-            elif character == "#":
-                break
-            elif character in "([{":
-                stack.append(character)
-            elif character in ")]}" and stack:
-                # parse_file_cst rejects mismatches before this transitional
-                # line view is built. The typed stack still prevents an
-                # arbitrary closer from silently balancing another opener.
-                expected = {"(": ")", "[": "]", "{": "}"}[stack[-1]]
-                if character == expected:
-                    stack.pop()
+            significant = tuple(
+                token
+                for token in header.tokens
+                if token.kind not in {
+                    "whitespace", "comment", "newline", "indent", "dedent", "eof",
+                }
+            )
+            if not significant:
+                continue
+            first = significant[0]
+            last = significant[-1]
+            number = first.line + line_offset
+            indent = first.column - 1
+            text = cst.source[first.start:last.end]
+            raw = physical[first.line - 1] if first.line <= len(physical) else text
+            entries.append((first.start, 1, _Line(number, indent, text, raw)))
+            construct_lines.add(first.line)
+            header_ranges.append((header.start, header.end))
+            block = next(
+                (child for child in node.children if child.kind == "block"),
+                None,
+            )
+            if block is not None:
+                visit(block.children)
 
-    result: list[_Line] = []
-    pending: _Line | None = None
-    pieces: list[str] = []
-    delimiters: list[str] = []
-    for line in physical:
-        if pending is None:
-            pending = line
-            pieces = [line.text]
-            delimiters = []
-            update_delimiters(line.text, delimiters)
-        else:
-            pieces.append(line.text.strip())
-            update_delimiters(line.text, delimiters)
-        if not delimiters:
-            text = " ".join(piece for piece in pieces if piece)
-            result.append(
-                _Line(
-                    pending.number,
-                    pending.indent,
-                    text,
-                    (" " * pending.indent) + text,
-                )
-            )
-            pending = None
-            pieces = []
-    if pending is not None:
-        text = " ".join(piece for piece in pieces if piece)
-        result.append(
+    # The lossless root owns source coverage. Semantic ``declarations`` are a
+    # checked projection and may be forged independently in adversarial tests;
+    # keeping the cursor rooted here ensures such disagreement fails closed.
+    visit(cst.root.children)
+    for token in cst.tokens:
+        if token.kind != "comment" or token.line in construct_lines:
+            continue
+        if any(start <= token.start < end for start, end in header_ranges):
+            continue
+        raw = physical[token.line - 1] if token.line <= len(physical) else token.text
+        entries.append((
+            token.start,
+            0,
             _Line(
-                pending.number,
-                pending.indent,
-                text,
-                (" " * pending.indent) + text,
-            )
-        )
-    return result
+                token.line + line_offset,
+                token.column - 1,
+                token.text,
+                raw,
+            ),
+        ))
+    entries.sort(key=lambda item: (item[0], item[1]))
+    return [line for _start, _kind, line in entries]
 
 
 class _Parser:
@@ -632,7 +620,7 @@ class _Parser:
         self.path = path
         self.cst = cst
         self.line_offset = line_offset
-        self.lines = _lines(source, path, line_offset=line_offset)
+        self.lines = _cst_cursor_lines(cst, line_offset=line_offset)
         self.statement_anchors: dict[int, SyntaxNode] = {}
         for declaration in cst.declarations:
             for node in declaration.walk()[1:]:
@@ -667,11 +655,15 @@ class _Parser:
                 require_module=False,
             )
         except ModuleSyntaxError as exc:
-            line = self.lines[exc.line - 1] if 0 < exc.line <= len(self.lines) else _Line(
-                exc.line,
+            diagnostic_line = exc.line + self.line_offset
+            line = next(
+                (item for item in self.lines if item.number == diagnostic_line),
+                _Line(
+                diagnostic_line,
                 0,
                 "",
                 "",
+                ),
             )
             raise SurfaceSyntaxError(exc.code, exc.message, _span(self.path, line)) from exc
 
@@ -682,7 +674,18 @@ class _Parser:
             if node.kind not in {"module", "use", "import"}
         )
         anchor_index = 0
-        self.index = prelude.body_source_lines[0] - 1 if prelude.body_source_lines else len(self.lines)
+        if prelude.body_source_lines:
+            first_body_line = prelude.body_source_lines[0] + self.line_offset
+            self.index = next(
+                (
+                    index
+                    for index, line in enumerate(self.lines)
+                    if line.number >= first_body_line
+                ),
+                len(self.lines),
+            )
+        else:
+            self.index = len(self.lines)
         self._skip_blank()
         while self.index < len(self.lines):
             line = self.lines[self.index]

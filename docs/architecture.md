@@ -63,6 +63,10 @@ states, initial states, invariants, and transitions also consume retained CST
 identities and tokens. Flow policies have their own retained CST regions, so
 their kinds, values, error types, and idempotency expressions are no longer
 rediscovered from reconstructed line text.
+The remaining `_Line` compatibility cursor is projected from lossless CST root
+headers and standalone comment tokens. It no longer scans source text, infers
+indentation, tracks quotes, or counts delimiters independently of the file
+lexer; CST projection disagreement therefore remains observable and fail-closed.
 Elaboration constraints, call binding, diagnostics, inference state, and
 native lowering have separate owners under `merlo/elaboration` and
 `merlo/frontend`.
