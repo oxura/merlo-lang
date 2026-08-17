@@ -44,9 +44,6 @@ C_BACKEND_SCHEMA_VERSION = 2
 C_BACKEND_CONTRACT = "merlo.general-representation-c11.v2"
 RUNTIME_ABI_VERSION = VERSIONS.runtime_abi
 RUNTIME_ABI_CONTRACT = "merlo.runtime-abi.v2"
-_FROZEN_GENERAL_JSON_SHA256 = (
-    "0b696f9a6653ea5fa20124d239db37fe6853ff798abe0cbcdcb703dd9c66ff04"
-)
 
 
 class RepresentationCBackendError(ValueError):
@@ -239,10 +236,6 @@ class GeneralCEmitter:
         self.assigning_borrowed = False
         self.current_ensures: tuple[ast.AST, ...] = ()
         self.contract_result_name: str | None = None
-        self.frozen_general_json = (
-            hashlib.sha256(hir.source.encode()).hexdigest()
-            == _FROZEN_GENERAL_JSON_SHA256
-        )
         self.indent = 0
 
     def emit(self) -> GeneratedC:
@@ -3604,7 +3597,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 generic = _generic(subject_type or "")
                 if generic is not None and generic[0] == enum_name:
                     enum_name = subject_type
-            scope_suffix = "" if self.frozen_general_json else " {"
+            scope_suffix = " {"
             if wildcard:
                 lines.append(f"{pad}default:{scope_suffix}")
             elif variant_name is not None:
@@ -3636,8 +3629,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             for binding in bindings:
                 self.borrowed_owner_bindings.discard(binding)
             self.indent -= 1
-            if not self.frozen_general_json:
-                lines.append(f"{pad}}}")
+            lines.append(f"{pad}}}")
         self.match_depth -= 1
         if not has_wildcard:
             lines.append(f"{pad}default: abort();")
@@ -3726,17 +3718,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 ast.RShift: "merlo_checked_int64_rshift",
             },
         }.get(arithmetic_type or "", {}).get(type(operation))
-        frozen_fnv_multiply = (
-            self.frozen_general_json
-            and self.current_function is not None
-            and self.current_function.name == "checksum_byte"
-            and isinstance(operation, ast.Mult)
-            and isinstance(left, ast.BinOp)
-            and isinstance(left.op, ast.BitXor)
-            and isinstance(right, ast.Constant)
-            and right.value == 1099511628211
-        )
-        if checked is not None and not frozen_fnv_multiply:
+        if checked is not None:
             return (
                 f"{checked}("
                 f"{self._expression(left, expected=arithmetic_type)}, "
@@ -4201,8 +4183,6 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                         f"{self._expression(right)})"
                     )
                 left = right
-            if self.frozen_general_json:
-                return "(" + " && ".join(pieces) + ")"
             if len(pieces) == 1:
                 piece = pieces[0]
                 return piece[1:-1] if piece.startswith("(") and piece.endswith(")") else piece
@@ -5926,7 +5906,10 @@ __MERLO_CAPS__
            merlo_map_lookup_key_copies);
     free(input);
     return result.ok ? 0 : 2;
-}"""
+}""".replace(
+            "__MERLO_CAPS__",
+            self._capability_initialization(function),
+        )
 
     def _primitive_manifest(self, source: str) -> list[dict[str, Any]]:
         entries = [

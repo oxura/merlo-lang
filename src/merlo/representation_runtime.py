@@ -596,12 +596,16 @@ def _runtime_namespace(context: RuntimeContext) -> dict[str, Any]:
         if name in local_values:
             context.drop_value(local_values[name], type_name)
 
+    def wrapping_mul(left: int, right: int) -> int:
+        return (left * right) & ((1 << 64) - 1)
+
     namespace.update(
         {
             "Vec": VecFactory,
             "Box": BoxFactory,
             "Text": TextFactory,
             "TextBuilder": TextBuilderFactory,
+            "wrapping_mul": wrapping_mul,
             "__merlo_auto_drop_bound": auto_drop_bound,
         }
     )

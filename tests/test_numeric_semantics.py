@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from merlo.native_c_backend import compile_c_source
+from merlo.intrinsics import CONTRACT_GRAPH
 from merlo.representation_c_backend import emit_general_c
 from merlo.representation_ir import lower_structured_hir_to_rir
 from merlo.representation_mir import (
@@ -231,6 +232,97 @@ def test_signed_overflow_edges_trap(
     completed = run_native(source, tmp_path, stem)
     assert completed.returncode != 0
     assert diagnostic in completed.stderr
+
+
+def test_ordinary_int64_multiplication_overflow_remains_checked(
+    tmp_path: Path,
+) -> None:
+    completed = run_native(
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let product: Int64 = 3037000500 * 3037000500\n"
+        "    UInt64(product)\n",
+        tmp_path,
+        "int64-multiply-overflow",
+    )
+
+    assert completed.returncode != 0
+    assert b"MerloOverflow:Int64Mult" in completed.stderr
+
+
+def test_wrapping_mul_uses_contract_hir_rir_mir_and_native_lowering(
+    tmp_path: Path,
+) -> None:
+    source = (
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    wrapping_mul(18446744073709551615, 2)\n"
+    )
+    contract = CONTRACT_GRAPH.functions["wrapping_mul"]
+    canonical = elaborate_surface(parse_surface(source)).canonical
+    hir = compile_canonical_hir(canonical)
+    representation = lower_structured_hir_to_rir(hir)
+    mir = optimize_general_mir(
+        lower_rir_to_performance_mir(hir, representation)
+    )
+    numeric_hir = next(
+        node
+        for node in hir.function("main").walk()
+        if node.kind == "NumericIntrinsic"
+    )
+    numeric_rir = next(
+        operation
+        for function in representation.functions
+        for operation in function.walk()
+        if operation.op == "numeric_intrinsic"
+    )
+    numeric_mir = next(
+        instruction
+        for function in mir.functions
+        for block in function.blocks
+        for instruction in block.instructions
+        if instruction.op == "numeric_intrinsic"
+    )
+
+    assert contract.parameters == ("Integer", "Integer")
+    assert contract.result_type == "Integer"
+    assert numeric_hir.attribute_map["callee"] == "wrapping_mul"
+    assert numeric_hir.attribute_map["overflow"] == "wrapping"
+    assert numeric_rir.attribute_map["callee"] == "wrapping_mul"
+    assert numeric_rir.attribute_map["overflow"] == "wrapping"
+    assert numeric_mir.attribute_map["callee"] == "wrapping_mul"
+    assert numeric_mir.attribute_map["overflow"] == "wrapping"
+
+    generated = emit_general_c(hir, representation, mir)
+    build = compile_c_source(
+        generated.source,
+        output_dir=tmp_path,
+        stem="wrapping-multiply",
+    )
+    assert build.status == "MEASURED", build.stderr
+    assert build.binary_path is not None
+    completed = subprocess.run(
+        [build.binary_path],
+        input=b"",
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0
+    assert b"OK result=18446744073709551614" in completed.stdout
+
+
+def test_c_backend_contains_no_source_or_benchmark_specific_dispatch() -> None:
+    backend = (
+        Path(__file__).resolve().parents[1]
+        / "src"
+        / "merlo"
+        / "representation_c_backend.py"
+    ).read_text(encoding="utf-8")
+
+    assert "_FROZEN_GENERAL_JSON_SHA256" not in backend
+    assert "frozen_general_json" not in backend
+    assert "checksum_byte" not in backend
+    assert "general_json" not in backend
+    assert "sha256(hir.source" not in backend
+    assert "current_function.name ==" not in backend
 
 
 @pytest.mark.parametrize(

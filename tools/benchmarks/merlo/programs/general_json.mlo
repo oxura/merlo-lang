@@ -443,7 +443,7 @@ fn parse_value(parser: Parser, depth: UInt64) -> Json:
             return Json.Null()
 
 fn checksum_byte(stats: Stats, byte: UInt64) -> Unit:
-    stats.checksum = ((stats.checksum ^ byte) * 1099511628211) & 18446744073709551615
+    stats.checksum = wrapping_mul(stats.checksum ^ byte, 1099511628211)
 
 fn checksum_text(stats: Stats, text: Text) -> Unit:
     var index: UInt64 = 0
