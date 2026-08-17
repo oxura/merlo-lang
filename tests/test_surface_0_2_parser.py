@@ -74,6 +74,7 @@ def test_statement_bindings_and_complex_assignments_decode_from_cst_tokens() -> 
 def test_surface_declarations_require_and_dispatch_through_cst_anchors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    assert not hasattr(surface_parser_module, "_lines")
     source = "value() = 1\n"
     cst = parse_file_cst(source, path="anchored.mlo")
     without_anchor = replace(cst, declarations=())
