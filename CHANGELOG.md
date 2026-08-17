@@ -18,6 +18,8 @@
 - Routes all production statement dispatch, binding/assignment decoding, and
   expression/type/pattern spans through retained CST nodes, removing line-regex
   statement grammar and the obsolete source/base-column fragment interface.
+- Routes nominal declaration dispatch and record/enum member decoding through
+  retained CST header tokens for records, enums, interfaces, and implementations.
 - Moves `Vec.new`, `Map.new`, `Box.new`, and `FileReader.lines` into the typed
   ContractGraph, including generic result inference, constructor effects,
   consuming Box payloads, resource borrows, and HIR/RIR lowering metadata.
