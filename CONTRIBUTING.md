@@ -58,3 +58,15 @@ regressions for new public contracts where the existing suite does not already
 cover them. Avoid unrelated formatting changes. Unless explicitly stated
 otherwise, contributions are accepted under the repository's dual
 MIT OR Apache-2.0 license.
+
+Keep an ordinary pull request within one responsibility, one migration
+boundary, and approximately 800-1,200 changed code lines. Generated evidence
+and mechanical corpus changes should be counted separately from reviewed code.
+A larger migration requires an RFC and a review plan split into independently
+mergeable semantic slices.
+
+Every pull request requires current required CI and an approval independent of
+its author. Runtime, ownership, unsafe, FFI, and native-backend changes require
+two independent approvals. New commits dismiss stale approvals. `CODEOWNERS`
+routes subsystem review; repository rulesets enforce the actual approval count.
+See [.github/REVIEW_POLICY.md](.github/REVIEW_POLICY.md).

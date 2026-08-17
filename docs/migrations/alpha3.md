@@ -1,7 +1,7 @@
 # Migrating from alpha.2 to alpha.3
 
 Alpha.3 intentionally changes the filesystem and verification models. The
-compiler reports language `0.3`, frontend `7`, canonical `5`, HIR `5`,
+compiler reports language `0.3`, frontend `8`, canonical `6`, HIR `6`,
 Obligation IR `1`, range analysis `1`, bounded symbolic execution `1`, optional
 SMT `1`, property evidence `1`, verification metrics `1`, ChangeIR `1`,
 semantic capsule `1`, semantic impact `1`, patch evidence `1`, preservation

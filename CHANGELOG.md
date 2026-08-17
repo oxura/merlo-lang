@@ -3,9 +3,13 @@
 ## Unreleased
 
 - Starts the `0.1.0-alpha.3-dev` compatibility line with language contract
-  `0.3`, frontend `7`, canonical `5`, HIR `5`, Obligation IR `1`, RIR/MIR `2`,
-  runtime ABI `2`, and SemanticWorld `5`. Alpha.2 lockfiles must be regenerated;
+  `0.3`, frontend `8`, canonical `6`, HIR `6`, Obligation IR `1`, RIR/MIR `2`,
+  runtime ABI `2`, and SemanticWorld `14`. Alpha.2 lockfiles must be regenerated;
   see the migration guide.
+- Replaces the stale roadmap with a checked maturity matrix and explicit Deep
+  Core, Native Scale, heterogeneous-compute, product-proof, general-purpose,
+  and self-host gates. Adds the normative Memory Model v1 safe-subset contract
+  and a proposed Concurrency Model v1 RFC without promoting experimental async.
 - Replaces owner/view pointer punning with real view descriptors and locks the
   generated C under GCC and Clang strict-aliasing optimization.
 - Defines byte and text escape semantics, rejecting Unicode escapes in bytes,
