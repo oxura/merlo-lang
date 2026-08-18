@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Iterable
 from merlo.type_parser import generic_parts, parse_type
@@ -189,6 +190,219 @@ class FFIProgram:
     @property
     def digest(self) -> str:
         return hashlib.sha256(self.to_json().encode()).hexdigest()
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "FFIProgram":
+        """Validate and restore the typed FFI artifact without source parsing."""
+        _ffi_keys(
+            value,
+            {"abi", "extern_functions", "repr_c_records", "unsafe_operations"},
+            "FFI program",
+        )
+        if value["abi"] != FFI_ABI:
+            raise FFICompileError("UnsupportedCABI", str(value["abi"]))
+        extern_values = _ffi_list(value["extern_functions"], "extern_functions")
+        record_values = _ffi_list(value["repr_c_records"], "repr_c_records")
+        unsafe_values = _ffi_list(value["unsafe_operations"], "unsafe_operations")
+        program = cls(
+            tuple(_extern_from_dict(item) for item in extern_values),
+            tuple(_record_from_dict(item) for item in record_values),
+            tuple(_unsafe_from_dict(item) for item in unsafe_values),
+        )
+        if program.to_dict() != dict(value):
+            raise FFICompileError("NonCanonicalFFIArtifact")
+        return program
+
+    @classmethod
+    def from_json(cls, payload: str) -> "FFIProgram":
+        try:
+            value = json.loads(payload)
+        except json.JSONDecodeError as exc:
+            raise FFICompileError("InvalidFFIArtifactJSON") from exc
+        if not isinstance(value, Mapping):
+            raise FFICompileError("InvalidFFIArtifactRoot")
+        program = cls.from_dict(value)
+        if program.to_json() != payload:
+            raise FFICompileError("NonCanonicalFFIArtifactJSON")
+        return program
+
+
+def _ffi_keys(value: object, expected: set[str], label: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping) or not all(
+        isinstance(key, str) for key in value
+    ):
+        raise FFICompileError("InvalidFFIArtifact", label)
+    if set(value) != expected:
+        raise FFICompileError("InvalidFFIArtifactKeys", label)
+    return value
+
+
+def _ffi_list(value: object, label: str) -> list[Mapping[str, Any]]:
+    if not isinstance(value, list):
+        raise FFICompileError("InvalidFFIArtifactList", label)
+    return [
+        _ffi_keys(item, set(item) if isinstance(item, Mapping) else set(), label)
+        for item in value
+    ]
+
+
+def _pointer_from_dict(value: object) -> RawPointerType | None:
+    if value is None:
+        return None
+    raw = _ffi_keys(value, {"type", "pointee", "mutable", "nullable"}, "pointer")
+    if not isinstance(raw["pointee"], str):
+        raise FFICompileError("InvalidFFIArtifact", "pointer pointee")
+    pointer = RawPointerType(
+        raw["pointee"],
+        _ffi_bool(raw["mutable"], "pointer mutable"),
+        _ffi_bool(raw["nullable"], "pointer nullable"),
+    )
+    if raw["type"] != pointer.type_name:
+        raise FFICompileError("InvalidFFIArtifact", "pointer type")
+    return pointer
+
+
+def _policy_from_dict(value: object) -> ForeignPointerPolicy | None:
+    if value is None:
+        return None
+    raw = _ffi_keys(
+        value,
+        {"parameter", "access", "ownership", "destructor", "nullable"},
+        "pointer policy",
+    )
+    for name in ("parameter", "access", "ownership"):
+        if not isinstance(raw[name], str):
+            raise FFICompileError("InvalidFFIArtifact", f"policy {name}")
+    destructor = raw["destructor"]
+    if destructor is not None and not isinstance(destructor, str):
+        raise FFICompileError("InvalidFFIArtifact", "policy destructor")
+    return ForeignPointerPolicy(
+        raw["parameter"],
+        raw["access"],
+        raw["ownership"],
+        destructor,
+        _ffi_bool(raw["nullable"], "policy nullable"),
+    )
+
+
+def _parameter_from_dict(value: object) -> ExternParameter:
+    raw = _ffi_keys(value, {"name", "type", "pointer", "policy"}, "parameter")
+    if not isinstance(raw["name"], str) or not isinstance(raw["type"], str):
+        raise FFICompileError("InvalidFFIArtifact", "parameter identity")
+    return ExternParameter(
+        raw["name"],
+        raw["type"],
+        _pointer_from_dict(raw["pointer"]),
+        _policy_from_dict(raw["policy"]),
+    )
+
+
+def _extern_from_dict(value: object) -> ExternFunction:
+    raw = _ffi_keys(
+        value,
+        {
+            "name", "abi", "parameters", "return_type", "effects", "error_type",
+            "safe_wrapper", "source", "prototype",
+        },
+        "extern function",
+    )
+    for name in ("name", "abi", "return_type", "prototype"):
+        if not isinstance(raw[name], str):
+            raise FFICompileError("InvalidFFIArtifact", f"extern {name}")
+    parameters = _ffi_list(raw["parameters"], "parameters")
+    effects = raw["effects"]
+    if not isinstance(effects, list) or not all(
+        isinstance(item, str) for item in effects
+    ):
+        raise FFICompileError("InvalidFFIArtifact", "extern effects")
+    error_type = raw["error_type"]
+    if error_type is not None and not isinstance(error_type, str):
+        raise FFICompileError("InvalidFFIArtifact", "extern error_type")
+    source = raw["source"]
+    if source is not None and not (
+        isinstance(source, list)
+        and len(source) == 2
+        and isinstance(source[0], str)
+        and isinstance(source[1], int)
+        and not isinstance(source[1], bool)
+    ):
+        raise FFICompileError("InvalidFFIArtifact", "extern source")
+    result = ExternFunction(
+        raw["name"],
+        tuple(_parameter_from_dict(item) for item in parameters),
+        raw["return_type"],
+        tuple(effects),
+        error_type,
+        raw["abi"],
+        _ffi_bool(raw["safe_wrapper"], "extern safe_wrapper"),
+        tuple(source) if source is not None else None,
+    )
+    if raw["prototype"] != result.prototype:
+        raise FFICompileError("InvalidFFIArtifact", "extern prototype")
+    return result
+
+
+def _field_from_dict(value: object) -> ReprCField:
+    raw = _ffi_keys(
+        value,
+        {"name", "type_name", "offset", "size", "alignment"},
+        "repr(C) field",
+    )
+    if not isinstance(raw["name"], str) or not isinstance(raw["type_name"], str):
+        raise FFICompileError("InvalidFFIArtifact", "repr(C) field identity")
+    return ReprCField(
+        raw["name"],
+        raw["type_name"],
+        _ffi_int(raw["offset"], "field offset"),
+        _ffi_int(raw["size"], "field size"),
+        _ffi_int(raw["alignment"], "field alignment"),
+    )
+
+
+def _record_from_dict(value: object) -> ReprCRecord:
+    raw = _ffi_keys(
+        value,
+        {"name", "abi", "fields", "size", "alignment"},
+        "repr(C) record",
+    )
+    if not isinstance(raw["name"], str) or not isinstance(raw["abi"], str):
+        raise FFICompileError("InvalidFFIArtifact", "repr(C) record identity")
+    fields = _ffi_list(raw["fields"], "repr(C) fields")
+    return ReprCRecord(
+        raw["name"],
+        tuple(_field_from_dict(item) for item in fields),
+        _ffi_int(raw["size"], "record size"),
+        _ffi_int(raw["alignment"], "record alignment"),
+        raw["abi"],
+    )
+
+
+def _unsafe_from_dict(value: object) -> UnsafeOperation:
+    raw = _ffi_keys(
+        value,
+        {"operation", "source_line", "in_unsafe_block", "propagates"},
+        "unsafe operation",
+    )
+    if not isinstance(raw["operation"], str):
+        raise FFICompileError("InvalidFFIArtifact", "unsafe operation name")
+    return UnsafeOperation(
+        raw["operation"],
+        _ffi_int(raw["source_line"], "unsafe source line"),
+        _ffi_bool(raw["in_unsafe_block"], "unsafe block marker"),
+        _ffi_bool(raw["propagates"], "unsafe propagation marker"),
+    )
+
+
+def _ffi_bool(value: object, label: str) -> bool:
+    if not isinstance(value, bool):
+        raise FFICompileError("InvalidFFIArtifact", label)
+    return value
+
+
+def _ffi_int(value: object, label: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise FFICompileError("InvalidFFIArtifact", label)
+    return value
 
 _PARAM_RE = re.compile(r"^(?P<name>[A-Za-z_]\w*)\s*:\s*(?P<type>[^({]+?)(?:\s*(?:\{|\()\s*(?P<meta>[^)}]+?)\s*[})])?\s*$")
 

@@ -17,7 +17,7 @@ def test_alpha_versions_are_independent_and_frozen() -> None:
         "language": "0.3",
         "frontend": 8,
         "canonical": 6,
-        "hir": 6,
+        "hir": 7,
         "obligation_ir": 1,
         "range_analysis": 1,
         "bounded_symbolic": 1,

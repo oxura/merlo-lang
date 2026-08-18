@@ -7,7 +7,6 @@ Vec, Box, Bytes/Text primitives, and the permitted host I/O shim.
 
 from __future__ import annotations
 
-import copy
 import hashlib
 import re
 from dataclasses import dataclass
@@ -21,7 +20,7 @@ from merlo.collection_protocol import (
     collection_result_type,
     collection_shape,
 )
-from merlo.ffi import pointer_type, validate_ffi
+from merlo.ffi import pointer_type
 from merlo.representation_ir import RepresentationProgram, TypeDescriptor
 from merlo.intrinsics import (
     CONTRACT_GRAPH,
@@ -33,8 +32,6 @@ from merlo.representation_mir import GeneralPerformanceMIR
 from merlo.structured_hir_v2 import (
     HIRFunction,
     StructuredHIRProgram,
-    _preprocess,
-    _preprocess_ffi_surface,
 )
 from merlo.version import VERSIONS
 from merlo.type_parser import generic_parts, parse_type
@@ -194,22 +191,17 @@ class GeneralCEmitter:
         self.used_effects = frozenset(
             effect for function in hir.functions for effect in function.effects
         )
-        self.ffi_program = validate_ffi(hir.source, path=hir.path)
+        self.ffi_program = hir.ffi_program
         self.extern_functions = {
             item.name: item
             for item in self.ffi_program.extern_functions
         }
-        self.preprocessed = _preprocess(
-            _preprocess_ffi_surface(hir.source)
-        )
-        self.module = (
-            copy.deepcopy(hir.native_module)
-            if hir.native_module is not None
-            else ast.parse(
-                self.preprocessed.source,
-                filename=hir.path,
-            )
-        )
+        try:
+            self.module = hir.backend_module()
+        except (TypeError, ValueError) as exc:
+            raise RepresentationCBackendError(
+                "invalid digest-bound HIR native syntax artifact"
+            ) from exc
         self.function_nodes = {
             item.name: item for item in self.module.body if isinstance(item, ast.FunctionDef)
         }
