@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     )
 
 WORLD_SCHEMA_VERSION = VERSIONS.semantic_world
-WORLD_CONTRACT = "merlo.semantic-world.v15"
+WORLD_CONTRACT = "merlo.semantic-world.v16"
 
 
 class WorldError(ValueError):
@@ -252,6 +252,7 @@ class SemanticWorld:
                     ],
                     "ownership": sorted({getattr(parameter, "ownership", "") for parameter in getattr(hir, "parameters", ())} - {""}),
                     "resources": sorted({attribute.get("resource") for node in hir.walk() for attribute in [node.attribute_map] if attribute.get("resource") is not None}) if hir is not None else [],
+                    "borrow_summary": hir.borrow_summary.to_dict() if hir is not None else None,
                 }
                 symbols.append(record)
                 module_symbols.append(record)
@@ -478,6 +479,17 @@ class SemanticWorld:
             "capabilities": sorted({capability for item in symbols for capability in item["capabilities"]}),
             "ownership": sorted([[item["symbol_id"], value] for item in symbols for value in item["ownership"]]),
             "resources": sorted({value for item in symbols for value in item["resources"]}),
+            "borrow_summaries": sorted(
+                [
+                    {
+                        "symbol_id": item["symbol_id"],
+                        "summary": item["borrow_summary"],
+                    }
+                    for item in symbols
+                    if item.get("borrow_summary") is not None
+                ],
+                key=lambda item: item["symbol_id"],
+            ),
             "interfaces": sorted(interfaces, key=lambda item: (item.get("module", ""), item.get("name", ""))),
             "obligations": [
                 item.to_dict()

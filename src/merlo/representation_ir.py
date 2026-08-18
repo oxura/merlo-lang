@@ -16,6 +16,7 @@ from merlo.structured_hir_v2 import (
 from merlo.ffi import pointer_type
 from merlo.type_parser import generic_parts, parse_type
 from merlo.type_properties import TypePropertyResolver
+from merlo.borrow_summary import BorrowSummary
 
 
 REPRESENTATION_IR_SCHEMA_VERSION = 3
@@ -243,6 +244,7 @@ class RIRFunction:
     effects: tuple[str, ...]
     operations: tuple[RIROperation, ...]
     source: SourceSpan
+    borrow_summary: BorrowSummary = BorrowSummary()
 
     def walk(self) -> Iterable[RIROperation]:
         for operation in self.operations:
@@ -261,6 +263,7 @@ class RIRFunction:
             "effects": list(self.effects),
             "source": self.source.to_dict(),
             "operations": [item.to_dict() for item in self.operations],
+            "borrow_summary": self.borrow_summary.to_dict(),
         }
 
 
@@ -1150,6 +1153,7 @@ def lower_structured_hir_to_rir(hir: StructuredHIRProgram) -> RepresentationProg
             function.effects,
             tuple(_lower_operation(item) for item in function.body),
             function.source,
+            function.borrow_summary,
         )
         for function in hir.functions
     )

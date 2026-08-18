@@ -17,12 +17,16 @@ tree is rejected; serialized projections are not compiler input.
 ## Outputs
 
 The function returns `StructuredHIRProgram`, contract
-`merlo.structured-typed-hir.v7`, schema version `7`. It contains source
+`merlo.structured-typed-hir.v8`, schema version `8`. It contains source
 text/digest, `HIRTypeDecl` values with typed record invariants,
 `HIRField`/`HIRVariant` values, `HIRFunction` records, typed parameters,
 function contracts, contextual `TypedHole` nodes, an entry function, and
 tree-shaped `HIRNode` bodies. It also contains the complete canonical Merlo
 native-syntax tree used by the C adapter and validated typed FFI declarations.
+Each function carries a versioned `merlo.borrow-summary.v1` contract. Its
+entries bind direct or contained returned borrows to formal parameter indices,
+source paths, result paths, borrow types, and ownership vocabulary; the
+summary is part of the function revision and therefore the HIR digest.
 `HIRNode.walk()` traverses contract conditions
 and executable nodes for source-map projection.
 

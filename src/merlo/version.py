@@ -41,7 +41,7 @@ VERSIONS = CompilerVersions(
     language="0.3",
     frontend=8,
     canonical=6,
-    hir=7,
+    hir=8,
     obligation_ir=1,
     range_analysis=1,
     bounded_symbolic=1,
@@ -59,7 +59,7 @@ VERSIONS = CompilerVersions(
     parallel_ir=1,
     wasm_backend=1,
     runtime_abi=2,
-    semantic_world=15,
+    semantic_world=16,
     manifest=1,
     lockfile=1,
 )

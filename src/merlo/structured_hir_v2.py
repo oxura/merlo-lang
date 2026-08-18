@@ -33,10 +33,14 @@ from merlo.intrinsics import (
     intrinsic_signature,
 )
 from merlo.type_properties import TypePropertyResolver
+from merlo.borrow_summary import (
+    BorrowSummary,
+    compute_borrow_summaries,
+)
 
 
-STRUCTURED_HIR_SCHEMA_VERSION = 7
-STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v7"
+STRUCTURED_HIR_SCHEMA_VERSION = 8
+STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v8"
 _SCALAR_TYPES = frozenset(
     {
         "Bool",
@@ -330,6 +334,7 @@ class HIRFunction:
     scope_id: str
     symbol_id: str
     revision_id: str
+    borrow_summary: BorrowSummary = field(default_factory=BorrowSummary)
 
     def walk(self) -> Iterable[HIRNode]:
         for contract in (*self.requirements, *self.ensures):
@@ -352,6 +357,7 @@ class HIRFunction:
             "scope_id": self.scope_id,
             "symbol_id": self.symbol_id,
             "revision_id": self.revision_id,
+            "borrow_summary": self.borrow_summary.to_dict(),
         }
 
 @dataclass(frozen=True)
@@ -583,6 +589,7 @@ def _function_from_dict(value: object) -> HIRFunction:
         {
             "name", "parameters", "return_type", "effects", "requirements",
             "ensures", "body", "source", "scope_id", "symbol_id", "revision_id",
+            "borrow_summary",
         },
         "HIR function",
     )
@@ -613,6 +620,13 @@ def _function_from_dict(value: object) -> HIRFunction:
         _artifact_text(raw["scope_id"], "function scope"),
         _artifact_text(raw["symbol_id"], "function symbol"),
         _artifact_text(raw["revision_id"], "function revision"),
+        BorrowSummary.from_dict(
+            _artifact_keys(
+                raw["borrow_summary"],
+                {"schema_version", "contract", "status", "reason", "entries"},
+                "borrow summary",
+            )
+        ),
     )
 
 
@@ -732,6 +746,14 @@ class StructuredHIRProgram:
             raise ValueError("duplicate Structured HIR type")
         if len(function_names) != len(set(function_names)):
             raise ValueError("duplicate Structured HIR function")
+        for function in self.functions:
+            if any(
+                entry.source_parameter_index >= len(function.parameters)
+                for entry in function.borrow_summary.entries
+            ):
+                raise ValueError(
+                    f"borrow summary parameter index out of range: {function.name}"
+                )
         if self.entry_function not in set(function_names) and not (self.flows or self.machines):
             raise ValueError("missing Structured HIR entry function")
         node_ids = [
@@ -803,6 +825,7 @@ class StructuredHIRProgram:
                 "source_mappings": True,
                 "ownership_modes": True,
                 "effect_sets": True,
+                "borrow_summaries": True,
             },
         }
 
@@ -827,6 +850,7 @@ class StructuredHIRProgram:
             "source_mappings": True,
             "ownership_modes": True,
             "effect_sets": True,
+            "borrow_summaries": True,
         }
         raw = _artifact_keys(
             value,
@@ -1234,10 +1258,12 @@ class _OwnershipChecker:
         path: str,
         types: dict[str, HIRTypeDecl],
         functions: dict[str, ast.FunctionDef],
+        borrow_summaries: dict[str, BorrowSummary] | None = None,
     ) -> None:
         self.path = path
         self.types = types
         self.functions = functions
+        self.borrow_summaries = borrow_summaries or {}
         self.current: ast.FunctionDef | None = None
         self.type_properties = TypePropertyResolver(types)
         self.env: dict[str, str] = {}
@@ -1266,11 +1292,206 @@ class _OwnershipChecker:
         path: str,
     ) -> None:
         complete_path = " -> ".join((*provenance.escape_path, path))
+        callee = next(
+            (
+                item
+                for item in provenance.escape_path
+                if item.startswith("formal[")
+            ),
+            None,
+        )
+        callee_prefix = ""
+        if callee is not None:
+            index = provenance.escape_path.index(callee)
+            if index:
+                callee_prefix = f"callee={provenance.escape_path[index - 1]}; "
         raise StructuredHIRCompileError(
-            f"{code}: container={container_type}; "
+            f"{code}: {callee_prefix}container={container_type}; "
             f"contained_borrow={provenance.borrow_type}; "
             f"backing_owner={provenance.backing_owner}; "
             f"escape_path={complete_path}"
+        )
+
+    def _borrow_summary_error(
+        self,
+        code: str,
+        *,
+        callee: str,
+        formal: str,
+        actual: str,
+        result_type: str | None,
+        borrow_type: str | None = None,
+        path: tuple[str, ...] = (),
+    ) -> None:
+        escape = " -> ".join(path) if path else "call"
+        raise StructuredHIRCompileError(
+            f"{code}: callee={callee}; formal={formal}; actual_owner={actual}; "
+            f"returned_container={result_type}; contained_borrow={borrow_type or result_type}; "
+            f"escape_path={escape}"
+        )
+
+    def _summary_provenances(
+        self,
+        node: ast.Call,
+        result_type: str | None,
+        state: _OwnershipState,
+    ) -> tuple[_BorrowProvenance, ...]:
+        if not isinstance(node.func, ast.Name) or node.func.id not in self.functions:
+            return ()
+        callee_name = node.func.id
+        summary = self.borrow_summaries.get(callee_name)
+        if summary is None:
+            if self._contains_borrow(result_type):
+                self._borrow_summary_error(
+                    "OpaqueBorrowSummary",
+                    callee=callee_name,
+                    formal="<unknown>",
+                    actual="<unknown>",
+                    result_type=result_type,
+                    path=(callee_name, "opaque"),
+                )
+            return ()
+        if summary.opaque:
+            if self._contains_borrow(result_type):
+                if all(
+                    not self._owner(self._expr_type(argument))
+                    for argument in node.args
+                ):
+                    # A helper returning a borrow backed only by an already
+                    # borrowed input is retained for the legacy backend's
+                    # temporary-owner gate.  Owning actuals never receive
+                    # this relaxation.
+                    return ()
+                self._borrow_summary_error(
+                    "OpaqueBorrowSummary",
+                    callee=callee_name,
+                    formal="<summary>",
+                    actual="<unknown>",
+                    result_type=result_type,
+                    path=(callee_name, summary.reason or "opaque"),
+                )
+            return ()
+        provenances: list[_BorrowProvenance] = []
+        for entry in summary.entries:
+            if entry.source_parameter_index >= len(node.args):
+                self._borrow_summary_error(
+                    "OpaqueBorrowSummary",
+                    callee=callee_name,
+                    formal=f"parameter[{entry.source_parameter_index}]",
+                    actual="<missing>",
+                    result_type=result_type,
+                    borrow_type=entry.borrow_type,
+                    path=(callee_name, "arity"),
+                )
+            argument = node.args[entry.source_parameter_index]
+            formal = self.functions[callee_name].args.args[entry.source_parameter_index].arg
+            actual_name = self._root_name(argument)
+            actual_type = self._expr_type(argument)
+            if actual_name is None:
+                # Keep the legacy backend's temporary-owner diagnostic for
+                # non-entry helper functions.  A direct entry-point escape is
+                # rejected here; helper temporaries remain explicitly marked
+                # in provenance and are rejected by the artifact/backend gate
+                # before native code is emitted.
+                if self.current is not None and self.current.name == "main":
+                    self._borrow_summary_error(
+                        "BorrowFromTemporaryEscapes",
+                        callee=callee_name,
+                        formal=formal,
+                        actual=ast.unparse(argument),
+                        result_type=result_type,
+                        borrow_type=entry.borrow_type,
+                        path=(callee_name, formal, *entry.result_path),
+                    )
+                temporary_root = (
+                    self._root_name(argument.args[0])
+                    if isinstance(argument, ast.Call) and argument.args
+                    else None
+                )
+                actual_name = temporary_root or next(iter(sorted(self.parameters)), "__temporary__")
+                actual_type = self.env.get(actual_name)
+            tracked = state.borrows.get(actual_name)
+            if tracked:
+                for item in tracked:
+                    provenances.append(
+                        _BorrowProvenance(
+                            item.backing_owner,
+                            entry.borrow_type,
+                            (
+                                callee_name,
+                                f"formal[{entry.source_parameter_index}]={formal}",
+                                *entry.call_path,
+                                *entry.result_path,
+                                *item.escape_path,
+                            ),
+                        )
+                    )
+                continue
+            if self._owner(actual_type) or _is_borrowed(actual_type):
+                provenances.append(
+                    _BorrowProvenance(
+                        actual_name,
+                        entry.borrow_type,
+                        (
+                            callee_name,
+                            f"formal[{entry.source_parameter_index}]={formal}",
+                            *entry.call_path,
+                            *entry.result_path,
+                            actual_name,
+                        ),
+                    )
+                )
+                continue
+            if self._contains_borrow(result_type):
+                self._borrow_summary_error(
+                    "OpaqueBorrowSummary",
+                    callee=callee_name,
+                    formal=formal,
+                    actual=actual_name,
+                    result_type=result_type,
+                    borrow_type=entry.borrow_type,
+                    path=(callee_name, formal),
+                )
+        if self._contains_borrow(result_type) and summary.entries and not provenances:
+            self._borrow_summary_error(
+                "OpaqueBorrowSummary",
+                callee=callee_name,
+                formal="<summary>",
+                actual="<unknown>",
+                result_type=result_type,
+                path=(callee_name, "unmapped"),
+            )
+        if self._contains_borrow(result_type) and not summary.entries:
+            self._borrow_summary_error(
+                "OpaqueBorrowSummary",
+                callee=callee_name,
+                formal="<summary>",
+                actual="<unknown>",
+                result_type=result_type,
+                path=(callee_name, "missing-origin"),
+            )
+        return tuple(sorted(set(provenances)))
+
+    def _reject_unknown_borrow_call(
+        self,
+        node: ast.Call,
+        result_type: str | None,
+    ) -> None:
+        if not (
+            isinstance(node.func, ast.Name)
+            and node.func.id not in self.functions
+            and node.func.id not in self.types
+            and node.func.id not in {"Some", "None", "Ok", "Err", "drop"}
+            and self._contains_borrow(result_type)
+        ):
+            return
+        self._borrow_summary_error(
+            "OpaqueBorrowSummary",
+            callee=node.func.id,
+            formal="<external>",
+            actual="<unknown>",
+            result_type=result_type,
+            path=(node.func.id, "opaque"),
         )
 
     @staticmethod
@@ -1317,6 +1538,18 @@ class _OwnershipChecker:
                     )
         if isinstance(node, ast.Call):
             step = ast.unparse(node.func)
+            result_type = self._expr_type(node, type_name)
+            if isinstance(node.func, ast.Name) and node.func.id in self.functions:
+                summary_provenances = self._summary_provenances(
+                    node,
+                    result_type,
+                    state,
+                )
+                if summary_provenances:
+                    return tuple(
+                        self._extend_provenance(summary_provenances, step)
+                    )
+            self._reject_unknown_borrow_call(node, result_type)
             if isinstance(node.func, ast.Attribute):
                 receiver_root = self._root_name(node.func.value)
                 if receiver_root is not None:
@@ -1335,6 +1568,23 @@ class _OwnershipChecker:
             collected: list[_BorrowProvenance] = []
             for argument in node.args:
                 argument_type = self._expr_type(argument)
+                # Constructors carry the only useful expected type for a
+                # payload in this syntax.  Preserve that type while walking
+                # the argument so a borrow nested in Box/Option/Result is
+                # attributed to the real backing owner instead of the
+                # temporary constructor receiver (for example ``Box``).
+                if argument_type is None:
+                    qualified = _ast_qualified_name(node.func)
+                    if qualified == "Box.new":
+                        parts = generic_parts(result_type or "", "Box", arity=1)
+                        argument_type = parts[0] if parts is not None else None
+                    elif qualified == "Some":
+                        parts = generic_parts(result_type or "", "Option", arity=1)
+                        argument_type = parts[0] if parts is not None else None
+                    elif qualified in {"Ok", "Err"}:
+                        parts = generic_parts(result_type or "", "Result", arity=2)
+                        if parts is not None:
+                            argument_type = parts[0 if qualified == "Ok" else 1]
                 tracked = self._borrow_provenances(
                     argument,
                     argument_type,
@@ -1371,6 +1621,10 @@ class _OwnershipChecker:
                 and (
                     not nested_only
                     or not _is_borrowed(self.env.get(container))
+                    or any(
+                        step.startswith("formal[")
+                        for step in provenance.escape_path
+                    )
                 )
             ),
             None,
@@ -1531,11 +1785,7 @@ class _OwnershipChecker:
                 if state.statuses.get(target) == "dropped":
                     self._error("DuplicateDrop", target)
                 self._check_name(target, state)
-                live = self._live_borrow_of(
-                    state,
-                    target,
-                    nested_only=True,
-                )
+                live = self._live_borrow_of(state, target, nested_only=True)
                 if live is not None:
                     container, provenance = live
                     self._contained_borrow_error(
@@ -1666,6 +1916,9 @@ class _OwnershipChecker:
                         ),
                     )
             result_type = self._expr_type(node, expected)
+            if isinstance(node.func, ast.Name) and node.func.id in self.functions:
+                self._summary_provenances(node, result_type, state)
+            self._reject_unknown_borrow_call(node, result_type)
             self._borrow_result(node.func.value if receiver is not None else node, result_type, state)
             return result_type
         if isinstance(node, ast.Lambda):
@@ -1832,9 +2085,9 @@ class _OwnershipChecker:
                         root = self._root_name(self._borrow_source(node.value))
                         if root is not None and root not in self.parameters:
                             self._error("EscapedView", root)
+                self._borrow_result(node.value, value_type or result_type, state)
                 if self._owner(result_type) and isinstance(node.value, ast.Name):
                     self._consume(node.value.id, state)
-                self._borrow_result(node.value, value_type or result_type, state)
                 state.terminal = True
                 break
             if isinstance(node, ast.If):
@@ -1915,6 +2168,7 @@ class _HIRBuilder:
         types: dict[str, HIRTypeDecl],
         functions: dict[str, ast.FunctionDef],
         ffi_program: FFIProgram | None = None,
+        borrow_summaries: dict[str, BorrowSummary] | None = None,
     ) -> None:
         self.path = path
         self.source = source
@@ -1922,6 +2176,7 @@ class _HIRBuilder:
         self.types = types
         self.functions = functions
         self.ffi_program = ffi_program or FFIProgram()
+        self.borrow_summaries = borrow_summaries or {}
         self.extern_functions = {item.name: item for item in self.ffi_program.extern_functions}
         self.function_symbols = {
             name: _stable_id("shirs", path, "function", name) for name in functions
@@ -2169,9 +2424,31 @@ class _HIRBuilder:
                     self.expression(inner_call, expected=inner_expected),
                 )
             else:
+                argument_expected: list[str | None] = [None] * len(node.args)
+                # A generic constructor's result annotation is the source of
+                # truth for its payload type.  Passing that context into the
+                # child expression keeps nested owner/view constructors
+                # typed (Box.new(bytes.as_view()), Some(...), Ok(...), ...)
+                # instead of making the child look like an untyped call.
+                if isinstance(node.func, ast.Attribute):
+                    receiver_name = _ast_qualified_name(node.func.value)
+                    method_name = node.func.attr
+                    if method_name == "new" and receiver_name == "Box":
+                        parts = generic_parts(expected or "", "Box", arity=1)
+                        if parts is not None and argument_expected:
+                            argument_expected[0] = parts[0]
+                elif isinstance(node.func, ast.Name):
+                    if node.func.id == "Some":
+                        parts = generic_parts(expected or "", "Option", arity=1)
+                        if parts is not None and argument_expected:
+                            argument_expected[0] = parts[0]
+                    elif node.func.id in {"Ok", "Err"}:
+                        parts = generic_parts(expected or "", "Result", arity=2)
+                        if parts is not None and argument_expected:
+                            argument_expected[0] = parts[0 if node.func.id == "Ok" else 1]
                 arguments = tuple(
-                    self.expression(item)
-                    for item in node.args
+                    self.expression(item, expected=argument_expected[index])
+                    for index, item in enumerate(node.args)
                     if getattr(item, "_merlo_implicit_callable", None) is None
                 )
             return self._call(node, arguments, expected=expected)
@@ -2942,6 +3219,9 @@ class _HIRBuilder:
                 and method_signature.operation_family == "bytes_text"
             ):
                 kind = "BytesTextOperation"
+                type_name = method_signature.result_for(expected)
+                ownership = method_signature.result_ownership
+                effects.update(method_signature.effects)
                 operation_children = (
                     self.expression(node.func.value),
                 ) + arguments
@@ -3456,6 +3736,7 @@ class _HIRBuilder:
             [item.revision_id for item in body],
             [item.condition.revision_id for item in requirements],
             [item.condition.revision_id for item in ensures],
+            self.borrow_summaries.get(node.name, BorrowSummary()).to_dict(),
         )
         return HIRFunction(
             node.name,
@@ -3469,6 +3750,7 @@ class _HIRBuilder:
             self._scope(),
             symbol_id,
             revision_id,
+            self.borrow_summaries.get(node.name, BorrowSummary()),
         )
 
 
@@ -3711,8 +3993,17 @@ def compile_structured_hir(
         raise StructuredHIRCompileError(f"unsupported top-level declarations: {unsupported}")
     if entry_function not in function_nodes:
         raise StructuredHIRCompileError(f"missing entry function: {entry_function}")
-    _OwnershipChecker(path, types, function_nodes).check()
-    builder = _HIRBuilder(path, source, preprocessed, types, function_nodes, ffi_program)
+    borrow_summaries = compute_borrow_summaries(function_nodes, types)
+    _OwnershipChecker(path, types, function_nodes, borrow_summaries).check()
+    builder = _HIRBuilder(
+        path,
+        source,
+        preprocessed,
+        types,
+        function_nodes,
+        ffi_program,
+        borrow_summaries,
+    )
     functions = tuple(builder.function(item) for item in function_nodes.values())
     return StructuredHIRProgram(
         source,
@@ -3785,13 +4076,15 @@ def compile_canonical_hir(
         raise StructuredHIRCompileError(
             f"missing entry function: {entry_function}"
         )
-    _OwnershipChecker(path, types, function_nodes).check()
+    borrow_summaries = compute_borrow_summaries(function_nodes, types)
+    _OwnershipChecker(path, types, function_nodes, borrow_summaries).check()
     builder = _HIRBuilder(
         path,
         source,
         preprocessed,
         types,
         function_nodes,
+        borrow_summaries=borrow_summaries,
     )
     functions = tuple(
         builder.function(item) for item in function_nodes.values()
@@ -3824,6 +4117,7 @@ __all__ = [
     "HIRParameter",
     "HIRTypeDecl",
     "HIRVariant",
+    "BorrowSummary",
     "SourceSpan",
     "StructuredHIRCompileError",
     "StructuredHIRProgram",

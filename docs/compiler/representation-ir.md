@@ -21,7 +21,9 @@ values, type-directed `DropPlan` values, and `RIRFunction` trees of
 copy/move/drop classes, dependencies, contained-borrow/resource properties,
 the exact contained borrow/resource leaf types, and `source_type_identity`. Operations
 retain type, source span, symbol/revision identity, ownership provenance,
-effects, attributes, and children.
+effects, attributes, and children. Each function also carries the digest-bound
+`merlo.borrow-summary.v1` provenance contract lowered from HIR, so downstream
+inspection can retain interprocedural direct and contained-borrow origins.
 
 ## Invariants
 
