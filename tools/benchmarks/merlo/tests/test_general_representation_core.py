@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 
 from pathlib import Path
 
@@ -18,6 +19,7 @@ from tools.benchmarks.merlo.general_representation_milestone import (
     validate_general_representation_report,
 )
 from merlo.representation_c_backend import emit_general_c
+from merlo.native_c_backend import compile_c_source
 from merlo.representation_ir import (
     BoxDesc,
     EnumDesc,
@@ -292,6 +294,68 @@ def test_runtime_vec_box_rules_and_c_intrinsic_boundary(layers):
     assert all(item["effect"] for item in manifest.values())
     assert all(item["complexity"] for item in manifest.values())
     assert all(item["handwritten_implementation_size_lines"] >= 0 for item in manifest.values())
+
+
+def test_frozen_json_and_source_variant_share_explicit_wrapping_semantics(
+    layers,
+    tmp_path: Path,
+):
+    hir, representation, _mir, optimized = layers
+    source = SOURCE_PATH.read_text(encoding="utf-8")
+    variant_source = source + "\n# semantically equivalent source payload\n"
+    variant_hir = compile_structured_hir(
+        variant_source,
+        path=str(SOURCE_PATH),
+    )
+    variant_representation = lower_structured_hir_to_rir(variant_hir)
+    variant_mir = optimize_general_mir(
+        lower_rir_to_performance_mir(
+            variant_hir,
+            variant_representation,
+        )
+    )
+    generated = emit_general_c(hir, representation, optimized)
+    variant_generated = emit_general_c(
+        variant_hir,
+        variant_representation,
+        variant_mir,
+    )
+    payload = b'{"a":[1,true,false,null],"text":"merlo"}'
+    oracle = evaluate_python_oracle(payload)
+    base_result = evaluate_structured_hir(hir, representation, payload)
+    variant_result = evaluate_structured_hir(
+        variant_hir,
+        variant_representation,
+        payload,
+    )
+    wrapping = next(
+        node
+        for node in hir.function("checksum_byte").walk()
+        if node.kind == "NumericIntrinsic"
+    )
+
+    assert hir.digest != variant_hir.digest
+    assert wrapping.attribute_map["callee"] == "wrapping_mul"
+    assert wrapping.attribute_map["overflow"] == "wrapping"
+    assert generated.source == variant_generated.source
+    assert base_result.result == variant_result.result
+    assert base_result.result["checksum"] == oracle.checksum
+
+    build = compile_c_source(
+        generated.source,
+        output_dir=tmp_path,
+        stem="general-json-wrapping",
+    )
+    assert build.status == "MEASURED", build.stderr
+    assert build.binary_path is not None
+    completed = subprocess.run(
+        [build.binary_path],
+        input=payload,
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert f"OK checksum={oracle.checksum} ".encode() in completed.stdout
 
 
 def test_corpus_cardinalities_are_deterministic_and_independently_partitioned():
