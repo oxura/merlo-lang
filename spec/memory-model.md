@@ -83,6 +83,17 @@ closure, storing it in a longer-lived owner, or moving/dropping the backing
 owner first is rejected. Diagnostics identify the container, contained borrow
 type, backing owner, and escape path.
 
+Interprocedural returns use the digest-bound `merlo.borrow-summary.v1`
+contract. A function summary records each direct or contained result origin as
+`(source_parameter_index, source_path, borrow_type, result_path, kind,
+ownership)`, plus a deterministic call path for transitive diagnostics. The
+fixed point is taken over the local call graph. A call substitutes the formal
+origin into the actual place even when the actual is an owning `Text` or
+`Bytes`; dropping or moving that actual while the returned view is live is
+invalid. An absent or opaque summary is not evidence of safety, and a borrow
+from a materialized temporary is rejected rather than assigned an invented
+lifetime.
+
 The checker may shorten a borrow to its last semantic use. It may not use a
 native optimizer's accidental behavior as evidence that an invalid alias is
 safe.

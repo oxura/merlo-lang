@@ -10,6 +10,12 @@ obligations without pretending that metadata alone proves runtime safety.
 
 HIR carries ownership labels on `HIRParameter` and `HIRNode` in
 [`src/merlo/structured_hir_v2.py`](../../src/merlo/structured_hir_v2.py).
+Each HIR function also carries a versioned `BorrowSummary`. A summary entry
+binds a returned direct or contained borrow to a formal parameter index,
+source/result paths, borrow type, and one of the ownership modes `value`,
+`borrow`, `borrow_mut`, `owned`, `contained_borrow`, or
+`owned_contained_borrow`. Summaries are computed to a deterministic fixed
+point over local calls and are part of the HIR digest.
 RIR consumes those labels through `TypeDescriptor` and `DropPlan` in
 [`src/merlo/representation_ir.py`](../../src/merlo/representation_ir.py).
 MIR materializes ownership operations and `drop_value` instructions in
@@ -30,6 +36,11 @@ mutation. Drop actions are selected from type descriptors and plans, not from
 generated C names or allocation order. RIR does not contain `StoragePolicy`
 values; the `storage_policy_matrix()` helper is not a production lowering
 stage. The backend checks predecessor identity before emission.
+Call sites substitute summary formal origins into actual places, including
+owning actuals that do not themselves contain a borrow. Conditional and
+transitive origins are unioned. Missing or opaque summaries fail closed;
+temporary owners are rejected at the entry boundary or by the native artifact
+gate rather than treated as independent storage.
 
 Recursive records and enums must cross an owning `Box[T]` or `Vec[T]`
 indirection; inline layout cycles are rejected with their minimal cycle path.
