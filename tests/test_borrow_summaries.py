@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from merlo.borrow_summary import BORROW_SUMMARY_CYCLE_MARKER
 from merlo.representation_ir import lower_structured_hir_to_rir
 from merlo.semantic_world import SemanticWorld
 from merlo.structured_hir_v2 import (
@@ -208,6 +209,168 @@ def test_semantic_world_exposes_function_borrow_summary(tmp_path: Path) -> None:
     world = SemanticWorld.build(source, require_interface_lock=False)
     symbol = world.inspect("app.main.borrow_text")["symbol"]
     summary = symbol["borrow_summary"]
-    assert summary["schema_version"] == 1
+    assert summary["schema_version"] == 2
     assert summary["entries"][0]["source_parameter_index"] == 0
     assert world.data["borrow_summaries"]
+
+
+def test_direct_recursion_has_one_semantic_relation_and_bounded_witness() -> None:
+    source = (
+        "fn recursive_view(text: Text, depth: UInt64) -> TextView:\n"
+        "    if depth == 0:\n"
+        "        return text.as_view()\n"
+        "    return recursive_view(text, depth - 1)\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let text: Text = Text.from_bytes(input, 0, input.len())\n"
+        "    let view: TextView = recursive_view(text, 1)\n"
+        "    return view.len()\n"
+    )
+    hir = compile_structured_hir(source)
+    summary = hir.function("recursive_view").borrow_summary
+    assert len(summary.entries) == 1
+    assert summary.entries[0].semantic_key() == (
+        0, ("text",), "TextView", (), "direct", "borrow"
+    )
+    assert len(summary.entries[0].witness_path) <= 1
+    assert summary.entries[0].witness_path.count("recursive_view") <= 1
+
+
+def test_mutual_recursion_converges_deterministically() -> None:
+    source = (
+        "fn left(text: Text, depth: UInt64) -> TextView:\n"
+        "    if depth == 0:\n"
+        "        return text.as_view()\n"
+        "    return right(text, depth - 1)\n"
+        "fn right(text: Text, depth: UInt64) -> TextView:\n"
+        "    if depth == 0:\n"
+        "        return text.as_view()\n"
+        "    return left(text, depth - 1)\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let text: Text = Text.from_bytes(input, 0, input.len())\n"
+        "    let view: TextView = left(text, 1)\n"
+        "    return view.len()\n"
+    )
+    first = compile_structured_hir(source)
+    second = compile_structured_hir(source)
+    assert first.function("left").borrow_summary == second.function("left").borrow_summary
+    assert first.function("right").borrow_summary == second.function("right").borrow_summary
+    assert first.function("left").borrow_summary.entries[0].call_path == ()
+
+
+def test_recursive_contained_borrow_summary_is_finite() -> None:
+    source = (
+        "fn recursive_views(text: Text, depth: UInt64) -> Vec[TextView]:\n"
+        "    let values: Vec[TextView] = Vec.new()\n"
+        "    values.push(text.as_view())\n"
+        "    if depth == 0:\n"
+        "        return values\n"
+        "    return recursive_views(text, depth - 1)\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let text: Text = Text.from_bytes(input, 0, input.len())\n"
+        "    let values: Vec[TextView] = recursive_views(text, 1)\n"
+        "    return values.len()\n"
+    )
+    summary = compile_structured_hir(source).function("recursive_views").borrow_summary
+    assert len(summary.entries) == 1
+    assert summary.entries[0].kind == "contained"
+    assert summary.entries[0].result_path == ("elements",)
+
+
+def test_recursive_projection_uses_cycle_marker_instead_of_growing_path() -> None:
+    source = (
+        "fn recursive_view(text: Text, depth: UInt64) -> TextView:\n"
+        "    if depth == 0:\n"
+        "        return text.as_view()\n"
+        "    return recursive_view(text, depth - 1).slice(0, 1)\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let text: Text = Text.from_bytes(input, 0, input.len())\n"
+        "    let view: TextView = recursive_view(text, 1)\n"
+        "    return view.len()\n"
+    )
+    summary = compile_structured_hir(source).function("recursive_view").borrow_summary
+    assert len(summary.entries) == 3
+    cycle_entries = [
+        item for item in summary.entries
+        if BORROW_SUMMARY_CYCLE_MARKER in item.result_path
+    ]
+    assert cycle_entries
+    assert all(item.witness_path.count(BORROW_SUMMARY_CYCLE_MARKER) == 1 for item in cycle_entries)
+
+
+def test_no_origin_recursion_is_opaque_and_fails_closed() -> None:
+    source = (
+        "fn no_origin(depth: UInt64) -> TextView:\n"
+        "    return no_origin(depth - 1)\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let view: TextView = no_origin(1)\n"
+        "    return view.len()\n"
+    )
+    with pytest.raises(StructuredHIRCompileError, match="OpaqueBorrowSummary"):
+        compile_structured_hir(source)
+
+
+def test_unrelated_scalar_does_not_change_recursive_function_revision() -> None:
+    base = (
+        "fn recursive_view(text: Text, depth: UInt64) -> TextView:\n"
+        "    if depth == 0:\n"
+        "        return text.as_view()\n"
+        "    return recursive_view(text, depth - 1)\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let text: Text = Text.from_bytes(input, 0, input.len())\n"
+        "    let view: TextView = recursive_view(text, 1)\n"
+        "    return view.len()\n"
+    )
+    extra = base.replace(
+        "fn main(input: BytesView) -> UInt64:\n",
+        "fn scalar(value: UInt64) -> UInt64:\n"
+        "    return value + 1\n"
+        "fn main(input: BytesView) -> UInt64:\n",
+    )
+    first = compile_structured_hir(base)
+    second = compile_structured_hir(extra)
+    assert first.function("recursive_view").borrow_summary.semantic_dict() == (
+        second.function("recursive_view").borrow_summary.semantic_dict()
+    )
+    assert first.function("recursive_view").revision_id == second.function("recursive_view").revision_id
+
+
+def test_helper_temporary_owner_is_rejected_before_backend() -> None:
+    source = (
+        "fn borrow_text(text: Text) -> TextView:\n"
+        "    return text.as_view()\n"
+        "fn helper(input: BytesView) -> TextView:\n"
+        "    return borrow_text(Text.from_bytes(input, 0, input.len()))\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let view: TextView = helper(input)\n"
+        "    return view.len()\n"
+    )
+    with pytest.raises(StructuredHIRCompileError, match="BorrowFromTemporaryEscapes") as raised:
+        compile_structured_hir(source)
+    assert "callee=borrow_text" in str(raised.value)
+    assert "escape_path=borrow_text -> text" in str(raised.value)
+
+
+def test_semantic_equality_ignores_witness_path() -> None:
+    source = (
+        "fn borrow_text(text: Text) -> TextView:\n"
+        "    return text.as_view()\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let text: Text = Text.from_bytes(input, 0, input.len())\n"
+        "    let view: TextView = borrow_text(text)\n"
+        "    return view.len()\n"
+    )
+    entry = compile_structured_hir(source).function("borrow_text").borrow_summary.entries[0]
+    altered = type(entry)(
+        entry.source_parameter_index,
+        entry.source_path,
+        entry.borrow_type,
+        entry.result_path,
+        entry.kind,
+        entry.ownership,
+        (BORROW_SUMMARY_CYCLE_MARKER,),
+    )
+    assert entry == altered
+    assert entry.semantic_key() == altered.semantic_key()
+    serialized = entry.to_dict()
+    assert "witness_path" in serialized
+    assert "call_path" not in serialized

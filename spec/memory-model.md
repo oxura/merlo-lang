@@ -83,11 +83,13 @@ closure, storing it in a longer-lived owner, or moving/dropping the backing
 owner first is rejected. Diagnostics identify the container, contained borrow
 type, backing owner, and escape path.
 
-Interprocedural returns use the digest-bound `merlo.borrow-summary.v1`
+Interprocedural returns use the digest-bound `merlo.borrow-summary.v2`
 contract. A function summary records each direct or contained result origin as
 `(source_parameter_index, source_path, borrow_type, result_path, kind,
-ownership)`, plus a deterministic call path for transitive diagnostics. The
-fixed point is taken over the local call graph. A call substitutes the formal
+ownership)`, plus a bounded diagnostic witness path for transitive diagnostics.
+The witness is not part of summary relation identity; recursive cycles use a
+special marker. The fixed point is a finite worklist over deterministic SCCs of
+the local call graph. A call substitutes the formal
 origin into the actual place even when the actual is an owning `Text` or
 `Bytes`; dropping or moving that actual while the returned view is live is
 invalid. An absent or opaque summary is not evidence of safety, and a borrow
