@@ -13,6 +13,7 @@ from merlo.semantic_capsule import (
     extract_semantic_capsule,
 )
 from merlo.modules import ModuleGraph
+from merlo.type_properties import TypePropertyResolver
 from merlo.version import VERSIONS
 
 if TYPE_CHECKING:
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
     )
 
 WORLD_SCHEMA_VERSION = VERSIONS.semantic_world
-WORLD_CONTRACT = "merlo.semantic-world.v14"
+WORLD_CONTRACT = "merlo.semantic-world.v15"
 
 
 class WorldError(ValueError):
@@ -148,6 +149,9 @@ class SemanticWorld:
             (str(Path(item.source.path).resolve()), item.source.line): item
             for item in compilation.hir.types
         }
+        type_properties = TypePropertyResolver(
+            {item.name: item for item in compilation.hir.types}
+        )
         task_by_location = {
             (str(Path(item.path).resolve()), item.line): item
             for item in compilation.elaborated.tasks
@@ -183,6 +187,20 @@ class SemanticWorld:
                 }
                 effects = tuple(sorted(set(getattr(hir, "effects", ())) | set(getattr(task, "effects", ()))))
                 capabilities = tuple(sorted(set(getattr(task, "capabilities", ())) | set(effects)))
+                symbol_types = sorted(
+                    (
+                        {
+                            getattr(parameter, "type_name", "")
+                            for parameter in getattr(hir, "parameters", ())
+                        }
+                        | (
+                            {getattr(hir, "return_type", "")}
+                            if hir is not None
+                            else set()
+                        )
+                    )
+                    - {""}
+                )
                 record = {
                     "symbol_id": item.symbol_id.value,
                     "name": item.name,
@@ -197,7 +215,11 @@ class SemanticWorld:
                     "implementation_revision_id": module.implementation_revision_id.value,
                     "source": source_span,
                     "definition": definition,
-                    "types": sorted({getattr(parameter, "type_name", "") for parameter in getattr(hir, "parameters", ())} | ({getattr(hir, "return_type", "")} if hir is not None else set()) - {""}),
+                    "types": symbol_types,
+                    "type_properties": {
+                        type_name: type_properties.resolve(type_name).to_dict()
+                        for type_name in symbol_types
+                    },
                     "effects": list(effects),
                     "capabilities": list(capabilities),
                     "requirements": [
@@ -401,6 +423,28 @@ class SemanticWorld:
         refs = list(unique_refs.values())
 
         types = [item.to_dict() for item in compilation.hir.types]
+        world_type_names = sorted(
+            {
+                type_name
+                for item in symbols
+                for type_name in item["types"]
+            }
+            | {
+                declaration.name
+                for declaration in compilation.hir.types
+            }
+            | {
+                field.type_name
+                for declaration in compilation.hir.types
+                for field in declaration.fields
+            }
+            | {
+                variant.payload_type
+                for declaration in compilation.hir.types
+                for variant in declaration.variants
+                if variant.payload_type is not None
+            }
+        )
         data_dependencies = [{"owner_id": item["caller_id"], "target_id": item["callee_id"], "kind": "call", "source": item["source"]} for item in calls]
         interfaces = [item.to_dict() for item in compilation.elaborated.interfaces]
         tests: list[dict[str, Any]] = []
@@ -424,6 +468,10 @@ class SemanticWorld:
             "references": sorted(refs, key=lambda item: item["reference_id"]),
             "calls": sorted(calls, key=lambda item: item["call_id"]),
             "types": sorted(types, key=lambda item: (item.get("name", ""), item.get("symbol_id", ""))),
+            "type_properties": {
+                type_name: type_properties.resolve(type_name).to_dict()
+                for type_name in world_type_names
+            },
             "data_dependencies": sorted(data_dependencies, key=lambda item: (item["owner_id"], item["target_id"])),
             "module_dependencies": [{"module": item["name"], "imports": item["imports"]} for item in sorted(modules, key=lambda item: item["name"])],
             "effects": sorted({effect for item in symbols for effect in item["effects"]}),

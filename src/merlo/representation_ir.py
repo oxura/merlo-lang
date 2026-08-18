@@ -15,10 +15,11 @@ from merlo.structured_hir_v2 import (
 )
 from merlo.ffi import pointer_type
 from merlo.type_parser import generic_parts, parse_type
+from merlo.type_properties import TypePropertyResolver
 
 
-REPRESENTATION_IR_SCHEMA_VERSION = 2
-REPRESENTATION_IR_CONTRACT = "merlo.representation-ir.v2"
+REPRESENTATION_IR_SCHEMA_VERSION = 3
+REPRESENTATION_IR_CONTRACT = "merlo.representation-ir.v3"
 MAX_U64 = (1 << 64) - 1
 
 def _type_leaf(type_name: str) -> str:
@@ -50,6 +51,10 @@ class TypeDescriptor:
     value_type: str | None = None
     length: int | None = None
     invariants: tuple[tuple[str, int], ...] = ()
+    contains_borrow: bool = False
+    contains_resource: bool = False
+    contained_borrow_types: tuple[str, ...] = ()
+    contained_resource_types: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -82,6 +87,10 @@ class TypeDescriptor:
                 {"function": function, "line": line}
                 for function, line in self.invariants
             ],
+            "contains_borrow": self.contains_borrow,
+            "contains_resource": self.contains_resource,
+            "contained_borrow_types": list(self.contained_borrow_types),
+            "contained_resource_types": list(self.contained_resource_types),
         }
 
 
@@ -462,6 +471,7 @@ class _DescriptorBuilder:
     def __init__(self, hir: StructuredHIRProgram) -> None:
         self.hir = hir
         self.declarations = {item.name: item for item in hir.types}
+        self.type_properties = TypePropertyResolver(self.declarations)
         self.descriptors: dict[str, TypeDescriptor] = {}
         for name, (size, alignment) in _SCALARS.items():
             self.descriptors[name] = ScalarDesc(
@@ -512,6 +522,17 @@ class _DescriptorBuilder:
         completed: set[str] = set()
         for declaration in self.hir.types:
             self._finalize_nominal(declaration.name, completed)
+        for name, descriptor in tuple(self.descriptors.items()):
+            properties = self.type_properties.resolve(name)
+            self.descriptors[name] = replace(
+                descriptor,
+                contains_borrow=properties.contains_borrow,
+                contains_resource=(
+                    properties.is_resource or properties.contains_resource
+                ),
+                contained_borrow_types=properties.borrow_types,
+                contained_resource_types=properties.resource_types,
+            )
         return tuple(sorted(self.descriptors.values(), key=lambda item: item.name))
 
     def get(self, type_name: str) -> TypeDescriptor:
@@ -1095,7 +1116,9 @@ def _lower_operation(node: HIRNode) -> RIROperation:
         op = operations[method]
     provenance = {
         "owned": "unique_owner",
+        "owned_contained_borrow": "unique_owner_with_contained_borrow",
         "borrow": "shared_borrow",
+        "contained_borrow": "shared_contained_borrow",
         "borrow_mut": "unique_borrow",
         "value": "plain_value",
     }.get(node.ownership, node.ownership)

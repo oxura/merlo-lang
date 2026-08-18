@@ -1174,11 +1174,17 @@ class _Elaborator:
                 name=f"{function.source.name}.closure_capture.{node.name}",
             )
             properties = self.type_properties.resolve(type_name)
-            if properties.contains_borrow:
+            if properties.contains_borrow and not properties.needs_drop:
+                contained = ",".join(properties.borrow_types) or type_name
                 raise SurfaceElaborationError(
-                    f"BorrowedClosureCaptureEscapes: {node.name}"
+                    f"BorrowedClosureCaptureEscapes: {node.name}; "
+                    f"container={type_name}; contained_borrow={contained}; "
+                    f"backing_owner={node.name}; "
+                    f"escape_path=closure_capture({node.name})"
                 )
-            if properties.is_resource:
+            if (
+                properties.is_resource or properties.contains_resource
+            ) and not properties.contains_borrow:
                 raise SurfaceElaborationError(
                     f"ResourceClosureCaptureForbidden: {node.name}"
                 )
