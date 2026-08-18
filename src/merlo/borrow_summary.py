@@ -3,14 +3,16 @@
 The ownership checker needs one small piece of information that is not
 present in a function signature alone: a returned view may be backed by an
 owning parameter.  This module records that relationship in a versioned,
-serializable contract and computes it to a fixed point over the local call
-graph.  It intentionally describes provenance only; it does not change the
-place/lifetime model or lower calls.
+serializable contract and computes it to a finite fixed point over deterministic
+strongly connected components of the local call graph. Semantic relations are
+separate from bounded diagnostic witnesses. It intentionally describes
+provenance only; it does not change the place/lifetime model or lower calls.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections import deque
+from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from merlo import native_syntax as ast
@@ -18,10 +20,11 @@ from merlo.type_parser import generic_parts
 from merlo.type_properties import TypePropertyResolver
 
 
-BORROW_SUMMARY_SCHEMA_VERSION = 1
-BORROW_SUMMARY_CONTRACT = "merlo.borrow-summary.v1"
+BORROW_SUMMARY_SCHEMA_VERSION = 2
+BORROW_SUMMARY_CONTRACT = "merlo.borrow-summary.v2"
 BORROW_SUMMARY_STATUSES = frozenset({"known", "opaque"})
 BORROW_SUMMARY_KINDS = frozenset({"direct", "contained"})
+BORROW_SUMMARY_CYCLE_MARKER = "<cycle>"
 OWNERSHIP_VOCABULARY = frozenset(
     {"value", "borrow", "borrow_mut", "owned", "contained_borrow", "owned_contained_borrow"}
 )
@@ -44,7 +47,10 @@ class BorrowSummaryEntry:
     result_path: tuple[str, ...]
     kind: str
     ownership: str
-    call_path: tuple[str, ...] = ()
+    # This is a diagnostic witness only.  It is deliberately excluded from
+    # equality/order so the fixed point is over semantic relations rather than
+    # over the number of call frames used to witness one relation.
+    call_path: tuple[str, ...] = field(default=(), compare=False)
 
     def __post_init__(self) -> None:
         if self.source_parameter_index < 0:
@@ -61,6 +67,22 @@ class BorrowSummaryEntry:
         object.__setattr__(self, "result_path", _canonical_path(self.result_path))
         object.__setattr__(self, "call_path", _canonical_path(self.call_path))
 
+    @property
+    def witness_path(self) -> tuple[str, ...]:
+        """Bounded diagnostic path; never part of semantic identity."""
+
+        return self.call_path
+
+    def semantic_key(self) -> tuple[object, ...]:
+        return (
+            self.source_parameter_index,
+            self.source_path,
+            self.borrow_type,
+            self.result_path,
+            self.kind,
+            self.ownership,
+        )
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "source_parameter_index": self.source_parameter_index,
@@ -69,14 +91,14 @@ class BorrowSummaryEntry:
             "result_path": list(self.result_path),
             "kind": self.kind,
             "ownership": self.ownership,
-            "call_path": list(self.call_path),
+            "witness_path": list(self.call_path),
         }
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "BorrowSummaryEntry":
         expected = {
             "source_parameter_index", "source_path", "borrow_type",
-            "result_path", "kind", "ownership", "call_path",
+            "result_path", "kind", "ownership", "witness_path",
         }
         if set(value) != expected:
             raise ValueError("invalid borrow summary entry keys")
@@ -85,10 +107,10 @@ class BorrowSummaryEntry:
             raise ValueError("borrow summary source parameter index must be an integer")
         source_path = value["source_path"]
         result_path = value["result_path"]
-        call_path = value["call_path"]
-        if not isinstance(source_path, list) or not isinstance(result_path, list) or not isinstance(call_path, list):
+        witness_path = value["witness_path"]
+        if not isinstance(source_path, list) or not isinstance(result_path, list) or not isinstance(witness_path, list):
             raise ValueError("borrow summary paths must be lists")
-        if not all(isinstance(item, str) for item in (*source_path, *result_path, *call_path)):
+        if not all(isinstance(item, str) for item in (*source_path, *result_path, *witness_path)):
             raise ValueError("borrow summary paths must contain text")
         for key in ("borrow_type", "kind", "ownership"):
             if not isinstance(value[key], str):
@@ -100,7 +122,7 @@ class BorrowSummaryEntry:
             tuple(result_path),
             value["kind"],
             value["ownership"],
-            tuple(call_path),
+            tuple(witness_path),
         )
 
 
@@ -125,11 +147,15 @@ class BorrowSummary:
             raise ValueError("known borrow summary cannot have an opaque reason")
         if self.status == "opaque" and not self.reason:
             raise ValueError("opaque borrow summary requires a reason")
-        canonical = tuple(sorted(set(self.entries)))
-        if canonical != self.entries:
-            raise ValueError("borrow summary entries must be sorted and unique")
         if any(not isinstance(item, BorrowSummaryEntry) for item in self.entries):
             raise ValueError("invalid borrow summary entry")
+        canonical = _canonical_entries(self.entries)
+        if [
+            (item.semantic_key(), item.call_path) for item in canonical
+        ] != [
+            (item.semantic_key(), item.call_path) for item in self.entries
+        ]:
+            raise ValueError("borrow summary entries must be sorted and unique")
 
     @property
     def opaque(self) -> bool:
@@ -142,6 +168,27 @@ class BorrowSummary:
             "status": self.status,
             "reason": self.reason,
             "entries": [item.to_dict() for item in self.entries],
+        }
+
+    def semantic_dict(self) -> dict[str, Any]:
+        """Serialize only the relation lattice, excluding witnesses."""
+
+        return {
+            "schema_version": self.schema_version,
+            "contract": self.contract,
+            "status": self.status,
+            "reason": self.reason,
+            "entries": [
+                {
+                    "source_parameter_index": item.source_parameter_index,
+                    "source_path": list(item.source_path),
+                    "borrow_type": item.borrow_type,
+                    "result_path": list(item.result_path),
+                    "kind": item.kind,
+                    "ownership": item.ownership,
+                }
+                for item in self.entries
+            ],
         }
 
     @classmethod
@@ -179,7 +226,21 @@ class _Origin:
     result_path: tuple[str, ...]
     kind: str
     ownership: str
-    call_path: tuple[str, ...] = ()
+    witness_path: tuple[str, ...] = field(default=(), compare=False)
+
+    @property
+    def call_path(self) -> tuple[str, ...]:
+        return self.witness_path
+
+    def semantic_key(self) -> tuple[object, ...]:
+        return (
+            self.source_parameter_index,
+            self.source_path,
+            self.borrow_type,
+            self.result_path,
+            self.kind,
+            self.ownership,
+        )
 
     def entry(self) -> BorrowSummaryEntry | None:
         if self.source_parameter_index < 0:
@@ -191,7 +252,7 @@ class _Origin:
             self.result_path,
             self.kind,
             self.ownership,
-            self.call_path,
+            self.witness_path,
         )
 
 
@@ -243,19 +304,68 @@ def _qualified_name(node: ast.AST | None) -> str:
 
 
 def _append(origin: _Origin, *steps: str) -> _Origin:
+    result_path = (*origin.result_path, *steps)
+    if BORROW_SUMMARY_CYCLE_MARKER in origin.witness_path:
+        # Once a recursive SCC has been witnessed, preserve one terminal
+        # marker instead of expanding a recursive projection forever.
+        result_path = (
+            origin.result_path
+            if BORROW_SUMMARY_CYCLE_MARKER in origin.result_path
+            else (*origin.result_path, BORROW_SUMMARY_CYCLE_MARKER)
+        )
     return _Origin(
         origin.source_parameter_index,
         origin.source_path,
         origin.borrow_type,
-        (*origin.result_path, *steps),
+        result_path,
         origin.kind,
         origin.ownership,
-        origin.call_path,
+        origin.witness_path,
     )
 
 
 def _unique(origins: list[_Origin] | tuple[_Origin, ...]) -> tuple[_Origin, ...]:
-    return tuple(sorted(set(origins)))
+    best: dict[tuple[object, ...], _Origin] = {}
+    for origin in origins:
+        key = origin.semantic_key()
+        previous = best.get(key)
+        if previous is None or _witness_key(origin.witness_path) < _witness_key(previous.witness_path):
+            best[key] = origin
+    return tuple(sorted(best.values(), key=lambda item: item.semantic_key()))
+
+
+def _witness_key(path: tuple[str, ...]) -> tuple[int, tuple[str, ...]]:
+    return (len(path), path)
+
+
+def _canonical_entries(
+    entries: tuple[BorrowSummaryEntry, ...] | list[BorrowSummaryEntry],
+) -> tuple[BorrowSummaryEntry, ...]:
+    best: dict[tuple[object, ...], BorrowSummaryEntry] = {}
+    for entry in entries:
+        key = entry.semantic_key()
+        previous = best.get(key)
+        if previous is None or _witness_key(entry.witness_path) < _witness_key(previous.witness_path):
+            best[key] = entry
+    return tuple(sorted(best.values(), key=lambda item: item.semantic_key()))
+
+
+def _witness_step(
+    path: tuple[str, ...],
+    callee: str,
+    component: tuple[str, ...] = (),
+) -> tuple[str, ...]:
+    """Extend a witness once, replacing a repeated callee with a marker."""
+
+    if BORROW_SUMMARY_CYCLE_MARKER in path:
+        return path
+    if callee in path:
+        return (*path[: path.index(callee)], BORROW_SUMMARY_CYCLE_MARKER)
+    if component and callee in component:
+        component_steps = sum(item in component for item in path)
+        if component_steps >= len(component):
+            return (*path, BORROW_SUMMARY_CYCLE_MARKER)
+    return (*path, callee)
 
 
 class _SummaryComputer:
@@ -269,6 +379,84 @@ class _SummaryComputer:
         self._summaries: dict[str, BorrowSummary] = {
             name: BorrowSummary() for name in sorted(self.functions)
         }
+        self._call_graph = self._build_call_graph()
+        self._reverse_call_graph = self._build_reverse_call_graph()
+        self._sccs = self._tarjan_sccs(self._call_graph)
+        self._scc_of = {
+            name: component
+            for component in self._sccs
+            for name in component
+        }
+        self._converged = False
+
+    def _build_call_graph(self) -> dict[str, tuple[str, ...]]:
+        local = set(self.functions)
+        return {
+            name: tuple(
+                sorted(
+                    {
+                        node.func.id
+                        for node in ast.walk(function)
+                        if isinstance(node, ast.Call)
+                        and isinstance(node.func, ast.Name)
+                        and node.func.id in local
+                    }
+                )
+            )
+            for name, function in sorted(self.functions.items())
+        }
+
+    def _build_reverse_call_graph(self) -> dict[str, tuple[str, ...]]:
+        reverse: dict[str, set[str]] = {name: set() for name in self.functions}
+        for caller, callees in self._call_graph.items():
+            for callee in callees:
+                reverse[callee].add(caller)
+        return {
+            name: tuple(sorted(callers))
+            for name, callers in sorted(reverse.items())
+        }
+
+    @staticmethod
+    def _tarjan_sccs(
+        graph: Mapping[str, tuple[str, ...]],
+    ) -> tuple[tuple[str, ...], ...]:
+        """Return deterministic strongly connected components."""
+
+        index = 0
+        indices: dict[str, int] = {}
+        lowlinks: dict[str, int] = {}
+        stack: list[str] = []
+        on_stack: set[str] = set()
+        components: list[tuple[str, ...]] = []
+
+        def visit(node: str) -> None:
+            nonlocal index
+            indices[node] = index
+            lowlinks[node] = index
+            index += 1
+            stack.append(node)
+            on_stack.add(node)
+            for child in graph.get(node, ()):
+                if child not in indices:
+                    visit(child)
+                    lowlinks[node] = min(lowlinks[node], lowlinks[child])
+                elif child in on_stack:
+                    lowlinks[node] = min(lowlinks[node], indices[child])
+            if lowlinks[node] != indices[node]:
+                return
+            component: list[str] = []
+            while True:
+                child = stack.pop()
+                on_stack.remove(child)
+                component.append(child)
+                if child == node:
+                    break
+            components.append(tuple(sorted(component)))
+
+        for node in sorted(graph):
+            if node not in indices:
+                visit(node)
+        return tuple(sorted(components))
 
     def _properties(self, type_name: str | None):
         return self.resolver.resolve(type_name)
@@ -340,9 +528,9 @@ class _SummaryComputer:
             owner = self._expr_type(node.value, flow)
             declaration = self.resolver.declarations.get(owner) if owner else None
             if declaration is not None and getattr(declaration, "kind", "") == "record":
-                for field in getattr(declaration, "fields", ()):
-                    if field.name == node.attr:
-                        return field.type_name
+                for declaration_field in getattr(declaration, "fields", ()):
+                    if declaration_field.name == node.attr:
+                        return declaration_field.type_name
             return None
         if isinstance(node, ast.Subscript):
             owner = self._expr_type(node.value, flow)
@@ -426,7 +614,11 @@ class _SummaryComputer:
                         entry.result_path,
                         entry.kind,
                         entry.ownership,
-                        (*entry.call_path, callee_name),
+                        _witness_step(
+                                entry.witness_path,
+                            callee_name,
+                            self._scc_of.get(self._current.name if self._current else "", ()),
+                        ),
                     )
                 )
         if result_type and self._contains(result_type) and not result and summary.entries:
@@ -594,7 +786,7 @@ class _SummaryComputer:
                                 "owned_contained_borrow"
                                 if self._owner(result_type)
                                 else "contained_borrow",
-                                entry.call_path,
+                                entry.witness_path,
                             )
                         )
                 else:
@@ -607,23 +799,44 @@ class _SummaryComputer:
             return BorrowSummary((), "opaque", reason)
         if final and self._contains(result_type) and not entries:
             return BorrowSummary((), "opaque", "no-provenance")
-        return BorrowSummary(tuple(sorted(set(entries))))
+        return BorrowSummary(_canonical_entries(entries))
 
     def compute(self) -> dict[str, BorrowSummary]:
-        # Monotone finite fixed point: each iteration only adds summary
-        # entries.  The final pass converts unresolved/opaque paths to a
-        # fail-closed contract after the graph has stopped changing.
-        for _ in range(max(1, len(self.functions) * 2 + 1)):
-            changed = False
-            next_values: dict[str, BorrowSummary] = {}
-            for name in sorted(self.functions):
-                summary = self._compute_one(name)
-                next_values[name] = summary
-                if summary != self._summaries[name]:
-                    changed = True
-            self._summaries = next_values
-            if not changed:
-                break
+        # The lattice contains only finite semantic relations.  A worklist
+        # re-evaluates callers when a callee gains a relation; no arbitrary
+        # iteration cap is used.  Witnesses are canonicalized independently
+        # and therefore cannot keep the semantic worklist alive.
+        pending = deque(sorted(self.functions))
+        queued = set(self.functions)
+        while pending:
+            name = pending.popleft()
+            queued.remove(name)
+            candidate = self._compute_one(name)
+            previous = self._summaries[name]
+            semantic_changed = {
+                item.semantic_key() for item in candidate.entries
+            } != {
+                item.semantic_key() for item in previous.entries
+            }
+            if candidate != previous or [
+                (item.semantic_key(), item.witness_path)
+                for item in candidate.entries
+            ] != [
+                (item.semantic_key(), item.witness_path)
+                for item in previous.entries
+            ]:
+                self._summaries[name] = candidate
+            if semantic_changed:
+                for caller in self._reverse_call_graph[name]:
+                    if caller not in queued:
+                        pending.append(caller)
+                        queued.add(caller)
+        self._converged = not pending
+        if not self._converged:
+            return {
+                name: BorrowSummary((), "opaque", "fixed-point-not-converged")
+                for name in sorted(self.functions)
+            }
         return {
             name: self._compute_one(name, final=True)
             for name in sorted(self.functions)
@@ -641,6 +854,7 @@ def compute_borrow_summaries(
 
 __all__ = [
     "BORROW_SUMMARY_CONTRACT",
+    "BORROW_SUMMARY_CYCLE_MARKER",
     "BORROW_SUMMARY_KINDS",
     "BORROW_SUMMARY_SCHEMA_VERSION",
     "BORROW_SUMMARY_STATUSES",

@@ -1353,15 +1353,6 @@ class _OwnershipChecker:
             return ()
         if summary.opaque:
             if self._contains_borrow(result_type):
-                if all(
-                    not self._owner(self._expr_type(argument))
-                    for argument in node.args
-                ):
-                    # A helper returning a borrow backed only by an already
-                    # borrowed input is retained for the legacy backend's
-                    # temporary-owner gate.  Owning actuals never receive
-                    # this relaxation.
-                    return ()
                 self._borrow_summary_error(
                     "OpaqueBorrowSummary",
                     callee=callee_name,
@@ -1388,28 +1379,19 @@ class _OwnershipChecker:
             actual_name = self._root_name(argument)
             actual_type = self._expr_type(argument)
             if actual_name is None:
-                # Keep the legacy backend's temporary-owner diagnostic for
-                # non-entry helper functions.  A direct entry-point escape is
-                # rejected here; helper temporaries remain explicitly marked
-                # in provenance and are rejected by the artifact/backend gate
-                # before native code is emitted.
-                if self.current is not None and self.current.name == "main":
-                    self._borrow_summary_error(
-                        "BorrowFromTemporaryEscapes",
-                        callee=callee_name,
-                        formal=formal,
-                        actual=ast.unparse(argument),
-                        result_type=result_type,
-                        borrow_type=entry.borrow_type,
-                        path=(callee_name, formal, *entry.result_path),
-                    )
-                temporary_root = (
-                    self._root_name(argument.args[0])
-                    if isinstance(argument, ast.Call) and argument.args
-                    else None
+                # A temporary owner has no stable place, regardless of which
+                # function contains the call.  The HIR ownership stage must
+                # reject it before the legacy C backend's defense-in-depth
+                # escape gate is reached.
+                self._borrow_summary_error(
+                    "BorrowFromTemporaryEscapes",
+                    callee=callee_name,
+                    formal=formal,
+                    actual=ast.unparse(argument),
+                    result_type=result_type,
+                    borrow_type=entry.borrow_type,
+                    path=(callee_name, formal, *entry.result_path),
                 )
-                actual_name = temporary_root or next(iter(sorted(self.parameters)), "__temporary__")
-                actual_type = self.env.get(actual_name)
             tracked = state.borrows.get(actual_name)
             if tracked:
                 for item in tracked:
@@ -1420,7 +1402,7 @@ class _OwnershipChecker:
                             (
                                 callee_name,
                                 f"formal[{entry.source_parameter_index}]={formal}",
-                                *entry.call_path,
+                                *entry.witness_path,
                                 *entry.result_path,
                                 *item.escape_path,
                             ),
@@ -1435,7 +1417,7 @@ class _OwnershipChecker:
                         (
                             callee_name,
                             f"formal[{entry.source_parameter_index}]={formal}",
-                            *entry.call_path,
+                            *entry.witness_path,
                             *entry.result_path,
                             actual_name,
                         ),
@@ -3736,7 +3718,7 @@ class _HIRBuilder:
             [item.revision_id for item in body],
             [item.condition.revision_id for item in requirements],
             [item.condition.revision_id for item in ensures],
-            self.borrow_summaries.get(node.name, BorrowSummary()).to_dict(),
+            self.borrow_summaries.get(node.name, BorrowSummary()).semantic_dict(),
         )
         return HIRFunction(
             node.name,

@@ -23,10 +23,12 @@ text/digest, `HIRTypeDecl` values with typed record invariants,
 function contracts, contextual `TypedHole` nodes, an entry function, and
 tree-shaped `HIRNode` bodies. It also contains the complete canonical Merlo
 native-syntax tree used by the C adapter and validated typed FFI declarations.
-Each function carries a versioned `merlo.borrow-summary.v1` contract. Its
+Each function carries a versioned `merlo.borrow-summary.v2` contract. Its
 entries bind direct or contained returned borrows to formal parameter indices,
 source paths, result paths, borrow types, and ownership vocabulary; the
-summary is part of the function revision and therefore the HIR digest.
+summary is part of the function revision and therefore the HIR digest. A
+summary's semantic relation is independent of its bounded diagnostic witness;
+recursive SCCs use a deterministic shortest witness with a `<cycle>` marker.
 `HIRNode.walk()` traverses contract conditions
 and executable nodes for source-map projection.
 
