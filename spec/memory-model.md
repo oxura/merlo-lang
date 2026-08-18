@@ -38,10 +38,13 @@ Primitive integers, floats, booleans, and `Unit` are copy values. `Text`,
 captures, and file handles are owning values. `TextView`, `BytesView`, slices,
 and declared borrowed parameters do not own their backing storage.
 
-Composite properties are structural. An array, record, enum payload, option,
-or result needs drop when any live contained value needs drop. The compiler may
-represent a copy value with the same machine bits as an owned value only when
-their semantic operations remain distinct.
+Composite properties are structural and recursive. Arrays, records, enum
+payloads, options, results, `Vec`, `Box`, `Future`, and `Shared` inherit
+contained-borrow and contained-resource properties from every type argument;
+`Map` analyzes both its key and value. A composite needs drop when its own
+storage or any live contained value needs drop. The compiler may represent a
+copy value with the same machine bits as an owned value only when their
+semantic operations remain distinct.
 
 ## Moves and copies
 
@@ -72,6 +75,13 @@ A borrow cannot outlive its source, escape through an owning return, be stored
 in a longer-lived value, or cross a consuming operation on the source. Views
 passed to host calls are real view descriptors; an owner pointer must not be
 reinterpreted as a pointer to a different C structure type.
+
+An owning container may hold a borrow while its backing owner is live in the
+same scope. The container retains the borrow provenance recursively. Returning
+or asynchronously transferring that container, capturing it in an escaping
+closure, storing it in a longer-lived owner, or moving/dropping the backing
+owner first is rejected. Diagnostics identify the container, contained borrow
+type, backing owner, and escape path.
 
 The checker may shorten a borrow to its last semantic use. It may not use a
 native optimizer's accidental behavior as evidence that an invalid alias is

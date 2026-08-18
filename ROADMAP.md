@@ -38,7 +38,7 @@ Status labels:
 
 The published prerelease remains `0.1.0-alpha.2`. Main is the
 `0.1.0-alpha.3-dev` line with language `0.3`, frontend `8`, canonical `6`, HIR `7`,
-RIR/MIR `2`, runtime ABI `2`, and SemanticWorld `14`.
+RIR `3`, MIR `2`, runtime ABI `2`, and SemanticWorld `15`.
 
 ## Milestone 1: Alpha.3 Deep Core Gate
 

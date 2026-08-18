@@ -1213,11 +1213,18 @@ def _assigned_parameter_names(function: ast.FunctionDef) -> set[str]:
 @dataclass
 class _OwnershipState:
     statuses: dict[str, str]
-    borrows: dict[str, tuple[str, str]]
+    borrows: dict[str, tuple["_BorrowProvenance", ...]]
     terminal: bool = False
 
     def clone(self) -> "_OwnershipState":
         return _OwnershipState(dict(self.statuses), dict(self.borrows), self.terminal)
+
+
+@dataclass(frozen=True, order=True)
+class _BorrowProvenance:
+    backing_owner: str
+    borrow_type: str
+    escape_path: tuple[str, ...]
 
 class _OwnershipChecker:
     """Conservative source ownership analysis used to gate HIR construction."""
@@ -1242,6 +1249,132 @@ class _OwnershipChecker:
 
     def _owner(self, type_name: str | None) -> bool:
         return self.type_properties.resolve(type_name).needs_drop
+
+    def _contains_borrow(self, type_name: str | None) -> bool:
+        return self.type_properties.resolve(type_name).contains_borrow
+
+    def _borrow_type(self, type_name: str | None) -> str:
+        properties = self.type_properties.resolve(type_name)
+        return properties.borrow_types[0] if properties.borrow_types else str(type_name)
+
+    def _contained_borrow_error(
+        self,
+        code: str,
+        *,
+        container_type: str | None,
+        provenance: _BorrowProvenance,
+        path: str,
+    ) -> None:
+        complete_path = " -> ".join((*provenance.escape_path, path))
+        raise StructuredHIRCompileError(
+            f"{code}: container={container_type}; "
+            f"contained_borrow={provenance.borrow_type}; "
+            f"backing_owner={provenance.backing_owner}; "
+            f"escape_path={complete_path}"
+        )
+
+    @staticmethod
+    def _extend_provenance(
+        provenances: tuple[_BorrowProvenance, ...],
+        step: str,
+    ) -> tuple[_BorrowProvenance, ...]:
+        return tuple(
+            _BorrowProvenance(
+                item.backing_owner,
+                item.borrow_type,
+                (*item.escape_path, step),
+            )
+            for item in provenances
+        )
+
+    def _borrow_provenances(
+        self,
+        node: ast.AST | None,
+        type_name: str | None,
+        state: _OwnershipState,
+    ) -> tuple[_BorrowProvenance, ...]:
+        if node is None or not self._contains_borrow(type_name):
+            return ()
+        if isinstance(node, ast.Name):
+            tracked = state.borrows.get(node.id)
+            if tracked is not None:
+                return self._extend_provenance(tracked, node.id)
+            return (
+                _BorrowProvenance(
+                    node.id,
+                    self._borrow_type(type_name),
+                    (node.id,),
+                ),
+            )
+        if isinstance(node, (ast.Attribute, ast.Subscript)):
+            root = self._root_name(node)
+            if root is not None:
+                tracked = state.borrows.get(root)
+                if tracked is not None:
+                    return self._extend_provenance(
+                        tracked,
+                        ast.unparse(node),
+                    )
+        if isinstance(node, ast.Call):
+            step = ast.unparse(node.func)
+            if isinstance(node.func, ast.Attribute):
+                receiver_root = self._root_name(node.func.value)
+                if receiver_root is not None:
+                    tracked = state.borrows.get(receiver_root)
+                    if tracked is not None:
+                        return self._extend_provenance(tracked, step)
+                    receiver_type = self._expr_type(node.func.value)
+                    if self._owner(receiver_type):
+                        return (
+                            _BorrowProvenance(
+                                receiver_root,
+                                self._borrow_type(type_name),
+                                (receiver_root, step),
+                            ),
+                        )
+            collected: list[_BorrowProvenance] = []
+            for argument in node.args:
+                argument_type = self._expr_type(argument)
+                tracked = self._borrow_provenances(
+                    argument,
+                    argument_type,
+                    state,
+                )
+                collected.extend(self._extend_provenance(tracked, step))
+            return tuple(sorted(set(collected)))
+        return ()
+
+    @staticmethod
+    def _register_borrows(
+        state: _OwnershipState,
+        name: str,
+        provenances: tuple[_BorrowProvenance, ...],
+    ) -> None:
+        if provenances:
+            state.borrows[name] = tuple(sorted(set(provenances)))
+        else:
+            state.borrows.pop(name, None)
+
+    def _live_borrow_of(
+        self,
+        state: _OwnershipState,
+        owner: str,
+        *,
+        nested_only: bool = False,
+    ) -> tuple[str, _BorrowProvenance] | None:
+        return next(
+            (
+                (container, provenance)
+                for container, provenances in sorted(state.borrows.items())
+                for provenance in provenances
+                if provenance.backing_owner == owner
+                and (
+                    not nested_only
+                    or not _is_borrowed(self.env.get(container))
+                )
+            ),
+            None,
+        )
 
     def _expr_type(self, node: ast.AST | None, expected: str | None = None) -> str | None:
         if node is None:
@@ -1331,17 +1464,27 @@ class _OwnershipChecker:
             self._error("UseAfterDrop", name)
     def _consume(self, name: str, state: _OwnershipState) -> None:
         self._check_name(name, state)
+        live = self._live_borrow_of(state, name, nested_only=True)
+        if live is not None:
+            container, provenance = live
+            self._contained_borrow_error(
+                "BackingOwnerMoveWhileBorrowed",
+                container_type=self.env.get(container),
+                provenance=provenance,
+                path=f"move({name})",
+            )
         if name in state.statuses:
             state.statuses[name] = "moved"
+            state.borrows.pop(name, None)
 
 
     def _check_mutation(self, name: str, state: _OwnershipState) -> None:
         self._check_name(name, state)
-        if any(owner == name for owner, _ in state.borrows.values()):
+        if self._live_borrow_of(state, name) is not None:
             self._error("MutationDuringBorrow", name)
 
     def _borrow_result(self, expression: ast.AST, result_type: str | None, state: _OwnershipState) -> None:
-        if not _is_borrowed(result_type):
+        if not self._contains_borrow(result_type):
             return
         root = self._root_name(self._borrow_source(expression))
         if root is not None:
@@ -1382,12 +1525,26 @@ class _OwnershipChecker:
                 if len(node.args) != 1 or not isinstance(node.args[0], ast.Name):
                     self._error("InvalidDrop")
                 target = node.args[0].id
-                if target in state.borrows:
+                if target in state.borrows and target not in state.statuses:
                     del state.borrows[target]
                     return "Unit"
                 if state.statuses.get(target) == "dropped":
                     self._error("DuplicateDrop", target)
                 self._check_name(target, state)
+                live = self._live_borrow_of(
+                    state,
+                    target,
+                    nested_only=True,
+                )
+                if live is not None:
+                    container, provenance = live
+                    self._contained_borrow_error(
+                        "BackingOwnerDropWhileBorrowed",
+                        container_type=self.env.get(container),
+                        provenance=provenance,
+                        path=f"drop({target})",
+                    )
+                state.borrows.pop(target, None)
                 state.statuses[target] = "dropped"
                 return "Unit"
             receiver = node.func.value if isinstance(node.func, ast.Attribute) else None
@@ -1479,6 +1636,35 @@ class _OwnershipChecker:
                 element = vec_parts[0] if vec_parts is not None else None
                 if self._owner(element) and isinstance(node.args[0], ast.Name):
                     self._consume(node.args[0].id, state)
+            if receiver_root and method == "push" and node.args:
+                vec_parts = generic_parts(receiver_type, "Vec", arity=1)
+                element_type = vec_parts[0] if vec_parts is not None else None
+                if self._contains_borrow(element_type):
+                    provenances = self._borrow_provenances(
+                        node.args[0],
+                        element_type,
+                        state,
+                    )
+                    if not provenances:
+                        self._error(
+                            "ContainedBorrowProvenanceUnknown",
+                            f"{receiver_type}.push",
+                        )
+                    self._register_borrows(
+                        state,
+                        receiver_root,
+                        tuple(
+                            sorted(
+                                set(state.borrows.get(receiver_root, ()))
+                                | set(
+                                    self._extend_provenance(
+                                        provenances,
+                                        f"{receiver_type}.push",
+                                    )
+                                )
+                            )
+                        ),
+                    )
             result_type = self._expr_type(node, expected)
             self._borrow_result(node.func.value if receiver is not None else node, result_type, state)
             return result_type
@@ -1486,8 +1672,25 @@ class _OwnershipChecker:
             metadata = getattr(node, "_merlo_closure_metadata", None)
             if metadata is None:
                 self._error("CapturingClosureUnsupported")
-            for name, _type_name_, _ownership in metadata[3]:
+            for name, capture_type, _ownership in metadata[3]:
                 self._check_name(name, state)
+                properties = self.type_properties.resolve(capture_type)
+                if properties.contains_borrow:
+                    provenances = state.borrows.get(name) or (
+                        _BorrowProvenance(
+                            name,
+                            self._borrow_type(capture_type),
+                            (name,),
+                        ),
+                    )
+                    self._contained_borrow_error(
+                        "BorrowedClosureCaptureEscapes",
+                        container_type=capture_type,
+                        provenance=provenances[0],
+                        path=f"closure_capture({name})",
+                    )
+                if properties.is_resource or properties.contains_resource:
+                    self._error("ResourceClosureCaptureForbidden", name)
             return expected
     def _merge(self, before: _OwnershipState, branches: tuple[_OwnershipState, ...]) -> _OwnershipState:
         live = tuple(branch for branch in branches if not branch.terminal)
@@ -1510,24 +1713,34 @@ class _OwnershipChecker:
             if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
                 type_name = _type_name(node.annotation)
                 if node.value is not None:
+                    provenances = self._borrow_provenances(
+                        node.value,
+                        type_name,
+                        state,
+                    )
                     value_type = self._check_expr(node.value, state, expected=type_name)
                     if self._owner(type_name) and isinstance(node.value, ast.Name):
                         self._consume(node.value.id, state)
-                    if _is_borrowed(value_type or type_name):
-                        borrow_source = (
-                            node.value.func.value
-                            if isinstance(node.value, ast.Call)
-                            and isinstance(node.value.func, ast.Attribute)
-                            else node.value
+                    if self._contains_borrow(type_name):
+                        self._register_borrows(
+                            state,
+                            node.target.id,
+                            self._extend_provenance(
+                                provenances,
+                                f"bind({node.target.id}:{type_name})",
+                            ),
                         )
-                        root = self._root_name(borrow_source)
-                        if root is not None:
-                            state.borrows[node.target.id] = (root, "shared")
                 self.env[node.target.id] = type_name
                 if self._owner(type_name):
                     state.statuses[node.target.id] = "available"
                 continue
             if isinstance(node, ast.Assign):
+                predicted_type = self._expr_type(node.value)
+                provenances = self._borrow_provenances(
+                    node.value,
+                    predicted_type,
+                    state,
+                )
                 value_type = self._check_expr(node.value, state)
                 for target in node.targets:
                     if isinstance(target, ast.Name):
@@ -1538,6 +1751,48 @@ class _OwnershipChecker:
                             if isinstance(node.value, ast.Name):
                                 self._consume(node.value.id, state)
                             state.statuses[target.id] = "available"
+                        if target_type and self._contains_borrow(target_type):
+                            self._register_borrows(
+                                state,
+                                target.id,
+                                self._extend_provenance(
+                                    provenances,
+                                    f"assign({target.id}:{target_type})",
+                                ),
+                            )
+                    elif isinstance(target, ast.Attribute):
+                        target_root = self._root_name(target)
+                        target_type = self._expr_type(target)
+                        if (
+                            target_root is not None
+                            and self._contains_borrow(target_type or value_type)
+                        ):
+                            if (
+                                target_root in self.parameters
+                                and any(
+                                    item.backing_owner not in self.parameters
+                                    for item in provenances
+                                )
+                            ):
+                                provenance = next(
+                                    item
+                                    for item in provenances
+                                    if item.backing_owner not in self.parameters
+                                )
+                                self._contained_borrow_error(
+                                    "ContainedBorrowStoredInEscapingOwner",
+                                    container_type=self.env.get(target_root),
+                                    provenance=provenance,
+                                    path=f"store({ast.unparse(target)})",
+                                )
+                            self._register_borrows(
+                                state,
+                                target_root,
+                                self._extend_provenance(
+                                    provenances,
+                                    f"store({ast.unparse(target)})",
+                                ),
+                            )
                 continue
             if isinstance(node, ast.Expr):
                 self._check_expr(node.value, state)
@@ -1547,19 +1802,36 @@ class _OwnershipChecker:
                 continue
             if isinstance(node, ast.Return):
                 result_type = _type_name(self.current.returns if self.current else None)
-                root = self._root_name(self._borrow_source(node.value))
-                escape_root = (
-                    state.borrows[root][0]
-                    if root is not None and root in state.borrows
-                    else root
+                provenances = self._borrow_provenances(
+                    node.value,
+                    result_type,
+                    state,
                 )
-                if (
-                    _is_borrowed(result_type)
-                    and escape_root is not None
-                    and escape_root not in self.parameters
-                ):
-                    self._error("EscapedView", escape_root)
                 value_type = self._check_expr(node.value, state, expected=result_type)
+                if self._contains_borrow(result_type):
+                    escaping = next(
+                        (
+                            item
+                            for item in provenances
+                            if item.backing_owner not in self.parameters
+                        ),
+                        None,
+                    )
+                    if escaping is not None:
+                        self._contained_borrow_error(
+                            (
+                                f"EscapedView: {escaping.backing_owner}"
+                                if _is_borrowed(result_type)
+                                else "EscapedContainedBorrow"
+                            ),
+                            container_type=result_type,
+                            provenance=escaping,
+                            path=f"return({result_type})",
+                        )
+                    if not provenances:
+                        root = self._root_name(self._borrow_source(node.value))
+                        if root is not None and root not in self.parameters:
+                            self._error("EscapedView", root)
                 if self._owner(result_type) and isinstance(node.value, ast.Name):
                     self._consume(node.value.id, state)
                 self._borrow_result(node.value, value_type or result_type, state)
@@ -1662,6 +1934,25 @@ class _HIRBuilder:
 
     def _owner(self, type_name: str | None, seen: frozenset[str] = frozenset()) -> bool:
         return self.type_properties.resolve(type_name, seen).needs_drop
+
+    def _contains_borrow(self, type_name: str | None) -> bool:
+        return self.type_properties.resolve(type_name).contains_borrow
+
+    def _owned_ownership(self, type_name: str | None) -> str:
+        if self._owner(type_name):
+            return (
+                "owned_contained_borrow"
+                if self._contains_borrow(type_name)
+                else "owned"
+            )
+        return "borrow" if _is_borrowed(type_name) else "value"
+
+    def _use_ownership(self, type_name: str | None) -> str:
+        if self._contains_borrow(type_name) and not _is_borrowed(type_name):
+            return "contained_borrow"
+        if self._owner(type_name) or _is_borrowed(type_name):
+            return "borrow"
+        return "value"
 
     @staticmethod
     def _mutable_parameter_table(
@@ -1799,7 +2090,7 @@ class _HIRBuilder:
                 node,
                 "Name",
                 type_name=type_name,
-                ownership="borrow" if self._owner(type_name) else "value",
+                ownership=self._use_ownership(type_name),
                 symbol_id=symbol,
                 attributes={"name": node.id},
             )
@@ -1842,7 +2133,7 @@ class _HIRBuilder:
                 node,
                 "FieldAccess",
                 type_name=type_name,
-                ownership="borrow" if self._owner(type_name) else "value",
+                ownership=self._use_ownership(type_name),
                 attributes={"field": node.attr},
                 children=(owner,),
             )
@@ -2058,7 +2349,9 @@ class _HIRBuilder:
                 node,
                 "ArrayLiteral",
                 type_name=f"Array[{element_type},{len(children)}]",
-                ownership="owned" if self._owner(element_type) else "value",
+                ownership=self._owned_ownership(
+                    f"Array[{element_type},{len(children)}]"
+                ),
                 attributes={"length": len(children)},
                 children=children,
             )
@@ -2761,6 +3054,12 @@ class _HIRBuilder:
             elif method == "tag":
                 kind = "EnumTag"
                 type_name = "UInt64"
+        if self._contains_borrow(type_name) and not _is_borrowed(type_name):
+            ownership = (
+                "owned_contained_borrow"
+                if ownership == "owned" or self._owner(type_name)
+                else "contained_borrow"
+            )
         return self._new_node(
             node,
             kind,
@@ -2835,7 +3134,7 @@ class _HIRBuilder:
                 node,
                 "VarBinding" if binding == "var" else "LetBinding",
                 type_name=type_name,
-                ownership="owned" if self._owner(type_name) else "value",
+                ownership=self._owned_ownership(type_name),
                 symbol_id=_stable_id("shirs", self.path, self.current_function, "local", node.target.id),
                 attributes={"name": node.target.id, "mutable": binding == "var"},
                 children=(value,) if isinstance(value, HIRNode) else (),
@@ -2895,13 +3194,9 @@ class _HIRBuilder:
                 )
             return_type = child.type_name if child else "Unit"
             ownership = (
-                "owned"
-                if self._owner(return_type)
-                else "borrow"
-                if _is_borrowed(return_type)
-                else child.ownership
-                if child
-                else "value"
+                self._owned_ownership(return_type)
+                if self._owner(return_type) or _is_borrowed(return_type)
+                else child.ownership if child else "value"
             )
             return self._new_node(
                 node,
@@ -3107,6 +3402,8 @@ class _HIRBuilder:
                 if owns_value and argument.arg in returned_parameters
                 else "borrow_mut"
                 if argument.arg in assigned
+                else "contained_borrow"
+                if self._contains_borrow(type_name) and not _is_borrowed(type_name)
                 else "borrow"
                 if owns_value or _is_borrowed(type_name)
                 else "value"

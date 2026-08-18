@@ -33,3 +33,50 @@ def test_descriptor_properties_recurse_without_type_spelling_tables() -> None:
     assert resolver.resolve("OwnedRecord").needs_drop
     assert resolver.resolve("FileWriter").is_resource
     assert resolver.resolve("Borrow[Text]").contains_borrow
+
+
+def test_owning_generics_recursively_propagate_contained_borrows() -> None:
+    resolver = TypePropertyResolver()
+
+    cases = {
+        "Vec[TextView]": ("TextView",),
+        "Box[BytesView]": ("BytesView",),
+        "Map[Text,TextView]": ("TextView",),
+        "Option[Vec[TextView]]": ("TextView",),
+        "Result[Box[BytesView],Text]": ("BytesView",),
+        "Vec[Option[Borrow[Text]]]": ("Borrow[Text]",),
+        "Future[Vec[TextView]]": ("TextView",),
+        "Shared[Option[BytesView]]": ("BytesView",),
+    }
+    for type_name, borrow_types in cases.items():
+        properties = resolver.resolve(type_name)
+        assert properties.contains_borrow, type_name
+        assert properties.borrow_types == borrow_types
+        assert properties.is_move
+        assert properties.needs_drop
+
+
+def test_owning_generics_recursively_propagate_resources() -> None:
+    resolver = TypePropertyResolver()
+
+    assert resolver.resolve("Vec[FileReader]").contains_resource
+    assert resolver.resolve("Box[Option[FileWriter]]").contains_resource
+    assert resolver.resolve("Map[Text,FileReader]").contains_resource
+    future = resolver.resolve("Future[UInt64]")
+    assert future.is_resource
+    assert future.contains_resource
+    assert future.resource_types == ("Future[UInt64]",)
+
+
+def test_non_borrowing_owning_containers_keep_existing_properties() -> None:
+    resolver = TypePropertyResolver()
+
+    for type_name in (
+        "Vec[Text]",
+        "Box[Text]",
+        "Map[Text,UInt64]",
+    ):
+        properties = resolver.resolve(type_name)
+        assert properties.is_move
+        assert properties.needs_drop
+        assert not properties.contains_borrow
