@@ -55,6 +55,20 @@ structural branch path. Indirect edges do not participate in that cycle graph,
 so ownership wrappers may cross recursive boundaries. Descriptor dependency
 lists use the same traversal and are sorted for stable serialization.
 
+The regression was a nominal dependency loss, not a borrow-analysis failure:
+the old generic helper flattened arguments with `",".join(...)` and returned
+only one generic slot. `Result[Leaf,Error]` therefore became the non-nominal
+string `Leaf,Error`; neither `Leaf` nor `Error` was recorded as a dependency.
+The structural visitor preserves each parsed argument and is covered by a
+round-trip regression test.
+
+Accepted recursive layouts include `Option[Box[Node]]`, `Vec[Result[Node,Error]]`,
+`Map[Text,Box[Graph]]`, and `Fn[Node,Node]`. Rejected layouts include direct
+`Node` self-fields, `Option[Node]` self-fields, `Result[Node,Error]` self-fields,
+and `Array[Option[Node],4]` self-fields. A map with a non-`Text` key or a
+non-scalar value outside a nominal layout field remains rejected by the alpha
+front end.
+
 ## Failure modes
 
 `RepresentationCompileError` covers layout, representation, and ownership
