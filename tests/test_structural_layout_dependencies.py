@@ -113,6 +113,27 @@ def test_nested_indirection_marks_every_nominal_below_boundary_indirect() -> Non
     assert node.indirect_dependencies == ("Error", "Node")
 
 
+def test_owner_map_layout_and_drop_plan_are_structural() -> None:
+    hir = compile_structured_hir(
+        "record Graph:\n    nodes: Map[Text,Box[Graph]]\n" + _MAIN
+    )
+    representation = lower_structured_hir_to_rir(hir)
+    descriptors = {item.name: item for item in representation.descriptors}
+    graph = descriptors["Graph"]
+    map_descriptor = descriptors["Map[Text,Box[Graph]]"]
+    assert graph.indirect_dependencies == ("Graph",)
+    assert map_descriptor.indirect_dependencies == ("Text", "Box[Graph]")
+    map_plan = next(
+        item for item in representation.drop_plans
+        if item.type_name == "Map[Text,Box[Graph]]"
+    )
+    assert map_plan.action == "map_owned_entries_then_buffers"
+    assert [(item.field_name, item.type_name, item.action) for item in map_plan.children] == [
+        ("key", "Text", "owner_free"),
+        ("value", "Box[Graph]", "box_payload_then_free"),
+    ]
+
+
 def test_shortest_lexicographic_structural_cycle_is_invariant() -> None:
     declarations = (
         "record A:\n    zed: B\n    alpha: C\n"
