@@ -3276,6 +3276,13 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         if map_types is not None:
             _, value_type = map_types
             suffix = _identifier(receiver_type or "")
+            if (
+                method in {"get", "insert", "entries"}
+                and _is_owner(self.descriptors[value_type])
+            ):
+                raise RepresentationCBackendError(
+                    "Map operations require scalar values"
+                )
             key = self._address_expression(call.args[0])
             if method == "insert":
                 value = self._expression(call.args[1], expected=value_type)
@@ -5096,6 +5103,13 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             if map_types is not None:
                 _, value_type = map_types
                 suffix = _identifier(receiver_type or "")
+                if (
+                    method in {"get", "insert", "entries"}
+                    and _is_owner(self.descriptors[value_type])
+                ):
+                    raise RepresentationCBackendError(
+                        "Map operations require scalar values"
+                    )
                 if method in {"get", "increment", "insert"}:
                     key = self._address_expression(node.args[0])
                     if method == "get":
