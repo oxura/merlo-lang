@@ -67,7 +67,8 @@ Accepted recursive layouts include `Option[Box[Node]]`, `Vec[Result[Node,Error]]
 `Node` self-fields, `Option[Node]` self-fields, `Result[Node,Error]` self-fields,
 and `Array[Option[Node],4]` self-fields. A map with a non-`Text` key or a
 non-scalar value outside a nominal layout field remains rejected by the alpha
-front end.
+front end. Owner-valued map fields are layout-only; runtime Map operations
+remain scalar-only.
 
 ## Failure modes
 
