@@ -19,6 +19,7 @@ from merlo.place import (
 
 
 ROOT = PlaceRoot.param("symbol:parameter:0")
+LOCAL_ROOT = PlaceRoot.local("symbol:local:0")
 
 
 def test_place_v1_roundtrip_is_canonical_and_versioned() -> None:
@@ -37,11 +38,17 @@ def test_place_v1_roundtrip_is_canonical_and_versioned() -> None:
     assert place.semantic_key == (ROOT, place.steps)
 
 
+def test_place_roots_keep_local_and_parameter_bindings_distinct() -> None:
+    assert LOCAL_ROOT.is_local
+    assert not LOCAL_ROOT.is_param
+    assert Place.from_root(LOCAL_ROOT).overlap(Place.from_root(ROOT)) is OverlapRelation.DISJOINT
+    assert PlaceRoot.from_dict(LOCAL_ROOT.to_dict()) == LOCAL_ROOT
+
+
 def test_place_identity_uses_symbol_and_structural_ids_not_source_names() -> None:
     left = Place(PlaceRoot.param("symbol:left"), (PlaceStep.field("field:left"),))
     right = Place(PlaceRoot.param("symbol:right"), (PlaceStep.field("field:left"),))
     other_field = Place(PlaceRoot.param("symbol:left"), (PlaceStep.field("field:right"),))
-
     assert overlap_relation(left, right) is OverlapRelation.DISJOINT
     assert overlap_relation(left, other_field) is OverlapRelation.DISJOINT
 
@@ -69,7 +76,8 @@ def test_dynamic_indexes_are_conservatively_may_overlap() -> None:
     other_dynamic = Place(root).project(PlaceStep.index(IndexClass.dynamic()))
 
     assert dynamic.overlap(constant) is OverlapRelation.MAY_OVERLAP
-    assert dynamic.overlap(other_dynamic) is OverlapRelation.EQUAL
+    assert dynamic.overlap(other_dynamic) is OverlapRelation.MAY_OVERLAP
+
 
 
 def test_unsupported_projection_and_malformed_contract_fail_closed() -> None:

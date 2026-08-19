@@ -1270,6 +1270,8 @@ class _OwnershipState:
     places: dict[str, Place]
     terminal: bool = False
     borrow_places: dict[str, Place] = field(default_factory=dict)
+    break_paths: tuple["_OwnershipState", ...] = ()
+    continue_paths: tuple["_OwnershipState", ...] = ()
 
     def clone(self) -> "_OwnershipState":
         return _OwnershipState(
@@ -1278,6 +1280,8 @@ class _OwnershipState:
             dict(self.places),
             self.terminal,
             dict(self.borrow_places),
+            tuple(path.clone() for path in self.break_paths),
+            tuple(path.clone() for path in self.continue_paths),
         )
 
 
@@ -1325,18 +1329,22 @@ class _OwnershipChecker:
         properties = self.type_properties.resolve(type_name)
         return properties.borrow_types[0] if properties.borrow_types else str(type_name)
     def _root_place(self, name: str) -> Place:
-        kind = "parameter" if name in self.parameters else "local"
-        return Place(
-            PlaceRoot.param(
-                _stable_id(
-                    "shirs",
-                    self.path,
-                    self.current.name if self.current is not None else "",
-                    kind,
-                    name,
-                )
+        is_parameter = name in self.parameters
+        kind = "parameter" if is_parameter else "local"
+        root = (
+            PlaceRoot.param
+            if is_parameter
+            else PlaceRoot.local
+        )(
+            _stable_id(
+                "shirs",
+                self.path,
+                self.current.name if self.current is not None else "",
+                kind,
+                name,
             )
         )
+        return Place(root)
     def _is_parameter_place(self, place: Place) -> bool:
         return any(
             place.root == self._root_place(name).root
@@ -2285,6 +2293,19 @@ class _OwnershipChecker:
             display=ast.unparse(node),
         )
 
+    def _reject_projected_owner_drop(
+        self,
+        place: Place | None,
+        type_name: str | None,
+    ) -> None:
+        if (
+            place is not None
+            and place.steps
+            and self._owner(type_name)
+            and not _is_borrowed(type_name)
+        ):
+            self._error("ProjectedOwnerDropRequiresPartialMoveSupport")
+
     def _check_mutation(
         self,
         name: str,
@@ -2375,6 +2396,10 @@ class _OwnershipChecker:
                     self._error("DuplicateDrop", target_name)
                 if target_name is not None:
                     self._check_name(target_name, state)
+                self._reject_projected_owner_drop(
+                    target_place,
+                    self._expr_type(target_node),
+                )
                 if target_place is None:
                     self._error("InvalidDrop")
                 if target_name is None and _is_borrowed(self._expr_type(target_node)):
@@ -2609,6 +2634,16 @@ class _OwnershipChecker:
             return expected
     def _merge(self, before: _OwnershipState, branches: tuple[_OwnershipState, ...]) -> _OwnershipState:
         live = tuple(branch for branch in branches if not branch.terminal)
+        break_paths = tuple(
+            path
+            for branch in branches
+            for path in branch.break_paths
+        )
+        continue_paths = tuple(
+            path
+            for branch in branches
+            for path in branch.continue_paths
+        )
         if not live:
             return _OwnershipState(
                 dict(before.statuses),
@@ -2616,6 +2651,8 @@ class _OwnershipChecker:
                 dict(before.places),
                 True,
                 dict(before.borrow_places),
+                break_paths,
+                continue_paths,
             )
         merged_statuses = dict(live[0].statuses)
         for name in sorted(before.statuses):
@@ -2628,8 +2665,15 @@ class _OwnershipChecker:
         borrows = [branch.borrows for branch in live]
         if borrows and any(item != borrows[0] for item in borrows[1:]):
             self._error("OwnershipAmbiguity")
-        places = [branch.places for branch in live]
-        if places and any(item != places[0] for item in places[1:]):
+        tracked_place_names = set(before.statuses) | set(before.borrow_places)
+        branch_places = tuple(
+            tuple(
+                (name, branch.places.get(name))
+                for name in sorted(tracked_place_names)
+            )
+            for branch in live
+        )
+        if branch_places and any(item != branch_places[0] for item in branch_places[1:]):
             self._error("OwnershipAmbiguity")
         borrow_places = [branch.borrow_places for branch in live]
         if borrow_places and any(item != borrow_places[0] for item in borrow_places[1:]):
@@ -2640,6 +2684,58 @@ class _OwnershipChecker:
             dict(live[0].places),
             False,
             dict(live[0].borrow_places),
+            break_paths,
+            continue_paths,
+        )
+    @staticmethod
+    def _snapshot_state(state: _OwnershipState) -> _OwnershipState:
+        return _OwnershipState(
+            dict(state.statuses),
+            dict(state.borrows),
+            dict(state.places),
+            False,
+            dict(state.borrow_places),
+        )
+
+    @staticmethod
+    def _loop_visible_state(
+        before: _OwnershipState,
+        candidate: _OwnershipState,
+    ) -> _OwnershipState:
+        return _OwnershipState(
+            {
+                name: candidate.statuses.get(name, "absent")
+                for name in before.statuses
+            },
+            {
+                name: candidate.borrows[name]
+                for name in before.borrows
+                if name in candidate.borrows
+            },
+            {
+                name: candidate.places[name]
+                for name in before.places
+                if name in candidate.places
+            },
+            False,
+            {
+                name: candidate.borrow_places[name]
+                for name in before.borrow_places
+                if name in candidate.borrow_places
+            },
+        )
+
+    def _join_loop_states(
+        self,
+        before: _OwnershipState,
+        candidates: tuple[_OwnershipState, ...],
+    ) -> _OwnershipState:
+        return self._merge(
+            before,
+            tuple(
+                self._loop_visible_state(before, candidate)
+                for candidate in candidates
+            ),
         )
 
     def _check_statements(self, statements: list[ast.stmt], state: _OwnershipState) -> _OwnershipState:
@@ -2668,16 +2764,20 @@ class _OwnershipChecker:
                             provenances,
                         )
                 self.env[node.target.id] = type_name
-                binding_place = self._binding_place(node.value, state)
-                state.places[node.target.id] = (
-                    binding_place or self._root_place(node.target.id)
-                    if (
-                        self._owner(type_name)
-                        and not self._contains_borrow(type_name)
-                        and not _is_borrowed(type_name)
+                existing_place = state.places.get(node.target.id)
+                if existing_place is not None:
+                    state.places[node.target.id] = existing_place
+                else:
+                    binding_place = self._binding_place(node.value, state)
+                    state.places[node.target.id] = (
+                        binding_place or self._root_place(node.target.id)
+                        if (
+                            self._owner(type_name)
+                            and not self._contains_borrow(type_name)
+                            and not _is_borrowed(type_name)
+                        )
+                        else self._root_place(node.target.id)
                     )
-                    else self._root_place(node.target.id)
-                )
                 if self._owner(type_name):
                     state.statuses[node.target.id] = "available"
                 continue
@@ -2692,17 +2792,11 @@ class _OwnershipChecker:
                 for target in node.targets:
                     if isinstance(target, ast.Name):
                         target_type = self.env.get(target.id)
-                        binding_place = self._binding_place(node.value, state)
-                        state.places[target.id] = (
-                            binding_place or self._root_place(target.id)
-                            if (
-                                target_type is not None
-                                and self._owner(target_type)
-                                and not self._contains_borrow(target_type)
-                                and not _is_borrowed(target_type)
-                            )
-                            else self._root_place(target.id)
+                        target_place = (
+                            state.places.get(target.id)
+                            or self._root_place(target.id)
                         )
+                        state.places[target.id] = target_place
                         if target_type and self._owner(target_type):
                             self._consume_expr(
                                 node.value,
@@ -2762,6 +2856,20 @@ class _OwnershipChecker:
             if isinstance(node, ast.Contract):
                 self._check_expr(node.condition, state)
                 continue
+            if isinstance(node, ast.Break):
+                state.break_paths = (
+                    *state.break_paths,
+                    self._snapshot_state(state),
+                )
+                state.terminal = True
+                break
+            if isinstance(node, ast.Continue):
+                state.continue_paths = (
+                    *state.continue_paths,
+                    self._snapshot_state(state),
+                )
+                state.terminal = True
+                break
             if isinstance(node, ast.Return):
                 result_type = _type_name(self.current.returns if self.current else None)
                 provenances = self._borrow_provenances(
@@ -2843,14 +2951,26 @@ class _OwnershipChecker:
                 state = self._merge(state, (then_state, else_state))
                 continue
             if isinstance(node, ast.While):
-                self._check_expr(node.test, state)
+                test_state = state.clone()
+                self._check_expr(node.test, test_state)
+                body_state = self._check_statements(
+                    node.body,
+                    test_state.clone(),
+                )
+                candidates = [test_state]
+                if not body_state.terminal:
+                    candidates.append(body_state)
+                candidates.extend(body_state.break_paths)
+                candidates.extend(body_state.continue_paths)
+                state = self._join_loop_states(
+                    test_state,
+                    tuple(candidates),
+                )
+                continue
             if isinstance(node, ast.For):
                 iterable_type = self._check_expr(node.iter, state)
-                loop_state = state.clone()
-                before_statuses = set(loop_state.statuses)
-                before_borrows = set(loop_state.borrows)
-                before_borrow_places = set(loop_state.borrow_places)
-                before_places = set(loop_state.places)
+                before_loop = state.clone()
+                loop_state = before_loop.clone()
                 if isinstance(node.target, ast.Name):
                     shape = collection_shape(iterable_type)
                     self.env[node.target.id] = (
@@ -2861,16 +2981,16 @@ class _OwnershipChecker:
                         else "Inferred"
                     )
                     loop_state.places[node.target.id] = self._root_place(node.target.id)
-                loop_state = self._check_statements(node.body, loop_state)
-                for name in set(loop_state.statuses) - before_statuses:
-                    loop_state.statuses.pop(name, None)
-                for name in set(loop_state.borrows) - before_borrows:
-                    loop_state.borrows.pop(name, None)
-                for name in set(loop_state.borrow_places) - before_borrow_places:
-                    loop_state.borrow_places.pop(name, None)
-                for name in set(loop_state.places) - before_places:
-                    loop_state.places.pop(name, None)
-                state = self._merge(state, (state, loop_state))
+                body_state = self._check_statements(node.body, loop_state)
+                candidates = [before_loop]
+                if not body_state.terminal:
+                    candidates.append(body_state)
+                candidates.extend(body_state.break_paths)
+                candidates.extend(body_state.continue_paths)
+                state = self._join_loop_states(
+                    before_loop,
+                    tuple(candidates),
+                )
                 continue
             if isinstance(node, ast.Match):
                 self._check_expr(node.subject, state)

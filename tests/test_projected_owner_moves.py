@@ -197,3 +197,78 @@ def test_c_backend_rejects_projected_owner_move_defense_in_depth() -> None:
             "Text",
             enforce_projected_move=True,
         )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        (
+            "record User:\n"
+            "    name: Text\n"
+            "    age: UInt64\n"
+            "fn main(input: BytesView) -> UInt64:\n"
+            "    let user: User = User(Text.from_bytes(input, 0, input.len()), 0)\n"
+            "    drop(user.name)\n"
+            "    return 0\n"
+        ),
+        (
+            "fn main(input: BytesView) -> UInt64:\n"
+            "    let text: Text = Text.from_bytes(input, 0, input.len())\n"
+            "    let boxed: Box[Text] = Box.new(text)\n"
+            "    drop(boxed.get())\n"
+            "    return 0\n"
+        ),
+        (
+            "fn main(input: BytesView) -> UInt64:\n"
+            "    let values: Array[Text,1] = [Text.from_bytes(input, 0, input.len())]\n"
+            "    drop(values[0])\n"
+            "    return 0\n"
+        ),
+        (
+            "fn main(input: BytesView) -> UInt64:\n"
+            "    let choice: Option[Text] = Some(Text.from_bytes(input, 0, input.len()))\n"
+            "    drop(choice.unwrap())\n"
+            "    return 0\n"
+        ),
+    ],
+)
+def test_projected_owner_drops_are_rejected(source: str) -> None:
+    with pytest.raises(
+        StructuredHIRCompileError,
+        match="^ProjectedOwnerDropRequiresPartialMoveSupport$",
+    ):
+        _compile(source)
+
+
+def test_c_backend_rejects_projected_owner_drop_defense_in_depth() -> None:
+    emitter = object.__new__(GeneralCEmitter)
+    emitter.descriptors = {
+        "Text": ScalarDesc(
+            "Text",
+            "text",
+            1,
+            1,
+            "scalar",
+            "move",
+            "move",
+            "drop",
+            (),
+            (),
+            "Text",
+        )
+    }
+    emitter.env_types = {"boxed": "Box[Text]"}
+    emitter.functions = {}
+    emitter.extern_functions = {}
+    emitter.current_function = None
+    emitter.owned_locals = {"boxed": "Box[Text]"}
+    emitter.pointer_values = set()
+    emitter.pending_expression_lines = []
+    emitter.pending_expression_drops = []
+    emitter.indent = 0
+    statement = ast.parse("drop(boxed.get())\n", filename="projected.mlo").body[0]
+    with pytest.raises(
+        RepresentationCBackendError,
+        match="^ProjectedOwnerDropRequiresPartialMoveSupport$",
+    ):
+        emitter._statement(statement)

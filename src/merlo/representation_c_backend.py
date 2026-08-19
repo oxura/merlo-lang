@@ -3076,10 +3076,18 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             and len(node.value.args) == 1
         ):
             target = node.value.args[0]
-            if not isinstance(target, ast.Name):
-                raise RepresentationCBackendError("drop requires a named owner")
             type_name = self._expression_type(target)
             descriptor = self.descriptors.get(type_name or "")
+            if not isinstance(target, ast.Name):
+                if (
+                    descriptor is not None
+                    and _is_owner(descriptor)
+                    and descriptor.kind not in {"borrow", "slice", "file_lines"}
+                ):
+                    raise RepresentationCBackendError(
+                        "ProjectedOwnerDropRequiresPartialMoveSupport"
+                    )
+                raise RepresentationCBackendError("drop requires a named owner")
             if descriptor is None or not _is_owner(descriptor):
                 raise RepresentationCBackendError("drop requires an owning value")
             self.owned_locals.pop(target.id, None)

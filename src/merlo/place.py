@@ -119,18 +119,28 @@ class IndexClass:
 
 @dataclass(frozen=True, order=True)
 class PlaceRoot:
-    """A semantic place root identified by a stable symbol identity."""
+    """A semantic place root identified by a compilation-local symbol identity.
+
+    ``symbol_id`` is an identity for the current compilation, not a source
+    spelling or a globally stable package identifier. Local, parameter, and
+    receiver roots remain distinct even when their names happen to match.
+    """
 
     kind: str
     symbol_id: str
 
+    LOCAL = "Local"
     PARAM = "Param"
     SELF = "Self"
 
     def __post_init__(self) -> None:
-        if self.kind not in {self.PARAM, self.SELF}:
+        if self.kind not in {self.LOCAL, self.PARAM, self.SELF}:
             raise UnsupportedProjectionError(f"unsupported place root: {self.kind}")
         _id(self.symbol_id, "place root symbol_id")
+
+    @classmethod
+    def local(cls, symbol_id: str) -> "PlaceRoot":
+        return cls(cls.LOCAL, _id(symbol_id, "local symbol_id"))
 
     @classmethod
     def param(cls, symbol_id: str) -> "PlaceRoot":
@@ -147,6 +157,10 @@ class PlaceRoot:
     @classmethod
     def self_root(cls, symbol_id: str) -> "PlaceRoot":
         return cls.self(symbol_id)
+
+    @property
+    def is_local(self) -> bool:
+        return self.kind == self.LOCAL
 
     @property
     def is_param(self) -> bool:
@@ -326,6 +340,12 @@ class Place:
 
 def _step_relation(left: PlaceStep, right: PlaceStep) -> OverlapRelation | None:
     if left == right:
+        if (
+            left.kind == PlaceStep.INDEX
+            and left.index_class is not None
+            and left.index_class.is_dynamic
+        ):
+            return OverlapRelation.MAY_OVERLAP
         return None
     if left.kind == right.kind == PlaceStep.FIELD:
         return OverlapRelation.DISJOINT
