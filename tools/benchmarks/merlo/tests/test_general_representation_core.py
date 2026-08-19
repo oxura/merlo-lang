@@ -108,7 +108,7 @@ def test_structured_hir_is_typed_structural_and_source_mapped(layers):
 
 def test_representation_ir_describes_layout_ownership_and_drop(layers):
     hir, representation, _mir, _optimized = layers
-    assert representation.contract == "merlo.representation-ir.v4"
+    assert representation.contract == "merlo.representation-ir.v5"
     assert representation.source_hir_digest == hir.digest
     assert isinstance(representation.descriptor("UInt64"), ScalarDesc)
     assert isinstance(representation.descriptor("JsonField"), RecordDesc)
@@ -155,7 +155,10 @@ def test_layout_validation_rejects_inline_cycles_and_allows_owning_indirection()
     rejected = validate_recursive_layouts(invalid.types)
     assert rejected.accepted is False
     assert rejected.minimal_cycle_path == ("Bad", "Bad")
-    assert rejected.diagnostic == "InlineRecursiveLayout: Bad -> Bad; add Box or Vec indirection"
+    assert rejected.diagnostic == (
+        "InlineRecursiveLayout: Bad --field[next]--> Bad; "
+        "add Box or Vec indirection"
+    )
 
     valid = compile_structured_hir(
         "enum Tree:\n    Leaf: UInt64\n    Branch: Vec[Tree]\n"

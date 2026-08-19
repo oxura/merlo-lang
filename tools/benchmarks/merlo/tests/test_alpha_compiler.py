@@ -30,7 +30,7 @@ def test_alpha_versions_are_independent_and_frozen() -> None:
         "patch_evidence": 1,
         "preservation": 1,
         "transaction": 1,
-        "rir": 4,
+        "rir": 5,
         "mir": 2,
         "parallel_ir": 1,
         "wasm_backend": 1,

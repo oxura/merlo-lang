@@ -148,8 +148,8 @@ def test_inline_recursive_layout_requires_owning_indirection() -> None:
     with pytest.raises(
         RepresentationCompileError,
         match=(
-            "InlineRecursiveLayout: Node -> Node; "
-            "add Box or Vec indirection"
+            r"InlineRecursiveLayout: Node --field\[next\]--> Node; "
+            r"add Box or Vec indirection"
         ),
     ):
         build_type_descriptors(hir)

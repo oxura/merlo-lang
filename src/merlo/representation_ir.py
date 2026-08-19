@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 import hashlib
 import json
 from dataclasses import dataclass, replace
@@ -14,13 +15,13 @@ from merlo.structured_hir_v2 import (
     StructuredHIRProgram,
 )
 from merlo.ffi import pointer_type
-from merlo.type_parser import generic_parts, parse_type
+from merlo.type_parser import TypeExpr, generic_parts, parse_type
 from merlo.type_properties import TypePropertyResolver
 from merlo.borrow_summary import BorrowSummary
 
 
-REPRESENTATION_IR_SCHEMA_VERSION = 4
-REPRESENTATION_IR_CONTRACT = "merlo.representation-ir.v4"
+REPRESENTATION_IR_SCHEMA_VERSION = 5
+REPRESENTATION_IR_CONTRACT = "merlo.representation-ir.v5"
 MAX_U64 = (1 << 64) - 1
 
 def _type_leaf(type_name: str) -> str:
@@ -374,14 +375,12 @@ def _stable_id(prefix: str, *parts: Any) -> str:
     payload = json.dumps(parts, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     return f"{prefix}_{hashlib.sha256(payload.encode()).hexdigest()}"
 
-def _generic(type_name: str) -> tuple[str, str] | None:
+def _generic(type_name: str) -> TypeExpr | None:
     try:
         parsed = parse_type(type_name)
     except ValueError:
         return None
-    if not parsed.args:
-        return None
-    return parsed.name, ",".join(item.canonical for item in parsed.args)
+    return parsed if parsed.args else None
 
 
 def _map_types(type_name: str) -> tuple[str, str] | None:
@@ -408,68 +407,258 @@ def _callback_parts(type_name: str) -> tuple[tuple[str, ...], str] | None:
         return None
     return parts[:-1], parts[-1]
 
-def _referenced_type(type_name: str) -> str | None:
-    if pointer_type(type_name) is not None:
-        return None
-    if _map_types(type_name) is not None or _callback_parts(type_name) is not None:
-        return None
-    array = _array_parts(type_name)
-    if array is not None:
-        return array[0]
-    generic = _generic(type_name)
-    if generic:
-        return generic[1]
-    if type_name in _SCALARS or type_name in {
-        "Text",
-        "TextBuilder",
-        "Bytes",
-        "BytesView",
-        "TextView",
-        "Path",
-    }:
-        return None
-    return type_name
 
 
-def _is_indirection(type_name: str) -> bool:
-    if pointer_type(type_name) is not None:
-        return True
-    if _map_types(type_name) is not None or _callback_parts(type_name) is not None:
-        return True
-    generic = _generic(type_name)
-    return bool(generic and generic[0] in {"Vec", "Box", "Borrow", "Slice"})
+
+class _LayoutParseError(ValueError):
+    def __init__(self, type_name: str, path: tuple[str, ...], reason: str) -> None:
+        self.type_name = type_name
+        self.path = path
+        self.reason = reason
+        super().__init__(reason)
+
+
+@dataclass(frozen=True, order=True)
+class _LayoutDependency:
+    target: str
+    indirect: bool
+    path: tuple[str, ...]
+
+
+@dataclass(frozen=True, order=True)
+class _LayoutEdge:
+    target: str
+    path: tuple[str, ...]
+
+
+_INDIRECT_LAYOUT_WRAPPERS = frozenset(
+    {
+        "Box",
+        "Vec",
+        "Map",
+        "Borrow",
+        "Slice",
+        "Fn",
+        "Closure",
+    }
+)
+_LAYOUT_BRANCH_NAMES: dict[str, tuple[str, ...]] = {
+    "Option": ("payload",),
+    "Result": ("ok", "error"),
+    "Array": ("element", "length"),
+    "Box": ("payload",),
+    "Vec": ("element",),
+    "Map": ("key", "value"),
+    "Borrow": ("payload",),
+    "Slice": ("element",),
+}
+def _layout_dependencies(
+    type_name: str,
+    nominal_names: frozenset[str],
+    *,
+    path: tuple[str, ...] = (),
+) -> tuple[_LayoutDependency, ...]:
+    """Return every nested nominal dependency and its indirection mode."""
+
+    try:
+        expression = parse_type(type_name)
+    except ValueError as exc:
+        raise _LayoutParseError(type_name, path, str(exc)) from exc
+
+    def visit(
+        node: TypeExpr,
+        current_path: tuple[str, ...],
+        indirect: bool,
+    ) -> tuple[_LayoutDependency, ...]:
+        if node.name in nominal_names:
+            return (_LayoutDependency(node.name, indirect, current_path),)
+
+        pointer = pointer_type(node.canonical)
+        if pointer is not None:
+            try:
+                pointee = parse_type(pointer.pointee)
+            except ValueError as exc:
+                raise _LayoutParseError(
+                    pointer.pointee,
+                    (*current_path, f"{node.name}.pointee"),
+                    str(exc),
+                ) from exc
+            return visit(
+                pointee,
+                (*current_path, f"{node.name}.pointee"),
+                True,
+            )
+
+        if not node.args:
+            return ()
+
+        if node.name == "Array":
+            arguments = node.args[:1]
+        else:
+            arguments = node.args
+        labels = _LAYOUT_BRANCH_NAMES.get(node.name, ())
+        crossed_indirection = indirect or node.name in _INDIRECT_LAYOUT_WRAPPERS
+        dependencies: list[_LayoutDependency] = []
+        for index, argument in enumerate(arguments):
+            label = (
+                labels[index]
+                if index < len(labels)
+                else (
+                    "return"
+                    if node.name in {"Fn", "Closure"} and index == len(arguments) - 1
+                    else f"argument[{index}]"
+                )
+            )
+            if node.name in {"Fn", "Closure"} and index < len(arguments) - 1:
+                label = f"parameter[{index}]"
+            dependencies.extend(
+                visit(
+                    argument,
+                    (*current_path, f"{node.name}.{label}"),
+                    crossed_indirection,
+                )
+            )
+        return tuple(dependencies)
+
+    return tuple(sorted(set(visit(expression, path, False))))
+
+
+def _minimal_inline_cycle(
+    graph: dict[str, tuple[_LayoutEdge, ...]],
+) -> tuple[tuple[str, ...], tuple[_LayoutEdge, ...]] | None:
+    best: tuple[
+        tuple[
+            int,
+            tuple[str, ...],
+            tuple[tuple[str, tuple[str, ...], str], ...],
+        ],
+        tuple[str, ...],
+        tuple[_LayoutEdge, ...],
+    ] | None = None
+    for start in sorted(graph):
+        queue = deque([(start, (start,), ())])
+        best_paths: dict[
+            str,
+            tuple[
+                int,
+                tuple[str, ...],
+                tuple[tuple[str, tuple[str, ...], str], ...],
+            ],
+        ] = {start: (0, (start,), ())}
+        while queue:
+            current, nodes, edges = queue.popleft()
+            for edge in graph[current]:
+                next_edges = (*edges, edge)
+                if edge.target == start:
+                    cycle_nodes = (*nodes, start)
+                    structural = tuple(
+                        (nodes[index], item.path, item.target)
+                        for index, item in enumerate(next_edges)
+                    )
+                    key = (len(next_edges), cycle_nodes, structural)
+                    candidate = (key, cycle_nodes, next_edges)
+                    if best is None or candidate[0] < best[0]:
+                        best = candidate
+                    continue
+                if edge.target in nodes:
+                    continue
+                path_key = (
+                    len(next_edges),
+                    (*nodes, edge.target),
+                    tuple(
+                        (nodes[index], item.path, item.target)
+                        for index, item in enumerate(next_edges)
+                    ),
+                )
+                previous = best_paths.get(edge.target)
+                if previous is not None and previous <= path_key:
+                    continue
+                best_paths[edge.target] = path_key
+                queue.append((edge.target, (*nodes, edge.target), next_edges))
+    if best is None:
+        return None
+    return best[1], best[2]
+
+
+def _render_layout_cycle(
+    nodes: tuple[str, ...],
+    edges: tuple[_LayoutEdge, ...],
+) -> str:
+    parts = [nodes[0]]
+    for edge in edges:
+        parts.append(f"--{'/'.join(edge.path)}--> {edge.target}")
+    return " ".join(parts)
+
+
 def validate_recursive_layouts(types: Iterable[HIRTypeDecl]) -> LayoutValidation:
     declarations = {item.name: item for item in types}
-    graph: dict[str, list[str]] = {name: [] for name in declarations}
+    nominal_names = frozenset(declarations)
+    edge_graph: dict[str, set[_LayoutEdge]] = {
+        name: set() for name in declarations
+    }
+    dependencies_by_declaration: dict[str, tuple[_LayoutDependency, ...]] = {}
     for declaration in declarations.values():
-        references = (
-            [field.type_name for field in declaration.fields]
-            if declaration.kind == "record"
-            else [variant.payload_type for variant in declaration.variants if variant.payload_type]
+        if declaration.kind == "record":
+            members = (
+                (field.type_name, (f"field[{field.name}]",))
+                for field in declaration.fields
+            )
+        else:
+            members = (
+                (
+                    variant.payload_type,
+                    (f"variant[{variant.name}]",),
+                )
+                for variant in declaration.variants
+                if variant.payload_type is not None
+            )
+        dependencies: list[_LayoutDependency] = []
+        try:
+            for type_name, path in members:
+                assert type_name is not None
+                dependencies.extend(
+                    _layout_dependencies(
+                        type_name,
+                        nominal_names,
+                        path=path,
+                    )
+                )
+        except _LayoutParseError as exc:
+            location = "/".join(exc.path) or "<root>"
+            return LayoutValidation(
+                False,
+                (),
+                (),
+                f"MalformedLayoutType: {exc.type_name} at {location}: {exc.reason}",
+            )
+        dependencies_by_declaration[declaration.name] = tuple(dependencies)
+    for declaration in declarations.values():
+        for dependency in dependencies_by_declaration[declaration.name]:
+            if not dependency.indirect:
+                edge_graph[declaration.name].add(
+                    _LayoutEdge(dependency.target, dependency.path)
+                )
+    graph = {
+        name: tuple(sorted(edges))
+        for name, edges in sorted(edge_graph.items())
+    }
+    ordered_graph = tuple(
+        (
+            name,
+            tuple(sorted({edge.target for edge in edges})),
         )
-        for type_name in references:
-            assert type_name is not None
-            referenced = _referenced_type(type_name)
-            if referenced in declarations and not _is_indirection(type_name):
-                graph[declaration.name].append(referenced)
-    best_cycle: tuple[str, ...] | None = None
-    for start in sorted(graph):
-        queue: list[tuple[str, tuple[str, ...]]] = [(start, (start,))]
-        while queue:
-            current, path = queue.pop(0)
-            for successor in sorted(graph[current]):
-                if successor == start:
-                    cycle = path + (start,)
-                    if best_cycle is None or (len(cycle), cycle) < (len(best_cycle), best_cycle):
-                        best_cycle = cycle
-                    queue.clear()
-                    break
-                if successor not in path:
-                    queue.append((successor, path + (successor,)))
-    ordered_graph = tuple((name, tuple(sorted(edges))) for name, edges in sorted(graph.items()))
-    if best_cycle:
-        text = " -> ".join(best_cycle)
-        return LayoutValidation(False, ordered_graph, best_cycle, f"InlineRecursiveLayout: {text}; add Box or Vec indirection")
+        for name, edges in graph.items()
+    )
+    cycle = _minimal_inline_cycle(graph)
+    if cycle is not None:
+        nodes, edges = cycle
+        text = _render_layout_cycle(nodes, edges)
+        return LayoutValidation(
+            False,
+            ordered_graph,
+            nodes,
+            f"InlineRecursiveLayout: {text}; add Box or Vec indirection",
+        )
     return LayoutValidation(True, ordered_graph)
 
 
@@ -485,6 +674,7 @@ class _DescriptorBuilder:
         self.hir = hir
         self.declarations = {item.name: item for item in hir.types}
         self.type_properties = TypePropertyResolver(self.declarations)
+        self.nominal_names = frozenset(self.declarations)
         self.descriptors: dict[str, TypeDescriptor] = {}
         for name, (size, alignment) in _SCALARS.items():
             self.descriptors[name] = ScalarDesc(
@@ -508,16 +698,39 @@ class _DescriptorBuilder:
         self.descriptors["Path"] = TextDesc(
             "Path", "text", 16, 8, "aggregate", "forbidden", "bitwise_then_invalidate", "owner_free", (), (), _stable_id("type", "builtin", "Path")
         )
+        for name, declaration in sorted(self.declarations.items()):
+            if name in self.descriptors:
+                raise RepresentationCompileError(
+                    f"nominal type conflicts with builtin representation: {name}"
+                )
+            self.descriptors[name] = (
+                RecordDesc(
+                    name, "record", 0, 1, "aggregate", "forbidden",
+                    "bitwise_then_invalidate", "fieldwise", (), (),
+                    declaration.symbol_id,
+                )
+                if declaration.kind == "record"
+                else EnumDesc(
+                    name, "enum", 0, 1, "aggregate", "forbidden",
+                    "bitwise_then_invalidate", "tag_switch", (), (),
+                    declaration.symbol_id,
+                )
+            )
 
     def build(self) -> tuple[TypeDescriptor, ...]:
-        for declaration in self.hir.types:
-            self._nominal(declaration.name)
+        completed: set[str] = set()
+        for name in sorted(self.declarations):
+            self._finalize_nominal(name, completed)
         referenced = {
             type_name
             for declaration in self.hir.types
             for type_name in (
                 [field.type_name for field in declaration.fields]
-                + [variant.payload_type for variant in declaration.variants if variant.payload_type]
+                + [
+                    variant.payload_type
+                    for variant in declaration.variants
+                    if variant.payload_type
+                ]
             )
         }
         referenced.update(
@@ -532,9 +745,6 @@ class _DescriptorBuilder:
         )
         for type_name in sorted(referenced):
             self.get(type_name)
-        completed: set[str] = set()
-        for declaration in self.hir.types:
-            self._finalize_nominal(declaration.name, completed)
         for name, descriptor in tuple(self.descriptors.items()):
             properties = self.type_properties.resolve(name)
             self.descriptors[name] = replace(
@@ -661,16 +871,21 @@ class _DescriptorBuilder:
         map_types = _map_types(type_name)
         if map_types is not None:
             key_type, value_type = map_types
-            if key_type != "Text" or value_type not in _SCALARS:
+            if key_type != "Text":
                 raise RepresentationCompileError(
                     f"unsupported Map specialization {type_name}; alpha Map "
-                    "requires Text keys and scalar values"
+                    "requires Text keys"
                 )
             key = self.get(key_type)
             value = self.get(value_type)
             descriptor = MapDesc(
                 type_name, "map", 40, 8, "aggregate", "forbidden",
-                "bitwise_then_invalidate", "map_owned_keys_then_buffers",
+                "bitwise_then_invalidate",
+                (
+                    "map_owned_entries_then_buffers"
+                    if value.drop_class != "trivial"
+                    else "map_owned_keys_then_buffers"
+                ),
                 (), (key_type, value_type),
                 _stable_id("type", "map", key.source_type_identity, value.source_type_identity),
                 key_type=key_type, value_type=value_type,
@@ -678,11 +893,11 @@ class _DescriptorBuilder:
             self.descriptors[type_name] = descriptor
             return descriptor
         generic = _generic(type_name)
-        if generic:
-            base, argument = generic
-            result_parts = generic_parts(type_name, "Result", arity=2)
-            if result_parts is not None:
-                ok_type, err_type = result_parts
+        if generic is not None:
+            base = generic.name
+            arguments = tuple(item.canonical for item in generic.args)
+            if base == "Result" and len(arguments) == 2:
+                ok_type, err_type = arguments
                 ok = self.get(ok_type)
                 err = self.get(err_type)
                 canonical_ok = ok.name
@@ -697,6 +912,11 @@ class _DescriptorBuilder:
                 )
                 self.descriptors[type_name] = descriptor
                 return descriptor
+            if len(arguments) != 1:
+                raise RepresentationCompileError(
+                    f"unsupported representation constructor: {base}"
+                )
+            argument = arguments[0]
             if base == "Option":
                 payload = self.get(argument)
                 descriptor = EnumDesc(
@@ -751,11 +971,13 @@ class _DescriptorBuilder:
                     payload_type=argument,
                 )
             else:
-                raise RepresentationCompileError(f"unsupported representation constructor: {base}")
+                raise RepresentationCompileError(
+                    f"unsupported representation constructor: {base}"
+                )
             self.descriptors[type_name] = descriptor
             return descriptor
         if type_name in self.declarations:
-            return self._nominal(type_name)
+            return self.descriptors[type_name]
         aliases = [
             name for name in self.declarations
             if _type_leaf(name) == type_name
@@ -764,20 +986,41 @@ class _DescriptorBuilder:
             return self.get(aliases[0])
         raise RepresentationCompileError(f"unknown representation type: {type_name}")
 
-    def _finalize_nominal(self, name: str, completed: set[str]) -> TypeDescriptor:
+    def _finalize_nominal(
+        self,
+        name: str,
+        completed: set[str],
+    ) -> TypeDescriptor:
         if name in completed:
             return self.descriptors[name]
         declaration = self.declarations[name]
-        references = (
-            [field.type_name for field in declaration.fields]
-            if declaration.kind == "record"
-            else [variant.payload_type for variant in declaration.variants if variant.payload_type]
+        if declaration.kind == "record":
+            members = (
+                (field.type_name, (f"field[{field.name}]",))
+                for field in declaration.fields
+            )
+        else:
+            members = (
+                (
+                    variant.payload_type,
+                    (f"variant[{variant.name}]",),
+                )
+                for variant in declaration.variants
+                if variant.payload_type is not None
+            )
+        dependencies = tuple(
+            dependency
+            for type_name, path in members
+            for dependency in _layout_dependencies(
+                type_name,
+                self.nominal_names,
+                path=path,
+            )
         )
-        for type_name in references:
-            assert type_name is not None
-            referenced = _referenced_type(type_name)
-            if referenced in self.declarations and not _is_indirection(type_name):
-                self._finalize_nominal(referenced, completed)
+        for dependency in dependencies:
+            if not dependency.indirect:
+                self._finalize_nominal(dependency.target, completed)
+
         if declaration.kind == "record":
             offset = 0
             alignment = 1
@@ -791,12 +1034,14 @@ class _DescriptorBuilder:
                 offset = _align(offset, field_descriptor.alignment)
                 fields.append((field.name, field.type_name, offset))
                 offset += field_descriptor.size
-                if _is_indirection(field.type_name):
-                    indirect.extend(field_descriptor.indirect_dependencies)
-                else:
-                    referenced = _referenced_type(field.type_name)
-                    if referenced:
-                        inline.append(referenced)
+                for dependency in _layout_dependencies(
+                    field.type_name,
+                    self.nominal_names,
+                    path=(f"field[{field.name}]",),
+                ):
+                    (indirect if dependency.indirect else inline).append(
+                        dependency.target
+                    )
                 trivial = trivial and field_descriptor.drop_class == "trivial"
             descriptor: TypeDescriptor = RecordDesc(
                 name,
@@ -830,15 +1075,25 @@ class _DescriptorBuilder:
                 if variant.payload_type is not None:
                     payload_descriptor = self.get(variant.payload_type)
                     maximum_size = max(maximum_size, payload_descriptor.size)
-                    maximum_alignment = max(maximum_alignment, payload_descriptor.alignment)
-                    if _is_indirection(variant.payload_type):
-                        indirect.extend(payload_descriptor.indirect_dependencies)
-                    else:
-                        referenced = _referenced_type(variant.payload_type)
-                        if referenced:
-                            inline.append(referenced)
-                    trivial = trivial and payload_descriptor.drop_class == "trivial"
-                variants.append((variant.name, variant.payload_type, variant.tag))
+                    maximum_alignment = max(
+                        maximum_alignment,
+                        payload_descriptor.alignment,
+                    )
+                    for dependency in _layout_dependencies(
+                        variant.payload_type,
+                        self.nominal_names,
+                        path=(f"variant[{variant.name}]",),
+                    ):
+                        (indirect if dependency.indirect else inline).append(
+                            dependency.target
+                        )
+                    trivial = (
+                        trivial
+                        and payload_descriptor.drop_class == "trivial"
+                    )
+                variants.append(
+                    (variant.name, variant.payload_type, variant.tag)
+                )
             payload_offset = _align(4, maximum_alignment)
             descriptor = EnumDesc(
                 name,
@@ -858,88 +1113,6 @@ class _DescriptorBuilder:
         completed.add(name)
         return descriptor
 
-    def _nominal(self, name: str) -> TypeDescriptor:
-        if name in self.descriptors:
-            return self.descriptors[name]
-        declaration = self.declarations[name]
-        placeholder = (
-            RecordDesc(name, "record", 0, 1, "aggregate", "forbidden", "bitwise_then_invalidate", "fieldwise", (), (), declaration.symbol_id)
-            if declaration.kind == "record"
-            else EnumDesc(name, "enum", 0, 1, "aggregate", "forbidden", "bitwise_then_invalidate", "tag_switch", (), (), declaration.symbol_id)
-        )
-        self.descriptors[name] = placeholder
-        if declaration.kind == "record":
-            offset = 0
-            alignment = 1
-            fields = []
-            inline = []
-            indirect = []
-            trivial = True
-            for field in declaration.fields:
-                descriptor = self.get(field.type_name)
-                alignment = max(alignment, descriptor.alignment)
-                offset = _align(offset, descriptor.alignment)
-                fields.append((field.name, field.type_name, offset))
-                offset += descriptor.size
-                if _is_indirection(field.type_name):
-                    indirect.extend(descriptor.indirect_dependencies)
-                else:
-                    referenced = _referenced_type(field.type_name)
-                    if referenced:
-                        inline.append(referenced)
-                trivial = trivial and descriptor.drop_class == "trivial"
-            size = _align(offset, alignment)
-            descriptor = RecordDesc(
-                name,
-                "record",
-                size,
-                alignment,
-                "aggregate",
-                "trivial" if trivial else "forbidden",
-                "copy" if trivial else "bitwise_then_invalidate",
-                "trivial" if trivial else "fieldwise",
-                tuple(sorted(set(inline))),
-                tuple(sorted(set(indirect))),
-                declaration.symbol_id,
-                fields=tuple(fields),
-            )
-        else:
-            maximum_size = 0
-            maximum_alignment = 1
-            variants = []
-            inline = []
-            indirect = []
-            trivial = True
-            for variant in declaration.variants:
-                if variant.payload_type is not None:
-                    payload = self.get(variant.payload_type)
-                    maximum_size = max(maximum_size, payload.size)
-                    maximum_alignment = max(maximum_alignment, payload.alignment)
-                    if _is_indirection(variant.payload_type):
-                        indirect.extend(payload.indirect_dependencies)
-                    else:
-                        referenced = _referenced_type(variant.payload_type)
-                        if referenced:
-                            inline.append(referenced)
-                    trivial = trivial and payload.drop_class == "trivial"
-                variants.append((variant.name, variant.payload_type, variant.tag))
-            payload_offset = _align(4, maximum_alignment)
-            descriptor = EnumDesc(
-                name,
-                "enum",
-                _align(payload_offset + maximum_size, maximum_alignment),
-                maximum_alignment,
-                "aggregate",
-                "trivial" if trivial else "forbidden",
-                "copy" if trivial else "bitwise_then_invalidate",
-                "trivial" if trivial else "tag_switch",
-                tuple(sorted(set(inline))),
-                tuple(sorted(set(indirect))),
-                declaration.symbol_id,
-                variants=tuple(variants),
-            )
-        self.descriptors[name] = descriptor
-        return descriptor
 
 
 def _align(value: int, alignment: int) -> int:
@@ -1025,10 +1198,21 @@ def build_drop_plans(descriptors: Iterable[TypeDescriptor], *, recursion_limit: 
             return DropPlan(type_name, "box_payload_then_free", (plan(descriptor.payload_type, path),))
         if descriptor.kind == "map":
             assert descriptor.key_type is not None
+            assert descriptor.value_type is not None
+            children = [
+                replace(plan(descriptor.key_type, path), field_name="key")
+            ]
+            if table[descriptor.value_type].drop_class != "trivial":
+                children.append(
+                    replace(
+                        plan(descriptor.value_type, path),
+                        field_name="value",
+                    )
+                )
             return DropPlan(
                 type_name,
-                "map_owned_keys_then_buffers",
-                (replace(plan(descriptor.key_type, path), field_name="key"),),
+                descriptor.drop_class,
+                tuple(children),
             )
         if descriptor.name == "TextBuilder":
             return DropPlan(type_name, "builder_buffer_free")
