@@ -152,7 +152,7 @@ FROZEN_WORKLOADS: tuple[FrozenWorkload, ...] = (
         "real CLI NDJSON report with one process and identical arguments",
         {
             "merlo_concise": "c4fea95f1308c74f6500902815cc4051b06552047754526258f23e50d69a3dde",
-            "merlo_canonical": "8be781d24521d9c7f8f5c2508732b638aee2d66ca7e5347fc561250228107b55",
+            "merlo_canonical": "67cc1505b204a981028e2dfff2da7c2933ecdb65312f87af08ff0fb717df67f4",
             "c": "c5d86160aac3f27c85e5d3a8c8ff228ea96f5a76d9145aa3168fe38e9ad0d220",
             "python": "2fe9388211b54397756948c5912326e36db4a6e1a8a52fc5826549e579c05977",
             "rust": "ca9aca6d54d49e5f9203b985c763ae0fc91600027cd56fa043b7474e81c23bb1",
