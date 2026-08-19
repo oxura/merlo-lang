@@ -31,15 +31,66 @@ Refactors are explicit and can be previewed before applying:
 merlo refactor rename app.main.helper assist PROJECT
 merlo refactor rename app.main.helper assist PROJECT --apply
 merlo refactor move app.main.helper app.support PROJECT
+merlo refactor move app.main.helper app.support PROJECT --apply
 merlo refactor signature app.main.helper "(value: UInt64) -> Text" PROJECT
+merlo refactor signature app.main.helper "(value: Int64) -> Int64" PROJECT --apply
 ```
 
-In alpha.2, exact rename plans are the only refactors that can become ready and
-be applied. Every preview is a canonical `merlo.change-ir.v1` envelope with a
+The alpha `move` subset is deliberately narrow: it moves a private top-level
+function into an existing reachable project module, migrates required direct
+imports, and exports the moved declaration so existing unqualified callers
+continue to resolve. Preview runs an isolated full-project compile and records
+the exact old/new SymbolId and revision lineage. Public symbols, types, tasks,
+qualified-call rewrites, dependency cycles, stdlib destinations, and any move
+that does not compile remain fail-closed.
+
+For the verified path, serialize and review the whole evolution plan before
+applying it:
+
+```console
+merlo evolve rename app.main.helper assist PROJECT \
+  --goal "rename without changing behavior" \
+  --plan-out .merlo/helper-rename.json
+merlo evolve apply .merlo/helper-rename.json PROJECT
+```
+
+Typed-hole synthesis uses the same world, capsule, impact, ChangeIR, and
+transaction identities:
+
+```console
+merlo synthesize app.main.parse_port PROJECT \
+  --goal "return a valid Port or ParseError" \
+  --report-out .merlo/parse-port-synthesis.json
+merlo synthesize app.main.parse_port PROJECT \
+  --goal "return a valid Port or ParseError" --apply
+```
+
+Preview generation is read-only. Bounded enumeration, symbolic contract
+projection, and local package candidates are compiled in isolated project
+copies; a candidate is rejected if it leaves the selected hole unresolved or
+introduces a refuted obligation. Apply verifies the chosen candidate again
+against the fresh world and compares stable evidence plus exact source hashes
+before committing.
+
+The apply command reconstructs the plan against a fresh SemanticWorld, rejects
+tampered or stale artifacts before writing, performs the exact structural
+edits, rebuilds the world, checks preservation, emits patch evidence, and saves
+the new world. If any post-commit step fails, the journal restores every edited
+file and the previous world.
+
+In the current alpha.3 development contract, exact rename plans are the only
+changes accepted by the verified `evolve` path. The lower-level structural
+refactor path also accepts explicit function/task signature replacements when
+the changed project compiles in isolation with every existing body and caller.
+It does not invent argument migrations. `move` remains unsupported until
+ChangeIR can express old/new SymbolId lineage across module boundaries.
+
+Every preview is a canonical
+`merlo.change-ir.v1` envelope with a
 schema version, deterministic digest, world/target revisions, immutable
-metadata, and source-anchored edits. `move` and `signature` are reserved
-protocol operations that return the same envelope with `status: unsupported`;
-they do not edit source and cannot be applied.
+metadata, and source-anchored edits. Unsupported signature migrations and all
+move requests return the same envelope with `status: unsupported`; they do not
+edit source and cannot be applied.
 
 The CLI checks the affected semantic world and returns a diagnostic when a
 migration is unsupported, a target is missing, or an edit capability is not

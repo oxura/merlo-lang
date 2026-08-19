@@ -52,14 +52,37 @@ Use a bare `?` to retain an intentionally incomplete, exactly typed expression:
 let discount: UInt64 = ?
 ```
 
-The semantic model records the expected type and visible scope. `merlo check`
-can expose that context; `merlo build` rejects the hole instead of inventing a
-value. This is distinct from postfix `operation()?` result propagation.
+The semantic model records the expected type and visible scope. `merlo holes`
+lists that context, `merlo explain-hole HOLE_ID` expands it, and `merlo verify`
+returns a diagnostic status while the completion obligation is unresolved.
+`merlo build` rejects the hole instead of inventing a value. This is distinct
+from postfix `operation()?` result propagation.
+
+The offline synthesis command can preview and explicitly fill such a hole:
+
+```console
+merlo synthesize app.discount PROJECT --goal "preserve its postcondition"
+merlo synthesize app.discount PROJECT --goal "preserve its postcondition" --apply
+```
+
+Only candidates independently rebuilt against the typed context are ranked.
+The apply route repeats that evidence and uses an exact rollback transaction;
+ordinary `check` and `build` never generate code or invoke an LLM.
 
 `or` is boolean OR only for `Bool`; for `Option[T] or T` it is a strict typed
 fallback. Other truthiness is rejected. `.field` is an implicit callable only
 inside `where`, `map`, and `count`; it cannot capture locals or appear at an
 arbitrary call site.
+
+An explicitly typed closure may capture a checked immutable or owned value:
+
+```merlo
+fn greater_than(limit: UInt64) -> Fn[UInt64,Bool]:
+    value => value > limit
+```
+
+The compiler materializes and drops its typed environment. Escaping borrowed,
+mutable, resource, and arbitrary shared captures are rejected.
 
 Host calls make an inferred declaration a `task`. Effects and capabilities
 propagate through private calls to a fixed point, while `?` adds its typed error

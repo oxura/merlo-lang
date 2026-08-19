@@ -629,9 +629,8 @@ def test_borrowed_view_cannot_escape_materialized_text_owner() -> None:
         "fn main(input: BytesView) -> UInt64:\n"
         "    return wrapper(input).len()\n"
     )
-    hir, rir, _mir, optimized = _layers(source)
-    with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
-        emit_general_c(hir, rir, optimized)
+    with pytest.raises(StructuredHIRCompileError, match="BorrowFromTemporaryEscapes"):
+        compile_structured_hir(source)
 
 def test_borrowed_map_cannot_be_shallow_cloned_for_owned_call() -> None:
     source = (
@@ -711,9 +710,8 @@ def test_nested_borrowed_holder_rejects_owner_escape(binding: str) -> None:
             else "    return wrapper(input)\n"
         )
     )
-    hir, rir, _mir, optimized = _layers(source)
-    with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
-        emit_general_c(hir, rir, optimized)
+    with pytest.raises(StructuredHIRCompileError, match="BorrowFromTemporaryEscapes"):
+        compile_structured_hir(source)
 
 def test_try_propagation_drops_borrow_temporary_on_error_and_success() -> None:
     source = (
@@ -745,9 +743,8 @@ def test_nested_borrowed_slice_rejects_materialized_vec_owner() -> None:
         "fn main(input: BytesView) -> UInt64:\n"
         "    return 0\n"
     )
-    hir, rir, _mir, optimized = _layers(source)
-    with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
-        emit_general_c(hir, rir, optimized)
+    with pytest.raises(StructuredHIRCompileError, match="BorrowFromTemporaryEscapes"):
+        compile_structured_hir(source)
 
 
 def test_vec_view_of_owned_call_rejects_borrowed_escape() -> None:

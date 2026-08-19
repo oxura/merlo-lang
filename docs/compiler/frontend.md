@@ -53,11 +53,36 @@ records and their spans, not rediscover declarations with regular expressions.
 ## Experimental boundary
 
 The full-file lexer/CST owns lossless tokens, indentation, trivia, and recovery.
-The Surface parser owns semantic declarations, types, statements, and
-expressions. Module binding transforms those nodes structurally; it does not
-rename source text. HIR lowering projects the retained Surface tree into
-Merlo-owned native syntax nodes, so no canonical or module source is reparsed
-and no CPython AST is created on the production frontend path.
+Its immutable hierarchy is `file -> declaration -> header/block -> statement`,
+with conservative parameter, type, and expression regions under headers.
+`SyntaxNode.walk()` exposes the tree, recovered regions are explicit `error`
+nodes, and IDs are derived from semantic headers plus their structural parent
+rather than absolute offsets. This makes an existing node identity survive
+trivia edits and unrelated sibling insertions. The Surface parser still owns
+the complete semantic grammar for declarations, types, statements, and
+expressions; the CST is not yet the sole parser. Its top-level declaration
+cursor and kind dispatch do consume CST anchors, including source line offsets,
+and reject any CST/parser disagreement instead of silently reparsing a
+different boundary. Statement blocks also require a same-line, same-kind CST
+node for every executable statement; comment-only lines remain lossless trivia,
+while nested `else` and `case` headers are checked as structural anchors.
+Statement expression regions reuse their retained CST tokens, including across
+physical lines inside open delimiters. The file lexer validates typed delimiter
+pairs, so `([)]`, stray closers, and unclosed openers fail with distinct,
+source-located diagnostics. Expression parsing rebases the retained absolute
+token offsets directly and validates each token against the original file; it
+does not search repeated token text to reconstruct positions or silently
+re-lex the fragment. Inline function declarations retain separate parameter,
+return-type, and body-expression regions. Both inline and indented
+expression-bodied functions consume those anchored expression tokens instead
+of invoking the expression lexer a second time. Function parameter lists own
+structural parameter children and per-parameter type regions. Surface function
+signatures validate and consume those nodes plus the retained return-type
+region instead of locating parameter fragments in the line text.
+Module binding transforms Surface nodes structurally,
+and HIR lowering projects the retained Surface tree into Merlo-owned native
+syntax nodes, so no canonical or module source is reparsed and no CPython AST
+is created on the production frontend path.
 
 ## Verification commands
 
@@ -65,6 +90,9 @@ From a checked-out project, the supported smoke paths are:
 
 ```console
 merlo check PROJECT
+merlo verify PROJECT
+merlo obligations PROJECT --json
+merlo holes PROJECT --json
 merlo expand PROJECT
 merlo explain PROJECT
 ```

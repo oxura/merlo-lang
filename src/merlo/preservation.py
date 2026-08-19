@@ -237,7 +237,12 @@ def _normalize(
                 verification
                 and name == "function"
                 and function_names is not None
-                and item in function_names
+                and isinstance(item, str)
+                and any(
+                    item == function_name
+                    or item.endswith(f"__{function_name}")
+                    for function_name in function_names
+                )
             ):
                 result[name] = "<target-name>"
             else:

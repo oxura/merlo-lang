@@ -10,7 +10,10 @@ The alpha does not require ordinary lifetime annotations or manual memory
 operations. Composite records are dropped fieldwise, tagged enums drop by their
 active variant, and boxed indirection permits recursive layouts. The current
 runtime has no cycle collector, so programs must not rely on collecting cycles.
-Capturing closures are not implemented.
+Capturing closures may retain immutable scalar values and owned values in a
+typed environment. Borrowed captures may not escape, mutable captures and host
+resources are rejected, and arbitrary shared closure environments are not part
+of the alpha contract.
 
 Use typed errors at operation boundaries:
 

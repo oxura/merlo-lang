@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from merlo.frontend.file_syntax import lex_file, parse_file_cst
 
 
@@ -54,6 +56,314 @@ def test_cst_groups_declarations_and_keeps_stable_ids_across_trivia_changes() ->
     ]
 
 
+def test_cst_builds_hierarchical_headers_blocks_statements_and_parts() -> None:
+    result = parse_file_cst(SOURCE, path="sample.mlo")
+    function = result.declarations[-1]
+
+    assert result.root.kind == "file"
+    assert result.root.children == result.declarations
+    assert [child.kind for child in function.children] == ["header", "block"]
+    header, block = function.children
+    assert [child.kind for child in header.children] == ["parameters", "type"]
+    assert [child.kind for child in block.children] == ["if", "return"]
+    nested = block.children[0]
+    assert [child.kind for child in nested.children] == ["header", "block"]
+    assert [child.kind for child in nested.children[0].children] == ["expression"]
+    assert [child.kind for child in nested.children[1].children] == ["return"]
+    assert {node.kind for node in result.root.walk()} >= {
+        "file", "fn", "header", "block", "parameters", "type",
+        "if", "return", "expression",
+    }
+
+
+def test_statement_keywords_used_as_receivers_remain_expressions() -> None:
+    result = parse_file_cst(
+        "fn emit(state: State):\n"
+        "    state = State.new()\n"
+        "    state.tokens.push(1)\n",
+        path="receiver.mlo",
+    )
+    block = result.declarations[0].children[1]
+
+    assert [child.kind for child in block.children] == [
+        "expression_statement",
+        "expression_statement",
+    ]
+
+
+def test_cst_splits_statement_expression_regions_at_semantic_boundaries() -> None:
+    result = parse_file_cst(
+        "fn update(items: Vec[Item]):\n"
+        "    for item in items.where(.active):\n"
+        "        item.count += item.delta\n",
+        path="regions.mlo",
+    )
+    outer_block = result.declarations[0].children[1]
+    loop = outer_block.children[0]
+    loop_header, loop_block = loop.children
+    assignment_header = loop_block.children[0].children[0]
+
+    assert [token.text for token in loop_header.children[0].tokens] == [
+        "items", ".", "where", "(", ".", "active", ")",
+    ]
+    assert [
+        [token.text for token in expression.tokens]
+        for expression in assignment_header.children
+    ] == [
+        ["item", ".", "count"],
+        ["item", ".", "delta"],
+    ]
+
+
+def test_cst_retains_inline_declaration_expression_and_return_type_regions() -> None:
+    result = parse_file_cst(
+        "fn increment(value: UInt64, lookup: Map<Text, UInt64>) -> UInt64 = value + 1\n"
+        "identity(value) = value\n",
+        path="declaration-regions.mlo",
+    )
+    explicit_header = result.declarations[0].children[0]
+    inferred_header = result.declarations[1].children[0]
+
+    assert [child.kind for child in explicit_header.children] == [
+        "parameters",
+        "type",
+        "expression",
+    ]
+    assert [token.text for token in explicit_header.children[1].tokens] == [
+        "UInt64",
+    ]
+    assert [token.text for token in explicit_header.children[2].tokens] == [
+        "value",
+        "+",
+        "1",
+    ]
+    assert [child.kind for child in inferred_header.children] == [
+        "parameters",
+        "expression",
+    ]
+    parameters = explicit_header.children[0].children
+    assert [child.kind for child in parameters] == ["parameter", "parameter"]
+    assert [
+        [token.text for token in parameter.children[0].tokens]
+        for parameter in parameters
+    ] == [
+        ["UInt64"],
+        ["Map", "<", "Text", ",", "UInt64", ">"],
+    ]
+
+
+def test_cst_retains_generic_type_parameter_regions() -> None:
+    result = parse_file_cst(
+        "fn choose[T: Comparable + Display, U](left: T, right: U) -> T = left\n",
+        path="generic-regions.mlo",
+    )
+    header = result.declarations[0].children[0]
+
+    assert [child.kind for child in header.children] == [
+        "type_parameters",
+        "parameters",
+        "type",
+        "expression",
+    ]
+    assert [
+        [token.text for token in parameter.tokens]
+        for parameter in header.children[0].children
+    ] == [
+        ["T", ":", "Comparable", "+", "Display"],
+        ["U"],
+    ]
+
+
+def test_cst_retains_record_enum_and_local_type_regions() -> None:
+    result = parse_file_cst(
+        "record User:\n"
+        "    state: Text\n"
+        "enum Choice:\n"
+        "    Some: Text\n"
+        "    None\n"
+        "fn main():\n"
+        "    value: Text\n"
+        "    let count: UInt64 = 1\n"
+        "    return count\n",
+        path="retained-types.mlo",
+    )
+
+    record_field = result.declarations[0].children[1].children[0]
+    enum_payload = result.declarations[1].children[1].children[0]
+    enum_empty = result.declarations[1].children[1].children[1]
+    local_annotation = result.declarations[2].children[1].children[0]
+    local_binding = result.declarations[2].children[1].children[1]
+
+    assert [child.kind for child in record_field.children[0].children] == ["type"]
+    assert [child.kind for child in enum_payload.children[0].children] == ["type"]
+    assert not any(
+        child.kind == "type" for child in enum_empty.children[0].children
+    )
+    assert [child.kind for child in local_annotation.children[0].children] == ["type"]
+    assert [child.kind for child in local_binding.children[0].children] == [
+        "type",
+        "expression",
+    ]
+
+
+def test_keyword_named_field_does_not_reclassify_else_block() -> None:
+    result = parse_file_cst(
+        "record Shipment:\n"
+        "    state: Text\n"
+        "fn main():\n"
+        "    if true:\n"
+        "        pass\n"
+        "    else:\n"
+        "        pass\n",
+        path="keyword-field.mlo",
+    )
+
+    field = result.declarations[0].children[1].children[0]
+    function_block = result.declarations[1].children[1]
+    assert field.kind == "field"
+    assert [child.kind for child in function_block.children] == ["if", "else"]
+
+
+def test_cst_retains_flow_machine_state_and_interface_signatures() -> None:
+    result = parse_file_cst(
+        "flow ingest(input: Text) -> Result[Text, Err]:\n"
+        "    output = read(input) idempotent by input compensate rollback(input)\n"
+        "machine Job(id: UInt64):\n"
+        "    state Running(value: Text)\n"
+        "interface Sized:\n"
+        "    size(value: Self) -> UInt64\n",
+        path="extended-signatures.mlo",
+    )
+
+    flow_header = result.declarations[0].children[0]
+    flow_step_header = result.declarations[0].children[1].children[0].children[0]
+    machine_header = result.declarations[1].children[0]
+    state_header = result.declarations[1].children[1].children[0].children[0]
+    interface_method = result.declarations[2].children[1].children[0].children[0]
+    assert [child.kind for child in flow_header.children] == ["parameters", "type"]
+    assert [
+        [token.text for token in child.tokens]
+        for child in flow_step_header.children
+        if child.kind == "expression"
+    ] == [
+        ["read", "(", "input", ")"],
+        ["input"],
+    ]
+    assert [child.kind for child in machine_header.children] == ["parameters"]
+    assert [
+        [token.text for token in child.tokens]
+        for child in flow_step_header.children
+        if child.kind == "policy"
+    ] == [
+        ["idempotent", "by", "input"],
+        ["compensate", "rollback", "(", "input", ")"],
+    ]
+    assert [child.kind for child in state_header.children] == ["parameters"]
+    assert [child.kind for child in interface_method.children] == [
+        "parameters",
+        "type",
+    ]
+
+
+def test_cst_retains_invariant_expressions_and_impl_target_type() -> None:
+    result = parse_file_cst(
+        "record Positive:\n"
+        "    value: UInt64\n"
+        "    invariant value > 0\n"
+        "interface Sized:\n"
+        "    size(value: Self) -> UInt64\n"
+        "impl Sized for Map<Text, UInt64>:\n"
+        "    size(value: Map<Text, UInt64>) -> UInt64 = 0\n",
+        path="invariant-impl.mlo",
+    )
+
+    invariant = result.declarations[0].children[1].children[1].children[0]
+    impl_header = result.declarations[2].children[0]
+    assert [child.kind for child in invariant.children] == ["expression"]
+    assert [child.kind for child in impl_header.children] == ["type"]
+    assert [token.text for token in impl_header.children[0].tokens] == [
+        "Map", "<", "Text", ",", "UInt64", ">",
+    ]
+
+
+def test_multiline_delimited_expression_is_one_lossless_cst_region() -> None:
+    source = (
+        "fn values() -> Array[UInt64, 2]:\n"
+        "    values: Array[UInt64, 2] = [\n"
+        "        1,\n"
+        "        2,\n"
+        "    ]\n"
+        "    return values\n"
+    )
+    lexed = lex_file(source, path="multiline.mlo")
+    result = parse_file_cst(source, path="multiline.mlo")
+    block = result.declarations[0].children[1]
+    binding = block.children[0]
+    expression = binding.children[0].children[-1]
+
+    assert lexed.to_source() == source
+    assert [token.kind for token in lexed.tokens].count("indent") == 1
+    assert [child.kind for child in block.children] == [
+        "expression_statement",
+        "return",
+    ]
+    assert [token.text for token in expression.tokens] == [
+        "[", "1", ",", "2", ",", "]",
+    ]
+
+
+def test_hierarchical_ids_survive_unrelated_sibling_insertions() -> None:
+    original = (
+        "fn value() -> UInt64:\n"
+        "    return 0\n"
+    )
+    changed = (
+        "fn value() -> UInt64:\n"
+        "    # retained trivia does not own identity\n"
+        "    let marker: UInt64 = 1\n"
+        "    return 0\n"
+    )
+    first = parse_file_cst(original, path="stable.mlo")
+    second = parse_file_cst(changed, path="stable.mlo")
+    first_return = next(
+        node for node in first.root.walk() if node.kind == "return"
+    )
+    second_return = next(
+        node for node in second.root.walk() if node.kind == "return"
+    )
+
+    assert first.declarations[0].syntax_id == second.declarations[0].syntax_id
+    assert first_return.syntax_id == second_return.syntax_id
+    assert original[first_return.start:first_return.end] == "return 0\n"
+    assert changed[second_return.start:second_return.end] == "return 0\n"
+
+
+def test_repeated_sibling_syntax_has_distinct_deterministic_ids() -> None:
+    source = "fn repeated() -> UInt64:\n    return 0\n    return 0\n"
+    first = parse_file_cst(source, path="repeat.mlo")
+    second = parse_file_cst(source, path="repeat.mlo")
+    first_ids = [
+        node.syntax_id for node in first.root.walk() if node.kind == "return"
+    ]
+    second_ids = [
+        node.syntax_id for node in second.root.walk() if node.kind == "return"
+    ]
+
+    assert len(first_ids) == len(set(first_ids)) == 2
+    assert first_ids == second_ids
+
+
+def test_cst_keeps_terminal_unterminated_line_at_its_nested_depth() -> None:
+    source = "fn value() -> UInt64:\n    return 0"
+    result = parse_file_cst(source, path="terminal.mlo")
+    function = result.declarations[0]
+    block = next(child for child in function.children if child.kind == "block")
+
+    assert [child.kind for child in block.children] == ["return"]
+    assert source[block.children[0].start:block.children[0].end] == "return 0"
+    assert result.to_source() == source
+
+
 def test_file_lexer_recovers_after_invalid_tokens_and_bad_dedent() -> None:
     source = "fn bad() -> UInt64:\n    let x: UInt64 = 1\n  return x $\n"
     result = lex_file(source, path="bad.mlo")
@@ -63,6 +373,17 @@ def test_file_lexer_recovers_after_invalid_tokens_and_bad_dedent() -> None:
         "InvalidToken",
     }
     assert any(token.kind == "error" and token.text == "$" for token in result.tokens)
+
+    cst = parse_file_cst(source, path="bad.mlo")
+    assert cst.to_source() == source
+    assert {code for node in cst.errors for code in node.diagnostic_codes} == {
+        "InconsistentDedent",
+        "InvalidToken",
+    }
+    assert {code for node in cst.root.walk() for code in node.diagnostic_codes} == {
+        "InconsistentDedent",
+        "InvalidToken",
+    }
 
 
 def test_file_lexer_keeps_surface_indentation_diagnostic_codes() -> None:
@@ -75,3 +396,47 @@ def test_file_lexer_keeps_surface_indentation_diagnostic_codes() -> None:
     assert [item.code for item in odd_width.diagnostics] == [
         "InvalidIndentation"
     ]
+
+
+@pytest.mark.parametrize(
+    ("fragment", "codes"),
+    [
+        ("([)]", ("MismatchedDelimiter", "MismatchedDelimiter")),
+        ("{[)}", ("MismatchedDelimiter",)),
+        (")", ("UnexpectedClosingDelimiter",)),
+        ("([", ("UnclosedDelimiter", "UnclosedDelimiter")),
+    ],
+)
+def test_file_lexer_validates_typed_delimiter_pairs(
+    fragment: str,
+    codes: tuple[str, ...],
+) -> None:
+    source = f"fn bad():\n    value = {fragment}\n"
+    result = lex_file(source, path="delimiters.mlo")
+
+    assert result.to_source() == source
+    assert tuple(item.code for item in result.diagnostics) == codes
+
+
+def test_adversarial_multiline_tokens_keep_exact_offsets_and_trivia() -> None:
+    source = (
+        "fn choose(repeated: UInt64) -> UInt64:\r\n"
+        "    return (\r\n"
+        "        repeated # the same identifier follows on another line\r\n"
+        "        + repeated\r\n"
+        "    )\r\n"
+    )
+    result = parse_file_cst(source, path="offsets.mlo")
+    expression = next(
+        node for node in result.root.walk() if node.kind == "expression"
+    )
+
+    assert not result.diagnostics
+    assert [token.text for token in expression.tokens].count("repeated") == 2
+    assert all(
+        source[token.start:token.end] == token.text
+        for token in expression.tokens
+    )
+    assert [token.start for token in expression.tokens] == sorted(
+        token.start for token in expression.tokens
+    )

@@ -3,26 +3,31 @@
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "enum",
       "module": "app.json",
       "name": "Json",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "39b1a39623cd8286d2f3488ab5b13492aff0654b1f68d4dfd5a322f3cfa76c15"
+      "revision_id": "2e6cad5fb6c3c96fe9659e28a9b6532367a4cf5042939b2867e7c9e6a4bc83bf"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "enum",
       "module": "app.json",
       "name": "JsonError",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "982e540cf9c0794e626497a361ea73f1b4451b2444484e9426dd4ea7e3359834"
+      "revision_id": "e31e2cc833b9050b460127fe75f6141208802c7cb1c4dd5c62f0a14c647c831c"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.json",
       "name": "optional",
@@ -40,12 +45,14 @@
           "app.json.Json"
         ]
       ],
+      "requirements": [],
       "return_type": "app.json.Json",
-      "revision_id": "dfe15c283fecd29cecf9d0115a240b02503f7d1029376e60f59a3342f61e5a7c"
+      "revision_id": "8bceb337ae27fa58a189dbaac94214186b227a10eeb048d02a3c60bfd0db8548"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.json",
       "name": "parse",
@@ -55,12 +62,14 @@
           "TextView"
         ]
       ],
+      "requirements": [],
       "return_type": "Result[app.json.Json,app.json.JsonError]",
-      "revision_id": "aa0c07ef85e3e19bc1a97c5db618bb4592e4c6520e75d5c8cccb6977a673f067"
+      "revision_id": "a7f32017915693dfd2cdfdd0b8080f299380070a70ab53a19e6547413cf74eaf"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.json",
       "name": "required",
@@ -74,22 +83,26 @@
           "Text"
         ]
       ],
+      "requirements": [],
       "return_type": "app.json.Json",
-      "revision_id": "c7ad7bedd01594039d252ee8f1c830b61aa0c3d84c9cc143a32041c38fdca341"
+      "revision_id": "2c19ccad447847371c31054e3c8d0f4c32c3bae26316b3729528cd3eb23205bf"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "record",
       "module": "app.json",
       "name": "JsonField",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "7d97ef76862b3fbbc307d07132b2bab8c899aa61fe5710c0b544c186ad568db5"
+      "revision_id": "c5a6ff16b1918e638ffe83a97944b6e25b0a364d50658981135444ba529f3beb"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.main",
       "name": "main",
@@ -99,8 +112,9 @@
           "Path"
         ]
       ],
+      "requirements": [],
       "return_type": "Result[Text,app.report.AppError]",
-      "revision_id": "7e03b5848915e8aab88e35df653d556f48c7f6dd7e28fdcf5c280686a5e531ba"
+      "revision_id": "fc6a1162ad15e57c6a4b4d3c1bae1c874ea4a0700d1387dccfc7c567ffb0ecd4"
     },
     {
       "capabilities": [
@@ -111,6 +125,7 @@
         "console.write",
         "fs.read"
       ],
+      "ensures": [],
       "kind": "task",
       "module": "app.main",
       "name": "main",
@@ -120,22 +135,26 @@
           "Path"
         ]
       ],
+      "requirements": [],
       "return_type": "Result[Text,app.report.AppError]",
-      "revision_id": "da7f25e725d59fcd6993f954628748b26dc7fb82e0251e6bc9ab10bc99031020"
+      "revision_id": "e300dd33dc8fd97702823809a00d020c0375f0f8ac42e3392ba49da4c8874360"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "enum",
       "module": "app.report",
       "name": "AppError",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "2a8c7fa51c1005f533e4f90707d0b17b934a8debc0de173f11038817963eaa87"
+      "revision_id": "735002a31e66aef67ebd575de11f92573c87eb5664601ecc54a94cc9d7c5c8f4"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "fn",
       "module": "app.report",
       "name": "analyze",
@@ -149,18 +168,21 @@
           "app.report.Options"
         ]
       ],
+      "requirements": [],
       "return_type": "Result[Text,app.report.AppError]",
-      "revision_id": "a8e5635c4e63fc47eccf27fee48abf83e7358d582141f204f0e14fae7fb233cc"
+      "revision_id": "8194e29552c8cf12e44b3d5c6ad63dbfe11e7bfda9d4884474c01202de4b9de4"
     },
     {
       "capabilities": [],
       "effects": [],
+      "ensures": [],
       "kind": "record",
       "module": "app.report",
       "name": "Options",
       "parameters": [],
+      "requirements": [],
       "return_type": null,
-      "revision_id": "9ef169dc2ba4ff9ce7c2cf9c4606b9bccbf255bdd9bd8fc840ac10e19de40b91"
+      "revision_id": "96bf0d7e9c50ab78aa0c1e5b509a8e08a4a463bd5b55dcd33e3d6c675baad549"
     }
   ],
   "schema_version": 1

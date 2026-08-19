@@ -7,7 +7,6 @@ Vec, Box, Bytes/Text primitives, and the permitted host I/O shim.
 
 from __future__ import annotations
 
-import copy
 import hashlib
 import re
 from dataclasses import dataclass
@@ -21,7 +20,7 @@ from merlo.collection_protocol import (
     collection_result_type,
     collection_shape,
 )
-from merlo.ffi import pointer_type, validate_ffi
+from merlo.ffi import pointer_type
 from merlo.representation_ir import RepresentationProgram, TypeDescriptor
 from merlo.intrinsics import (
     CONTRACT_GRAPH,
@@ -33,8 +32,6 @@ from merlo.representation_mir import GeneralPerformanceMIR
 from merlo.structured_hir_v2 import (
     HIRFunction,
     StructuredHIRProgram,
-    _preprocess,
-    _preprocess_ffi_surface,
 )
 from merlo.version import VERSIONS
 from merlo.type_parser import generic_parts, parse_type
@@ -44,9 +41,6 @@ C_BACKEND_SCHEMA_VERSION = 2
 C_BACKEND_CONTRACT = "merlo.general-representation-c11.v2"
 RUNTIME_ABI_VERSION = VERSIONS.runtime_abi
 RUNTIME_ABI_CONTRACT = "merlo.runtime-abi.v2"
-_FROZEN_GENERAL_JSON_SHA256 = (
-    "0b696f9a6653ea5fa20124d239db37fe6853ff798abe0cbcdcb703dd9c66ff04"
-)
 
 
 class RepresentationCBackendError(ValueError):
@@ -197,22 +191,17 @@ class GeneralCEmitter:
         self.used_effects = frozenset(
             effect for function in hir.functions for effect in function.effects
         )
-        self.ffi_program = validate_ffi(hir.source, path=hir.path)
+        self.ffi_program = hir.ffi_program
         self.extern_functions = {
             item.name: item
             for item in self.ffi_program.extern_functions
         }
-        self.preprocessed = _preprocess(
-            _preprocess_ffi_surface(hir.source)
-        )
-        self.module = (
-            copy.deepcopy(hir.native_module)
-            if hir.native_module is not None
-            else ast.parse(
-                self.preprocessed.source,
-                filename=hir.path,
-            )
-        )
+        try:
+            self.module = hir.backend_module()
+        except (TypeError, ValueError) as exc:
+            raise RepresentationCBackendError(
+                "invalid digest-bound HIR native syntax artifact"
+            ) from exc
         self.function_nodes = {
             item.name: item for item in self.module.body if isinstance(item, ast.FunctionDef)
         }
@@ -239,10 +228,6 @@ class GeneralCEmitter:
         self.assigning_borrowed = False
         self.current_ensures: tuple[ast.AST, ...] = ()
         self.contract_result_name: str | None = None
-        self.frozen_general_json = (
-            hashlib.sha256(hir.source.encode()).hexdigest()
-            == _FROZEN_GENERAL_JSON_SHA256
-        )
         self.indent = 0
 
     def emit(self) -> GeneratedC:
@@ -1080,7 +1065,9 @@ static void merlo_text_builder_reserve(MerloTextBuilder *builder, uint64_t addit
     uint64_t doubled = builder->capacity > UINT64_MAX / 2 ? UINT64_MAX : builder->capacity * 2;
     uint64_t capacity = required > doubled ? required : doubled;
     if (capacity < 32) capacity = 32;
-    if (capacity > SIZE_MAX) merlo_overflow_trap("TextBuilderCapacity");
+    if (capacity > (uint64_t)SIZE_MAX || capacity > (uint64_t)PTRDIFF_MAX) {
+        merlo_overflow_trap("TextBuilderCapacity");
+    }
     uint8_t *next = (uint8_t *)realloc(builder->data, (size_t)capacity);
     if (next == NULL) merlo_allocation_trap();
     if (builder->data == NULL) { ++merlo_allocations; }
@@ -3602,7 +3589,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 generic = _generic(subject_type or "")
                 if generic is not None and generic[0] == enum_name:
                     enum_name = subject_type
-            scope_suffix = "" if self.frozen_general_json else " {"
+            scope_suffix = " {"
             if wildcard:
                 lines.append(f"{pad}default:{scope_suffix}")
             elif variant_name is not None:
@@ -3634,8 +3621,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             for binding in bindings:
                 self.borrowed_owner_bindings.discard(binding)
             self.indent -= 1
-            if not self.frozen_general_json:
-                lines.append(f"{pad}}}")
+            lines.append(f"{pad}}}")
         self.match_depth -= 1
         if not has_wildcard:
             lines.append(f"{pad}default: abort();")
@@ -3724,17 +3710,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 ast.RShift: "merlo_checked_int64_rshift",
             },
         }.get(arithmetic_type or "", {}).get(type(operation))
-        frozen_fnv_multiply = (
-            self.frozen_general_json
-            and self.current_function is not None
-            and self.current_function.name == "checksum_byte"
-            and isinstance(operation, ast.Mult)
-            and isinstance(left, ast.BinOp)
-            and isinstance(left.op, ast.BitXor)
-            and isinstance(right, ast.Constant)
-            and right.value == 1099511628211
-        )
-        if checked is not None and not frozen_fnv_multiply:
+        if checked is not None:
             return (
                 f"{checked}("
                 f"{self._expression(left, expected=arithmetic_type)}, "
@@ -4199,8 +4175,6 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                         f"{self._expression(right)})"
                     )
                 left = right
-            if self.frozen_general_json:
-                return "(" + " && ".join(pieces) + ")"
             if len(pieces) == 1:
                 piece = pieces[0]
                 return piece[1:-1] if piece.startswith("(") and piece.endswith(")") else piece
@@ -4983,35 +4957,68 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 )
                 arguments = [] if payload_type is None else [self._move_expression(node.args[0], payload_type)]
                 return f"merlo_make_{_identifier(receiver_text)}_{method}({', '.join(arguments)})"
-            if receiver_text == "Vec" and method == "new":
+            static_contract = CONTRACT_GRAPH.resolve_static_method(
+                receiver_text,
+                method,
+                tuple(self._expression_type(argument) for argument in node.args),
+                expected,
+            )
+            static_lowering = (
+                static_contract.representation_lowering
+                if static_contract is not None
+                else None
+            )
+            if static_lowering == "vec_new":
                 if expected is None or not expected.startswith("Vec["):
-                    raise RepresentationCBackendError("Vec.new requires contextual monomorphized type")
+                    raise RepresentationCBackendError(
+                        "Vec.new requires contextual monomorphized type"
+                    )
                 return f"merlo_{_identifier(expected)}_new()"
-            if receiver_text == "Box" and method == "new":
-                if expected is None or not expected.startswith("Box["):
-                    raise RepresentationCBackendError("Box.new requires contextual monomorphized type")
-                payload_type = _generic(expected)[1]
-                return f"merlo_{_identifier(expected)}_new({self._move_expression(node.args[0], payload_type)})"
-            if receiver_text == "Map" and method == "new":
-                if _map_types(expected or "") is None:
+            if static_lowering == "box_new":
+                box_type = static_contract.result_type
+                if not box_type.startswith("Box[") or "Inferred" in box_type:
+                    raise RepresentationCBackendError(
+                        "Box.new requires contextual monomorphized type"
+                    )
+                payload_type = _generic(box_type)[1]
+                return (
+                    f"merlo_{_identifier(box_type)}_new("
+                    f"{self._move_expression(node.args[0], payload_type)})"
+                )
+            if static_lowering == "map_new":
+                map_type = static_contract.result_type
+                if _map_types(map_type) is None:
                     raise RepresentationCBackendError(
                         "Map.new requires a contextual concrete Map type"
                     )
-                return f"merlo_{_identifier(expected or '')}_new()"
-            if receiver_text == "Text" and method == "from_bytes":
+                return f"merlo_{_identifier(map_type)}_new()"
+            if static_contract is not None and static_contract.abi_lowering == (
+                "merlo_text_from_bytes"
+            ):
                 source = self._borrow_view_argument(
                     node.args[0], "BytesView", want_pointer=True
                 )
                 if source is None:
                     source = self._address_expression(node.args[0])
                 return (
-                    f"merlo_text_from_bytes({source}, "
+                    f"{static_contract.abi_lowering}({source}, "
                     f"{self._expression(node.args[1])}, "
                     f"{self._expression(node.args[2])})"
                 )
-            if receiver_text == "TextBuilder" and method == "new":
-                return "merlo_text_builder_new()"
+            if static_contract is not None and static_contract.abi_lowering == (
+                "merlo_text_builder_new"
+            ):
+                return f"{static_contract.abi_lowering}()"
             receiver_type = self._expression_type(node.func.value)
+            method_contract = CONTRACT_GRAPH.method(
+                receiver_type or "",
+                method,
+            )
+            representation_lowering = (
+                method_contract.representation_lowering
+                if method_contract is not None
+                else None
+            )
             temporary_receiver = (
                 receiver_type is not None
                 and self._is_owning_temporary(node.func.value, receiver_type)
@@ -5031,45 +5038,45 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 variants = {variant: payload for variant, payload, _ in enum_descriptor.variants}
                 suffix = _identifier(receiver_type or "")
                 if "Some" in variants and "NoneValue" in variants:
-                    if method == "is_none":
+                    if representation_lowering == "option_is_none":
                         return f"({receiver})->tag == MERLO_{suffix}_NoneValue_TAG"
-                    if method == "is_some":
+                    if representation_lowering == "option_is_some":
                         return f"({receiver})->tag == MERLO_{suffix}_Some_TAG"
-                    if method == "unwrap":
+                    if representation_lowering == "option_unwrap_clone":
                         payload_type = variants["Some"]
-                        expression = f"(({receiver})->payload.Some)"
-                        if temporary_receiver and payload_type is not None and _is_owner(self.descriptors[payload_type]):
-                            if not self._clone_is_deep(payload_type):
-                                raise RepresentationCBackendError(
-                                    f"cannot clone temporary accessor {payload_type}"
-                                )
-                            return f"merlo_clone_{_identifier(payload_type)}(&{expression})"
-                        return expression
+                        return self._checked_enum_payload_access(
+                            receiver,
+                            suffix,
+                            "Some",
+                            payload_type,
+                            "OptionUnwrapWrongVariant",
+                            want_pointer=want_pointer,
+                        )
                 if "Ok" in variants and "Err" in variants:
-                    if method == "is_err":
+                    if representation_lowering == "result_is_err":
                         return f"({receiver})->tag == MERLO_{suffix}_Err_TAG"
-                    if method == "is_ok":
+                    if representation_lowering == "result_is_ok":
                         return f"({receiver})->tag == MERLO_{suffix}_Ok_TAG"
-                    if method == "unwrap":
+                    if representation_lowering == "result_unwrap_clone":
                         payload_type = variants["Ok"]
-                        expression = f"(({receiver})->payload.Ok)"
-                        if temporary_receiver and payload_type is not None and _is_owner(self.descriptors[payload_type]):
-                            if not self._clone_is_deep(payload_type):
-                                raise RepresentationCBackendError(
-                                    f"cannot clone temporary accessor {payload_type}"
-                                )
-                            return f"merlo_clone_{_identifier(payload_type)}(&{expression})"
-                        return expression
-                    if method == "unwrap_err":
+                        return self._checked_enum_payload_access(
+                            receiver,
+                            suffix,
+                            "Ok",
+                            payload_type,
+                            "ResultUnwrapWrongVariant",
+                            want_pointer=want_pointer,
+                        )
+                    if representation_lowering == "result_unwrap_err_clone":
                         payload_type = variants["Err"]
-                        expression = f"(({receiver})->payload.Err)"
-                        if temporary_receiver and payload_type is not None and _is_owner(self.descriptors[payload_type]):
-                            if not self._clone_is_deep(payload_type):
-                                raise RepresentationCBackendError(
-                                    f"cannot clone temporary accessor {payload_type}"
-                                )
-                            return f"merlo_clone_{_identifier(payload_type)}(&{expression})"
-                        return expression
+                        return self._checked_enum_payload_access(
+                            receiver,
+                            suffix,
+                            "Err",
+                            payload_type,
+                            "ResultUnwrapErrWrongVariant",
+                            want_pointer=want_pointer,
+                        )
             if receiver_type == "FileReader" and method == "lines":
                 return f"merlo_file_lines({receiver})"
             generic = _generic(receiver_type or "")
@@ -5365,6 +5372,22 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 if receiver_text in self.descriptors and self.descriptors[receiver_text].kind == "enum":
                     return receiver_text
                 receiver_type = self._expression_type(node.func.value)
+                static_contract = CONTRACT_GRAPH.resolve_static_method(
+                    receiver_text,
+                    method,
+                    tuple(
+                        self._expression_type(argument)
+                        for argument in node.args
+                    ),
+                )
+                if static_contract is not None:
+                    return static_contract.result_type
+                method_contract = CONTRACT_GRAPH.method(
+                    receiver_type or "",
+                    method,
+                )
+                if method_contract is not None:
+                    return method_contract.result_for(None)
                 if method in COLLECTION_OPERATIONS:
                     shape = collection_shape(receiver_type)
                     metadata = (
@@ -5393,12 +5416,6 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                                 host_error = current_parts[1]
                         return f"Result[{result_parts[0]},{host_error}]"
                     return signature.result_type
-                if method in {"contains", "contains_ascii_case_insensitive", "starts_with", "ends_with"}:
-                    return "Bool"
-                if receiver_type == "FileReader" and method == "lines":
-                    return "FileLines"
-                if receiver_text == "Map" and method == "new":
-                    return None
                 descriptor = self.descriptors.get(receiver_type or "")
                 if descriptor is not None and descriptor.kind == "enum":
                     variants = {
@@ -5410,39 +5427,8 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                             return "Bool"
                         if method == "unwrap":
                             return variants["Some"]
-                generic = _generic(receiver_type or "")
-                if generic and generic[0] in {"Vec", "Box"} and method in {"get", "get_mut"}:
-                    return generic[1]
-                map_types = _map_types(receiver_type or "")
-                if map_types is not None:
-                    if method == "get":
-                        return map_types[1]
-                    if method == "increment":
-                        return "UInt64"
-                    if method == "insert":
-                        return "Unit"
-                    if method == "entries":
-                        return f"Borrow[{receiver_type}]"
                 if method in {"len", "capacity", "byte", "tag"}:
                     return "UInt64"
-                if method in {"contains", "contains_ascii_case_insensitive"}:
-                    return "Bool"
-                if receiver_text == "Text" and method == "from_bytes":
-                    return "Text"
-                if receiver_type == "Path" and method == "to_text":
-                    return "Text"
-                if receiver_type == "Text" and method in {"as_view", "view"}:
-                    return "TextView"
-                if receiver_type == "Text" and method == "clone":
-                    return "Text"
-                if receiver_text == "TextBuilder" and method == "new":
-                    return "TextBuilder"
-                if receiver_type == "TextBuilder" and method == "finish":
-                    return "Text"
-                if receiver_type in {"Text", "TextView"} and method == "slice_bytes":
-                    return "TextView"
-                if receiver_type == "TextView" and method == "to_text":
-                    return "Text"
         if isinstance(node, (ast.Compare, ast.BoolOp)):
             return "Bool"
         if isinstance(node, ast.UnaryOp):
@@ -5462,6 +5448,18 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             return self._expression(node, want_pointer=True)
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             return f"&{self._borrowed_text_literal(node.value)}"
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            receiver_type = self._expression_type(node.func.value)
+            contract = CONTRACT_GRAPH.method(
+                receiver_type or "",
+                node.func.attr,
+            )
+            if contract is not None and contract.representation_lowering in {
+                "option_unwrap_clone",
+                "result_unwrap_clone",
+                "result_unwrap_err_clone",
+            }:
+                return self._expression(node, want_pointer=True)
         expression = self._expression(node)
         return expression if self._expression_is_pointer(node) else f"&({expression})"
 
@@ -5473,6 +5471,47 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             operator = "->" if self._expression_is_pointer(node.value) else "."
             return f"({base}){operator}{node.attr}"
         raise RepresentationCBackendError(f"unsupported lvalue: {ast.unparse(node)}")
+
+    def _checked_enum_payload_access(
+        self,
+        receiver: str,
+        enum_suffix: str,
+        variant: str,
+        payload_type: str | None,
+        diagnostic: str,
+        *,
+        want_pointer: bool,
+    ) -> str:
+        concrete_type = payload_type or "Unit"
+        zero = self._zero_expression(concrete_type)
+        if payload_type in {None, "Unit"}:
+            payload = zero
+            failure = zero
+        else:
+            expression = f"(({receiver})->payload.{variant})"
+            descriptor = self.descriptors[payload_type]
+            if want_pointer:
+                payload = f"(&{expression})"
+                failure = f"(({_c_name(payload_type)} *)NULL)"
+            elif _is_owner(descriptor):
+                if not self._clone_is_deep(payload_type):
+                    raise RepresentationCBackendError(
+                        f"cannot clone {variant} payload {payload_type}"
+                    )
+                payload = (
+                    f"merlo_clone_{_identifier(payload_type)}"
+                    f"(&{expression})"
+                )
+            else:
+                payload = expression
+            if not want_pointer:
+                failure = zero
+        return (
+            f"(({receiver})->tag == "
+            f"MERLO_{enum_suffix}_{variant}_TAG "
+            f"? ({payload}) : "
+            f"(merlo_ownership_trap(\"{diagnostic}\"), {failure}))"
+        )
 
     def _zero_expression(self, type_name: str) -> str:
         descriptor = self.descriptors[type_name]
@@ -5859,7 +5898,10 @@ __MERLO_CAPS__
            merlo_map_lookup_key_copies);
     free(input);
     return result.ok ? 0 : 2;
-}"""
+}""".replace(
+            "__MERLO_CAPS__",
+            self._capability_initialization(function),
+        )
 
     def _primitive_manifest(self, source: str) -> list[dict[str, Any]]:
         entries = [
@@ -5890,21 +5932,52 @@ __MERLO_CAPS__
         normalized_entries = []
         for entry in entries:
             signature = intrinsic_signature(entry[0])
-            if signature is None:
+            receiver, separator, method = entry[0].partition(".")
+            method_signature = (
+                CONTRACT_GRAPH.static_method(receiver, method)
+                if separator
+                else None
+            )
+            if signature is None and method_signature is None:
                 normalized_entries.append(entry)
                 continue
-            parameter_text = ", ".join(signature.parameters)
+            contract = signature or method_signature
+            assert contract is not None
+            parameter_text = ", ".join(contract.parameters)
+            if signature is not None:
+                normalized_entries.append(
+                    (
+                        entry[0],
+                        f"fn({parameter_text}) -> {signature.result_type}",
+                        entry[2],
+                        signature.effect,
+                        entry[4],
+                        entry[5],
+                        entry[6],
+                        entry[7],
+                        entry[8],
+                    )
+                )
+                continue
+            assert method_signature is not None
             normalized_entries.append(
                 (
                     entry[0],
-                    f"fn({parameter_text}) -> {signature.result_type}",
-                    entry[2],
-                    signature.effect,
-                    entry[4],
-                    entry[5],
-                    entry[6],
+                    f"fn({parameter_text}) -> {method_signature.result_type}",
+                    (
+                        f"parameters={method_signature.parameter_ownership}; "
+                        f"result={method_signature.result_ownership}"
+                    ),
+                    entry[3],
+                    method_signature.result_ownership == "owned",
+                    method_signature.result_ownership == "owned"
+                    or any(
+                        item in {"Text", "TextView", "Bytes", "BytesView"}
+                        for item in method_signature.parameters
+                    ),
+                    "may_fail" in method_signature.effects,
                     entry[7],
-                    entry[8],
+                    CONTRACT_GRAPH.abi_lowering(entry[0]) or entry[8],
                 )
             )
         entries = normalized_entries
@@ -5913,6 +5986,20 @@ __MERLO_CAPS__
             for name in INTRINSIC_SIGNATURES
             if (lowering := CONTRACT_GRAPH.abi_lowering(name)) is not None
         }
+        implementations.update(
+            {
+                f"{receiver}.{method}": (
+                    signature.abi_lowering
+                    or signature.representation_lowering
+                )
+                for (receiver, method), signature in CONTRACT_GRAPH.methods.items()
+                if signature.static
+                and (
+                    signature.abi_lowering is not None
+                    or signature.representation_lowering is not None
+                )
+            }
+        )
         present = {entry[0] for entry in normalized_entries}
         for name, intrinsic in INTRINSIC_SIGNATURES.items():
             if name in present:
@@ -5938,6 +6025,35 @@ __MERLO_CAPS__
                     linear,
                     intrinsic.result_type.startswith("Result["),
                     "O(n)" if linear else "O(1)",
+                    implementations[name],
+                )
+            )
+        present = {entry[0] for entry in normalized_entries}
+        for (receiver, method), contract in CONTRACT_GRAPH.methods.items():
+            name = f"{receiver}.{method}"
+            if not contract.static or name in present:
+                continue
+            parameter_text = ", ".join(contract.parameters)
+            linear = (
+                contract.result_ownership == "owned"
+                or any(
+                    item in {"Text", "TextView", "Bytes", "BytesView"}
+                    for item in contract.parameters
+                )
+            )
+            normalized_entries.append(
+                (
+                    name,
+                    f"fn({parameter_text}) -> {contract.result_type}",
+                    (
+                        f"parameters={contract.parameter_ownership}; "
+                        f"result={contract.result_ownership}"
+                    ),
+                    "memory",
+                    "allocate" in contract.effects,
+                    "copy" in contract.effects,
+                    "may_fail" in contract.effects,
+                    "O(n)" if "copy" in contract.effects else "O(1)",
                     implementations[name],
                 )
             )

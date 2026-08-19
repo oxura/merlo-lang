@@ -25,6 +25,11 @@ alternatives. Floating-point arithmetic follows IEEE 754; `//`, `%`, and
 bitwise operators require integer operands. Numeric casts are explicit and
 checked when converting to an integer range.
 
+Wrapping behavior is selected only by these explicit language operations.
+Source paths, source hashes, function names, and benchmark constants never
+change arithmetic lowering; benchmark workloads that need modular arithmetic
+use the same `wrapping_mul` operation as any other Merlo program.
+
 Structured values include:
 
 - `Text`, `Bytes`, and `Path` values;

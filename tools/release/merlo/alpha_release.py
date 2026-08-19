@@ -46,8 +46,9 @@ REQUIRED_DOCS = (
     "docs/tooling.md", "docs/lsp.md", "docs/examples.md", "docs/limitations.md",
 )
 REQUIRED_SPECS = (
-    "spec/README.md", "spec/language.md", "spec/ownership.md", "spec/effects.md",
-    "spec/packages.md", "spec/ffi.md", "spec/semantic-world.md", "spec/alpha-protocol.md",
+    "spec/README.md", "spec/language.md", "spec/ownership.md",
+    "spec/memory-model.md", "spec/effects.md", "spec/packages.md", "spec/ffi.md",
+    "spec/semantic-world.md", "spec/alpha-protocol.md",
 )
 REQUIRED_STDLIB = (
     "stdlib/README.md", "stdlib/std/core.mlo", "stdlib/std/option.mlo",

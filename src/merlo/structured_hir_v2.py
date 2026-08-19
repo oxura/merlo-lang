@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
@@ -21,17 +22,25 @@ from merlo.collection_protocol import (
 from merlo.ffi import FFICompileError, FFIProgram, validate_ffi
 from merlo.canonical_ast import (
     CanonicalFlowStep,
-    CanonicalMachine,
     CanonicalParallel,
     CanonicalProgram,
 )
 from merlo.type_parser import generic_parts, parse_type, validate_type_expr
-from merlo.intrinsics import contextual_result_type, format_intrinsic_arity, intrinsic_signature
+from merlo.intrinsics import (
+    CONTRACT_GRAPH,
+    contextual_result_type,
+    format_intrinsic_arity,
+    intrinsic_signature,
+)
 from merlo.type_properties import TypePropertyResolver
+from merlo.borrow_summary import (
+    BorrowSummary,
+    compute_borrow_summaries,
+)
 
 
-STRUCTURED_HIR_SCHEMA_VERSION = 5
-STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v5"
+STRUCTURED_HIR_SCHEMA_VERSION = 8
+STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v8"
 _SCALAR_TYPES = frozenset(
     {
         "Bool",
@@ -79,6 +88,70 @@ def _type_compatible(actual: str, expected: str) -> bool:
 
 class StructuredHIRCompileError(ValueError):
     """Typed source/HIR construction failure."""
+
+
+def _artifact_keys(
+    value: object,
+    expected: set[str],
+    label: str,
+) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping) or not all(
+        isinstance(key, str) for key in value
+    ):
+        raise ValueError(f"{label} must be an object")
+    if set(value) != expected:
+        raise ValueError(f"invalid {label} keys")
+    return value
+
+
+def _artifact_text(value: object, label: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be text")
+    return value
+
+
+def _artifact_int(value: object, label: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ValueError(f"{label} must be an integer")
+    return value
+
+
+def _artifact_bool(value: object, label: str) -> bool:
+    if not isinstance(value, bool):
+        raise ValueError(f"{label} must be a boolean")
+    return value
+
+
+def _artifact_list(value: object, label: str) -> list[Any]:
+    if not isinstance(value, list):
+        raise ValueError(f"{label} must be a list")
+    return value
+
+
+def _artifact_optional_text(value: object, label: str) -> str | None:
+    if value is None:
+        return None
+    return _artifact_text(value, label)
+
+
+def _freeze_json(value: object, label: str = "artifact value") -> Any:
+    if isinstance(value, list):
+        return tuple(_freeze_json(item, label) for item in value)
+    if isinstance(value, Mapping):
+        if not all(isinstance(key, str) for key in value):
+            raise ValueError(f"{label} keys must be text")
+        return {key: _freeze_json(value[key], label) for key in sorted(value)}
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    raise ValueError(f"unsupported {label}: {type(value).__name__}")
+
+
+def _json_payload(value: object) -> Any:
+    if isinstance(value, (list, tuple)):
+        return [_json_payload(item) for item in value]
+    if isinstance(value, Mapping):
+        return {key: _json_payload(value[key]) for key in sorted(value)}
+    return value
 
 
 @dataclass(frozen=True)
@@ -227,7 +300,7 @@ class HIRNode:
             "effects": list(self.effects),
             "symbol_id": self.symbol_id,
             "revision_id": self.revision_id,
-            "attributes": dict(self.attributes),
+            "attributes": _json_payload(dict(self.attributes)),
             "children": [item.to_dict() for item in self.children],
         }
 
@@ -261,6 +334,7 @@ class HIRFunction:
     scope_id: str
     symbol_id: str
     revision_id: str
+    borrow_summary: BorrowSummary = field(default_factory=BorrowSummary)
 
     def walk(self) -> Iterable[HIRNode]:
         for contract in (*self.requirements, *self.ensures):
@@ -283,6 +357,7 @@ class HIRFunction:
             "scope_id": self.scope_id,
             "symbol_id": self.symbol_id,
             "revision_id": self.revision_id,
+            "borrow_summary": self.borrow_summary.to_dict(),
         }
 
 @dataclass(frozen=True)
@@ -349,6 +424,289 @@ class HIRMachine:
             "revision_id": self.revision_id,
         }
 
+
+def _source_span_from_dict(value: object) -> SourceSpan:
+    raw = _artifact_keys(
+        value,
+        {"path", "line", "column", "end_line", "end_column"},
+        "source span",
+    )
+    return SourceSpan(
+        _artifact_text(raw["path"], "source path"),
+        _artifact_int(raw["line"], "source line"),
+        _artifact_int(raw["column"], "source column"),
+        _artifact_int(raw["end_line"], "source end line"),
+        _artifact_int(raw["end_column"], "source end column"),
+    )
+
+
+def _field_from_dict(value: object) -> HIRField:
+    raw = _artifact_keys(
+        value,
+        {"name", "type", "source", "symbol_id", "revision_id"},
+        "HIR field",
+    )
+    return HIRField(
+        _artifact_text(raw["name"], "field name"),
+        _artifact_text(raw["type"], "field type"),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["symbol_id"], "field symbol"),
+        _artifact_text(raw["revision_id"], "field revision"),
+    )
+
+
+def _variant_from_dict(value: object) -> HIRVariant:
+    raw = _artifact_keys(
+        value,
+        {"name", "payload_type", "tag", "source", "symbol_id", "revision_id"},
+        "HIR variant",
+    )
+    return HIRVariant(
+        _artifact_text(raw["name"], "variant name"),
+        _artifact_optional_text(raw["payload_type"], "variant payload"),
+        _artifact_int(raw["tag"], "variant tag"),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["symbol_id"], "variant symbol"),
+        _artifact_text(raw["revision_id"], "variant revision"),
+    )
+
+
+def _invariant_from_dict(value: object) -> HIRInvariant:
+    raw = _artifact_keys(
+        value,
+        {"function_name", "expression", "source", "revision_id"},
+        "HIR invariant",
+    )
+    return HIRInvariant(
+        _artifact_text(raw["function_name"], "invariant function"),
+        _artifact_text(raw["expression"], "invariant expression"),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["revision_id"], "invariant revision"),
+    )
+
+
+def _type_decl_from_dict(value: object) -> HIRTypeDecl:
+    raw = _artifact_keys(
+        value,
+        {
+            "name", "kind", "source", "symbol_id", "revision_id", "fields",
+            "variants", "invariants",
+        },
+        "HIR type",
+    )
+    return HIRTypeDecl(
+        _artifact_text(raw["name"], "type name"),
+        _artifact_text(raw["kind"], "type kind"),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["symbol_id"], "type symbol"),
+        _artifact_text(raw["revision_id"], "type revision"),
+        tuple(
+            _field_from_dict(item)
+            for item in _artifact_list(raw["fields"], "type fields")
+        ),
+        tuple(
+            _variant_from_dict(item)
+            for item in _artifact_list(raw["variants"], "type variants")
+        ),
+        tuple(
+            _invariant_from_dict(item)
+            for item in _artifact_list(raw["invariants"], "type invariants")
+        ),
+    )
+
+
+def _parameter_from_dict(value: object) -> HIRParameter:
+    raw = _artifact_keys(
+        value,
+        {"name", "type", "ownership", "source", "symbol_id", "revision_id"},
+        "HIR parameter",
+    )
+    return HIRParameter(
+        _artifact_text(raw["name"], "parameter name"),
+        _artifact_text(raw["type"], "parameter type"),
+        _artifact_text(raw["ownership"], "parameter ownership"),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["symbol_id"], "parameter symbol"),
+        _artifact_text(raw["revision_id"], "parameter revision"),
+    )
+
+
+def _node_from_dict(value: object) -> HIRNode:
+    raw = _artifact_keys(
+        value,
+        {
+            "id", "kind", "source", "scope_id", "type", "ownership", "effects",
+            "symbol_id", "revision_id", "attributes", "children",
+        },
+        "HIR node",
+    )
+    attributes = raw["attributes"]
+    if not isinstance(attributes, Mapping) or not all(
+        isinstance(key, str) for key in attributes
+    ):
+        raise ValueError("HIR node attributes must be a string-keyed object")
+    return HIRNode(
+        _artifact_text(raw["id"], "node id"),
+        _artifact_text(raw["kind"], "node kind"),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["scope_id"], "node scope"),
+        _artifact_optional_text(raw["type"], "node type"),
+        _artifact_text(raw["ownership"], "node ownership"),
+        tuple(
+            _artifact_text(item, "node effect")
+            for item in _artifact_list(raw["effects"], "node effects")
+        ),
+        _artifact_optional_text(raw["symbol_id"], "node symbol"),
+        _artifact_text(raw["revision_id"], "node revision"),
+        tuple(
+            (key, _freeze_json(attributes[key], "HIR attribute"))
+            for key in sorted(attributes)
+        ),
+        tuple(
+            _node_from_dict(item)
+            for item in _artifact_list(raw["children"], "node children")
+        ),
+    )
+
+
+def _contract_from_dict(value: object) -> HIRContract:
+    raw = _artifact_keys(
+        value,
+        {"kind", "expression", "condition", "source"},
+        "HIR contract",
+    )
+    return HIRContract(
+        _artifact_text(raw["kind"], "contract kind"),
+        _artifact_text(raw["expression"], "contract expression"),
+        _node_from_dict(raw["condition"]),
+        _source_span_from_dict(raw["source"]),
+    )
+
+
+def _function_from_dict(value: object) -> HIRFunction:
+    raw = _artifact_keys(
+        value,
+        {
+            "name", "parameters", "return_type", "effects", "requirements",
+            "ensures", "body", "source", "scope_id", "symbol_id", "revision_id",
+            "borrow_summary",
+        },
+        "HIR function",
+    )
+    return HIRFunction(
+        _artifact_text(raw["name"], "function name"),
+        tuple(
+            _parameter_from_dict(item)
+            for item in _artifact_list(raw["parameters"], "function parameters")
+        ),
+        _artifact_text(raw["return_type"], "function return type"),
+        tuple(
+            _artifact_text(item, "function effect")
+            for item in _artifact_list(raw["effects"], "function effects")
+        ),
+        tuple(
+            _contract_from_dict(item)
+            for item in _artifact_list(raw["requirements"], "requirements")
+        ),
+        tuple(
+            _contract_from_dict(item)
+            for item in _artifact_list(raw["ensures"], "ensures")
+        ),
+        tuple(
+            _node_from_dict(item)
+            for item in _artifact_list(raw["body"], "function body")
+        ),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["scope_id"], "function scope"),
+        _artifact_text(raw["symbol_id"], "function symbol"),
+        _artifact_text(raw["revision_id"], "function revision"),
+        BorrowSummary.from_dict(
+            _artifact_keys(
+                raw["borrow_summary"],
+                {"schema_version", "contract", "status", "reason", "entries"},
+                "borrow summary",
+            )
+        ),
+    )
+
+
+def _flow_from_dict(value: object) -> HIRFlow:
+    raw = _artifact_keys(
+        value,
+        {
+            "name", "parameters", "return_type", "durable", "effects",
+            "capabilities", "body", "source", "symbol_id", "revision_id",
+        },
+        "HIR flow",
+    )
+    return HIRFlow(
+        _artifact_text(raw["name"], "flow name"),
+        tuple(
+            _parameter_from_dict(item)
+            for item in _artifact_list(raw["parameters"], "flow parameters")
+        ),
+        _artifact_text(raw["return_type"], "flow return type"),
+        _artifact_bool(raw["durable"], "flow durable"),
+        tuple(
+            _artifact_text(item, "flow effect")
+            for item in _artifact_list(raw["effects"], "flow effects")
+        ),
+        tuple(
+            _artifact_text(item, "flow capability")
+            for item in _artifact_list(raw["capabilities"], "flow capabilities")
+        ),
+        tuple(
+            _node_from_dict(item)
+            for item in _artifact_list(raw["body"], "flow body")
+        ),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["symbol_id"], "flow symbol"),
+        _artifact_text(raw["revision_id"], "flow revision"),
+    )
+
+
+def _machine_from_dict(value: object) -> HIRMachine:
+    raw = _artifact_keys(
+        value,
+        {
+            "name", "parameters", "states", "initial", "invariant", "transitions",
+            "source", "symbol_id", "revision_id",
+        },
+        "HIR machine",
+    )
+    states = []
+    for item in _artifact_list(raw["states"], "machine states"):
+        state = _artifact_keys(item, {"name", "fields"}, "machine state")
+        fields = []
+        for field_value in _artifact_list(state["fields"], "machine state fields"):
+            field = _artifact_list(field_value, "machine state field")
+            if len(field) != 2:
+                raise ValueError("machine state field must have name and type")
+            fields.append(
+                (
+                    _artifact_text(field[0], "machine field name"),
+                    _artifact_text(field[1], "machine field type"),
+                )
+            )
+        states.append((_artifact_text(state["name"], "state name"), tuple(fields)))
+    return HIRMachine(
+        _artifact_text(raw["name"], "machine name"),
+        tuple(
+            _parameter_from_dict(item)
+            for item in _artifact_list(raw["parameters"], "machine parameters")
+        ),
+        tuple(states),
+        _artifact_optional_text(raw["initial"], "machine initial state"),
+        _artifact_optional_text(raw["invariant"], "machine invariant"),
+        tuple(
+            _node_from_dict(item)
+            for item in _artifact_list(raw["transitions"], "machine transitions")
+        ),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["symbol_id"], "machine symbol"),
+        _artifact_text(raw["revision_id"], "machine revision"),
+    )
+
 @dataclass(frozen=True)
 class StructuredHIRProgram:
     source: str
@@ -357,22 +715,45 @@ class StructuredHIRProgram:
     types: tuple[HIRTypeDecl, ...]
     functions: tuple[HIRFunction, ...]
     entry_function: str
+    native_syntax_json: str
+    ffi_program: FFIProgram
     schema_version: int = STRUCTURED_HIR_SCHEMA_VERSION
     contract: str = STRUCTURED_HIR_CONTRACT
     native_module: ast.Module | None = field(default=None, repr=False, compare=False)
-    surface_program: SurfaceProgram | None = field(default=None, repr=False, compare=False)
     flows: tuple[HIRFlow, ...] = ()
     machines: tuple[HIRMachine, ...] = ()
 
     def __post_init__(self) -> None:
         if self.schema_version != STRUCTURED_HIR_SCHEMA_VERSION:
             raise ValueError("Structured HIR schema version drift")
+        if self.contract != STRUCTURED_HIR_CONTRACT:
+            raise ValueError("Structured HIR contract drift")
+        if hashlib.sha256(self.source.encode()).hexdigest() != self.source_sha256:
+            raise ValueError("Structured HIR source digest mismatch")
+        try:
+            artifact_module = ast.module_from_json(self.native_syntax_json)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("invalid Structured HIR native syntax artifact") from exc
+        if self.native_module is not None and (
+            ast.module_to_json(self.native_module) != self.native_syntax_json
+        ):
+            raise ValueError("Structured HIR hidden native module mismatch")
+        if not isinstance(self.ffi_program, FFIProgram):
+            raise ValueError("invalid Structured HIR FFI artifact")
         type_names = [item.name for item in self.types]
         function_names = [item.name for item in self.functions]
         if len(type_names) != len(set(type_names)):
             raise ValueError("duplicate Structured HIR type")
         if len(function_names) != len(set(function_names)):
             raise ValueError("duplicate Structured HIR function")
+        for function in self.functions:
+            if any(
+                entry.source_parameter_index >= len(function.parameters)
+                for entry in function.borrow_summary.entries
+            ):
+                raise ValueError(
+                    f"borrow summary parameter index out of range: {function.name}"
+                )
         if self.entry_function not in set(function_names) and not (self.flows or self.machines):
             raise ValueError("missing Structured HIR entry function")
         node_ids = [
@@ -390,6 +771,13 @@ class StructuredHIRProgram:
         }
         if actual & forbidden:
             raise ValueError("CFG or raw-memory detail escaped into Structured HIR")
+        artifact_functions = [
+            item.name
+            for item in artifact_module.body
+            if isinstance(item, ast.FunctionDef)
+        ]
+        if artifact_functions != function_names:
+            raise ValueError("Structured HIR/native syntax function mismatch")
 
     @property
     def digest(self) -> str:
@@ -401,13 +789,28 @@ class StructuredHIRProgram:
     def function(self, name: str) -> HIRFunction:
         return next(item for item in self.functions if item.name == name)
 
+    def backend_module(self) -> ast.Module:
+        """Restore backend syntax only from the digest-bound artifact.
+
+        A retained in-memory module is accepted solely as a consistency witness;
+        it is never the object consumed by code generation.
+        """
+        if self.native_module is not None and (
+            ast.module_to_json(self.native_module) != self.native_syntax_json
+        ):
+            raise ValueError("Structured HIR hidden native module mismatch")
+        return ast.module_from_json(self.native_syntax_json)
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "schema_version": self.schema_version,
             "contract": self.contract,
             "path": self.path,
+            "source": self.source,
             "source_sha256": self.source_sha256,
             "entry_function": self.entry_function,
+            "native_syntax": json.loads(self.native_syntax_json),
+            "ffi": self.ffi_program.to_dict(),
             "types": [item.to_dict() for item in self.types],
             "functions": [item.to_dict() for item in self.functions],
             "flows": [item.to_dict() for item in self.flows],
@@ -422,11 +825,105 @@ class StructuredHIRProgram:
                 "source_mappings": True,
                 "ownership_modes": True,
                 "effect_sets": True,
+                "borrow_summaries": True,
             },
         }
 
     def to_json(self) -> str:
-        return json.dumps(self.to_dict(), ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        return json.dumps(
+            self.to_dict(),
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+            allow_nan=False,
+        )
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "StructuredHIRProgram":
+        invariants = {
+            "structured_program_tree": True,
+            "cfg_absent": True,
+            "raw_memory_absent": True,
+            "stable_symbol_ids": True,
+            "stable_revision_ids": True,
+            "source_scopes": True,
+            "source_mappings": True,
+            "ownership_modes": True,
+            "effect_sets": True,
+            "borrow_summaries": True,
+        }
+        raw = _artifact_keys(
+            value,
+            {
+                "schema_version", "contract", "path", "source", "source_sha256",
+                "entry_function", "native_syntax", "ffi", "types", "functions",
+                "flows", "machines", "invariants",
+            },
+            "Structured HIR",
+        )
+        if raw["schema_version"] != STRUCTURED_HIR_SCHEMA_VERSION:
+            raise ValueError("Structured HIR schema version drift")
+        if raw["contract"] != STRUCTURED_HIR_CONTRACT:
+            raise ValueError("Structured HIR contract drift")
+        if raw["invariants"] != invariants:
+            raise ValueError("Structured HIR invariants drift")
+        native = _artifact_keys(
+            raw["native_syntax"],
+            {"schema_version", "contract", "module"},
+            "native syntax artifact",
+        )
+        native_module = ast.module_from_dict(native)
+        native_json = ast.module_to_json(native_module)
+        ffi = _artifact_keys(
+            raw["ffi"],
+            {"abi", "extern_functions", "repr_c_records", "unsafe_operations"},
+            "FFI artifact",
+        )
+        program = cls(
+            _artifact_text(raw["source"], "Structured HIR source"),
+            _artifact_text(raw["path"], "Structured HIR path"),
+            _artifact_text(raw["source_sha256"], "Structured HIR source digest"),
+            tuple(
+                _type_decl_from_dict(item)
+                for item in _artifact_list(raw["types"], "HIR types")
+            ),
+            tuple(
+                _function_from_dict(item)
+                for item in _artifact_list(raw["functions"], "HIR functions")
+            ),
+            _artifact_text(raw["entry_function"], "HIR entry function"),
+            native_json,
+            FFIProgram.from_dict(ffi),
+            flows=tuple(
+                _flow_from_dict(item)
+                for item in _artifact_list(raw["flows"], "HIR flows")
+            ),
+            machines=tuple(
+                _machine_from_dict(item)
+                for item in _artifact_list(raw["machines"], "HIR machines")
+            ),
+        )
+        if program.to_dict() != dict(value):
+            raise ValueError("non-canonical Structured HIR artifact")
+        return program
+
+    @classmethod
+    def from_json(cls, payload: str) -> "StructuredHIRProgram":
+        def decode_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+            result: dict[str, Any] = {}
+            for key, item in pairs:
+                if key in result:
+                    raise ValueError(f"duplicate Structured HIR JSON key: {key}")
+                result[key] = item
+            return result
+
+        try:
+            value = json.loads(payload, object_pairs_hook=decode_object)
+        except json.JSONDecodeError as exc:
+            raise ValueError("invalid Structured HIR JSON") from exc
+        if not isinstance(value, Mapping):
+            raise ValueError("Structured HIR JSON root must be an object")
+        return cls.from_dict(value)
 
 
 @dataclass(frozen=True)
@@ -740,11 +1237,18 @@ def _assigned_parameter_names(function: ast.FunctionDef) -> set[str]:
 @dataclass
 class _OwnershipState:
     statuses: dict[str, str]
-    borrows: dict[str, tuple[str, str]]
+    borrows: dict[str, tuple["_BorrowProvenance", ...]]
     terminal: bool = False
 
     def clone(self) -> "_OwnershipState":
         return _OwnershipState(dict(self.statuses), dict(self.borrows), self.terminal)
+
+
+@dataclass(frozen=True, order=True)
+class _BorrowProvenance:
+    backing_owner: str
+    borrow_type: str
+    escape_path: tuple[str, ...]
 
 class _OwnershipChecker:
     """Conservative source ownership analysis used to gate HIR construction."""
@@ -754,10 +1258,12 @@ class _OwnershipChecker:
         path: str,
         types: dict[str, HIRTypeDecl],
         functions: dict[str, ast.FunctionDef],
+        borrow_summaries: dict[str, BorrowSummary] | None = None,
     ) -> None:
         self.path = path
         self.types = types
         self.functions = functions
+        self.borrow_summaries = borrow_summaries or {}
         self.current: ast.FunctionDef | None = None
         self.type_properties = TypePropertyResolver(types)
         self.env: dict[str, str] = {}
@@ -769,6 +1275,342 @@ class _OwnershipChecker:
 
     def _owner(self, type_name: str | None) -> bool:
         return self.type_properties.resolve(type_name).needs_drop
+
+    def _contains_borrow(self, type_name: str | None) -> bool:
+        return self.type_properties.resolve(type_name).contains_borrow
+
+    def _borrow_type(self, type_name: str | None) -> str:
+        properties = self.type_properties.resolve(type_name)
+        return properties.borrow_types[0] if properties.borrow_types else str(type_name)
+
+    def _contained_borrow_error(
+        self,
+        code: str,
+        *,
+        container_type: str | None,
+        provenance: _BorrowProvenance,
+        path: str,
+    ) -> None:
+        complete_path = " -> ".join((*provenance.escape_path, path))
+        callee = next(
+            (
+                item
+                for item in provenance.escape_path
+                if item.startswith("formal[")
+            ),
+            None,
+        )
+        callee_prefix = ""
+        if callee is not None:
+            index = provenance.escape_path.index(callee)
+            if index:
+                callee_prefix = f"callee={provenance.escape_path[index - 1]}; "
+        raise StructuredHIRCompileError(
+            f"{code}: {callee_prefix}container={container_type}; "
+            f"contained_borrow={provenance.borrow_type}; "
+            f"backing_owner={provenance.backing_owner}; "
+            f"escape_path={complete_path}"
+        )
+
+    def _borrow_summary_error(
+        self,
+        code: str,
+        *,
+        callee: str,
+        formal: str,
+        actual: str,
+        result_type: str | None,
+        borrow_type: str | None = None,
+        path: tuple[str, ...] = (),
+    ) -> None:
+        escape = " -> ".join(path) if path else "call"
+        raise StructuredHIRCompileError(
+            f"{code}: callee={callee}; formal={formal}; actual_owner={actual}; "
+            f"returned_container={result_type}; contained_borrow={borrow_type or result_type}; "
+            f"escape_path={escape}"
+        )
+
+    def _summary_provenances(
+        self,
+        node: ast.Call,
+        result_type: str | None,
+        state: _OwnershipState,
+    ) -> tuple[_BorrowProvenance, ...]:
+        if not isinstance(node.func, ast.Name) or node.func.id not in self.functions:
+            return ()
+        callee_name = node.func.id
+        summary = self.borrow_summaries.get(callee_name)
+        if summary is None:
+            if self._contains_borrow(result_type):
+                self._borrow_summary_error(
+                    "OpaqueBorrowSummary",
+                    callee=callee_name,
+                    formal="<unknown>",
+                    actual="<unknown>",
+                    result_type=result_type,
+                    path=(callee_name, "opaque"),
+                )
+            return ()
+        if summary.opaque:
+            if self._contains_borrow(result_type):
+                self._borrow_summary_error(
+                    "OpaqueBorrowSummary",
+                    callee=callee_name,
+                    formal="<summary>",
+                    actual="<unknown>",
+                    result_type=result_type,
+                    path=(callee_name, summary.reason or "opaque"),
+                )
+            return ()
+        provenances: list[_BorrowProvenance] = []
+        for entry in summary.entries:
+            if entry.source_parameter_index >= len(node.args):
+                self._borrow_summary_error(
+                    "OpaqueBorrowSummary",
+                    callee=callee_name,
+                    formal=f"parameter[{entry.source_parameter_index}]",
+                    actual="<missing>",
+                    result_type=result_type,
+                    borrow_type=entry.borrow_type,
+                    path=(callee_name, "arity"),
+                )
+            argument = node.args[entry.source_parameter_index]
+            formal = self.functions[callee_name].args.args[entry.source_parameter_index].arg
+            actual_name = self._root_name(argument)
+            actual_type = self._expr_type(argument)
+            if actual_name is None:
+                # A temporary owner has no stable place, regardless of which
+                # function contains the call.  The HIR ownership stage must
+                # reject it before the legacy C backend's defense-in-depth
+                # escape gate is reached.
+                self._borrow_summary_error(
+                    "BorrowFromTemporaryEscapes",
+                    callee=callee_name,
+                    formal=formal,
+                    actual=ast.unparse(argument),
+                    result_type=result_type,
+                    borrow_type=entry.borrow_type,
+                    path=(callee_name, formal, *entry.result_path),
+                )
+            tracked = state.borrows.get(actual_name)
+            if tracked:
+                for item in tracked:
+                    provenances.append(
+                        _BorrowProvenance(
+                            item.backing_owner,
+                            entry.borrow_type,
+                            (
+                                callee_name,
+                                f"formal[{entry.source_parameter_index}]={formal}",
+                                *entry.witness_path,
+                                *entry.result_path,
+                                *item.escape_path,
+                            ),
+                        )
+                    )
+                continue
+            if self._owner(actual_type) or _is_borrowed(actual_type):
+                provenances.append(
+                    _BorrowProvenance(
+                        actual_name,
+                        entry.borrow_type,
+                        (
+                            callee_name,
+                            f"formal[{entry.source_parameter_index}]={formal}",
+                            *entry.witness_path,
+                            *entry.result_path,
+                            actual_name,
+                        ),
+                    )
+                )
+                continue
+            if self._contains_borrow(result_type):
+                self._borrow_summary_error(
+                    "OpaqueBorrowSummary",
+                    callee=callee_name,
+                    formal=formal,
+                    actual=actual_name,
+                    result_type=result_type,
+                    borrow_type=entry.borrow_type,
+                    path=(callee_name, formal),
+                )
+        if self._contains_borrow(result_type) and summary.entries and not provenances:
+            self._borrow_summary_error(
+                "OpaqueBorrowSummary",
+                callee=callee_name,
+                formal="<summary>",
+                actual="<unknown>",
+                result_type=result_type,
+                path=(callee_name, "unmapped"),
+            )
+        if self._contains_borrow(result_type) and not summary.entries:
+            self._borrow_summary_error(
+                "OpaqueBorrowSummary",
+                callee=callee_name,
+                formal="<summary>",
+                actual="<unknown>",
+                result_type=result_type,
+                path=(callee_name, "missing-origin"),
+            )
+        return tuple(sorted(set(provenances)))
+
+    def _reject_unknown_borrow_call(
+        self,
+        node: ast.Call,
+        result_type: str | None,
+    ) -> None:
+        if not (
+            isinstance(node.func, ast.Name)
+            and node.func.id not in self.functions
+            and node.func.id not in self.types
+            and node.func.id not in {"Some", "None", "Ok", "Err", "drop"}
+            and self._contains_borrow(result_type)
+        ):
+            return
+        self._borrow_summary_error(
+            "OpaqueBorrowSummary",
+            callee=node.func.id,
+            formal="<external>",
+            actual="<unknown>",
+            result_type=result_type,
+            path=(node.func.id, "opaque"),
+        )
+
+    @staticmethod
+    def _extend_provenance(
+        provenances: tuple[_BorrowProvenance, ...],
+        step: str,
+    ) -> tuple[_BorrowProvenance, ...]:
+        return tuple(
+            _BorrowProvenance(
+                item.backing_owner,
+                item.borrow_type,
+                (*item.escape_path, step),
+            )
+            for item in provenances
+        )
+
+    def _borrow_provenances(
+        self,
+        node: ast.AST | None,
+        type_name: str | None,
+        state: _OwnershipState,
+    ) -> tuple[_BorrowProvenance, ...]:
+        if node is None or not self._contains_borrow(type_name):
+            return ()
+        if isinstance(node, ast.Name):
+            tracked = state.borrows.get(node.id)
+            if tracked is not None:
+                return self._extend_provenance(tracked, node.id)
+            return (
+                _BorrowProvenance(
+                    node.id,
+                    self._borrow_type(type_name),
+                    (node.id,),
+                ),
+            )
+        if isinstance(node, (ast.Attribute, ast.Subscript)):
+            root = self._root_name(node)
+            if root is not None:
+                tracked = state.borrows.get(root)
+                if tracked is not None:
+                    return self._extend_provenance(
+                        tracked,
+                        ast.unparse(node),
+                    )
+        if isinstance(node, ast.Call):
+            step = ast.unparse(node.func)
+            result_type = self._expr_type(node, type_name)
+            if isinstance(node.func, ast.Name) and node.func.id in self.functions:
+                summary_provenances = self._summary_provenances(
+                    node,
+                    result_type,
+                    state,
+                )
+                if summary_provenances:
+                    return tuple(
+                        self._extend_provenance(summary_provenances, step)
+                    )
+            self._reject_unknown_borrow_call(node, result_type)
+            if isinstance(node.func, ast.Attribute):
+                receiver_root = self._root_name(node.func.value)
+                if receiver_root is not None:
+                    tracked = state.borrows.get(receiver_root)
+                    if tracked is not None:
+                        return self._extend_provenance(tracked, step)
+                    receiver_type = self._expr_type(node.func.value)
+                    if self._owner(receiver_type):
+                        return (
+                            _BorrowProvenance(
+                                receiver_root,
+                                self._borrow_type(type_name),
+                                (receiver_root, step),
+                            ),
+                        )
+            collected: list[_BorrowProvenance] = []
+            for argument in node.args:
+                argument_type = self._expr_type(argument)
+                # Constructors carry the only useful expected type for a
+                # payload in this syntax.  Preserve that type while walking
+                # the argument so a borrow nested in Box/Option/Result is
+                # attributed to the real backing owner instead of the
+                # temporary constructor receiver (for example ``Box``).
+                if argument_type is None:
+                    qualified = _ast_qualified_name(node.func)
+                    if qualified == "Box.new":
+                        parts = generic_parts(result_type or "", "Box", arity=1)
+                        argument_type = parts[0] if parts is not None else None
+                    elif qualified == "Some":
+                        parts = generic_parts(result_type or "", "Option", arity=1)
+                        argument_type = parts[0] if parts is not None else None
+                    elif qualified in {"Ok", "Err"}:
+                        parts = generic_parts(result_type or "", "Result", arity=2)
+                        if parts is not None:
+                            argument_type = parts[0 if qualified == "Ok" else 1]
+                tracked = self._borrow_provenances(
+                    argument,
+                    argument_type,
+                    state,
+                )
+                collected.extend(self._extend_provenance(tracked, step))
+            return tuple(sorted(set(collected)))
+        return ()
+
+    @staticmethod
+    def _register_borrows(
+        state: _OwnershipState,
+        name: str,
+        provenances: tuple[_BorrowProvenance, ...],
+    ) -> None:
+        if provenances:
+            state.borrows[name] = tuple(sorted(set(provenances)))
+        else:
+            state.borrows.pop(name, None)
+
+    def _live_borrow_of(
+        self,
+        state: _OwnershipState,
+        owner: str,
+        *,
+        nested_only: bool = False,
+    ) -> tuple[str, _BorrowProvenance] | None:
+        return next(
+            (
+                (container, provenance)
+                for container, provenances in sorted(state.borrows.items())
+                for provenance in provenances
+                if provenance.backing_owner == owner
+                and (
+                    not nested_only
+                    or not _is_borrowed(self.env.get(container))
+                    or any(
+                        step.startswith("formal[")
+                        for step in provenance.escape_path
+                    )
+                )
+            ),
+            None,
+        )
 
     def _expr_type(self, node: ast.AST | None, expected: str | None = None) -> str | None:
         if node is None:
@@ -808,34 +1650,28 @@ class _OwnershipChecker:
                 receiver = self._expr_type(node.func.value)
                 method = node.func.attr
                 receiver_text = _ast_qualified_name(node.func.value)
-                if receiver_text == "Text" and method == "from_bytes":
-                    return "Text"
-                if receiver_text == "TextBuilder" and method == "new":
-                    return "TextBuilder"
-                if receiver_text == "Vec" and method == "new":
-                    return expected or "Vec[Inferred]"
-                if receiver_text == "Map" and method == "new":
-                    return expected or _DEFAULT_MAP
-                if receiver_text == "Box" and method == "new":
-                    return expected or "Box[Inferred]"
-                if method == "as_view" and receiver == "Text":
-                    return "TextView"
-                if method == "view" and receiver == "Bytes":
-                    return "BytesView"
-                if method == "view" and receiver and receiver.startswith("Vec["):
-                    return f"Borrow[{receiver}]"
-                if method in {"get", "get_mut"} and receiver:
-                    vec_parts = generic_parts(receiver, "Vec", arity=1)
-                    if vec_parts is not None:
-                        return vec_parts[0]
-                if method == "get" and (map_types := _map_types(receiver)) is not None:
-                    return map_types[1]
-                if method == "entries" and receiver and receiver.startswith("Map["):
-                    return f"Borrow[{receiver}]"
-                if method == "to_text" and receiver == "Path":
-                    return "Text"
-                if method == "finish" and receiver == "TextBuilder":
-                    return "Text"
+                static_signature = CONTRACT_GRAPH.static_method(
+                    receiver_text,
+                    method,
+                )
+                if static_signature is not None:
+                    resolved_static = CONTRACT_GRAPH.resolve_static_method(
+                        receiver_text,
+                        method,
+                        tuple(self._expr_type(argument) for argument in node.args),
+                        expected,
+                    )
+                    return (
+                        resolved_static.result_type
+                        if resolved_static is not None
+                        else expected
+                    )
+                method_signature = CONTRACT_GRAPH.method(
+                    receiver or "",
+                    method,
+                )
+                if method_signature is not None:
+                    return method_signature.result_for(expected)
         if isinstance(node, ast.Subscript):
             owner = self._expr_type(node.value)
             shape = collection_shape(owner)
@@ -864,17 +1700,27 @@ class _OwnershipChecker:
             self._error("UseAfterDrop", name)
     def _consume(self, name: str, state: _OwnershipState) -> None:
         self._check_name(name, state)
+        live = self._live_borrow_of(state, name, nested_only=True)
+        if live is not None:
+            container, provenance = live
+            self._contained_borrow_error(
+                "BackingOwnerMoveWhileBorrowed",
+                container_type=self.env.get(container),
+                provenance=provenance,
+                path=f"move({name})",
+            )
         if name in state.statuses:
             state.statuses[name] = "moved"
+            state.borrows.pop(name, None)
 
 
     def _check_mutation(self, name: str, state: _OwnershipState) -> None:
         self._check_name(name, state)
-        if any(owner == name for owner, _ in state.borrows.values()):
+        if self._live_borrow_of(state, name) is not None:
             self._error("MutationDuringBorrow", name)
 
     def _borrow_result(self, expression: ast.AST, result_type: str | None, state: _OwnershipState) -> None:
-        if not _is_borrowed(result_type):
+        if not self._contains_borrow(result_type):
             return
         root = self._root_name(self._borrow_source(expression))
         if root is not None:
@@ -915,12 +1761,22 @@ class _OwnershipChecker:
                 if len(node.args) != 1 or not isinstance(node.args[0], ast.Name):
                     self._error("InvalidDrop")
                 target = node.args[0].id
-                if target in state.borrows:
+                if target in state.borrows and target not in state.statuses:
                     del state.borrows[target]
                     return "Unit"
                 if state.statuses.get(target) == "dropped":
                     self._error("DuplicateDrop", target)
                 self._check_name(target, state)
+                live = self._live_borrow_of(state, target, nested_only=True)
+                if live is not None:
+                    container, provenance = live
+                    self._contained_borrow_error(
+                        "BackingOwnerDropWhileBorrowed",
+                        container_type=self.env.get(container),
+                        provenance=provenance,
+                        path=f"drop({target})",
+                    )
+                state.borrows.pop(target, None)
                 state.statuses[target] = "dropped"
                 return "Unit"
             receiver = node.func.value if isinstance(node.func, ast.Attribute) else None
@@ -941,6 +1797,42 @@ class _OwnershipChecker:
             for argument in node.args:
                 if getattr(argument, "_merlo_implicit_callable", None) is None:
                     self._check_expr(argument, state)
+            method_signature = (
+                CONTRACT_GRAPH.method(receiver_type, method)
+                if receiver_type is not None and method
+                else None
+            )
+            if method_signature is None and method:
+                static_receiver = _ast_qualified_name(receiver)
+                static_signature = CONTRACT_GRAPH.static_method(
+                    static_receiver,
+                    method,
+                )
+                if static_signature is not None:
+                    method_signature = static_signature
+            if method_signature is not None:
+                if not method_signature.accepts_arity(len(node.args)):
+                    self._error(
+                        "ArityMismatch",
+                        f"{receiver_type}.{method}",
+                    )
+                if receiver_root is not None and not method_signature.static:
+                    if method_signature.receiver_ownership == "borrow_mut":
+                        self._check_mutation(receiver_root, state)
+                    elif method_signature.receiver_ownership == "consuming":
+                        self._consume(receiver_root, state)
+                for argument, parameter_ownership in zip(
+                    node.args,
+                    method_signature.ownership_for(len(node.args)),
+                    strict=True,
+                ):
+                    root = self._root_name(argument)
+                    if root is None:
+                        continue
+                    if parameter_ownership == "borrow_mut":
+                        self._check_mutation(root, state)
+                    elif parameter_ownership in {"owned", "consuming"}:
+                        self._consume(root, state)
             signature = intrinsic_signature(name)
             if signature is not None:
                 for argument, parameter_ownership in zip(
@@ -966,25 +1858,74 @@ class _OwnershipChecker:
                     if self._owner(parameter_type) and returned and isinstance(argument, ast.Name):
                         if isinstance(argument, ast.Name):
                             self._consume(argument.id, state)
-            elif receiver_root and method == "push" and node.args:
+            elif (
+                method_signature is None
+                and receiver_root
+                and method == "push"
+                and node.args
+            ):
                 vec_parts = generic_parts(receiver_type, "Vec", arity=1)
                 element = vec_parts[0] if vec_parts is not None else None
                 if self._owner(element) and isinstance(node.args[0], ast.Name):
                     self._consume(node.args[0].id, state)
-            elif (receiver_text := _ast_qualified_name(receiver)) :
-                if receiver_text == "Box" and method == "new" and node.args:
-                    argument = node.args[0]
-                    if isinstance(argument, ast.Name) and self._owner(self._expr_type(argument)):
-                        self._consume(argument.id, state)
+            if receiver_root and method == "push" and node.args:
+                vec_parts = generic_parts(receiver_type, "Vec", arity=1)
+                element_type = vec_parts[0] if vec_parts is not None else None
+                if self._contains_borrow(element_type):
+                    provenances = self._borrow_provenances(
+                        node.args[0],
+                        element_type,
+                        state,
+                    )
+                    if not provenances:
+                        self._error(
+                            "ContainedBorrowProvenanceUnknown",
+                            f"{receiver_type}.push",
+                        )
+                    self._register_borrows(
+                        state,
+                        receiver_root,
+                        tuple(
+                            sorted(
+                                set(state.borrows.get(receiver_root, ()))
+                                | set(
+                                    self._extend_provenance(
+                                        provenances,
+                                        f"{receiver_type}.push",
+                                    )
+                                )
+                            )
+                        ),
+                    )
             result_type = self._expr_type(node, expected)
+            if isinstance(node.func, ast.Name) and node.func.id in self.functions:
+                self._summary_provenances(node, result_type, state)
+            self._reject_unknown_borrow_call(node, result_type)
             self._borrow_result(node.func.value if receiver is not None else node, result_type, state)
             return result_type
         if isinstance(node, ast.Lambda):
             metadata = getattr(node, "_merlo_closure_metadata", None)
             if metadata is None:
                 self._error("CapturingClosureUnsupported")
-            for name, _type_name_, _ownership in metadata[3]:
+            for name, capture_type, _ownership in metadata[3]:
                 self._check_name(name, state)
+                properties = self.type_properties.resolve(capture_type)
+                if properties.contains_borrow:
+                    provenances = state.borrows.get(name) or (
+                        _BorrowProvenance(
+                            name,
+                            self._borrow_type(capture_type),
+                            (name,),
+                        ),
+                    )
+                    self._contained_borrow_error(
+                        "BorrowedClosureCaptureEscapes",
+                        container_type=capture_type,
+                        provenance=provenances[0],
+                        path=f"closure_capture({name})",
+                    )
+                if properties.is_resource or properties.contains_resource:
+                    self._error("ResourceClosureCaptureForbidden", name)
             return expected
     def _merge(self, before: _OwnershipState, branches: tuple[_OwnershipState, ...]) -> _OwnershipState:
         live = tuple(branch for branch in branches if not branch.terminal)
@@ -1007,24 +1948,34 @@ class _OwnershipChecker:
             if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
                 type_name = _type_name(node.annotation)
                 if node.value is not None:
+                    provenances = self._borrow_provenances(
+                        node.value,
+                        type_name,
+                        state,
+                    )
                     value_type = self._check_expr(node.value, state, expected=type_name)
                     if self._owner(type_name) and isinstance(node.value, ast.Name):
                         self._consume(node.value.id, state)
-                    if _is_borrowed(value_type or type_name):
-                        borrow_source = (
-                            node.value.func.value
-                            if isinstance(node.value, ast.Call)
-                            and isinstance(node.value.func, ast.Attribute)
-                            else node.value
+                    if self._contains_borrow(type_name):
+                        self._register_borrows(
+                            state,
+                            node.target.id,
+                            self._extend_provenance(
+                                provenances,
+                                f"bind({node.target.id}:{type_name})",
+                            ),
                         )
-                        root = self._root_name(borrow_source)
-                        if root is not None:
-                            state.borrows[node.target.id] = (root, "shared")
                 self.env[node.target.id] = type_name
                 if self._owner(type_name):
                     state.statuses[node.target.id] = "available"
                 continue
             if isinstance(node, ast.Assign):
+                predicted_type = self._expr_type(node.value)
+                provenances = self._borrow_provenances(
+                    node.value,
+                    predicted_type,
+                    state,
+                )
                 value_type = self._check_expr(node.value, state)
                 for target in node.targets:
                     if isinstance(target, ast.Name):
@@ -1035,6 +1986,48 @@ class _OwnershipChecker:
                             if isinstance(node.value, ast.Name):
                                 self._consume(node.value.id, state)
                             state.statuses[target.id] = "available"
+                        if target_type and self._contains_borrow(target_type):
+                            self._register_borrows(
+                                state,
+                                target.id,
+                                self._extend_provenance(
+                                    provenances,
+                                    f"assign({target.id}:{target_type})",
+                                ),
+                            )
+                    elif isinstance(target, ast.Attribute):
+                        target_root = self._root_name(target)
+                        target_type = self._expr_type(target)
+                        if (
+                            target_root is not None
+                            and self._contains_borrow(target_type or value_type)
+                        ):
+                            if (
+                                target_root in self.parameters
+                                and any(
+                                    item.backing_owner not in self.parameters
+                                    for item in provenances
+                                )
+                            ):
+                                provenance = next(
+                                    item
+                                    for item in provenances
+                                    if item.backing_owner not in self.parameters
+                                )
+                                self._contained_borrow_error(
+                                    "ContainedBorrowStoredInEscapingOwner",
+                                    container_type=self.env.get(target_root),
+                                    provenance=provenance,
+                                    path=f"store({ast.unparse(target)})",
+                                )
+                            self._register_borrows(
+                                state,
+                                target_root,
+                                self._extend_provenance(
+                                    provenances,
+                                    f"store({ast.unparse(target)})",
+                                ),
+                            )
                 continue
             if isinstance(node, ast.Expr):
                 self._check_expr(node.value, state)
@@ -1044,22 +2037,39 @@ class _OwnershipChecker:
                 continue
             if isinstance(node, ast.Return):
                 result_type = _type_name(self.current.returns if self.current else None)
-                root = self._root_name(self._borrow_source(node.value))
-                escape_root = (
-                    state.borrows[root][0]
-                    if root is not None and root in state.borrows
-                    else root
+                provenances = self._borrow_provenances(
+                    node.value,
+                    result_type,
+                    state,
                 )
-                if (
-                    _is_borrowed(result_type)
-                    and escape_root is not None
-                    and escape_root not in self.parameters
-                ):
-                    self._error("EscapedView", escape_root)
                 value_type = self._check_expr(node.value, state, expected=result_type)
+                if self._contains_borrow(result_type):
+                    escaping = next(
+                        (
+                            item
+                            for item in provenances
+                            if item.backing_owner not in self.parameters
+                        ),
+                        None,
+                    )
+                    if escaping is not None:
+                        self._contained_borrow_error(
+                            (
+                                f"EscapedView: {escaping.backing_owner}"
+                                if _is_borrowed(result_type)
+                                else "EscapedContainedBorrow"
+                            ),
+                            container_type=result_type,
+                            provenance=escaping,
+                            path=f"return({result_type})",
+                        )
+                    if not provenances:
+                        root = self._root_name(self._borrow_source(node.value))
+                        if root is not None and root not in self.parameters:
+                            self._error("EscapedView", root)
+                self._borrow_result(node.value, value_type or result_type, state)
                 if self._owner(result_type) and isinstance(node.value, ast.Name):
                     self._consume(node.value.id, state)
-                self._borrow_result(node.value, value_type or result_type, state)
                 state.terminal = True
                 break
             if isinstance(node, ast.If):
@@ -1140,6 +2150,7 @@ class _HIRBuilder:
         types: dict[str, HIRTypeDecl],
         functions: dict[str, ast.FunctionDef],
         ffi_program: FFIProgram | None = None,
+        borrow_summaries: dict[str, BorrowSummary] | None = None,
     ) -> None:
         self.path = path
         self.source = source
@@ -1147,6 +2158,7 @@ class _HIRBuilder:
         self.types = types
         self.functions = functions
         self.ffi_program = ffi_program or FFIProgram()
+        self.borrow_summaries = borrow_summaries or {}
         self.extern_functions = {item.name: item for item in self.ffi_program.extern_functions}
         self.function_symbols = {
             name: _stable_id("shirs", path, "function", name) for name in functions
@@ -1159,6 +2171,25 @@ class _HIRBuilder:
 
     def _owner(self, type_name: str | None, seen: frozenset[str] = frozenset()) -> bool:
         return self.type_properties.resolve(type_name, seen).needs_drop
+
+    def _contains_borrow(self, type_name: str | None) -> bool:
+        return self.type_properties.resolve(type_name).contains_borrow
+
+    def _owned_ownership(self, type_name: str | None) -> str:
+        if self._owner(type_name):
+            return (
+                "owned_contained_borrow"
+                if self._contains_borrow(type_name)
+                else "owned"
+            )
+        return "borrow" if _is_borrowed(type_name) else "value"
+
+    def _use_ownership(self, type_name: str | None) -> str:
+        if self._contains_borrow(type_name) and not _is_borrowed(type_name):
+            return "contained_borrow"
+        if self._owner(type_name) or _is_borrowed(type_name):
+            return "borrow"
+        return "value"
 
     @staticmethod
     def _mutable_parameter_table(
@@ -1296,7 +2327,7 @@ class _HIRBuilder:
                 node,
                 "Name",
                 type_name=type_name,
-                ownership="borrow" if self._owner(type_name) else "value",
+                ownership=self._use_ownership(type_name),
                 symbol_id=symbol,
                 attributes={"name": node.id},
             )
@@ -1339,7 +2370,7 @@ class _HIRBuilder:
                 node,
                 "FieldAccess",
                 type_name=type_name,
-                ownership="borrow" if self._owner(type_name) else "value",
+                ownership=self._use_ownership(type_name),
                 attributes={"field": node.attr},
                 children=(owner,),
             )
@@ -1375,9 +2406,31 @@ class _HIRBuilder:
                     self.expression(inner_call, expected=inner_expected),
                 )
             else:
+                argument_expected: list[str | None] = [None] * len(node.args)
+                # A generic constructor's result annotation is the source of
+                # truth for its payload type.  Passing that context into the
+                # child expression keeps nested owner/view constructors
+                # typed (Box.new(bytes.as_view()), Some(...), Ok(...), ...)
+                # instead of making the child look like an untyped call.
+                if isinstance(node.func, ast.Attribute):
+                    receiver_name = _ast_qualified_name(node.func.value)
+                    method_name = node.func.attr
+                    if method_name == "new" and receiver_name == "Box":
+                        parts = generic_parts(expected or "", "Box", arity=1)
+                        if parts is not None and argument_expected:
+                            argument_expected[0] = parts[0]
+                elif isinstance(node.func, ast.Name):
+                    if node.func.id == "Some":
+                        parts = generic_parts(expected or "", "Option", arity=1)
+                        if parts is not None and argument_expected:
+                            argument_expected[0] = parts[0]
+                    elif node.func.id in {"Ok", "Err"}:
+                        parts = generic_parts(expected or "", "Result", arity=2)
+                        if parts is not None and argument_expected:
+                            argument_expected[0] = parts[0 if node.func.id == "Ok" else 1]
                 arguments = tuple(
-                    self.expression(item)
-                    for item in node.args
+                    self.expression(item, expected=argument_expected[index])
+                    for index, item in enumerate(node.args)
                     if getattr(item, "_merlo_implicit_callable", None) is None
                 )
             return self._call(node, arguments, expected=expected)
@@ -1555,7 +2608,9 @@ class _HIRBuilder:
                 node,
                 "ArrayLiteral",
                 type_name=f"Array[{element_type},{len(children)}]",
-                ownership="owned" if self._owner(element_type) else "value",
+                ownership=self._owned_ownership(
+                    f"Array[{element_type},{len(children)}]"
+                ),
                 attributes={"length": len(children)},
                 children=children,
             )
@@ -1854,6 +2909,59 @@ class _HIRBuilder:
             method = node.func.attr
             callee = f"{receiver_text}.{method}"
             signature = intrinsic_signature(callee)
+            static_contract = CONTRACT_GRAPH.static_method(
+                receiver_text,
+                method,
+            )
+            static_signature = static_contract
+            if (
+                static_contract is not None
+                and static_contract.accepts_arity(len(arguments))
+            ):
+                try:
+                    static_signature = CONTRACT_GRAPH.resolve_static_method(
+                        receiver_text,
+                        method,
+                        tuple(argument.type_name for argument in arguments),
+                        expected,
+                    )
+                except ValueError as exc:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: "
+                        f"StaticContractMismatch: {callee}: {exc}"
+                    ) from exc
+            if (
+                receiver_type is None
+                and signature is None
+                and static_contract is None
+            ):
+                receiver_type = self.expression(
+                    node.func.value
+                ).type_name
+            method_signature = CONTRACT_GRAPH.method(
+                receiver_type or "",
+                method,
+            )
+            if method_signature is not None and not method_signature.static:
+                call_attributes.update(
+                    {
+                        "contract_symbol": f"{receiver_type}.{method}",
+                        "receiver_ownership": (
+                            method_signature.receiver_ownership
+                        ),
+                        "result_ownership": (
+                            method_signature.result_ownership
+                        ),
+                    }
+                )
+                if method_signature.operation_family is not None:
+                    call_attributes["operation_family"] = (
+                        method_signature.operation_family
+                    )
+                if method_signature.representation_lowering is None:
+                    type_name = method_signature.result_for(expected)
+                    ownership = method_signature.result_ownership
+                    effects.update(method_signature.effects)
             if method in COLLECTION_OPERATIONS:
                 receiver = self.expression(node.func.value)
                 receiver_type = receiver.type_name or receiver_type
@@ -1988,23 +3096,165 @@ class _HIRBuilder:
                 raise StructuredHIRCompileError(
                     f"{self.path}:{node.lineno}: UnknownIntrinsic: {callee}"
                 )
-            elif receiver_type == "FileReader" and method == "lines":
-                kind = "FileLines"
-                type_name = "FileLines"
-                ownership = "borrow"
-                effects.add("borrow")
-                operation_children = (self.expression(node.func.value),) + arguments
-                call_attributes.update({"resource": "FileLines", "borrowed_from": receiver_text})
-            elif receiver_text == "Map" or _map_types(receiver_type) is not None:
-                kind = "MapOperation"
-                static_call = receiver_text == "Map"
-                specialization = (
-                    expected
-                    if static_call and _map_types(expected) is not None
-                    else _DEFAULT_MAP
-                    if static_call
-                    else receiver_type
+            elif static_contract is not None:
+                if static_signature is None:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: "
+                        f"AmbiguousType: {callee}"
+                    )
+                if len(arguments) != static_signature.arity:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: {callee} expects "
+                        f"{static_signature.arity} argument(s), got {len(arguments)}"
+                    )
+                for index, (argument, parameter_type) in enumerate(
+                    zip(
+                        arguments,
+                        static_signature.parameters,
+                        strict=True,
+                    ),
+                    1,
+                ):
+                    if argument.type_name != parameter_type and (
+                        argument.type_name,
+                        parameter_type,
+                    ) not in {
+                        ("Bytes", "BytesView"),
+                        ("Text", "TextView"),
+                    }:
+                        raise StructuredHIRCompileError(
+                            f"{self.path}:{node.lineno}: {callee} argument "
+                            f"{index} expects {parameter_type}, got "
+                            f"{argument.type_name}"
+                        )
+                kind = {
+                    "vec": "VecOperation",
+                    "map": "MapOperation",
+                    "box": "BoxOperation",
+                }.get(
+                    static_signature.operation_family,
+                    "BytesTextOperation",
                 )
+                type_name = static_signature.result_type
+                ownership = static_signature.result_ownership
+                effects.update(static_signature.effects)
+                call_attributes.update(
+                    {
+                        "contract_symbol": callee,
+                        "parameter_ownership": list(
+                            static_signature.parameter_ownership
+                        ),
+                        "result_ownership": (
+                            static_signature.result_ownership
+                        ),
+                    }
+                )
+                if static_signature.operation_family is not None:
+                    call_attributes["operation_family"] = (
+                        static_signature.operation_family
+                    )
+                if static_signature.operation_family == "map":
+                    call_attributes.update(
+                        {
+                            "map_operation": method,
+                            "map_specialization": type_name,
+                        }
+                    )
+                if static_signature.abi_lowering is not None:
+                    call_attributes["abi_lowering"] = (
+                        static_signature.abi_lowering
+                    )
+            elif (
+                method_signature is None
+                and CONTRACT_GRAPH.has_representation_method(method)
+            ):
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: UnknownCall: "
+                    f"{receiver_type or 'unresolved'}.{method}"
+                )
+            elif (
+                method_signature is not None
+                and method_signature.operation_family == "resource"
+            ):
+                receiver = self.expression(node.func.value)
+                kind = (
+                    "FileLines"
+                    if method_signature.representation_lowering == "file_lines"
+                    else "DirectCall"
+                )
+                type_name = method_signature.result_for(expected)
+                ownership = method_signature.result_ownership
+                effects.update(method_signature.effects)
+                operation_children = (receiver,) + arguments
+                call_attributes.update(
+                    {
+                        "contract_symbol": f"{receiver_type}.{method}",
+                        "representation_lowering": (
+                            method_signature.representation_lowering
+                        ),
+                        "resource": type_name,
+                        "borrowed_from": receiver_text,
+                    }
+                )
+            elif (
+                method_signature is not None
+                and method_signature.operation_family == "bytes_text"
+            ):
+                kind = "BytesTextOperation"
+                type_name = method_signature.result_for(expected)
+                ownership = method_signature.result_ownership
+                effects.update(method_signature.effects)
+                operation_children = (
+                    self.expression(node.func.value),
+                ) + arguments
+            elif (
+                method_signature is not None
+                and method_signature.representation_lowering is not None
+            ):
+                if not method_signature.accepts_arity(len(arguments)):
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: {receiver_type}.{method} "
+                        f"expects {method_signature.minimum_arity}.."
+                        f"{method_signature.arity} argument(s), "
+                        f"got {len(arguments)}"
+                    )
+                receiver = self.expression(node.func.value)
+                kind = "DirectCall"
+                type_name = method_signature.result_type
+                payload_clone = (
+                    method_signature.result_ownership
+                    == "payload_clone"
+                )
+                payload_owned = payload_clone and self._owner(type_name)
+                ownership = (
+                    "owned"
+                    if payload_owned
+                    else "value"
+                    if payload_clone
+                    else method_signature.result_ownership
+                )
+                effects.update(
+                    effect
+                    for effect in method_signature.effects
+                    if not payload_clone
+                    or payload_owned
+                    or effect not in {"allocate", "copy"}
+                )
+                operation_children = (receiver,) + arguments
+                call_attributes.update(
+                    {
+                        "contract_symbol": f"{receiver_type}.{method}",
+                        "representation_lowering": (
+                            method_signature.representation_lowering
+                        ),
+                    }
+                )
+            elif (
+                method_signature is not None
+                and method_signature.operation_family == "map"
+            ):
+                kind = "MapOperation"
+                specialization = receiver_type
                 map_types = _map_types(specialization)
                 if map_types is None:
                     raise StructuredHIRCompileError(
@@ -2012,133 +3262,50 @@ class _HIRBuilder:
                         "a concrete specialization"
                     )
                 key_type, value_type = map_types
-                arities = {
-                    "new": {0},
-                    "increment": {1, 2},
-                    "get": {1},
-                    "insert": {2},
-                    "entries": {0},
-                }
-                if method not in arities or len(arguments) not in arities[method]:
+                if not method_signature.accepts_arity(len(arguments)):
                     raise StructuredHIRCompileError(
                         f"{self.path}:{node.lineno}: unsupported Map operation "
                         f"{method}/{len(arguments)}"
-                    )
-                if static_call != (method == "new"):
-                    raise StructuredHIRCompileError(
-                        f"{self.path}:{node.lineno}: unsupported Map operation {name}"
                     )
                 if method == "increment" and value_type != "UInt64":
                     raise StructuredHIRCompileError(
                         f"{self.path}:{node.lineno}: Map.increment requires UInt64 values"
                     )
-                if not static_call:
-                    operation_children = (self.expression(node.func.value),) + arguments
-                    expected_types = (
-                        (key_type, value_type)
-                        if method == "insert"
-                        else (key_type, "UInt64")
-                        if method == "increment" and len(arguments) == 2
-                        else (key_type,)
-                    )
-                    for argument, expected_type in zip(arguments, expected_types):
-                        if argument.type_name not in {None, "Inferred", expected_type}:
-                            raise StructuredHIRCompileError(
-                                f"{self.path}:{node.lineno}: Map.{method} argument must be "
-                                f"{expected_type}, not {argument.type_name}"
-                            )
+                operation_children = (self.expression(node.func.value),) + arguments
+                expected_types = method_signature.parameters_for(len(arguments))
+                for argument, expected_type in zip(arguments, expected_types):
+                    if argument.type_name not in {None, "Inferred", expected_type}:
+                        raise StructuredHIRCompileError(
+                            f"{self.path}:{node.lineno}: Map.{method} argument must be "
+                            f"{expected_type}, not {argument.type_name}"
+                        )
                 call_attributes.update(
                     {"map_operation": method, "map_specialization": specialization}
                 )
-                if method == "new":
-                    type_name = specialization
-                    ownership = "owned"
-                    effects.update(("allocate", "may_fail"))
-                elif method == "increment":
-                    type_name = "UInt64"
-                    effects.update(("allocate", "copy", "may_fail"))
-                elif method == "insert":
-                    type_name = "Unit"
-                    effects.update(("allocate", "copy", "may_fail"))
-                elif method == "get":
-                    type_name = value_type
-                else:
-                    type_name = f"Borrow[{specialization}]"
-                    ownership = "borrow"
-            elif receiver_text == "Box" or (receiver_type or "").startswith("Box["):
-                kind = "BoxOperation"
-                effects.update({"allocate", "may_fail"} if method == "new" else set())
-                ownership = "owned" if method == "new" else "borrow"
-                if method == "new":
-                    type_name = "Box[Inferred]"
-                elif receiver_type and method in {"get", "get_mut"}:
-                    box_parts = generic_parts(receiver_type, "Box", arity=1)
-                    if box_parts is not None:
-                        type_name = box_parts[0]
-            elif receiver_type == "Path" and method == "to_text":
-                kind = "BytesTextOperation"
-                type_name = "Text"
-                ownership = "owned"
-                effects.update(("allocate", "copy", "may_fail"))
+                type_name = method_signature.result_for(expected)
+                ownership = method_signature.result_ownership
+                effects.update(method_signature.effects)
             elif (
-                receiver_text in {"Text", "TextBuilder"}
-                or receiver_type in {
-                    "Text",
-                    "TextBuilder",
-                    "Bytes",
-                    "BytesView",
-                    "TextView",
-                }
-                or method in {"append_byte", "append_scalar", "finish", "byte"}
+                method_signature is not None
+                and method_signature.operation_family == "box"
             ):
-                kind = "BytesTextOperation"
-                if name == "Text.from_bytes":
-                    type_name = "Text"
-                    ownership = "owned"
-                    effects.update(("allocate", "copy", "may_fail"))
-                elif name == "TextBuilder.new":
-                    type_name = "TextBuilder"
-                    ownership = "owned"
-                    effects.update(("allocate", "may_fail"))
-                elif receiver_type == "Bytes" and method == "view":
-                    type_name = "BytesView"
-                    ownership = "borrow"
-                elif receiver_type == "Text" and method in {"as_view", "view"}:
-                    type_name = "TextView"
-                    ownership = "borrow"
-                elif receiver_type == "Text" and method == "clone":
-                    type_name = "Text"
-                    ownership = "owned"
-                    effects.update(("allocate", "copy", "may_fail"))
-                elif method == "finish":
-                    type_name = "Text"
-                    ownership = "owned"
-                elif method == "byte":
-                    type_name = "UInt64"
-                    effects.add("bounds_check")
-                elif method == "len":
-                    type_name = "UInt64"
+                kind = "BoxOperation"
+                if not method_signature.accepts_arity(len(arguments)):
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: unsupported Box operation "
+                        f"{method}/{len(arguments)}"
+                    )
             elif (
-                receiver_text == "Vec"
-                or receiver_text.startswith("Vec[")
-                or (receiver_type or "").startswith("Vec[")
-                or method in {"push", "capacity", "get_mut", "view"}
+                method_signature is not None
+                and method_signature.operation_family == "vec"
             ):
                 kind = "VecOperation"
-                effects.update({"allocate", "may_fail"} if method in {"new", "push"} else {"bounds_check"} if method in {"get", "get_mut"} else set())
-                if method == "new":
-                    type_name = "Vec[Inferred]"
-                    ownership = "owned"
-                elif method in {"len", "capacity"}:
-                    type_name = "UInt64"
-                elif method == "view":
-                    type_name = "Borrow[Inferred]"
-                    ownership = "borrow"
-                elif receiver_type and method in {"get", "get_mut"}:
-                    vec_parts = generic_parts(receiver_type, "Vec", arity=1)
-                    if vec_parts is not None:
-                        type_name = vec_parts[0]
-                    ownership = "borrow_mut" if method == "get_mut" else "borrow"
+                if not method_signature.accepts_arity(len(arguments)):
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: unsupported Vec operation "
+                        f"{method}/{len(arguments)} for "
+                        f"{receiver_type or 'unresolved'}"
+                    )
             elif receiver_text in self.types and self.types[receiver_text].kind == "enum":
                 kind = "EnumConstruct"
                 type_name = receiver_text
@@ -2149,6 +3316,12 @@ class _HIRBuilder:
             elif method == "tag":
                 kind = "EnumTag"
                 type_name = "UInt64"
+        if self._contains_borrow(type_name) and not _is_borrowed(type_name):
+            ownership = (
+                "owned_contained_borrow"
+                if ownership == "owned" or self._owner(type_name)
+                else "contained_borrow"
+            )
         return self._new_node(
             node,
             kind,
@@ -2175,11 +3348,19 @@ class _HIRBuilder:
             name = _ast_qualified_name(node.func)
             if (
                 ".push" in name
-                or name in {"Vec.new", "TextBuilder.new", "Text.from_bytes", "Map.new"}
+                or name in {"Vec.new", "Map.new"}
                 or name.endswith(".insert")
                 or name.endswith(".increment")
             ):
                 effects.update(("allocate", "may_fail"))
+            receiver, separator, method = name.partition(".")
+            static_signature = (
+                CONTRACT_GRAPH.static_method(receiver, method)
+                if separator
+                else None
+            )
+            if static_signature is not None:
+                effects.update(static_signature.effects)
             signature = intrinsic_signature(name)
             if signature is not None:
                 effects.add(signature.effect)
@@ -2215,7 +3396,7 @@ class _HIRBuilder:
                 node,
                 "VarBinding" if binding == "var" else "LetBinding",
                 type_name=type_name,
-                ownership="owned" if self._owner(type_name) else "value",
+                ownership=self._owned_ownership(type_name),
                 symbol_id=_stable_id("shirs", self.path, self.current_function, "local", node.target.id),
                 attributes={"name": node.target.id, "mutable": binding == "var"},
                 children=(value,) if isinstance(value, HIRNode) else (),
@@ -2275,13 +3456,9 @@ class _HIRBuilder:
                 )
             return_type = child.type_name if child else "Unit"
             ownership = (
-                "owned"
-                if self._owner(return_type)
-                else "borrow"
-                if _is_borrowed(return_type)
-                else child.ownership
-                if child
-                else "value"
+                self._owned_ownership(return_type)
+                if self._owner(return_type) or _is_borrowed(return_type)
+                else child.ownership if child else "value"
             )
             return self._new_node(
                 node,
@@ -2487,6 +3664,8 @@ class _HIRBuilder:
                 if owns_value and argument.arg in returned_parameters
                 else "borrow_mut"
                 if argument.arg in assigned
+                else "contained_borrow"
+                if self._contains_borrow(type_name) and not _is_borrowed(type_name)
                 else "borrow"
                 if owns_value or _is_borrowed(type_name)
                 else "value"
@@ -2539,6 +3718,7 @@ class _HIRBuilder:
             [item.revision_id for item in body],
             [item.condition.revision_id for item in requirements],
             [item.condition.revision_id for item in ensures],
+            self.borrow_summaries.get(node.name, BorrowSummary()).semantic_dict(),
         )
         return HIRFunction(
             node.name,
@@ -2552,6 +3732,7 @@ class _HIRBuilder:
             self._scope(),
             symbol_id,
             revision_id,
+            self.borrow_summaries.get(node.name, BorrowSummary()),
         )
 
 
@@ -2794,8 +3975,17 @@ def compile_structured_hir(
         raise StructuredHIRCompileError(f"unsupported top-level declarations: {unsupported}")
     if entry_function not in function_nodes:
         raise StructuredHIRCompileError(f"missing entry function: {entry_function}")
-    _OwnershipChecker(path, types, function_nodes).check()
-    builder = _HIRBuilder(path, source, preprocessed, types, function_nodes, ffi_program)
+    borrow_summaries = compute_borrow_summaries(function_nodes, types)
+    _OwnershipChecker(path, types, function_nodes, borrow_summaries).check()
+    builder = _HIRBuilder(
+        path,
+        source,
+        preprocessed,
+        types,
+        function_nodes,
+        ffi_program,
+        borrow_summaries,
+    )
     functions = tuple(builder.function(item) for item in function_nodes.values())
     return StructuredHIRProgram(
         source,
@@ -2804,6 +3994,9 @@ def compile_structured_hir(
         tuple(types.values()),
         functions,
         entry_function,
+        ast.module_to_json(module),
+        ffi_program,
+        native_module=module,
     )
 
 
@@ -2832,6 +4025,10 @@ def compile_canonical_hir(
         program.surface_program,
         program,
     )
+    try:
+        ffi_program = validate_ffi(source, path=path)
+    except FFICompileError as exc:
+        raise StructuredHIRCompileError(str(exc)) from exc
     preprocessed = _Preprocessed(
         source,
         dict(declaration_kinds),
@@ -2861,13 +4058,15 @@ def compile_canonical_hir(
         raise StructuredHIRCompileError(
             f"missing entry function: {entry_function}"
         )
-    _OwnershipChecker(path, types, function_nodes).check()
+    borrow_summaries = compute_borrow_summaries(function_nodes, types)
+    _OwnershipChecker(path, types, function_nodes, borrow_summaries).check()
     builder = _HIRBuilder(
         path,
         source,
         preprocessed,
         types,
         function_nodes,
+        borrow_summaries=borrow_summaries,
     )
     functions = tuple(
         builder.function(item) for item in function_nodes.values()
@@ -2879,8 +4078,9 @@ def compile_canonical_hir(
         tuple(types.values()),
         functions,
         entry_function,
+        ast.module_to_json(module),
+        ffi_program,
         native_module=module,
-        surface_program=program.surface_program,
         flows=flows,
         machines=machines,
     )
@@ -2899,6 +4099,7 @@ __all__ = [
     "HIRParameter",
     "HIRTypeDecl",
     "HIRVariant",
+    "BorrowSummary",
     "SourceSpan",
     "StructuredHIRCompileError",
     "StructuredHIRProgram",

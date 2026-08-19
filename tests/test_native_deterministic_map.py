@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import resource
 import shutil
 import subprocess
 from pathlib import Path
@@ -10,6 +11,9 @@ from merlo.representation_c_backend import emit_general_c
 from merlo.representation_ir import MapDesc, RepresentationCompileError, lower_structured_hir_to_rir
 from merlo.representation_mir import lower_rir_to_performance_mir, optimize_general_mir
 from merlo.structured_hir_v2 import StructuredHIRCompileError, compile_structured_hir
+
+def _disable_core_dump() -> None:
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 
 
 MAP_SOURCE = """
@@ -289,6 +293,7 @@ def test_native_map_uint64_increment_is_checked(tmp_path: Path) -> None:
         input=b"x",
         capture_output=True,
         check=False,
+        preexec_fn=_disable_core_dump,
     )
     assert completed.returncode != 0
     assert b"MerloOverflow:MapUInt64" in completed.stderr
@@ -330,6 +335,7 @@ def test_native_uint64_arithmetic_is_checked(
         input=b"",
         capture_output=True,
         check=False,
+        preexec_fn=_disable_core_dump,
     )
     if expected_stdout is not None:
         assert completed.returncode == 0, completed.stderr.decode()

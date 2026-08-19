@@ -3,6 +3,7 @@ __pycache__/
 .env
 server_err.log
 *.log
+!examples/access-log/input.log
 .pytest_cache/
 data/sessions/
 data/*.json

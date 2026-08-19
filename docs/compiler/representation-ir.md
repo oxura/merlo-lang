@@ -15,12 +15,15 @@ unrelated source text.
 ## Outputs
 
 The function returns `RepresentationProgram`, contract
-`merlo.representation-ir.v1`, schema version `1`. It contains `TypeDescriptor`
+`merlo.representation-ir.v3`, schema version `3`. It contains `TypeDescriptor`
 values, type-directed `DropPlan` values, and `RIRFunction` trees of
 `RIROperation` nodes. Descriptors record size, alignment, ABI class,
-copy/move/drop classes, dependencies, and `source_type_identity`. Operations
+copy/move/drop classes, dependencies, contained-borrow/resource properties,
+the exact contained borrow/resource leaf types, and `source_type_identity`. Operations
 retain type, source span, symbol/revision identity, ownership provenance,
-effects, attributes, and children.
+effects, attributes, and children. Each function also carries the digest-bound
+`merlo.borrow-summary.v2` provenance contract lowered from HIR, so downstream
+inspection can retain interprocedural direct and contained-borrow origins.
 
 ## Invariants
 
@@ -43,6 +46,8 @@ currently accepted and produce a zero-size descriptor.
 `source_hir_digest` binds RIR to the exact serialized HIR predecessor.
 Type-directed descriptors and drop plans are the physical-layout and cleanup
 boundary; they are not inferred from generated C names or allocation order.
+Generic descriptors obtain contained-borrow and contained-resource properties
+recursively from every type argument rather than from constructor spelling.
 
 ## Experimental boundary
 

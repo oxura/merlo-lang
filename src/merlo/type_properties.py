@@ -20,13 +20,27 @@ class TypeProperties:
     needs_drop: bool
     contains_borrow: bool = False
     is_resource: bool = False
+    contains_resource: bool = False
     layout: str = "value"
+    borrow_types: tuple[str, ...] = ()
+    resource_types: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "is_copy": self.is_copy,
+            "is_move": self.is_move,
+            "needs_drop": self.needs_drop,
+            "contains_borrow": self.contains_borrow,
+            "is_resource": self.is_resource,
+            "contains_resource": self.contains_resource,
+            "layout": self.layout,
+            "borrow_types": list(self.borrow_types),
+            "resource_types": list(self.resource_types),
+        }
 
 
 _COPY = TypeProperties(True, False, False)
-_BORROW = TypeProperties(True, False, False, contains_borrow=True, layout="view")
 _OWNER = TypeProperties(False, True, True, layout="owner")
-_RESOURCE = TypeProperties(False, True, True, is_resource=True, layout="resource")
 
 _SCALARS = frozenset(
     {
@@ -59,12 +73,34 @@ class TypePropertyResolver:
         if type_name in _OWNERS:
             return _OWNER
         if type_name in _RESOURCES:
-            return _RESOURCE
+            return TypeProperties(
+                False,
+                True,
+                True,
+                is_resource=True,
+                contains_resource=True,
+                layout="resource",
+                resource_types=(type_name,),
+            )
         if type_name in _BORROWS:
-            return _BORROW
+            return TypeProperties(
+                True,
+                False,
+                False,
+                contains_borrow=True,
+                layout="view",
+                borrow_types=(type_name,),
+            )
         for constructor in ("Slice", "Borrow"):
             if generic_parts(type_name, constructor) is not None:
-                return _BORROW
+                return TypeProperties(
+                    True,
+                    False,
+                    False,
+                    contains_borrow=True,
+                    layout="view",
+                    borrow_types=(type_name,),
+                )
         if generic_parts(type_name, "Fn") is not None:
             return TypeProperties(
                 False,
@@ -93,18 +129,27 @@ class TypePropertyResolver:
                 result = self._aggregate(parts, next_seen, layout=layout)
                 self._cache[type_name] = result
                 return result
-        for constructor in ("Vec", "Map", "Box", "Future", "Shared"):
-            if generic_parts(type_name, constructor) is not None:
-                result = TypeProperties(
-                    False,
-                    True,
-                    True,
-                    contains_borrow=False,
-                    is_resource=constructor == "Future",
+        for constructor in ("Vec", "Box", "Future", "Shared"):
+            parts = generic_parts(type_name, constructor, arity=1)
+            if parts is not None:
+                result = self._owning_generic(
+                    parts,
+                    next_seen,
                     layout=constructor.casefold(),
+                    is_resource=constructor == "Future",
+                    resource_name=type_name if constructor == "Future" else None,
                 )
                 self._cache[type_name] = result
                 return result
+        map_parts = generic_parts(type_name, "Map", arity=2)
+        if map_parts is not None:
+            result = self._owning_generic(
+                map_parts,
+                next_seen,
+                layout="map",
+            )
+            self._cache[type_name] = result
+            return result
 
         declaration = self.declarations.get(type_name)
         if declaration is not None:
@@ -141,13 +186,64 @@ class TypePropertyResolver:
         properties = tuple(self.resolve(child, seen) for child in children)
         needs_drop = any(item.needs_drop for item in properties)
         contains_borrow = any(item.contains_borrow for item in properties)
+        contains_resource = any(
+            item.is_resource or item.contains_resource
+            for item in properties
+        )
         return TypeProperties(
             is_copy=not needs_drop and not contains_borrow,
             is_move=needs_drop or contains_borrow,
             needs_drop=needs_drop,
             contains_borrow=contains_borrow,
-            is_resource=any(item.is_resource for item in properties),
+            contains_resource=contains_resource,
             layout=layout,
+            borrow_types=tuple(sorted({
+                borrow
+                for item in properties
+                for borrow in item.borrow_types
+            })),
+            resource_types=tuple(sorted({
+                resource
+                for item in properties
+                for resource in item.resource_types
+            })),
+        )
+
+    def _owning_generic(
+        self,
+        children: tuple[str, ...],
+        seen: frozenset[str],
+        *,
+        layout: str,
+        is_resource: bool = False,
+        resource_name: str | None = None,
+    ) -> TypeProperties:
+        properties = tuple(self.resolve(child, seen) for child in children)
+        borrow_types = tuple(sorted({
+            borrow
+            for item in properties
+            for borrow in item.borrow_types
+        }))
+        resource_types = {
+            resource
+            for item in properties
+            for resource in item.resource_types
+        }
+        if resource_name is not None:
+            resource_types.add(resource_name)
+        return TypeProperties(
+            is_copy=False,
+            is_move=True,
+            needs_drop=True,
+            contains_borrow=any(item.contains_borrow for item in properties),
+            is_resource=is_resource,
+            contains_resource=is_resource or any(
+                item.is_resource or item.contains_resource
+                for item in properties
+            ),
+            layout=layout,
+            borrow_types=borrow_types,
+            resource_types=tuple(sorted(resource_types)),
         )
 
 

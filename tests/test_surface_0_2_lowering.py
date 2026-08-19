@@ -58,7 +58,7 @@ def test_surface_handoff_retains_tree_and_preserves_provenance(
     )
     hir = compile_canonical_hir(result.canonical, entry_function="active_names")
     assert result.canonical.surface_program is not None
-    assert hir.surface_program is result.canonical.surface_program
+    assert hir.backend_module() is not hir.native_module
     returned = hir.function("active_names").body[0]
     operation = returned.children[0]
     assert operation.kind == "CollectionOperation"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import hashlib
+import re
 
 from dataclasses import replace
 from typing import Iterable
@@ -57,7 +58,6 @@ from merlo.surface_ast import (
     SurfaceEnsure,
     SurfaceExpression,
     SurfaceExpressionStatement,
-    SurfaceField,
     SurfaceFlow,
     SurfaceFlowStep,
     SurfaceFor,
@@ -917,6 +917,120 @@ class _Elaborator:
             )
         return term
 
+    def _contract_method_call(
+        self,
+        expression: SurfaceCall,
+        function: _Function,
+        expected: str | None,
+    ) -> str | None:
+        """Elaborate a resolved instance method from the canonical graph.
+
+        Returning ``None`` preserves narrow inference fallbacks for calls such
+        as ``Vec.new().push(value)`` whose receiver is not concrete yet.
+        """
+        assert isinstance(expression.callee, SurfaceMember)
+        method = expression.callee.field
+        receiver_expression = expression.callee.receiver
+        if method not in INSTANCE_METHOD_NAMES:
+            return None
+        if (
+            isinstance(receiver_expression, SurfaceName)
+            and f"{receiver_expression.name}.{method}" in _HOST_CALLS
+        ):
+            return None
+        receiver = self._expression(receiver_expression, function)
+        receiver_type = self.types.concrete.get(self.types.find(receiver))
+        signature = CONTRACT_GRAPH.method(receiver_type or "", method)
+        if signature is None or signature.static:
+            return None
+        if not signature.accepts_arity(len(expression.arguments)):
+            raise SurfaceElaborationError(
+                f"ArityMismatch: {receiver_type}.{method}"
+            )
+        for argument, parameter_type in zip(
+            expression.arguments,
+            signature.parameters_for(len(expression.arguments)),
+            strict=True,
+        ):
+            self._expression(argument.value, function, parameter_type)
+        return self.types.typed(signature.result_for(expected))
+
+    def _contract_static_call(
+        self,
+        expression: SurfaceCall,
+        function: _Function,
+        expected: str | None,
+    ) -> str | None:
+        assert isinstance(expression.callee, SurfaceMember)
+        receiver_expression = expression.callee.receiver
+        if not isinstance(receiver_expression, SurfaceName):
+            return None
+        receiver = receiver_expression.name
+        method = expression.callee.field
+        signature = CONTRACT_GRAPH.static_method(receiver, method)
+        if signature is None:
+            return None
+        if not signature.accepts_arity(len(expression.arguments)):
+            raise SurfaceElaborationError(
+                f"ArityMismatch: {receiver}.{method}"
+            )
+        argument_terms: list[str] = []
+        argument_types: list[str | None] = []
+        for argument, parameter_type in zip(
+            expression.arguments,
+            signature.parameters_for(len(expression.arguments)),
+            strict=True,
+        ):
+            argument_expected = (
+                None
+                if re.search(r"\b[A-Z]\b", parameter_type)
+                else parameter_type
+            )
+            argument_term = self._expression(
+                argument.value,
+                function,
+                argument_expected,
+            )
+            argument_terms.append(argument_term)
+            argument_types.append(
+                self.types.concrete.get(self.types.find(argument_term))
+            )
+        try:
+            resolved = CONTRACT_GRAPH.resolve_static_method(
+                receiver,
+                method,
+                tuple(argument_types),
+                expected,
+            )
+        except ValueError as exc:
+            raise SurfaceElaborationError(
+                f"StaticContractMismatch: {receiver}.{method}: {exc}"
+            ) from exc
+        if resolved is None:
+            raise SurfaceElaborationError(
+                f"AmbiguousType: {receiver}.{method}"
+            )
+        for argument_term, parameter_type in zip(
+            argument_terms,
+            resolved.parameters_for(len(argument_terms)),
+            strict=True,
+        ):
+            self.types.unify(
+                argument_term,
+                self.types.typed(parameter_type),
+                context=f"{receiver}.{method} argument",
+            )
+        if (
+            resolved.operation_family == "vec"
+            and resolved.result_type == "Vec[Inferred]"
+        ):
+            return self.types.variable(
+                f"vec-new:{expression.span.path}:"
+                f"{expression.span.start_line}:"
+                f"{expression.span.start_column}"
+            )
+        return self.types.typed(resolved.result_for(expected))
+
     def _collection_call(
         self,
         expression: SurfaceCall,
@@ -1060,11 +1174,17 @@ class _Elaborator:
                 name=f"{function.source.name}.closure_capture.{node.name}",
             )
             properties = self.type_properties.resolve(type_name)
-            if properties.contains_borrow:
+            if properties.contains_borrow and not properties.needs_drop:
+                contained = ",".join(properties.borrow_types) or type_name
                 raise SurfaceElaborationError(
-                    f"BorrowedClosureCaptureEscapes: {node.name}"
+                    f"BorrowedClosureCaptureEscapes: {node.name}; "
+                    f"container={type_name}; contained_borrow={contained}; "
+                    f"backing_owner={node.name}; "
+                    f"escape_path=closure_capture({node.name})"
                 )
-            if properties.is_resource:
+            if (
+                properties.is_resource or properties.contains_resource
+            ) and not properties.contains_borrow:
                 raise SurfaceElaborationError(
                     f"ResourceClosureCaptureForbidden: {node.name}"
                 )
@@ -1567,69 +1687,21 @@ class _Elaborator:
                         )
                     term = self.types.typed(enum.name)
                 elif (
-                    isinstance(receiver_expression, SurfaceName)
-                    and receiver_expression.name == "Vec"
-                    and method == "new"
-                ):
-                    if expression.arguments:
-                        raise SurfaceElaborationError("ArityMismatch: Vec.new")
-                    term = self.types.variable(
-                        f"vec-new:{expression.span.path}:"
-                        f"{expression.span.start_line}:"
-                        f"{expression.span.start_column}"
-                    )
-                    if expected and expected.startswith("Vec["):
-                        self.types.unify(
-                            term,
-                            self.types.typed(expected),
-                            context="Vec.new expected type",
-                        )
-                elif (
-                    isinstance(receiver_expression, SurfaceName)
-                    and receiver_expression.name == "Map"
-                    and method == "new"
-                ):
-                    if expression.arguments:
-                        raise SurfaceElaborationError("ArityMismatch: Map.new")
-                    term = self.types.typed("Map[Text,UInt64]")
-                elif (
-                    isinstance(receiver_expression, SurfaceName)
-                    and receiver_expression.name == "TextBuilder"
-                    and method == "new"
-                ):
-                    if expression.arguments:
-                        raise SurfaceElaborationError(
-                            "ArityMismatch: TextBuilder.new"
-                        )
-                    term = self.types.typed("TextBuilder")
-                elif (
-                    isinstance(receiver_expression, SurfaceName)
-                    and receiver_expression.name == "Box"
-                    and method == "new"
-                ):
-                    if len(expression.arguments) != 1:
-                        raise SurfaceElaborationError(
-                            "ArityMismatch: Box.new"
-                        )
-                    payload = self._expression(
-                        expression.arguments[0].value,
+                    static_term := self._contract_static_call(
+                        expression,
                         function,
+                        expected,
                     )
-                    payload_type = self.types.concrete.get(
-                        self.types.find(payload)
+                ) is not None:
+                    term = static_term
+                elif (
+                    contract_term := self._contract_method_call(
+                        expression,
+                        function,
+                        expected,
                     )
-                    box_type = (
-                        expected
-                        if expected and expected.startswith("Box[")
-                        else f"Box[{payload_type}]"
-                        if payload_type
-                        else None
-                    )
-                    if box_type is None:
-                        raise SurfaceElaborationError(
-                            "AmbiguousType: Box.new"
-                        )
-                    term = self.types.typed(box_type)
+                ) is not None:
+                    term = contract_term
                 elif method in COLLECTION_OPERATIONS:
                     term = self._collection_call(expression, function, expected)
                     expected = None
@@ -1810,57 +1882,6 @@ class _Elaborator:
                             f"UnknownCall: {receiver_type or 'unresolved'}.entries"
                         )
                     term = self.types.typed(f"Borrow[{receiver_type}]")
-                elif (
-                    isinstance(receiver_expression, SurfaceName)
-                    and receiver_expression.name == "Text"
-                    and method == "from_bytes"
-                ):
-                    for argument in expression.arguments:
-                        self._expression(argument.value, function)
-                    term = self.types.typed("Text")
-                elif method in {
-                    "is_none",
-                    "is_some",
-                    "is_ok",
-                    "is_err",
-                    "unwrap",
-                    "unwrap_err",
-                }:
-                    if expression.arguments:
-                        raise SurfaceElaborationError(
-                            f"ArityMismatch: {method}"
-                        )
-                    receiver = self._expression(
-                        receiver_expression,
-                        function,
-                    )
-                    receiver_type = self.types.concrete.get(
-                        self.types.find(receiver)
-                    )
-                    option_parts = (
-                        _generic_parts(receiver_type, "Option")
-                        if receiver_type is not None
-                        else None
-                    )
-                    result_parts = (
-                        _generic_parts(receiver_type, "Result")
-                        if receiver_type is not None
-                        else None
-                    )
-                    if method in {"is_none", "is_some"} and option_parts:
-                        term = self.types.typed("Bool")
-                    elif method in {"is_ok", "is_err"} and result_parts:
-                        term = self.types.typed("Bool")
-                    elif method == "unwrap" and option_parts:
-                        term = self.types.typed(option_parts[0])
-                    elif method == "unwrap" and result_parts:
-                        term = self.types.typed(result_parts[0])
-                    elif method == "unwrap_err" and result_parts:
-                        term = self.types.typed(result_parts[1])
-                    else:
-                        raise SurfaceElaborationError(
-                            f"UnknownCall: {receiver_type or 'unresolved'}.{method}"
-                        )
                 elif method == "view":
                     if expression.arguments:
                         raise SurfaceElaborationError(
@@ -2581,7 +2602,7 @@ class _Elaborator:
 
     def _canonical_flow(self, flow: SurfaceFlow) -> CanonicalFlow:
         names = {item.name for item in flow.parameters}
-        body: list[CanonicalFlowStep | CanonicalParallel | CanonicalStatement] = []
+        body: list[CanonicalFlowStep | CanonicalParallel | CanonicalReturn] = []
         effects: set[str] = set()
         capabilities: set[str] = set()
         ordinal = 0

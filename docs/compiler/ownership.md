@@ -10,6 +10,12 @@ obligations without pretending that metadata alone proves runtime safety.
 
 HIR carries ownership labels on `HIRParameter` and `HIRNode` in
 [`src/merlo/structured_hir_v2.py`](../../src/merlo/structured_hir_v2.py).
+Each HIR function also carries a versioned `BorrowSummary`. A summary entry
+binds a returned direct or contained borrow to a formal parameter index,
+source/result paths, borrow type, and one of the ownership modes `value`,
+`borrow`, `borrow_mut`, `owned`, `contained_borrow`, or
+`owned_contained_borrow`. Summaries are computed to a deterministic fixed
+point over local calls and are part of the HIR digest.
 RIR consumes those labels through `TypeDescriptor` and `DropPlan` in
 [`src/merlo/representation_ir.py`](../../src/merlo/representation_ir.py).
 MIR materializes ownership operations and `drop_value` instructions in
@@ -30,6 +36,17 @@ mutation. Drop actions are selected from type descriptors and plans, not from
 generated C names or allocation order. RIR does not contain `StoragePolicy`
 values; the `storage_policy_matrix()` helper is not a production lowering
 stage. The backend checks predecessor identity before emission.
+Call sites substitute summary formal origins into actual places, including
+owning actuals that do not themselves contain a borrow. Conditional and
+transitive origins are unioned. Missing or opaque summaries fail closed;
+temporary owners are rejected at the entry boundary or by the native artifact
+gate rather than treated as independent storage.
+
+Recursive records and enums must cross an owning `Box[T]` or `Vec[T]`
+indirection; inline layout cycles are rejected with their minimal cycle path.
+Generated drop glue follows active enum tags, initialized vector elements, and
+boxed payloads recursively before releasing their storage. Mutual recursion
+uses forward C declarations and the same finite, type-directed drop plans.
 
 Recursive records and enums must cross an owning `Box[T]` or `Vec[T]`
 indirection; inline layout cycles are rejected with their minimal cycle path.
@@ -55,9 +72,10 @@ contract, not the source of ownership truth.
 
 The alpha is not a complete source-level borrow checker. Shared ownership is
 not a production descriptor class, and `StoragePolicy.shared_ownership` is not
-set by current lowering. Capturing closures, cycle collection, ordinary
-lifetime annotations, and manual memory operations are outside the alpha
-surface.
+set by current lowering. Closure environments support restricted immutable and
+owned captures, but not escaping borrowed, mutable, resource, or general shared
+captures. Cycle collection, ordinary lifetime annotations, and manual memory
+operations are outside the alpha surface.
 
 ## Verification commands
 

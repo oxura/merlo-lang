@@ -113,7 +113,10 @@ def test_ambiguous_and_bool_numeric_programs_are_rejected() -> None:
     with pytest.raises(ConciseApplicationError, match="AmbiguousType"):
         expand_source("fn identity(value):\n    value\n")
 
-    with pytest.raises(ConciseApplicationError, match="numeric operator requires numeric operands, got Bool"):
+    with pytest.raises(
+        ConciseApplicationError,
+        match=r"TypeConflict: expected expression type: Bool vs UInt64",
+    ):
         expand_source("fn add_flag() -> UInt64:\n    true + 1\n")
 
 

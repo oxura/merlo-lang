@@ -9,9 +9,11 @@ from typing import Any, Sequence
 
 from merlo.alpha_protocol import AlphaProtocol
 from merlo.compiler import compile_project
+from merlo.evolve_protocol import EvolutionPlan, VerifiedEvolutionProtocol
 from merlo.formatter import format_application_source
 from merlo.project import Project
 from merlo.semantic_world import SemanticWorld
+from merlo.synthesize_protocol import synthesize_typed_hole
 from merlo.docgen import generate_documentation, write_documentation
 from merlo.test_runner import run_project_tests
 
@@ -21,9 +23,10 @@ EXIT_USAGE = 2
 
 
 _PRODUCTION_COMMANDS = (
-    "new", "check", "build", "run", "test", "fmt", "expand", "explain",
-    "doc", "map", "inspect", "refs", "callers", "callees", "deps", "impact",
-    "why", "context", "refactor", "add",
+    "new", "check", "verify", "obligations", "holes", "explain-hole",
+    "build", "run", "test", "fmt", "expand", "explain", "doc", "map",
+    "inspect", "refs", "callers", "callees", "deps", "impact", "why",
+    "context", "refactor", "evolve", "synthesize", "add",
 )
 
 
@@ -70,6 +73,46 @@ def build_parser() -> argparse.ArgumentParser:
         elif name == "map":
             command.add_argument("--projection", choices=("text", "dot", "json"), default="text")
 
+    for name in ("verify", "obligations"):
+        command = commands.add_parser(
+            name,
+            help=(
+                "verify project obligations"
+                if name == "verify"
+                else "list typed verification obligations"
+            ),
+        )
+        command.add_argument("path", nargs="?", default=".")
+        command.add_argument("--smt", choices=("z3",))
+        command.add_argument("--smt-timeout-ms", type=int, default=1000)
+        command.add_argument("--smt-max-paths", type=int, default=256)
+        _json_flag(command)
+
+    holes = commands.add_parser("holes", help="list typed holes")
+    holes.add_argument("path", nargs="?", default=".")
+    _json_flag(holes)
+
+    explain_hole = commands.add_parser(
+        "explain-hole",
+        help="show the completion context for one typed hole",
+    )
+    explain_hole.add_argument("hole_id")
+    explain_hole.add_argument("path", nargs="?", default=".")
+    _json_flag(explain_hole)
+
+    synthesize = commands.add_parser(
+        "synthesize",
+        help="generate and verify deterministic typed-hole candidates",
+    )
+    synthesize.add_argument("target")
+    synthesize.add_argument("path", nargs="?", default=".")
+    synthesize.add_argument("--hole")
+    synthesize.add_argument("--goal", default="")
+    synthesize.add_argument("--max-candidates", type=int, default=16)
+    synthesize.add_argument("--apply", action="store_true")
+    synthesize.add_argument("--report-out")
+    _json_flag(synthesize)
+
     for name in ("inspect", "refs", "callers", "callees", "deps", "impact", "context"):
         command = commands.add_parser(name, help=f"query semantic world ({name})")
         command.add_argument("target")
@@ -108,6 +151,33 @@ def build_parser() -> argparse.ArgumentParser:
         command.add_argument("path", nargs="?", default=".")
         command.add_argument("--apply", action="store_true")
         _json_flag(command)
+
+    evolve = commands.add_parser(
+        "evolve",
+        help="preview or apply a verified semantic evolution",
+    )
+    evolve_commands = evolve.add_subparsers(
+        dest="evolution_operation",
+        required=True,
+    )
+    evolve_rename = evolve_commands.add_parser(
+        "rename",
+        help="create a verified rename plan",
+    )
+    evolve_rename.add_argument("target")
+    evolve_rename.add_argument("new_name")
+    evolve_rename.add_argument("path", nargs="?", default=".")
+    evolve_rename.add_argument("--goal", default="")
+    evolve_rename.add_argument("--apply", action="store_true")
+    evolve_rename.add_argument("--plan-out")
+    _json_flag(evolve_rename)
+    evolve_apply = evolve_commands.add_parser(
+        "apply",
+        help="validate and apply an exact serialized evolution plan",
+    )
+    evolve_apply.add_argument("plan")
+    evolve_apply.add_argument("path", nargs="?", default=".")
+    _json_flag(evolve_apply)
 
     return parser
 
@@ -171,6 +241,61 @@ def _emit(payload: Any, as_json: bool, *, text: str | None = None) -> None:
 def _error_payload(exc: Exception) -> dict[str, Any]:
     code = str(getattr(exc, "code", "")) or type(exc).__name__
     return {"ok": False, "diagnostics": [{"code": code, "message": str(exc)}]}
+
+
+def _compile_verification(args: argparse.Namespace):
+    return compile_project(
+        _input_path(args.path),
+        smt_backend=getattr(args, "smt", None),
+        smt_timeout_ms=getattr(args, "smt_timeout_ms", 1000),
+        smt_max_paths=getattr(args, "smt_max_paths", 256),
+        require_interface_lock=False,
+    )
+
+
+def _obligation_rows(compilation: Any) -> list[dict[str, Any]]:
+    verification = {
+        item.obligation_id: item.to_dict()
+        for item in compilation.verification_metrics.obligations
+    }
+    bounded = {
+        item.obligation_id: item.to_dict()
+        for item in compilation.bounded_symbolic.results
+    }
+    smt = {
+        item.obligation_id: item.to_dict()
+        for item in compilation.smt.results
+    }
+    rows = []
+    for obligation in compilation.obligations.obligations:
+        row = obligation.to_dict()
+        row["verification"] = verification[obligation.obligation_id]
+        row["bounded_symbolic"] = bounded.get(obligation.obligation_id)
+        row["smt"] = smt.get(obligation.obligation_id)
+        rows.append(row)
+    return rows
+
+
+def _hole_rows(compilation: Any) -> list[dict[str, Any]]:
+    rows = []
+    for function in compilation.elaborated.canonical_program.functions:
+        for hole in function.holes:
+            row = hole.to_payload()
+            row["owner"] = function.name
+            rows.append(row)
+    return sorted(rows, key=lambda item: item["hole_id"])
+
+
+def _verification_text(metrics: Any, ok: bool) -> str:
+    status = "passed" if ok else "incomplete"
+    return (
+        f"verification {status}\n"
+        f"total: {metrics.total_obligations}\n"
+        f"automatically closed: {metrics.automatically_closed}\n"
+        f"runtime guarded: {metrics.runtime_guarded}\n"
+        f"refuted: {metrics.refuted}\n"
+        f"unresolved: {metrics.unresolved}\n"
+    )
 
 
 def _main_production(args: argparse.Namespace) -> int:
@@ -248,6 +373,76 @@ def _main_production(args: argparse.Namespace) -> int:
         root = project.root if project else Path(compilation.entry_path).parent
         payload = {"ok": True, "project": str(root), "entry_path": compilation.entry_path, "compiler": compilation.to_dict(), "world_digest": world.digest, "diagnostics": []}
         _emit(payload, args.json, text=f"ok {root}\n")
+        return EXIT_OK
+    if name in {"verify", "obligations"}:
+        compilation = _compile_verification(args)
+        metrics = compilation.verification_metrics
+        rows = _obligation_rows(compilation)
+        ok = metrics.refuted == 0 and metrics.unresolved == 0
+        if name == "verify":
+            payload = {
+                "ok": ok,
+                "entry_path": compilation.entry_path,
+                "verification": metrics.to_dict(),
+                "diagnostics": [],
+            }
+            _emit(payload, args.json, text=_verification_text(metrics, ok))
+            return EXIT_OK if ok else EXIT_DIAGNOSTIC
+        text = "no obligations\n" if not rows else "".join(
+            f"{row['verification']['state']} {row['category']} "
+            f"{row['owner_symbol_id']}: {row['predicate']} "
+            f"[{row['obligation_id']}]\n"
+            for row in rows
+        )
+        payload = {
+            "ok": True,
+            "entry_path": compilation.entry_path,
+            "obligation_digest": compilation.obligations.digest,
+            "summary": metrics.to_dict(),
+            "obligations": rows,
+        }
+        _emit(payload, args.json, text=text)
+        return EXIT_OK
+    if name in {"holes", "explain-hole"}:
+        compilation = compile_project(
+            _input_path(args.path),
+            require_interface_lock=False,
+        )
+        rows = _hole_rows(compilation)
+        if name == "explain-hole":
+            row = next(
+                (item for item in rows if item["hole_id"] == args.hole_id),
+                None,
+            )
+            if row is None:
+                raise ValueError(f"UnknownTypedHole: {args.hole_id}")
+            context = ", ".join(
+                f"{item['name']}: {item['type']}"
+                for item in row["context"]
+            ) or "none"
+            text = (
+                f"{row['hole_id']}\n"
+                f"owner: {row['owner']}\n"
+                f"expected type: {row['expected_type']}\n"
+                f"context: {context}\n"
+                f"effects: {', '.join(row['effects']) or 'none'}\n"
+                f"capabilities: {', '.join(row['capabilities']) or 'none'}\n"
+            )
+            _emit({"ok": True, "hole": row}, args.json, text=text)
+            return EXIT_OK
+        text = "no typed holes\n" if not rows else "".join(
+            f"{row['hole_id']}: {row['expected_type']} in {row['owner']}\n"
+            for row in rows
+        )
+        _emit(
+            {
+                "ok": True,
+                "entry_path": compilation.entry_path,
+                "holes": rows,
+            },
+            args.json,
+            text=text,
+        )
         return EXIT_OK
     if name == "build":
         candidate = _input_path(args.path)
@@ -351,11 +546,184 @@ def _main_production(args: argparse.Namespace) -> int:
         if args.operation == "rename":
             value = protocol.call("refactor.rename", {"target": args.target, "new_name": args.new_name, "mode": "apply" if args.apply else "preview"})
         elif args.operation == "move":
-            value = protocol.call("refactor.move", {"target": args.target, "module": args.module})
+            value = protocol.call(
+                "refactor.move",
+                {
+                    "target": args.target,
+                    "module": args.module,
+                    "mode": "apply" if args.apply else "preview",
+                },
+            )
         else:
-            value = protocol.call("refactor.signature", {"target": args.target, "signature": args.signature})
+            value = protocol.call(
+                "refactor.signature",
+                {
+                    "target": args.target,
+                    "signature": args.signature,
+                    "mode": "apply" if args.apply else "preview",
+                },
+            )
         _emit(value, args.json, text=None)
-        return EXIT_OK if not isinstance(value, dict) or "diagnostic" not in value else EXIT_DIAGNOSTIC
+        return (
+            EXIT_OK
+            if not isinstance(value, dict) or value.get("diagnostic") is None
+            else EXIT_DIAGNOSTIC
+        )
+    if name == "evolve":
+        project = _project(args.path)
+        protocol = VerifiedEvolutionProtocol(_world(project))
+        if args.evolution_operation == "rename":
+            plan = protocol.preview_rename(
+                args.target,
+                args.new_name,
+                goal=args.goal,
+            )
+            if args.plan_out:
+                destination = Path(args.plan_out).resolve()
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_text(plan.to_json() + "\n", encoding="utf-8")
+            if not args.apply:
+                impact = plan.impact
+                payload = {
+                    "ok": True,
+                    "status": "preview",
+                    "plan_path": (
+                        str(Path(args.plan_out).resolve())
+                        if args.plan_out
+                        else None
+                    ),
+                    "plan": plan.to_dict(),
+                }
+                text = (
+                    f"evolution plan {plan.digest}\n"
+                    f"direct symbols: {len(impact.directly_changed)}\n"
+                    f"affected symbols: {len(impact.transitively_affected)}\n"
+                    f"files: {len(impact.files)}\n"
+                )
+                _emit(payload, args.json, text=text)
+                return EXIT_OK
+        else:
+            plan_path = Path(args.plan).resolve()
+            plan = EvolutionPlan.from_json(
+                plan_path.read_text(encoding="utf-8"),
+                world=protocol.world,
+            )
+        result = protocol.apply(plan)
+        ok = result.status == "committed"
+        payload = {
+            "ok": ok,
+            "status": result.status,
+            "result": result.to_dict(),
+        }
+        text = (
+            f"evolution {result.status}\n"
+            f"change: {result.change_digest}\n"
+            + (
+                f"after world: {result.after_world_digest}\n"
+                f"preservation: {result.preservation.overall}\n"
+                f"evidence: {result.evidence.digest}\n"
+                if ok
+                else f"diagnostic: {result.diagnostic.message}\n"
+            )
+        )
+        _emit(payload, args.json, text=text)
+        return EXIT_OK if ok else EXIT_DIAGNOSTIC
+    if name == "synthesize":
+        project = _project(args.path)
+        world = _world(project)
+        symbol = world.resolve(args.target)
+        holes = tuple(symbol.get("holes", ()))
+        if args.hole is None:
+            if len(holes) != 1:
+                raise ValueError(
+                    "TypedHoleSelectionRequired: target must have exactly "
+                    "one hole or --hole must be provided"
+                )
+            hole_id = holes[0]["hole_id"]
+        else:
+            matches = tuple(
+                item for item in holes if item.get("hole_id") == args.hole
+            )
+            if len(matches) != 1:
+                raise ValueError(f"UnknownTypedHole: {args.hole}")
+            hole_id = args.hole
+        run = synthesize_typed_hole(
+            world,
+            symbol["symbol_id"],
+            hole_id,
+            goal=args.goal,
+            max_candidates=args.max_candidates,
+        )
+        if args.report_out:
+            destination = Path(args.report_out).resolve()
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_text(run.to_json() + "\n", encoding="utf-8")
+        selected = run.selected_candidate
+        verified_count = sum(item.verified for item in run.verifications)
+        if selected is None:
+            payload = {
+                "ok": False,
+                "status": "no_verified_candidate",
+                "report_path": (
+                    str(Path(args.report_out).resolve())
+                    if args.report_out
+                    else None
+                ),
+                "run": run.to_dict(),
+            }
+            _emit(
+                payload,
+                args.json,
+                text=(
+                    f"no verified synthesis candidate\n"
+                    f"generated: {len(run.candidates)}\n"
+                    f"verified: {verified_count}\n"
+                ),
+            )
+            return EXIT_DIAGNOSTIC
+        expression = str(selected.change_ir.metadata.get("replacement", ""))
+        if args.apply:
+            application = run.apply(world)
+            ok = application["status"] == "committed"
+            payload = {
+                "ok": ok,
+                "status": application["status"],
+                "selected_expression": expression,
+                "application": application,
+                "run": run.to_dict(),
+            }
+            _emit(
+                payload,
+                args.json,
+                text=(
+                    f"synthesis {application['status']}\n"
+                    f"selected: {expression}\n"
+                    f"candidates: {len(run.candidates)}\n"
+                    f"verified: {verified_count}\n"
+                ),
+            )
+            return EXIT_OK if ok else EXIT_DIAGNOSTIC
+        payload = {
+            "ok": True,
+            "status": "selected",
+            "selected_expression": expression,
+            "report_path": (
+                str(Path(args.report_out).resolve())
+                if args.report_out
+                else None
+            ),
+            "run": run.to_dict(),
+        }
+        _emit(
+            payload,
+            args.json,
+            text=(
+                f"selected: {expression}\n"
+                f"candidates: {len(run.candidates)}\n"
+                f"verified: {verified_count}\n"
+            ),
+        )
+        return EXIT_OK
     raise ValueError(f"UnknownCommand: {name}")
 
 

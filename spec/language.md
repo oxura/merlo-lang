@@ -1,8 +1,8 @@
 # Merlo alpha language specification
 
-This specification covers the public `0.1.0-alpha.2` toolchain and the
-experimental Surface 0.2 frontend. It is not a promise for unimplemented
-features.
+This specification covers the active `0.1.0-alpha.3-dev` toolchain contract.
+The public packaged prerelease remains alpha.2. This document is not a promise
+for unimplemented features.
 
 ## Modules and declarations
 
@@ -92,7 +92,9 @@ formatting whitespace and source spans do not change that hash.
 
 ## Alpha boundary
 
-There is one semantic core and no future facets in alpha. The supported target is
-Linux x86-64 with C11 Clang/GCC bootstrap and synchronous I/O. Capturing
-closures, `async`, registry, macros, traits, cycle collection, and self-hosting
-are absent.
+There is one semantic core and no future facets in alpha. The supported target
+is Linux x86-64 with C11 Clang/GCC bootstrap and synchronous I/O. Restricted
+capturing closures are implemented. Language-level `async`, a hosted registry,
+macros, cycle collection, and full production self-hosting are absent. Staged
+self-host, machine, flow, parallel, GPU, and WASM modules remain preview or
+research surfaces and do not alter production language semantics.

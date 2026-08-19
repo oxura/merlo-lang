@@ -5,9 +5,12 @@ argument validation, result adaptation, effects, and ownership metadata.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 from typing import Mapping
+
+from merlo.type_parser import generic_parts
 
 
 @dataclass(frozen=True)
@@ -49,6 +52,14 @@ class InstanceMethodSignature:
     parameter_ownership: tuple[str, ...] = ()
     result_ownership: str = "value"
     receiver_ownership: str = "borrow"
+    effects: tuple[str, ...] = ()
+    static: bool = False
+    abi_lowering: str | None = None
+    representation_lowering: str | None = None
+    operation_family: str | None = None
+    contextual_numeric_result: bool = False
+    optional_parameters: int = 0
+    fallback_result_type: str | None = None
 
     def __post_init__(self) -> None:
         if not self.parameter_ownership:
@@ -65,10 +76,76 @@ class InstanceMethodSignature:
             raise ValueError(
                 f"invalid receiver ownership for {self.receiver_type}.{self.name}"
             )
+        if tuple(sorted(set(self.effects))) != self.effects:
+            raise ValueError(
+                f"effects must be canonical for {self.receiver_type}.{self.name}"
+            )
+        if self.static and self.receiver_ownership != "borrow":
+            raise ValueError(
+                f"static method cannot own a receiver: {self.receiver_type}.{self.name}"
+            )
+        if self.operation_family not in {
+            None,
+            "vec",
+            "map",
+            "box",
+            "bytes_text",
+            "resource",
+        }:
+            raise ValueError(
+                f"invalid operation family for {self.receiver_type}.{self.name}"
+            )
+        if self.contextual_numeric_result and self.result_type != "UInt64":
+            raise ValueError(
+                "contextual numeric result requires canonical UInt64 for "
+                f"{self.receiver_type}.{self.name}"
+            )
+        if not 0 <= self.optional_parameters <= len(self.parameters):
+            raise ValueError(
+                f"invalid optional parameter count for "
+                f"{self.receiver_type}.{self.name}"
+            )
+        if self.fallback_result_type is not None and not self.static:
+            raise ValueError(
+                "fallback result type is only valid for static methods: "
+                f"{self.receiver_type}.{self.name}"
+            )
 
     @property
     def arity(self) -> int:
         return len(self.parameters)
+
+    def result_for(self, expected: str | None) -> str:
+        if self.contextual_numeric_result and expected in {
+            "Byte",
+            "UInt64",
+            "Int64",
+            "Float32",
+            "Float64",
+        }:
+            return expected
+        return self.result_type
+
+    @property
+    def minimum_arity(self) -> int:
+        return self.arity - self.optional_parameters
+
+    def accepts_arity(self, actual: int) -> bool:
+        return self.minimum_arity <= actual <= self.arity
+
+    def parameters_for(self, actual: int) -> tuple[str, ...]:
+        if not self.accepts_arity(actual):
+            raise ValueError(
+                f"arity mismatch for {self.receiver_type}.{self.name}: {actual}"
+            )
+        return self.parameters[:actual]
+
+    def ownership_for(self, actual: int) -> tuple[str, ...]:
+        if not self.accepts_arity(actual):
+            raise ValueError(
+                f"arity mismatch for {self.receiver_type}.{self.name}: {actual}"
+            )
+        return self.parameter_ownership[:actual]
 
 
 @dataclass(frozen=True)
@@ -146,37 +223,451 @@ INTRINSIC_SIGNATURES: Mapping[str, IntrinsicSignature] = MappingProxyType(
 
 
 _INSTANCE_METHOD_ROWS = (
-    InstanceMethodSignature("Path", "to_text", (), "Text", result_ownership="owned"),
-    InstanceMethodSignature("Bytes", "to_text", (), "Text", result_ownership="owned"),
-    InstanceMethodSignature("Bytes", "view", (), "BytesView"),
-    InstanceMethodSignature("BytesView", "slice", ("UInt64", "UInt64"), "BytesView"),
-    InstanceMethodSignature("Text", "as_view", (), "TextView"),
-    InstanceMethodSignature("Text", "view", (), "TextView"),
-    InstanceMethodSignature("Text", "contains", ("Text",), "Bool", ("borrow",)),
     InstanceMethodSignature(
-        "Text", "contains_ascii_case_insensitive", ("Text",), "Bool", ("borrow",)
+        "Vec",
+        "new",
+        (),
+        "Vec[T]",
+        result_ownership="owned",
+        effects=("allocate", "may_fail"),
+        static=True,
+        representation_lowering="vec_new",
+        operation_family="vec",
+        fallback_result_type="Vec[Inferred]",
     ),
-    InstanceMethodSignature("Text", "starts_with", ("Text",), "Bool", ("borrow",)),
-    InstanceMethodSignature("Text", "ends_with", ("Text",), "Bool", ("borrow",)),
-    InstanceMethodSignature("Text", "slice_bytes", ("UInt64", "UInt64"), "TextView"),
-    InstanceMethodSignature("TextView", "parse_uint64", (), "Result[UInt64,UInt64]"),
-    InstanceMethodSignature("TextView", "is_ascii", (), "Bool"),
-    InstanceMethodSignature("TextView", "is_digits", (), "Bool"),
-    InstanceMethodSignature("TextView", "contains", ("Text",), "Bool", ("borrow",)),
     InstanceMethodSignature(
-        "TextView", "contains_ascii_case_insensitive", ("Text",), "Bool", ("borrow",)
+        "Map",
+        "new",
+        (),
+        "Map[K,V]",
+        result_ownership="owned",
+        effects=("allocate", "may_fail"),
+        static=True,
+        representation_lowering="map_new",
+        operation_family="map",
+        fallback_result_type="Map[Text,UInt64]",
     ),
-    InstanceMethodSignature("TextView", "slice_bytes", ("UInt64", "UInt64"), "TextView"),
-    InstanceMethodSignature("TextView", "starts_with", ("Text",), "Bool", ("borrow",)),
-    InstanceMethodSignature("TextView", "ends_with", ("Text",), "Bool", ("borrow",)),
-    InstanceMethodSignature("TextView", "to_text", (), "Text", result_ownership="owned"),
-    InstanceMethodSignature("TextBuilder", "append_text", ("Text",), "Unit", ("borrow",), receiver_ownership="borrow_mut"),
-    InstanceMethodSignature("TextBuilder", "append_byte", ("UInt64",), "Unit", receiver_ownership="borrow_mut"),
-    InstanceMethodSignature("TextBuilder", "append_scalar", ("UInt64",), "Unit", receiver_ownership="borrow_mut"),
-    InstanceMethodSignature("TextBuilder", "finish", (), "Text", result_ownership="owned", receiver_ownership="consuming"),
-    InstanceMethodSignature("TextBuilder", "append_uint64", ("UInt64",), "Unit", receiver_ownership="borrow_mut"),
-    InstanceMethodSignature("FileReader", "lines", (), "FileLines", receiver_ownership="borrow_mut"),
+    InstanceMethodSignature(
+        "Box",
+        "new",
+        ("T",),
+        "Box[T]",
+        parameter_ownership=("consuming",),
+        result_ownership="owned",
+        effects=("allocate", "may_fail"),
+        static=True,
+        representation_lowering="box_new",
+        operation_family="box",
+    ),
+    InstanceMethodSignature(
+        "Text",
+        "from_bytes",
+        ("BytesView", "UInt64", "UInt64"),
+        "Text",
+        ("borrow", "value", "value"),
+        result_ownership="owned",
+        effects=("allocate", "copy", "may_fail"),
+        static=True,
+        abi_lowering="merlo_text_from_bytes",
+    ),
+    InstanceMethodSignature(
+        "TextBuilder",
+        "new",
+        (),
+        "TextBuilder",
+        result_ownership="owned",
+        effects=("allocate", "may_fail"),
+        static=True,
+        abi_lowering="merlo_text_builder_new",
+    ),
+    InstanceMethodSignature(
+        "Path",
+        "to_text",
+        (),
+        "Text",
+        result_ownership="owned",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Bytes",
+        "to_text",
+        (),
+        "Text",
+        result_ownership="owned",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Bytes",
+        "len",
+        (),
+        "UInt64",
+        operation_family="bytes_text",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "Bytes",
+        "view",
+        (),
+        "BytesView",
+        result_ownership="borrow",
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "BytesView",
+        "len",
+        (),
+        "UInt64",
+        operation_family="bytes_text",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "BytesView",
+        "byte",
+        ("UInt64",),
+        "UInt64",
+        effects=("bounds_check",),
+        operation_family="bytes_text",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "BytesView",
+        "slice",
+        ("UInt64", "UInt64"),
+        "BytesView",
+        result_ownership="borrow",
+        effects=("bounds_check",),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text",
+        "clone",
+        (),
+        "Text",
+        result_ownership="owned",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text",
+        "len",
+        (),
+        "UInt64",
+        operation_family="bytes_text",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "Text",
+        "byte",
+        ("UInt64",),
+        "UInt64",
+        effects=("bounds_check",),
+        operation_family="bytes_text",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "Text",
+        "as_view",
+        (),
+        "TextView",
+        result_ownership="borrow",
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text",
+        "view",
+        (),
+        "TextView",
+        result_ownership="borrow",
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text",
+        "contains",
+        ("Text",),
+        "Bool",
+        parameter_ownership=("borrow",),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text",
+        "contains_ascii_case_insensitive",
+        ("Text",),
+        "Bool",
+        parameter_ownership=("borrow",),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text", "starts_with", ("Text",), "Bool",
+        parameter_ownership=("borrow",), operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text", "ends_with", ("Text",), "Bool",
+        parameter_ownership=("borrow",), operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "Text", "slice_bytes", ("UInt64", "UInt64"), "TextView",
+        result_ownership="borrow", effects=("bounds_check",),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "parse_uint64", (), "Result[UInt64,UInt64]",
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "is_ascii", (), "Bool", operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "is_digits", (), "Bool", operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "len", (), "UInt64", operation_family="bytes_text",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "TextView", "byte", ("UInt64",), "UInt64",
+        effects=("bounds_check",), operation_family="bytes_text",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "TextView", "contains", ("Text",), "Bool",
+        parameter_ownership=("borrow",), operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView",
+        "contains_ascii_case_insensitive",
+        ("Text",),
+        "Bool",
+        parameter_ownership=("borrow",),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "slice_bytes", ("UInt64", "UInt64"), "TextView",
+        result_ownership="borrow", effects=("bounds_check",),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "starts_with", ("Text",), "Bool",
+        parameter_ownership=("borrow",), operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "ends_with", ("Text",), "Bool",
+        parameter_ownership=("borrow",), operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextView", "to_text", (), "Text", result_ownership="owned",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextBuilder", "append_text", ("Text",), "Unit",
+        parameter_ownership=("borrow",), receiver_ownership="borrow_mut",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextBuilder", "append_byte", ("UInt64",), "Unit",
+        receiver_ownership="borrow_mut", effects=("allocate", "may_fail"),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextBuilder", "append_scalar", ("UInt64",), "Unit",
+        receiver_ownership="borrow_mut", effects=("allocate", "may_fail"),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextBuilder", "finish", (), "Text", result_ownership="owned",
+        receiver_ownership="consuming", operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "TextBuilder", "append_uint64", ("UInt64",), "Unit",
+        receiver_ownership="borrow_mut", effects=("allocate", "may_fail"),
+        operation_family="bytes_text",
+    ),
+    InstanceMethodSignature(
+        "FileReader",
+        "lines",
+        (),
+        "FileLines",
+        result_ownership="borrow",
+        receiver_ownership="borrow_mut",
+        effects=("borrow",),
+        representation_lowering="file_lines",
+        operation_family="resource",
+    ),
     InstanceMethodSignature("FileLines", "count_text", (), "Text", result_ownership="owned", receiver_ownership="borrow_mut"),
+    InstanceMethodSignature(
+        "Option[T]",
+        "is_none",
+        (),
+        "Bool",
+        representation_lowering="option_is_none",
+    ),
+    InstanceMethodSignature(
+        "Option[T]",
+        "is_some",
+        (),
+        "Bool",
+        representation_lowering="option_is_some",
+    ),
+    InstanceMethodSignature(
+        "Option[T]",
+        "unwrap",
+        (),
+        "T",
+        result_ownership="payload_clone",
+        effects=("allocate", "copy", "may_fail"),
+        representation_lowering="option_unwrap_clone",
+    ),
+    InstanceMethodSignature(
+        "Result[T,E]",
+        "is_ok",
+        (),
+        "Bool",
+        representation_lowering="result_is_ok",
+    ),
+    InstanceMethodSignature(
+        "Result[T,E]",
+        "is_err",
+        (),
+        "Bool",
+        representation_lowering="result_is_err",
+    ),
+    InstanceMethodSignature(
+        "Result[T,E]",
+        "unwrap",
+        (),
+        "T",
+        result_ownership="payload_clone",
+        effects=("allocate", "copy", "may_fail"),
+        representation_lowering="result_unwrap_clone",
+    ),
+    InstanceMethodSignature(
+        "Result[T,E]",
+        "unwrap_err",
+        (),
+        "E",
+        result_ownership="payload_clone",
+        effects=("allocate", "copy", "may_fail"),
+        representation_lowering="result_unwrap_err_clone",
+    ),
+    InstanceMethodSignature(
+        "Vec[T]",
+        "clone",
+        (),
+        "Vec[T]",
+        result_ownership="owned",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="vec",
+    ),
+    InstanceMethodSignature(
+        "Vec[T]",
+        "push",
+        ("T",),
+        "Unit",
+        parameter_ownership=("consuming",),
+        receiver_ownership="borrow_mut",
+        effects=("allocate", "may_fail"),
+        operation_family="vec",
+    ),
+    InstanceMethodSignature(
+        "Vec[T]",
+        "len",
+        (),
+        "UInt64",
+        operation_family="vec",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "Vec[T]",
+        "capacity",
+        (),
+        "UInt64",
+        operation_family="vec",
+        contextual_numeric_result=True,
+    ),
+    InstanceMethodSignature(
+        "Vec[T]",
+        "get",
+        ("UInt64",),
+        "T",
+        result_ownership="borrow",
+        effects=("bounds_check",),
+        operation_family="vec",
+    ),
+    InstanceMethodSignature(
+        "Vec[T]",
+        "get_mut",
+        ("UInt64",),
+        "T",
+        result_ownership="borrow_mut",
+        receiver_ownership="borrow_mut",
+        effects=("bounds_check",),
+        operation_family="vec",
+    ),
+    InstanceMethodSignature(
+        "Vec[T]",
+        "view",
+        (),
+        "Borrow[Vec[T]]",
+        result_ownership="borrow",
+        operation_family="vec",
+    ),
+    InstanceMethodSignature(
+        "Map[K,V]",
+        "insert",
+        ("K", "V"),
+        "Unit",
+        parameter_ownership=("borrow", "value"),
+        receiver_ownership="borrow_mut",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="map",
+    ),
+    InstanceMethodSignature(
+        "Map[K,V]",
+        "get",
+        ("K",),
+        "V",
+        parameter_ownership=("borrow",),
+        operation_family="map",
+    ),
+    InstanceMethodSignature(
+        "Map[K,UInt64]",
+        "increment",
+        ("K", "UInt64"),
+        "Unit",
+        parameter_ownership=("borrow", "value"),
+        receiver_ownership="borrow_mut",
+        effects=("allocate", "copy", "may_fail"),
+        operation_family="map",
+        optional_parameters=1,
+    ),
+    InstanceMethodSignature(
+        "Map[K,V]",
+        "entries",
+        (),
+        "Borrow[Map[K,V]]",
+        result_ownership="borrow",
+        operation_family="map",
+    ),
+    InstanceMethodSignature(
+        "Box[T]",
+        "get",
+        (),
+        "T",
+        result_ownership="borrow",
+        operation_family="box",
+    ),
+    InstanceMethodSignature(
+        "Box[T]",
+        "get_mut",
+        (),
+        "T",
+        result_ownership="borrow_mut",
+        receiver_ownership="borrow_mut",
+        operation_family="box",
+    ),
 )
 INSTANCE_METHOD_SIGNATURES: Mapping[
     tuple[str, str], InstanceMethodSignature
@@ -284,10 +775,197 @@ class BuiltinContractGraph:
         receiver_type: str,
         name: str,
     ) -> InstanceMethodSignature | None:
-        return self.methods.get((receiver_type, name))
+        exact = self.methods.get((receiver_type, name))
+        if exact is not None:
+            return exact
+        for (pattern, method_name), signature in self.methods.items():
+            if method_name != name or "[" not in pattern:
+                continue
+            constructor = pattern.partition("[")[0]
+            pattern_parts = generic_parts(pattern, constructor)
+            actual_parts = generic_parts(
+                receiver_type,
+                constructor,
+                arity=len(pattern_parts) if pattern_parts is not None else None,
+            )
+            if pattern_parts is None or actual_parts is None:
+                continue
+            substitutions: dict[str, str] = {}
+            matched = True
+            for pattern_part, actual_part in zip(
+                pattern_parts,
+                actual_parts,
+                strict=True,
+            ):
+                if re.fullmatch(r"[A-Z]", pattern_part):
+                    substitutions[pattern_part] = actual_part
+                elif pattern_part != actual_part:
+                    matched = False
+                    break
+            if not matched:
+                continue
+
+            def instantiate(type_name: str) -> str:
+                result = type_name
+                for variable, concrete in substitutions.items():
+                    result = re.sub(
+                        rf"\b{re.escape(variable)}\b",
+                        concrete,
+                        result,
+                    )
+                return result
+
+            return replace(
+                signature,
+                receiver_type=receiver_type,
+                parameters=tuple(
+                    instantiate(parameter)
+                    for parameter in signature.parameters
+                ),
+                result_type=instantiate(signature.result_type),
+            )
+        return None
+
+    def static_method(
+        self,
+        receiver_type: str,
+        name: str,
+    ) -> InstanceMethodSignature | None:
+        signature = self.method(receiver_type, name)
+        return signature if signature is not None and signature.static else None
+
+    @staticmethod
+    def _bind_type_pattern(
+        pattern: str,
+        actual: str | None,
+        substitutions: dict[str, str],
+    ) -> bool:
+        if actual is None or actual == "Inferred":
+            return True
+        if (actual, pattern) in {
+            ("Bytes", "BytesView"),
+            ("Text", "TextView"),
+        }:
+            return True
+        if re.fullmatch(r"[A-Z]", pattern):
+            previous = substitutions.get(pattern)
+            if previous is not None and previous != actual:
+                return False
+            substitutions[pattern] = actual
+            return True
+        constructor, separator, _rest = pattern.partition("[")
+        if not separator:
+            return pattern == actual
+        pattern_parts = generic_parts(pattern, constructor)
+        actual_parts = generic_parts(
+            actual,
+            constructor,
+            arity=len(pattern_parts) if pattern_parts is not None else None,
+        )
+        if pattern_parts is None or actual_parts is None:
+            return False
+        return all(
+            BuiltinContractGraph._bind_type_pattern(
+                pattern_part,
+                actual_part,
+                substitutions,
+            )
+            for pattern_part, actual_part in zip(
+                pattern_parts,
+                actual_parts,
+                strict=True,
+            )
+        )
+
+    @staticmethod
+    def _instantiate_type_pattern(
+        pattern: str,
+        substitutions: Mapping[str, str],
+    ) -> str:
+        result = pattern
+        for variable, concrete in substitutions.items():
+            result = re.sub(
+                rf"\b{re.escape(variable)}\b",
+                concrete,
+                result,
+            )
+        return result
+
+    def resolve_static_method(
+        self,
+        receiver_type: str,
+        name: str,
+        argument_types: tuple[str | None, ...],
+        expected: str | None = None,
+    ) -> InstanceMethodSignature | None:
+        """Instantiate one static contract from arguments and result context.
+
+        A missing concrete substitution is accepted only when the contract
+        declares a deterministic fallback. This keeps `Map.new()` backwards
+        compatible, permits deferred `Vec.new()` inference, and leaves an
+        untyped `Box.new()` payload explicitly ambiguous.
+        """
+        signature = self.static_method(receiver_type, name)
+        if signature is None:
+            return None
+        if not signature.accepts_arity(len(argument_types)):
+            raise ValueError(
+                f"arity mismatch for {receiver_type}.{name}: "
+                f"{len(argument_types)}"
+            )
+        substitutions: dict[str, str] = {}
+        if expected is not None and not self._bind_type_pattern(
+            signature.result_type,
+            expected,
+            substitutions,
+        ):
+            raise ValueError(
+                f"result type mismatch for {receiver_type}.{name}: {expected}"
+            )
+        for parameter, actual in zip(
+            signature.parameters_for(len(argument_types)),
+            argument_types,
+            strict=True,
+        ):
+            if not self._bind_type_pattern(parameter, actual, substitutions):
+                raise ValueError(
+                    f"argument type mismatch for {receiver_type}.{name}: "
+                    f"{actual} does not match {parameter}"
+                )
+        parameters = tuple(
+            self._instantiate_type_pattern(parameter, substitutions)
+            for parameter in signature.parameters
+        )
+        result_type = self._instantiate_type_pattern(
+            signature.result_type,
+            substitutions,
+        )
+        if re.search(r"\b[A-Z]\b", result_type):
+            if signature.fallback_result_type is None:
+                return None
+            result_type = signature.fallback_result_type
+        return replace(
+            signature,
+            parameters=parameters,
+            result_type=result_type,
+        )
+
+    def has_representation_method(self, name: str) -> bool:
+        return any(
+            method_name == name
+            and signature.representation_lowering is not None
+            for (_receiver, method_name), signature in self.methods.items()
+        )
 
     def abi_lowering(self, symbol: str) -> str | None:
-        return self.abi_lowerings.get(symbol)
+        lowering = self.abi_lowerings.get(symbol)
+        if lowering is not None:
+            return lowering
+        receiver, separator, method = symbol.partition(".")
+        if not separator:
+            return None
+        signature = self.methods.get((receiver, method))
+        return signature.abi_lowering if signature is not None else None
 
 
 CONTRACT_GRAPH = BuiltinContractGraph(

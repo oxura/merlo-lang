@@ -3,9 +3,13 @@
 ## Unreleased
 
 - Starts the `0.1.0-alpha.3-dev` compatibility line with language contract
-  `0.3`, frontend `7`, canonical `5`, HIR `5`, Obligation IR `1`, RIR/MIR `2`,
-  runtime ABI `2`, and SemanticWorld `5`. Alpha.2 lockfiles must be regenerated;
+  `0.3`, frontend `8`, canonical `6`, HIR `6`, Obligation IR `1`, RIR/MIR `2`,
+  runtime ABI `2`, and SemanticWorld `14`. Alpha.2 lockfiles must be regenerated;
   see the migration guide.
+- Replaces the stale roadmap with a checked maturity matrix and explicit Deep
+  Core, Native Scale, heterogeneous-compute, product-proof, general-purpose,
+  and self-host gates. Adds the normative Memory Model v1 safe-subset contract
+  and a proposed Concurrency Model v1 RFC without promoting experimental async.
 - Replaces owner/view pointer punning with real view descriptors and locks the
   generated C under GCC and Clang strict-aliasing optimization.
 - Defines byte and text escape semantics, rejecting Unicode escapes in bytes,
@@ -15,6 +19,28 @@
 - Adds the lossless full-file token/CST boundary and replaces the production
   CPython AST compatibility adapter with Merlo-owned native syntax nodes shared
   by HIR and the C backend.
+- Routes all production statement dispatch, binding/assignment decoding, and
+  expression/type/pattern spans through retained CST nodes, removing line-regex
+  statement grammar and the obsolete source/base-column fragment interface.
+- Routes nominal declaration dispatch and record/enum member decoding through
+  retained CST header tokens for records, enums, interfaces, and implementations.
+- Removes the transitional function-header regex: `fn`/`task`, inferred
+  functions, interface methods, and implementation methods now decode their
+  full typed signatures and body form from retained CST tokens and regions.
+- Moves top-level `flow` and `machine` headers to retained CST tokens, including
+  names, typed parameters, return boundaries, durability, and body delimiters.
+- Routes flow-step and parallel dispatch plus machine states, initial states,
+  invariants, and transitions through retained CST kinds and tokens, removing
+  their line-regex grammar and validating transition topology structurally.
+- Gives every flow policy a retained CST region and decodes timeout, retry,
+  idempotency, compensation, and associated expression/type evidence without
+  regex suffix splitting or reconstructed line fragments.
+- Removes the transitional source-scanning line builder. The temporary semantic
+  cursor is now projected from lossless CST root headers and comment tokens, so
+  indentation, multiline grouping, strings, and delimiters have one lexer owner.
+- Moves `Vec.new`, `Map.new`, `Box.new`, and `FileReader.lines` into the typed
+  ContractGraph, including generic result inference, constructor effects,
+  consuming Box payloads, resource borrows, and HIR/RIR lowering metadata.
 - Replaces `Vec`-specific transform lowering with one General collection
   protocol for `Vec`, fixed `Array`, `Slice`, borrowed vectors, bytes, and text;
   indexing, iteration, `where`, `map`, and `count` now share typed HIR and
@@ -77,12 +103,93 @@
 - Adds canonical ChangeIR-bound semantic impact reports covering direct and
   transitive symbols, reference/call/dependency edges, interfaces, files, and
   tests before a change is applied.
+- Adds a verified cross-module `MoveSymbol` subset for private functions, with
+  structural CST edits, direct-import migration, isolated project compilation,
+  transactional apply, and digest-bound old/new SymbolId revision lineage.
 - Adds digest-bound patch evidence and preservation reports, keeping structural
   apply proof separate from contract, effect, capability, obligation, and
   verification preservation.
 - Routes ChangeIR application through durable source-snapshot transactions
   with atomic commit, exact rollback/replay, stale-state rejection, and
   content-addressed journals.
+- Adds deterministic offline typed-hole synthesis through bounded enumeration,
+  contract-guided symbolic search, and local package candidates. Preview is
+  read-only; explicit apply repeats isolated compilation and obligation checks,
+  binds evidence to exact source hashes, and rolls back on any mismatch.
+- Enables structural `refactor signature` for explicit function/task
+  signatures when the exact edit compiles with every existing body and caller
+  in an isolated project. Incompatible migrations remain read-only unsupported
+  plans, and apply revalidates the anchored CST edit against a fresh world.
+- Moves the static `Text.from_bytes` and `TextBuilder.new` contracts into the
+  immutable ContractGraph, including parameters, ownership, effects, static
+  dispatch, and ABI lowering. Surface elaboration, HIR, MIR allocation, and the
+  backend primitive manifest now consume that shared contract.
+- Adds generic ContractGraph receiver matching for the pure
+  `Option.is_none/is_some` and `Result.is_ok/is_err` predicates. Surface type
+  checking, typed HIR metadata, and native enum-tag lowering now consume the
+  same immutable contracts.
+- Centralizes `Option.unwrap`, `Result.unwrap`, and `Result.unwrap_err` with
+  borrow-and-clone payload ownership. Owning payloads are deep-cloned instead
+  of aliasing the enum storage, fixing a reproducible native double-free;
+  incorrect variants now trap before reading inactive C union members.
+- Moves the generic `Vec` clone/push/access/view, `Map` insert/get/entries, and
+  `Box` access contracts into ContractGraph. Surface arity and type checking,
+  HIR result ownership and effects, ownership consumption, and backend result
+  inference now read the same instantiated contracts while retaining the
+  existing checked native operation families.
+- Centralizes the supported `Bytes`, `BytesView`, `Text`, `TextView`,
+  `TextBuilder`, and `Path.to_text` instance contracts. Borrowed views and
+  slices, bounds checks, owned text copies, builder mutation, and allocation
+  effects now flow from ContractGraph into HIR metadata and function effects.
+  The existing context-directed numeric result behavior for length, capacity,
+  and byte access is explicit in the same contracts instead of hidden in the
+  Surface elaborator.
+- Centralizes `Map[K,UInt64].increment` with one optional amount parameter,
+  exact generic receiver constraints, mutable receiver ownership, and
+  allocation/copy/failure effects. One- and two-argument calls now share the
+  same contract; other map value types fail closed.
+- Replaces the flat declaration-only CST projection with a lossless hierarchy
+  of declarations, headers, blocks, statements, and conservative type and
+  expression regions. Recovery is represented by explicit error nodes, while
+  structural IDs survive trivia changes and unrelated sibling insertions.
+- Routes top-level Surface declaration boundaries and kind dispatch through
+  those CST anchors. The semantic parser now fails closed if its line cursor
+  and CST disagree, including for module-body line offsets; statement and
+  expression grammar migration remains incremental.
+- Requires every executable statement parsed through a Surface block to
+  consume the CST node at the same source line and with the same structural kind. Nested
+  control-flow bodies, `else` branches, `match` cases, transition bodies, and
+  module-body offsets fail closed on missing or inconsistent anchors.
+- Feeds executable statement expressions from their lossless CST token regions
+  into the Surface expression parser instead of lexing those fragments again.
+  Delimited multiline expressions now remain one CST region and do not emit
+  indentation layout while `()`, `[]`, or `{}` are open.
+- Replaces delimiter depth counters with typed delimiter stacks and reports
+  mismatched, unexpected, and unclosed delimiters at retained token spans.
+  Statement expressions now rebase exact CST offsets directly, removing the
+  repeated-text `source.find()` reconstruction path.
+- Retains inline function-body expressions and return-type regions under
+  declaration headers. Inline and indented expression-bodied functions now
+  consume their CST expression regions and fail closed when an anchor is absent.
+- Adds structural parameter nodes with retained per-parameter type regions.
+  Function parameter and return types now come from validated CST offsets;
+  missing or inconsistent regions fail with `CSTTypeMismatch`.
+- Adds retained generic-parameter nodes under function headers. Generic names,
+  interface constraints, and exact spans now come from the same CST token
+  stream; the old function-signature `source.find()` path has been removed.
+- Routes record fields, enum payloads, local annotations, and annotated
+  bindings through retained CST type regions. Missing or extra regions fail
+  closed instead of falling back to line-fragment type parsing.
+- Routes flow, machine, state, and interface method signatures through retained
+  parameter and return-type nodes, including interface methods without an
+  explicit `fn`. The transitional string-based `_parameters()` parser is gone.
+- Routes record and machine invariant expressions through retained CST tokens
+  and retains the target type of `impl Interface for Type` as a validated type
+  region. These paths no longer re-lex or normalize line fragments directly.
+- Gives flow step values and `idempotent by` policies separate retained CST
+  expression regions. Flow parsing now consumes exact offsets, removes the last
+  production `source.find()` reconstruction, and rejects policy-only regions in
+  ordinary assignments.
 
 - Replaces production module and expression text rewrites with a typed Surface
   AST, structural module binding, and a retained Surface-to-HIR handoff.

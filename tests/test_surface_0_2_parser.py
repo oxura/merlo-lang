@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import ast
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 
 import pytest
 
+import merlo.surface_parser as surface_parser_module
 from merlo.canonical_ast import CanonicalFunction, CanonicalProgram, CanonicalReturn
+from merlo.frontend.file_syntax import parse_file_cst
 from merlo.surface_ast import (
     SourceSpan,
+    SurfaceAssignment,
     SurfaceBinary,
+    SurfaceBinding,
     SurfaceFunction,
     SurfaceImplicitReceiver,
     SurfaceName,
@@ -45,6 +49,413 @@ def test_parser_accepts_inferred_functions_with_exact_spans(
     assert function.span == SourceSpan(
         "sample.mlo", 1, 1, len(source.splitlines()), len(source.splitlines()[-1]) + 1
     )
+
+
+def test_statement_bindings_and_complex_assignments_decode_from_cst_tokens() -> None:
+    program = parse_surface(
+        "fn update(values: Vec[UInt64], index: UInt64) -> UInt64:\n"
+        "    let amount: UInt64 = (\n"
+        "        values[index] + 1\n"
+        "    )\n"
+        "    values[index] += amount\n"
+        "    return values[index]\n",
+        path="cst-statements.mlo",
+    )
+    function = program.declarations[0]
+    assert isinstance(function, SurfaceFunction)
+    binding, assignment, _returned = function.body
+    assert isinstance(binding, SurfaceBinding)
+    assert binding.name == "amount"
+    assert binding.type_name == "UInt64"
+    assert isinstance(assignment, SurfaceAssignment)
+    assert assignment.operator == "+="
+
+
+def test_surface_declarations_require_and_dispatch_through_cst_anchors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert not hasattr(surface_parser_module, "_lines")
+    source = "value() = 1\n"
+    cst = parse_file_cst(source, path="anchored.mlo")
+    without_anchor = replace(cst, declarations=())
+    monkeypatch.setattr(
+        surface_parser_module,
+        "parse_file_cst",
+        lambda _source, *, path: without_anchor,
+    )
+    with pytest.raises(SurfaceSyntaxError, match="CSTDeclarationMismatch"):
+        parse_surface(source, path="anchored.mlo")
+
+    wrong_kind = replace(cst.declarations[0], kind="enum")
+    wrong_dispatch = replace(cst, declarations=(wrong_kind,))
+    monkeypatch.setattr(
+        surface_parser_module,
+        "parse_file_cst",
+        lambda _source, *, path: wrong_dispatch,
+    )
+    with pytest.raises(SurfaceSyntaxError, match="CSTDeclarationMismatch"):
+        parse_surface(source, path="anchored.mlo")
+
+
+def test_cst_anchor_lines_compose_with_module_body_offsets() -> None:
+    program = parse_surface(
+        "value():\n"
+        "    return 1\n",
+        path="offset.mlo",
+        line_offset=9,
+    )
+
+    assert program.declarations[0].span.start_line == 10
+
+
+def test_surface_statement_blocks_fail_closed_on_cst_disagreement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = "value():\n    return 1\n"
+    cst = parse_file_cst(source, path="statement-anchor.mlo")
+    declaration = cst.declarations[0]
+    header, block = declaration.children
+    statement = block.children[0]
+
+    missing_block = replace(block, children=())
+    missing_declaration = replace(
+        declaration,
+        children=(header, missing_block),
+    )
+    missing = replace(cst, declarations=(missing_declaration,))
+    monkeypatch.setattr(
+        surface_parser_module,
+        "parse_file_cst",
+        lambda _source, *, path: missing,
+    )
+    with pytest.raises(SurfaceSyntaxError, match="CSTStatementMismatch"):
+        parse_surface(source, path="statement-anchor.mlo")
+
+    wrong_statement = replace(statement, kind="expression_statement")
+    wrong_block = replace(block, children=(wrong_statement,))
+    wrong_declaration = replace(
+        declaration,
+        children=(header, wrong_block),
+    )
+    wrong = replace(cst, declarations=(wrong_declaration,))
+    monkeypatch.setattr(
+        surface_parser_module,
+        "parse_file_cst",
+        lambda _source, *, path: wrong,
+    )
+    with pytest.raises(SurfaceSyntaxError, match="CSTStatementMismatch"):
+        parse_surface(source, path="statement-anchor.mlo")
+
+
+def test_surface_statement_expressions_consume_cst_tokens(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = "value():\n    return 1 + 2\n"
+
+    monkeypatch.setattr(
+        surface_parser_module,
+        "lex_expression",
+        lambda _source: (_ for _ in ()).throw(AssertionError("re-lexed")),
+    )
+
+    program = parse_surface(source, path="expression-region.mlo")
+    assert program.declarations[0].body[0].expression is not None
+
+
+def test_surface_declaration_expressions_consume_cst_tokens(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = (
+        "increment(value: UInt64) -> UInt64 = value + 1\n"
+        "identity(value) =\n"
+        "    value\n"
+    )
+
+    monkeypatch.setattr(
+        surface_parser_module,
+        "lex_expression",
+        lambda _source: (_ for _ in ()).throw(AssertionError("re-lexed")),
+    )
+
+    program = parse_surface(source, path="declaration-expression.mlo")
+    assert [declaration.body_kind for declaration in program.declarations] == [
+        "expression",
+        "expression",
+    ]
+
+
+def test_surface_function_signatures_consume_cst_type_regions() -> None:
+    assert not hasattr(surface_parser_module._Parser, "_parameters")
+
+    function = parse_surface(
+        "fn choose(left: UInt64, right: Map<Text, UInt64>) -> UInt64 = left\n",
+        path="function-types.mlo",
+    ).declarations[0]
+
+    assert [parameter.type_name for parameter in function.parameters] == [
+        "UInt64",
+        "Map[Text,UInt64]",
+    ]
+    assert function.return_type == "UInt64"
+
+
+def test_surface_generic_parameters_consume_cst_regions() -> None:
+    assert not hasattr(surface_parser_module._Parser, "_type_parameters")
+
+    function = parse_surface(
+        "fn choose[T: Comparable + Display, U](left: T, right: U) -> T = left\n",
+        path="generic-types.mlo",
+    ).declarations[0]
+
+    assert [(item.name, item.constraints) for item in function.type_parameters] == [
+        ("T", ("Comparable", "Display")),
+        ("U", ()),
+    ]
+
+
+def test_surface_record_enum_and_local_types_consume_cst_regions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, bool]] = []
+    original = surface_parser_module._Parser._cst_type_region
+
+    def recorded(parser, owner, line, *, expected, ordinal=0):
+        calls.append((owner.kind, expected))
+        return original(
+            parser,
+            owner,
+            line,
+            expected=expected,
+            ordinal=ordinal,
+        )
+
+    monkeypatch.setattr(
+        surface_parser_module._Parser,
+        "_cst_type_region",
+        recorded,
+    )
+    program = parse_surface(
+        "record User:\n"
+        "    state: Text\n"
+        "enum Choice:\n"
+        "    Some: Text\n"
+        "    None\n"
+        "fn main():\n"
+        "    value: Text\n"
+        "    let count: UInt64 = 1\n"
+        "    return count\n",
+        path="retained-types.mlo",
+    )
+
+    record, enum, function = program.declarations
+    assert record.fields[0].type_name == "Text"
+    assert [variant.type_name for variant in enum.variants] == ["Text", None]
+    assert function.body[0].type_name == "Text"
+    assert function.body[1].type_name == "UInt64"
+    assert calls == [
+        ("field", True),
+        ("field", True),
+        ("expression_statement", False),
+        ("field", True),
+        ("let", True),
+    ]
+
+
+def test_surface_local_annotation_fails_closed_without_cst_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = "fn main():\n    let count: UInt64 = 1\n    return count\n"
+    cst = parse_file_cst(source, path="missing-local-type.mlo")
+    declaration = cst.declarations[0]
+    header, block = declaration.children
+    binding = block.children[0]
+    binding_header = binding.children[0]
+    without_type = replace(
+        binding_header,
+        children=tuple(
+            child for child in binding_header.children if child.kind != "type"
+        ),
+    )
+    changed_binding = replace(binding, children=(without_type,))
+    changed_block = replace(
+        block,
+        children=(changed_binding,) + block.children[1:],
+    )
+    changed_declaration = replace(declaration, children=(header, changed_block))
+    changed = replace(cst, declarations=(changed_declaration,))
+    monkeypatch.setattr(
+        surface_parser_module,
+        "parse_file_cst",
+        lambda _source, *, path: changed,
+    )
+
+    with pytest.raises(SurfaceSyntaxError, match="CSTTypeMismatch"):
+        parse_surface(source, path="missing-local-type.mlo")
+
+
+def test_surface_invariants_and_impl_target_consume_cst_regions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        surface_parser_module,
+        "lex_expression",
+        lambda _source: (_ for _ in ()).throw(AssertionError("re-lexed")),
+    )
+    program = parse_surface(
+        "record Positive:\n"
+        "    value: UInt64\n"
+        "    invariant value > 0\n"
+        "machine Job(id: UInt64):\n"
+        "    state Idle\n"
+        "    initial Idle\n"
+        "    invariant id > 0\n"
+        "interface Sized:\n"
+        "    size(value: Self) -> UInt64\n"
+        "impl Sized for Map<Text, UInt64>:\n"
+        "    size(value: Map<Text, UInt64>) -> UInt64 = 0\n",
+        path="invariant-impl.mlo",
+    )
+
+    record, machine, _interface, implementation = program.declarations
+    assert record.invariants[0].condition is not None
+    assert machine.invariant is not None
+    assert implementation.type_name == "Map[Text,UInt64]"
+
+
+def test_flow_policy_regions_are_rejected_in_ordinary_bindings() -> None:
+    with pytest.raises(SurfaceSyntaxError, match="CSTExpressionMismatch"):
+        parse_surface(
+            "fn main():\n"
+            "    value = read() idempotent by value\n"
+            "    return value\n",
+            path="not-a-flow.mlo",
+        )
+
+
+def test_surface_inline_declaration_fails_closed_without_cst_expression(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = "value() = repeated + repeated\n"
+    cst = parse_file_cst(source, path="declaration-expression.mlo")
+    declaration = cst.declarations[0]
+    header = declaration.children[0]
+    without_expression = replace(
+        header,
+        children=tuple(
+            child for child in header.children if child.kind != "expression"
+        ),
+    )
+    missing_declaration = replace(
+        declaration,
+        children=(without_expression,) + declaration.children[1:],
+    )
+    missing = replace(cst, declarations=(missing_declaration,))
+    monkeypatch.setattr(
+        surface_parser_module,
+        "parse_file_cst",
+        lambda _source, *, path: missing,
+    )
+
+    with pytest.raises(SurfaceSyntaxError, match="CSTExpressionMismatch"):
+        parse_surface(source, path="declaration-expression.mlo")
+
+
+def test_surface_statement_expressions_fail_closed_on_cst_disagreement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = "value():\n    return 1 + 2\n"
+    cst = parse_file_cst(source, path="expression-region.mlo")
+    declaration = cst.declarations[0]
+    declaration_header, block = declaration.children
+    statement = block.children[0]
+    statement_header = statement.children[0]
+    missing_expression_header = replace(statement_header, children=())
+    missing_statement = replace(
+        statement,
+        children=(missing_expression_header,),
+    )
+    missing_block = replace(block, children=(missing_statement,))
+    missing_declaration = replace(
+        declaration,
+        children=(declaration_header, missing_block),
+    )
+    missing = replace(cst, declarations=(missing_declaration,))
+    monkeypatch.setattr(
+        surface_parser_module,
+        "parse_file_cst",
+        lambda _source, *, path: missing,
+    )
+
+    with pytest.raises(SurfaceSyntaxError, match="CSTExpressionMismatch"):
+        parse_surface(source, path="expression-region.mlo")
+
+
+def test_surface_statement_expression_rejects_forged_cst_offsets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = "value():\n    return repeated + repeated\n"
+    cst = parse_file_cst(source, path="forged-offset.mlo")
+    declaration = cst.declarations[0]
+    declaration_header, block = declaration.children
+    statement = block.children[0]
+    statement_header = statement.children[0]
+    expression = statement_header.children[0]
+    forged_token = replace(
+        expression.tokens[0],
+        start=expression.tokens[0].start + 1,
+    )
+    forged_expression = replace(
+        expression,
+        tokens=(forged_token,) + expression.tokens[1:],
+    )
+    forged_statement_header = replace(
+        statement_header,
+        children=(forged_expression,),
+    )
+    forged_statement = replace(
+        statement,
+        children=(forged_statement_header,),
+    )
+    forged_block = replace(block, children=(forged_statement,))
+    forged_declaration = replace(
+        declaration,
+        children=(declaration_header, forged_block),
+    )
+    forged = replace(cst, declarations=(forged_declaration,))
+    monkeypatch.setattr(
+        surface_parser_module,
+        "parse_file_cst",
+        lambda _source, *, path: forged,
+    )
+
+    with pytest.raises(SurfaceSyntaxError, match="CSTExpressionMismatch"):
+        parse_surface(source, path="forged-offset.mlo")
+
+
+def test_surface_parser_accepts_repeated_tokens_comments_crlf_and_multiline() -> None:
+    program = parse_surface(
+        "value(repeated: UInt64) -> UInt64:\r\n"
+        "    return (\r\n"
+        "        repeated # retained trivia\r\n"
+        "        + repeated\r\n"
+        "    )\r\n",
+        path="adversarial.mlo",
+    )
+    expression = program.declarations[0].body[0].expression
+
+    assert isinstance(expression, SurfaceBinary)
+    assert expression.operator == "+"
+
+
+@pytest.mark.parametrize("fragment", ["([)]", "{[)}", ")", "(["])
+def test_surface_parser_rejects_malformed_delimiters_before_semantics(
+    fragment: str,
+) -> None:
+    with pytest.raises(
+        SurfaceSyntaxError,
+        match="Delimiter",
+    ):
+        parse_surface(f"value() = {fragment}\n", path="delimiters.mlo")
 
 
 def test_parser_recognizes_records_optional_types_and_tail_expressions() -> None:

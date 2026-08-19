@@ -122,6 +122,151 @@ def test_protocol_rejects_stale_and_unsupported_migrations_without_partial_write
     assert unsupported["edits"] == []
 
 
+def test_move_private_function_tracks_symbol_lineage_and_compiles(
+    tmp_path: Path,
+) -> None:
+    from merlo.compiler import compile_project
+    from merlo.alpha_protocol import AlphaProtocol
+    from merlo.refactor import ChangeIR, preview_move
+    from merlo.semantic_world import SemanticWorld
+
+    app = tmp_path / "app"
+    app.mkdir()
+    main = app / "main.mlo"
+    bridge = app / "bridge.mlo"
+    library = app / "lib.mlo"
+    main.write_text(
+        "module app.main\n"
+        "use app.bridge\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "fn helper(value: Text) -> Text:\n"
+        "    return value\n\n"
+        "export task main(path: Path) -> Result[Text, AppError]:\n"
+        "    uses console.write\n"
+        '    console.write(helper("moved"))\n'
+        '    return Ok(helper("ok"))\n',
+        encoding="utf-8",
+    )
+    bridge.write_text(
+        "module app.bridge\n"
+        "use app.lib\n\n"
+        "export fn bridge(value: UInt64) -> UInt64:\n"
+        "    return existing(value)\n",
+        encoding="utf-8",
+    )
+    library.write_text(
+        "module app.lib\n\n"
+        "export fn existing(value: UInt64) -> UInt64:\n"
+        "    return value\n",
+        encoding="utf-8",
+    )
+    world = SemanticWorld.build(
+        main,
+        require_interface_lock=False,
+    )
+    change = preview_move(
+        world,
+        "app.main.helper",
+        "app.lib",
+    )
+
+    assert change.status == "ready"
+    assert change.metadata["old_symbol_id"] == change.target.symbol_id
+    assert change.metadata["new_symbol_id"] != change.target.symbol_id
+    assert change.metadata["from_module"] == "app.main"
+    assert change.metadata["module"] == "app.lib"
+    assert {item.kind for item in change.edits} == {
+        "move_declaration",
+        "move_destination",
+        "move_import",
+    }
+    restored = ChangeIR.from_json(change.to_json(), world=world)
+    assert restored.to_dict() == change.to_dict()
+
+    result = AlphaProtocol(world).call(
+        "refactor.move",
+        {
+            "target": "app.main.helper",
+            "module": "app.lib",
+            "mode": "apply",
+        },
+    )
+    assert result["committed"] is True
+    assert result["lineage"] == {
+        "old_symbol_id": change.target.symbol_id,
+        "new_symbol_id": change.metadata["new_symbol_id"],
+    }
+    assert "fn helper" not in main.read_text(encoding="utf-8")
+    assert "use app.lib" in main.read_text(encoding="utf-8")
+    assert "export fn helper" in library.read_text(encoding="utf-8")
+    compilation = compile_project(main, require_interface_lock=False)
+    moved_world = SemanticWorld.build(
+        compilation,
+        require_interface_lock=False,
+    )
+    assert moved_world.resolve("app.lib.helper")["symbol_id"] == (
+        change.metadata["new_symbol_id"]
+    )
+
+
+def test_move_rejects_forged_lineage_and_unsafe_dependencies(
+    tmp_path: Path,
+) -> None:
+    from dataclasses import replace
+
+    from merlo.refactor import preview_move
+    from merlo.semantic_world import SemanticWorld, WorldError
+
+    app = tmp_path / "app"
+    app.mkdir()
+    main = app / "main.mlo"
+    library = app / "lib.mlo"
+    main.write_text(
+        "module app.main\n"
+        "use app.lib\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "fn local(value: Text) -> Text:\n"
+        "    return value\n\n"
+        "fn helper(value: Text) -> Text:\n"
+        "    return local(value)\n\n"
+        "export task main(path: Path) -> Result[Text, AppError]:\n"
+        "    uses console.write\n"
+        '    console.write(helper("moved"))\n'
+        '    return Ok("ok")\n',
+        encoding="utf-8",
+    )
+    library.write_text(
+        "module app.lib\n\n"
+        "export fn existing(value: UInt64) -> UInt64:\n"
+        "    return value\n",
+        encoding="utf-8",
+    )
+    world = SemanticWorld.build(main, require_interface_lock=False)
+    unsafe = preview_move(world, "app.main.helper", "app.lib")
+    assert unsafe.status == "unsupported"
+    assert "safe alpha subset" in unsafe.diagnostic.message
+
+    safe = preview_move(world, "app.main.local", "app.lib")
+    assert safe.status == "ready"
+    forged = replace(
+        safe,
+        metadata={
+            **dict(safe.metadata),
+            "new_symbol_id": "sym_forged",
+        },
+        digest="",
+    )
+    before = {
+        main: main.read_bytes(),
+        library: library.read_bytes(),
+    }
+    with pytest.raises(WorldError, match="ChangeIRMoveLineageMismatch"):
+        forged.apply()
+    assert {path: path.read_bytes() for path in before} == before
+
+
 def test_protocol_rename_uses_only_semantic_spans_for_nested_calls(tmp_path: Path) -> None:
     from merlo.alpha_protocol import AlphaProtocol
     from merlo.semantic_world import SemanticWorld
@@ -171,6 +316,138 @@ def test_protocol_rename_uses_only_semantic_spans_for_nested_calls(tmp_path: Pat
     assert "fn assist" in updated
     assert "assist(assist(1))" in updated
     assert "helper" not in updated
+
+
+def test_change_signature_is_structural_verified_and_transactional(
+    tmp_path: Path,
+) -> None:
+    from merlo.alpha_protocol import AlphaProtocol
+    from merlo.compiler import compile_project
+    from merlo.refactor import ChangeIR, preview_change_signature
+    from merlo.semantic_world import (
+        SemanticWorld,
+        UnsupportedMigration,
+        WorldError,
+    )
+    from merlo.transaction import load_transaction
+
+    source = tmp_path / "signature" / "main.mlo"
+    source.parent.mkdir(parents=True)
+    source.write_text(
+        "module signature\n\n"
+        "fn identity(value: UInt64) -> UInt64:\n"
+        "    value\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "export main(path: Path) -> Result[Text, AppError]:\n"
+        "    let answer = identity(7)\n"
+        "    console.write(\"signature\")\n"
+        "    Ok(\"signature\")\n",
+        encoding="utf-8",
+    )
+    world = SemanticWorld.build(source, require_interface_lock=False)
+    before = source.read_bytes()
+    change = preview_change_signature(
+        world,
+        "signature.identity",
+        "(value: Int64) -> Int64",
+    )
+    assert change.status == "ready"
+    assert change.edits[0].kind == "signature"
+    assert change.metadata["old_signature"] == (
+        "(value: UInt64) -> UInt64"
+    )
+    assert ChangeIR.from_json(
+        change.to_json(),
+        world=world,
+    ).to_json() == change.to_json()
+
+    spoofed = replace(
+        change,
+        edits=(
+            replace(
+                change.edits[0],
+                replacement="(value: Text) -> Text",
+            ),
+        ),
+        digest="",
+    )
+    with pytest.raises(WorldError, match="SemanticEditMismatch"):
+        spoofed.apply()
+    assert source.read_bytes() == before
+
+    forged = replace(
+        change,
+        metadata={
+            "old_signature": "(value: UInt64) -> UInt64",
+            "signature": "(value: Text) -> Text",
+        },
+        edits=(
+            replace(
+                change.edits[0],
+                replacement="(value: Text) -> Text",
+            ),
+        ),
+        digest="",
+    )
+    with pytest.raises(
+        UnsupportedMigration,
+        match="no longer type-checks",
+    ):
+        forged.apply()
+    assert source.read_bytes() == before
+
+    receipt = AlphaProtocol(world).call(
+        "refactor.signature.apply",
+        {
+            "target": "signature.identity",
+            "signature": "(value: Int64) -> Int64",
+        },
+    )
+    assert receipt["committed"] is True
+    assert "identity(value: Int64) -> Int64" in source.read_text(
+        encoding="utf-8"
+    )
+    compile_project(source, require_interface_lock=False)
+    transaction = load_transaction(
+        source.parent,
+        receipt["transaction"]["transaction_id"],
+    )
+    assert transaction.rollback().changed is True
+    assert source.read_bytes() == before
+
+
+def test_change_signature_rejects_incompatible_callers_without_writes(
+    tmp_path: Path,
+) -> None:
+    from merlo.refactor import preview_change_signature
+    from merlo.semantic_world import SemanticWorld
+
+    source = tmp_path / "signature" / "main.mlo"
+    source.parent.mkdir(parents=True)
+    source.write_text(
+        "module signature\n\n"
+        "fn identity(value: UInt64) -> UInt64:\n"
+        "    value\n\n"
+        "export enum AppError:\n"
+        "    Failed\n\n"
+        "export main(path: Path) -> Result[Text, AppError]:\n"
+        "    let answer = identity(7)\n"
+        "    console.write(\"signature\")\n"
+        "    Ok(\"signature\")\n",
+        encoding="utf-8",
+    )
+    world = SemanticWorld.build(source, require_interface_lock=False)
+    before = source.read_bytes()
+    change = preview_change_signature(
+        world,
+        "signature.identity",
+        "(value: Text) -> Text",
+    )
+    assert change.status == "unsupported"
+    assert change.edits == ()
+    assert "caller/body migration" in change.diagnostic.message
+    assert source.read_bytes() == before
 
 
 def test_change_ir_roundtrip_tamper_and_apply_status(

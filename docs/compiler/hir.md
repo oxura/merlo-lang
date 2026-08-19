@@ -17,11 +17,19 @@ tree is rejected; serialized projections are not compiler input.
 ## Outputs
 
 The function returns `StructuredHIRProgram`, contract
-`merlo.structured-typed-hir.v5`, schema version `5`. It contains source
+`merlo.structured-typed-hir.v8`, schema version `8`. It contains source
 text/digest, `HIRTypeDecl` values with typed record invariants,
 `HIRField`/`HIRVariant` values, `HIRFunction` records, typed parameters,
 function contracts, contextual `TypedHole` nodes, an entry function, and
-tree-shaped `HIRNode` bodies. `HIRNode.walk()` traverses contract conditions
+tree-shaped `HIRNode` bodies. It also contains the complete canonical Merlo
+native-syntax tree used by the C adapter and validated typed FFI declarations.
+Each function carries a versioned `merlo.borrow-summary.v2` contract. Its
+entries bind direct or contained returned borrows to formal parameter indices,
+source paths, result paths, borrow types, and ownership vocabulary; the
+summary is part of the function revision and therefore the HIR digest. A
+summary's semantic relation is independent of its bounded diagnostic witness;
+recursive SCCs use a deterministic shortest witness with a `<cycle>` marker.
+`HIRNode.walk()` traverses contract conditions
 and executable nodes for source-map projection.
 
 ## Invariants
@@ -87,8 +95,12 @@ lowering diagnostic.
 
 ## Trusted boundary
 
-The retained Surface tree, canonical program identity, and HIR spans/IDs form
-the semantic handoff to RIR. HIR carries ownership and effect facts for later
+The canonical program identity, digest-bound native syntax and FFI artifacts,
+and HIR spans/IDs form the semantic handoff to RIR and the production C
+backend. HIR JSON has a strict validated deserializer. A retained in-memory
+native module may witness construction consistency, but code generation always
+restores the serialized tree and rejects a mismatching witness. HIR carries
+ownership and effect facts for later
 checking but is not itself a complete borrow proof or physical-layout
 specification.
 

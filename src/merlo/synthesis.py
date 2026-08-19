@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, Mapping
 
@@ -460,6 +460,9 @@ def build_synthesis_candidate(
         if blocked and change.diagnostic is not None
         else None
     )
+    bound_provenance = dict(provenance)
+    if active.goal:
+        bound_provenance["request_goal"] = active.goal
     return SynthesisCandidate(
         producer=producer,
         producer_revision=producer_revision,
@@ -469,7 +472,7 @@ def build_synthesis_candidate(
         capsule_digest=capsule.digest,
         impact_digest=impact.digest,
         rank=rank,
-        provenance=provenance,
+        provenance=bound_provenance,
         status="blocked" if blocked else "proposed",
         diagnostic=diagnostic,
     )

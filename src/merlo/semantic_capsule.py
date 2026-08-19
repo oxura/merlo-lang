@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field as dataclass_field
 from types import MappingProxyType
 from typing import Any, Mapping, TYPE_CHECKING
 
@@ -195,7 +195,9 @@ class SemanticCapsule:
     holes: tuple[Mapping[str, Any], ...] = ()
     obligations: tuple[Mapping[str, Any], ...] = ()
     tests: tuple[str, ...] = ()
-    verification: Mapping[str, Any] = MappingProxyType({})
+    verification: Mapping[str, Any] = dataclass_field(
+        default_factory=lambda: MappingProxyType({})
+    )
     schema_version: int = SEMANTIC_CAPSULE_SCHEMA_VERSION
     contract: str = SEMANTIC_CAPSULE_CONTRACT
 
