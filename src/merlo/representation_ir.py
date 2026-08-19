@@ -19,8 +19,8 @@ from merlo.type_properties import TypePropertyResolver
 from merlo.borrow_summary import BorrowSummary
 
 
-REPRESENTATION_IR_SCHEMA_VERSION = 3
-REPRESENTATION_IR_CONTRACT = "merlo.representation-ir.v3"
+REPRESENTATION_IR_SCHEMA_VERSION = 4
+REPRESENTATION_IR_CONTRACT = "merlo.representation-ir.v4"
 MAX_U64 = (1 << 64) - 1
 
 def _type_leaf(type_name: str) -> str:
@@ -294,7 +294,17 @@ class RepresentationProgram:
 
     @property
     def digest(self) -> str:
-        return hashlib.sha256(self.to_json().encode()).hexdigest()
+        payload = self.to_dict()
+        for function in payload["functions"]:
+            for entry in function["borrow_summary"]["entries"]:
+                entry["witness_path"] = []
+        encoded = json.dumps(
+            payload,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        return hashlib.sha256(encoded.encode()).hexdigest()
 
     def descriptor(self, name: str) -> TypeDescriptor:
         return next(item for item in self.descriptors if item.name == name)

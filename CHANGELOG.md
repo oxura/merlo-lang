@@ -2,10 +2,10 @@
 
 ## Unreleased
 
-- Starts the `0.1.0-alpha.3-dev` compatibility line with language contract
-  `0.3`, frontend `8`, canonical `6`, HIR `6`, Obligation IR `1`, RIR/MIR `2`,
-  runtime ABI `2`, and SemanticWorld `14`. Alpha.2 lockfiles must be regenerated;
-  see the migration guide.
+- Continues the `0.1.0-alpha.3-dev` compatibility line with language contract
+  `0.3`, frontend `8`, canonical `6`, HIR `9`, Obligation IR `1`, RIR `4`,
+  MIR `2`, runtime ABI `2`, and SemanticWorld `17`. Earlier lockfiles must be
+  regenerated; see the migration guide.
 - Replaces the stale roadmap with a checked maturity matrix and explicit Deep
   Core, Native Scale, heterogeneous-compute, product-proof, general-purpose,
   and self-host gates. Adds the normative Memory Model v1 safe-subset contract
@@ -51,6 +51,12 @@
 - Locks recursive record and enum values through `Box`/`Vec` indirection,
   including mutually recursive native layouts and active-payload,
   initialized-element, and boxed-payload drop glue.
+- Replaces recursive returned-borrow call traces with the finite,
+  witness-independent `merlo.borrow-summary.v3` relation lattice. Structural
+  places, SCC-level recursive widening, iterative graph analysis, monotone
+  fail-closed convergence, and post-convergence bounded witnesses now preserve
+  semantic revisions under diagnostic-only changes while retaining temporary
+  owner rejection.
 - Defines complete core numeric behavior across Surface, typed HIR, and C:
   checked integer division, floor division, remainder, shifts, unary negation,
   literal ranges and casts, with explicit zero, shift, and overflow traps.

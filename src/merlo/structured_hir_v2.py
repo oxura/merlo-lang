@@ -39,8 +39,8 @@ from merlo.borrow_summary import (
 )
 
 
-STRUCTURED_HIR_SCHEMA_VERSION = 8
-STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v8"
+STRUCTURED_HIR_SCHEMA_VERSION = 9
+STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v9"
 _SCALAR_TYPES = frozenset(
     {
         "Bool",
@@ -748,7 +748,7 @@ class StructuredHIRProgram:
             raise ValueError("duplicate Structured HIR function")
         for function in self.functions:
             if any(
-                entry.source_parameter_index >= len(function.parameters)
+                entry.relation.source_parameter_index >= len(function.parameters)
                 for entry in function.borrow_summary.entries
             ):
                 raise ValueError(
@@ -781,7 +781,18 @@ class StructuredHIRProgram:
 
     @property
     def digest(self) -> str:
-        return hashlib.sha256(self.to_json().encode()).hexdigest()
+        payload = self.to_dict()
+        for function in payload["functions"]:
+            for entry in function["borrow_summary"]["entries"]:
+                entry["witness_path"] = []
+        encoded = json.dumps(
+            payload,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+            allow_nan=False,
+        )
+        return hashlib.sha256(encoded.encode()).hexdigest()
 
     def type_decl(self, name: str) -> HIRTypeDecl:
         return next(item for item in self.types if item.name == name)
@@ -1364,19 +1375,21 @@ class _OwnershipChecker:
             return ()
         provenances: list[_BorrowProvenance] = []
         for entry in summary.entries:
-            if entry.source_parameter_index >= len(node.args):
+            relation = entry.relation
+            parameter_index = relation.source_parameter_index
+            if parameter_index >= len(node.args):
                 self._borrow_summary_error(
                     "OpaqueBorrowSummary",
                     callee=callee_name,
-                    formal=f"parameter[{entry.source_parameter_index}]",
+                    formal=f"parameter[{parameter_index}]",
                     actual="<missing>",
                     result_type=result_type,
-                    borrow_type=entry.borrow_type,
+                    borrow_type=relation.borrow_type,
                     path=(callee_name, "arity"),
                 )
-            argument = node.args[entry.source_parameter_index]
-            formal = self.functions[callee_name].args.args[entry.source_parameter_index].arg
-            actual_name = self._root_name(argument)
+            argument = node.args[parameter_index]
+            formal = self.functions[callee_name].args.args[parameter_index].arg
+            actual_name = self._root_name(argument) or self._stable_borrow_root(argument)
             actual_type = self._expr_type(argument)
             if actual_name is None:
                 # A temporary owner has no stable place, regardless of which
@@ -1389,8 +1402,8 @@ class _OwnershipChecker:
                     formal=formal,
                     actual=ast.unparse(argument),
                     result_type=result_type,
-                    borrow_type=entry.borrow_type,
-                    path=(callee_name, formal, *entry.result_path),
+                    borrow_type=relation.borrow_type,
+                    path=(callee_name, formal, *relation.result_path.rendered()),
                 )
             tracked = state.borrows.get(actual_name)
             if tracked:
@@ -1398,12 +1411,12 @@ class _OwnershipChecker:
                     provenances.append(
                         _BorrowProvenance(
                             item.backing_owner,
-                            entry.borrow_type,
+                            relation.borrow_type,
                             (
                                 callee_name,
-                                f"formal[{entry.source_parameter_index}]={formal}",
+                                f"formal[{parameter_index}]={formal}",
                                 *entry.witness_path,
-                                *entry.result_path,
+                                *relation.result_path.rendered(),
                                 *item.escape_path,
                             ),
                         )
@@ -1413,12 +1426,12 @@ class _OwnershipChecker:
                 provenances.append(
                     _BorrowProvenance(
                         actual_name,
-                        entry.borrow_type,
+                        relation.borrow_type,
                         (
                             callee_name,
-                            f"formal[{entry.source_parameter_index}]={formal}",
+                            f"formal[{parameter_index}]={formal}",
                             *entry.witness_path,
-                            *entry.result_path,
+                            *relation.result_path.rendered(),
                             actual_name,
                         ),
                     )
@@ -1431,7 +1444,7 @@ class _OwnershipChecker:
                     formal=formal,
                     actual=actual_name,
                     result_type=result_type,
-                    borrow_type=entry.borrow_type,
+                    borrow_type=relation.borrow_type,
                     path=(callee_name, formal),
                 )
         if self._contains_borrow(result_type) and summary.entries and not provenances:
@@ -1685,6 +1698,16 @@ class _OwnershipChecker:
         while isinstance(node, (ast.Attribute, ast.Subscript)):
             node = node.value
         return node.id if isinstance(node, ast.Name) else None
+
+    @classmethod
+    def _stable_borrow_root(cls, node: ast.AST | None) -> str | None:
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in {"view", "as_view", "slice", "slice_bytes"}
+        ):
+            return cls._root_name(node.func.value)
+        return None
 
     @staticmethod
     def _borrow_source(node: ast.AST | None) -> ast.AST | None:

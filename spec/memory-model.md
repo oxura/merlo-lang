@@ -83,18 +83,24 @@ closure, storing it in a longer-lived owner, or moving/dropping the backing
 owner first is rejected. Diagnostics identify the container, contained borrow
 type, backing owner, and escape path.
 
-Interprocedural returns use the digest-bound `merlo.borrow-summary.v2`
-contract. A function summary records each direct or contained result origin as
+Interprocedural returns use `merlo.borrow-summary.v3`. Each semantic
+`BorrowRelation` records a direct or contained result origin as
 `(source_parameter_index, source_path, borrow_type, result_path, kind,
-ownership)`, plus a bounded diagnostic witness path for transitive diagnostics.
-The witness is not part of summary relation identity; recursive cycles use a
-special marker. The fixed point is a finite worklist over deterministic SCCs of
-the local call graph. A call substitutes the formal
-origin into the actual place even when the actual is an owning `Text` or
-`Bytes`; dropping or moving that actual while the returned view is live is
-invalid. An absent or opaque summary is not evidence of safety, and a borrow
-from a materialized temporary is rejected rather than assigned an invented
-lifetime.
+ownership)`. Source and result places contain only `Parameter`, `Field`,
+`Element`, `VariantPayload`, `Deref`, and one terminal SCC-level
+`RecursiveTail`. A separately serialized bounded witness supports transitive
+diagnostics but does not participate in relation equality, semantic revisions,
+or semantic artifact hashes.
+
+The relation fixed point is a monotone union worklist over iterative,
+deterministic SCC analysis of the local call graph. Removing an established
+relation fails closed. Witnesses are chosen only after semantic convergence. A
+call substitutes the formal origin into the actual place even when the actual
+is an owning `Text` or `Bytes`; dropping or moving that actual while the
+returned view is live is invalid. An absent or opaque summary is not evidence
+of safety. A stable borrowed expression retains its backing owner, while a
+borrow rooted in a materialized temporary is rejected rather than assigned an
+invented lifetime.
 
 The checker may shorten a borrow to its last semantic use. It may not use a
 native optimizer's accidental behavior as evidence that an invalid alias is

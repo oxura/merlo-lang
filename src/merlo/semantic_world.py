@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     )
 
 WORLD_SCHEMA_VERSION = VERSIONS.semantic_world
-WORLD_CONTRACT = "merlo.semantic-world.v16"
+WORLD_CONTRACT = "merlo.semantic-world.v17"
 
 
 class WorldError(ValueError):
@@ -43,6 +43,55 @@ def _json(value: Any) -> str:
 
 def _digest(value: Any) -> str:
     return hashlib.sha256(_json(value).encode("utf-8")).hexdigest()
+
+def _summary_without_witnesses(value: Any) -> Any:
+    if not isinstance(value, Mapping):
+        return value
+    result = dict(value)
+    entries = result.get("entries")
+    if isinstance(entries, list):
+        result["entries"] = [
+            (
+                {**entry, "witness_path": []}
+                if isinstance(entry, Mapping) and "witness_path" in entry
+                else entry
+            )
+            for entry in entries
+        ]
+    return result
+
+
+def _world_digest(value: Mapping[str, Any]) -> str:
+    semantic = dict(value)
+    symbols = semantic.get("symbols")
+    if isinstance(symbols, list):
+        semantic["symbols"] = [
+            (
+                {
+                    **item,
+                    "borrow_summary": _summary_without_witnesses(
+                        item.get("borrow_summary")
+                    ),
+                }
+                if isinstance(item, Mapping) and "borrow_summary" in item
+                else item
+            )
+            for item in symbols
+        ]
+    summaries = semantic.get("borrow_summaries")
+    if isinstance(summaries, list):
+        semantic["borrow_summaries"] = [
+            (
+                {
+                    **item,
+                    "summary": _summary_without_witnesses(item.get("summary")),
+                }
+                if isinstance(item, Mapping) and "summary" in item
+                else item
+            )
+            for item in summaries
+        ]
+    return _digest(semantic)
 
 
 def _span_dict(span: Any, path: str) -> dict[str, Any]:
@@ -504,7 +553,7 @@ class SemanticWorld:
             ),
             "tests": tests,
         }
-        payload["world_digest"] = _digest(payload)
+        payload["world_digest"] = _world_digest(payload)
         return cls(root, world_path, payload)
 
     @classmethod
@@ -516,7 +565,7 @@ class SemanticWorld:
         expected = payload.get("world_digest")
         actual_payload = dict(payload)
         actual_payload.pop("world_digest", None)
-        if expected != _digest(actual_payload):
+        if expected != _world_digest(actual_payload):
             raise WorldError("SemanticWorldDigestMismatch")
         return cls(Path(payload["root"]), path, payload)
 
