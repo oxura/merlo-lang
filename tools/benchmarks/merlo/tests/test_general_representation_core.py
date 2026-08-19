@@ -155,7 +155,10 @@ def test_layout_validation_rejects_inline_cycles_and_allows_owning_indirection()
     rejected = validate_recursive_layouts(invalid.types)
     assert rejected.accepted is False
     assert rejected.minimal_cycle_path == ("Bad", "Bad")
-    assert rejected.diagnostic == "InlineRecursiveLayout: Bad -> Bad; add Box or Vec indirection"
+    assert rejected.diagnostic == (
+        "InlineRecursiveLayout: Bad --field[next]--> Bad; "
+        "add Box or Vec indirection"
+    )
 
     valid = compile_structured_hir(
         "enum Tree:\n    Leaf: UInt64\n    Branch: Vec[Tree]\n"

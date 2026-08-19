@@ -1041,7 +1041,15 @@ def _function_callback_type(function: ast.FunctionDef) -> str:
 
 
 def _validate_map_specializations(module: ast.Module, path: str) -> None:
-    def validate(annotation: ast.AST) -> None:
+    layout_annotations = {
+        id(statement.annotation)
+        for declaration in module.body
+        if isinstance(declaration, ast.ClassDef)
+        for statement in declaration.body
+        if isinstance(statement, ast.AnnAssign) and statement.annotation is not None
+    }
+
+    def validate(annotation: ast.AST, *, allow_layout_map: bool = False) -> None:
         if isinstance(annotation, ast.Subscript):
             if isinstance(annotation.value, ast.Name) and annotation.value.id == "Map":
                 specialization = _type_name(annotation)
@@ -1049,17 +1057,20 @@ def _validate_map_specializations(module: ast.Module, path: str) -> None:
                 if (
                     map_types is None
                     or map_types[0] != "Text"
-                    or map_types[1] not in _SCALAR_TYPES
+                    or (
+                        not allow_layout_map
+                        and map_types[1] not in _SCALAR_TYPES
+                    )
                 ):
                     raise StructuredHIRCompileError(
                         f"{path}:{getattr(annotation, 'lineno', 1)}: unsupported Map "
                         f"specialization {specialization}; alpha Map requires "
-                        "Text keys and scalar values"
+                        "Text keys and scalar values outside nominal layout fields"
                     )
-                validate(annotation.slice)
+                validate(annotation.slice, allow_layout_map=allow_layout_map)
                 return
             for child in ast.iter_child_nodes(annotation):
-                validate(child)
+                validate(child, allow_layout_map=allow_layout_map)
             return
         if isinstance(annotation, ast.Name):
             if annotation.id == "Any":
@@ -1069,11 +1080,11 @@ def _validate_map_specializations(module: ast.Module, path: str) -> None:
             if annotation.id == "Map":
                 raise StructuredHIRCompileError(
                     f"{path}:{getattr(annotation, 'lineno', 1)}: unsupported Map; "
-                    "alpha Map requires Text keys and scalar values"
+                    "alpha Map requires a Text key and concrete value type"
                 )
             return
         for child in ast.iter_child_nodes(annotation):
-            validate(child)
+            validate(child, allow_layout_map=allow_layout_map)
 
     for node in ast.walk(module):
         annotation: ast.AST | None = None
@@ -1084,7 +1095,7 @@ def _validate_map_specializations(module: ast.Module, path: str) -> None:
         elif isinstance(node, ast.FunctionDef):
             annotation = node.returns
         if annotation is not None:
-            validate(annotation)
+            validate(annotation, allow_layout_map=id(annotation) in layout_annotations)
 
 
 def _is_borrowed(type_name: str | None) -> bool:

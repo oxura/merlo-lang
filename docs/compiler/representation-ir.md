@@ -36,6 +36,25 @@ indirection cycles are allowed. Drop plans account for active enum payloads,
 fields, arrays, buffers, boxes, and closeable file resources. The serialized
 invariants preserve source identity and ownership provenance.
 
+## Recursive layout dependency rules
+
+Recursive layout validation runs before descriptor construction. It parses every
+record field and enum payload with the shared `parse_type` tree, walks all
+nested type arguments, and records the nominal target plus the source path.
+`BorrowSummary` relations and their diagnostic witnesses are not inputs to this
+analysis.
+
+| Dependency path | Layout mode | Examples |
+| --- | --- | --- |
+| nominal field or variant payload; `Option.payload`; `Result.ok` / `Result.error`; `Array.element` | inline | `Node`, `Option[Node]`, `Result[Node,Error]`, `Array[Node,4]` |
+| pointer pointee; `Box.payload`; `Vec.element`; `Map.key` / `Map.value`; `Borrow.payload`; `Slice.element`; `Fn` or `Closure` parameters and return | indirect | `Box[Node]`, `Vec[Node]`, `Map[Text,Box[Node]]`, `Fn[Node,Node]` |
+
+Inline edges form the layout graph. A cycle is rejected with the shortest
+cycle; ties are resolved lexicographically by nominal path and then by
+structural branch path. Indirect edges do not participate in that cycle graph,
+so ownership wrappers may cross recursive boundaries. Descriptor dependency
+lists use the same traversal and are sorted for stable serialization.
+
 ## Failure modes
 
 `RepresentationCompileError` covers layout, representation, and ownership

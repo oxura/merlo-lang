@@ -2170,11 +2170,19 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             ])
         elif descriptor.kind == "map":
             assert descriptor.key_type is not None
+            assert descriptor.value_type is not None
             lines.extend([
                 "    if (value->active_views != 0) merlo_ownership_trap(\"MapDropDuringView\");",
                 "    for (uint64_t index = 0; index < value->length; ++index) {",
                 "        if (value->entries[index].key.data != NULL) ++merlo_map_frees;",
                 f"        merlo_drop_{_identifier(descriptor.key_type)}(&value->entries[index].key);",
+            ])
+            if _is_owner(self.descriptors[descriptor.value_type]):
+                lines.append(
+                    f"        merlo_drop_{_identifier(descriptor.value_type)}"
+                    "(&value->entries[index].value);"
+                )
+            lines.extend([
                 "        ++merlo_map_owned_keys_dropped;",
                 "    }",
                 "    if (value->entries != NULL) {",
@@ -2404,11 +2412,15 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             if descriptor.kind != "map":
                 continue
             assert descriptor.key_type == "Text"
-            assert descriptor.value_type in {
-                "Bool", "Byte", "Int64", "UInt64", "Float32", "Float64"
-            }
+            assert descriptor.value_type is not None
             ctype = _c_name(descriptor.name)
             value_ctype = _c_name(descriptor.value_type)
+            value_descriptor = self.descriptors[descriptor.value_type]
+            missing_value = (
+                f"merlo_zero_{_identifier(descriptor.value_type)}()"
+                if _is_owner(value_descriptor)
+                else f"({value_ctype})0"
+            )
             suffix = _identifier(descriptor.name)
             lines.extend([
                 f"static uint64_t merlo_{suffix}_fnv1a64(const MerloText *key) {{",
@@ -2534,7 +2546,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 f"    uint64_t hash = merlo_{suffix}_fnv1a64(key);",
                 "    bool found = false;",
                 f"    uint64_t slot = merlo_{suffix}_linear_probe(map, key, hash, &found);",
-                f"    return found ? map->entries[map->buckets[slot] - 1].value : ({value_ctype})0;",
+                f"    return found ? map->entries[map->buckets[slot] - 1].value : {missing_value};",
                 "}",
                 f"static {ctype}EntriesView merlo_{suffix}_entries({ctype} *map) {{",
                 "    if (map->active_views == UINT64_MAX) merlo_overflow_trap(\"MapActiveViews\");",
