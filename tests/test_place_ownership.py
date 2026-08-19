@@ -161,7 +161,7 @@ def test_transitive_field_summary_has_one_structural_path() -> None:
     )
 
 
-def test_field_alias_preserves_backing_place() -> None:
+def test_field_alias_move_requires_partial_move_support() -> None:
     source = (
         _USER_HEADER
         + "fn borrow_alias(user: User) -> TextView:\n"
@@ -173,12 +173,11 @@ def test_field_alias_preserves_backing_place() -> None:
         + "    user.age = 1\n"
         + "    return view.len()\n"
     )
-    hir = compile_structured_hir(source)
-    relation = hir.function("borrow_alias").borrow_summary.relations[0]
-    assert relation.source_path.steps == (
-        BorrowPlaceStep.parameter(0),
-        BorrowPlaceStep.field("name"),
-    )
+    with pytest.raises(
+        StructuredHIRCompileError,
+        match="^ProjectedOwnerMoveRequiresPartialMoveSupport$",
+    ):
+        compile_structured_hir(source)
 
 
 def test_record_borrow_field_flow_does_not_block_unrelated_owner() -> None:

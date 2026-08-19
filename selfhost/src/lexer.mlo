@@ -314,4 +314,4 @@ export lex(source: Text) -> Vec[Token]:
         state.indent_width = state.indent_width - 4
         push_token(state, token_dedent_kind(), state.index, 0, state.line, state.column)
     push_token(state, token_eof_kind(), state.index, 0, state.line, state.column)
-    state.tokens
+    state.tokens.clone()

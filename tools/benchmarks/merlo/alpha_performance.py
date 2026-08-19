@@ -121,8 +121,8 @@ FROZEN_WORKLOADS: tuple[FrozenWorkload, ...] = (
         "d070c570a17d06e284948b409662c5270a407540db55f55108343fcc18083e8b",
         "parse numeric columns and sum each row into one deterministic digest",
         {
-            "merlo_concise": "f90885db32bb787b0696729524070dada5a87357635e24cbd2e5c8ff6b93e36a",
-            "merlo_canonical": "5348008f099979d542067087270ac9af56b163d6b1694aac2f0f7f27e8d05657",
+            "merlo_concise": "314f1946f6f7db2f79397b8f4a0620319e4587bfaa5242391f367f090727a494",
+            "merlo_canonical": "ec4d71389bef2999eb1fa52be65e443afa77707d755906816cc3d0ed4e6eaa1a",
             "c": "2c3fd15da202b4d9856388947bafbdce7eaf1198df3c6e448cab5d27d469c683",
             "python": "2fe9388211b54397756948c5912326e36db4a6e1a8a52fc5826549e579c05977",
             "rust": "d2f8f12ac2f5c59ab613b716b958d63e31ae87ae9f7458756c7e8d711c2a7599",

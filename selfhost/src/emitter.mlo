@@ -924,7 +924,7 @@ emitter_emit_body(output: TextBuilder, program: Program, function: Function) -> 
         control_indents = emitter_control_trim(control_indents, close_depth)
     emitter_sync_parameters(output, function.clone(), 0)
     if function.return_type != "Unit":
-        fallback = emitter_join2(emitter_join2("return (", emitter_ctype(function.return_type, program.clone())), "){0};")
+        fallback = emitter_join2(emitter_join2("return (", emitter_ctype(function.return_type.clone(), program.clone())), "){0};")
         emitter_append_line(output, 0, fallback)
 emitter_tag_text(tag: UInt64) -> Text:
     output: TextBuilder = TextBuilder.new()

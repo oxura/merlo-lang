@@ -3105,7 +3105,11 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             )
             try:
                 value = (
-                    self._move_expression(node.value, expected)
+                    self._move_expression(
+                        node.value,
+                        expected,
+                        enforce_projected_move=True,
+                    )
                     if (
                         node.value is not None
                         and owning_binding
@@ -3163,7 +3167,11 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             )
             try:
                 value = (
-                    self._move_expression(node.value, expected)
+                    self._move_expression(
+                        node.value,
+                        expected,
+                        enforce_projected_move=True,
+                    )
                     if owning_binding
                     else self._expression(
                         node.value,
@@ -3262,7 +3270,11 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
         generic = _generic(receiver_type or "")
         if generic and generic[0] == "Vec" and method == "push":
             element_type = generic[1]
-            argument = self._move_expression(call.args[0], element_type)
+            argument = self._move_expression(
+                call.args[0],
+                element_type,
+                enforce_projected_move=True,
+            )
             return [f"{pad}merlo_{_identifier(receiver_type)}_push({receiver_expr}, {argument});"]
         if receiver_type == "TextBuilder" and method == "append_byte":
             return [f"{pad}merlo_text_builder_append_byte({receiver_expr}, {self._expression(call.args[0], expected='UInt64')});"]
@@ -3515,7 +3527,12 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             return_type = self.current_function.return_type
             if _is_owner(self.descriptors[return_type]):
                 assert node.value is not None
-                expression = self._move_expression(node.value, return_type)
+                expression = self._move_expression(
+                    node.value,
+                    return_type,
+                    enforce_projected_move=True,
+                    clone_projected_move=True,
+                )
             else:
                 expression = self._expression(node.value, expected=return_type)
             lines.append(
@@ -4684,7 +4701,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     payload = parts[0 if name == "Ok" else 1]
                     if payload == "Unit":
                         return f"merlo_make_{_identifier(expected)}_{name}()"
-                    return f"merlo_make_{_identifier(expected)}_{name}({self._move_expression(node.args[0], payload)})"
+                    return f"merlo_make_{_identifier(expected)}_{name}({self._move_expression(node.args[0], payload, enforce_projected_move=True)})"
             if name == "Some" and expected:
                 descriptor = self.descriptors.get(expected)
                 if descriptor is not None and descriptor.kind == "enum":
@@ -4697,16 +4714,24 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                         assert payload is not None
                         return (
                             f"merlo_make_{_identifier(expected)}_Some("
-                            f"{self._move_expression(node.args[0], payload)})"
+                            f"{self._move_expression(node.args[0], payload, enforce_projected_move=True)})"
                         )
             if name == "Path":
                 if len(node.args) != 1:
                     raise RepresentationCBackendError("Path constructor expects one Text argument")
-                return self._move_expression(node.args[0], "Text")
+                return self._move_expression(
+                    node.args[0],
+                    "Text",
+                    enforce_projected_move=True,
+                )
             if name in self.descriptors and self.descriptors[name].kind == "record":
                 descriptor = self.descriptors[name]
                 arguments = [
-                    self._move_expression(argument, field_type)
+                    self._move_expression(
+                        argument,
+                        field_type,
+                        enforce_projected_move=True,
+                    )
                     for argument, (_, field_type, _) in zip(node.args, descriptor.fields, strict=True)
                 ]
                 return f"merlo_make_{_identifier(name)}({', '.join(arguments)})"
@@ -4763,7 +4788,11 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                         continue
                     if parameter.ownership == "owned":
                         arguments.append(
-                            self._move_expression(argument, parameter.type_name)
+                            self._move_expression(
+                                argument,
+                                parameter.type_name,
+                                enforce_projected_move=True,
+                            )
                         )
                     else:
                         arguments.append(
@@ -4967,7 +4996,13 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     (payload for variant, payload, _ in descriptor.variants if variant == method),
                     None,
                 )
-                arguments = [] if payload_type is None else [self._move_expression(node.args[0], payload_type)]
+                arguments = [] if payload_type is None else [
+                    self._move_expression(
+                        node.args[0],
+                        payload_type,
+                        enforce_projected_move=True,
+                    )
+                ]
                 return f"merlo_make_{_identifier(receiver_text)}_{method}({', '.join(arguments)})"
             static_contract = CONTRACT_GRAPH.resolve_static_method(
                 receiver_text,
@@ -4995,7 +5030,7 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 payload_type = _generic(box_type)[1]
                 return (
                     f"merlo_{_identifier(box_type)}_new("
-                    f"{self._move_expression(node.args[0], payload_type)})"
+                    f"{self._move_expression(node.args[0], payload_type, enforce_projected_move=True)})"
                 )
             if static_lowering == "map_new":
                 map_type = static_contract.result_type
@@ -5273,10 +5308,113 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 return f"({expression})->tag" if self._expression_is_pointer(node.func.value) else f"({expression}).tag"
         raise RepresentationCBackendError(f"unsupported C call: {ast.unparse(node)}")
 
-    def _move_expression(self, node: ast.AST, type_name: str) -> str:
+    def _reject_projected_owner_move(
+        self,
+        node: ast.AST,
+        type_name: str,
+        *,
+        enforce: bool,
+        allow: bool = False,
+    ) -> None:
+        if not enforce or allow:
+            return
+        descriptor = self.descriptors.get(type_name)
+        if descriptor is None or not _is_owner(descriptor):
+            return
+        if descriptor.kind in {"borrow", "slice", "file_lines"}:
+            return
+        parent = (
+            node.value
+            if isinstance(node, ast.Attribute)
+            else node.value
+            if isinstance(node, ast.Subscript)
+            else node.func.value
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+            else None
+        )
+        has_borrowed_owner_root = (
+            hasattr(self, "borrowed_owner_bindings")
+            and self._has_borrowed_owner_root(node)
+        )
+        parent_type = (
+            self._expression_type(parent)
+            if parent is not None and hasattr(self, "env_types")
+            else None
+        )
+        if parent is not None and (
+            has_borrowed_owner_root
+            or (
+                parent_type is not None
+                and self._is_owning_temporary(parent, parent_type)
+            )
+        ):
+            return
+        box_parent = _generic(parent_type or "")
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "get"
+            and box_parent is not None
+            and box_parent[0] == "Box"
+        ):
+            raise RepresentationCBackendError(
+                "ProjectedOwnerMoveRequiresPartialMoveSupport"
+            )
+        if isinstance(node, ast.Attribute):
+            if (
+                isinstance(node.value, ast.Name)
+                and node.value.id in self.descriptors
+                and self.descriptors[node.value.id].kind == "enum"
+            ):
+                return
+            raise RepresentationCBackendError(
+                "ProjectedOwnerMoveRequiresPartialMoveSupport"
+            )
+        if isinstance(node, ast.Subscript):
+            raise RepresentationCBackendError(
+                "ProjectedOwnerMoveRequiresPartialMoveSupport"
+            )
+
+    def _move_expression(
+        self,
+        node: ast.AST,
+        type_name: str,
+        *,
+        enforce_projected_move: bool = False,
+        clone_projected_move: bool = False,
+    ) -> str:
+        root = node
+        while isinstance(root, (ast.Attribute, ast.Subscript)):
+            root = root.value
+        is_parameter_projection = (
+            isinstance(node, (ast.Attribute, ast.Subscript))
+            and isinstance(root, ast.Name)
+            and getattr(self, "current_function", None) is not None
+            and root.id
+            in {
+                parameter.name
+                for parameter in self.current_function.parameters
+            }
+        )
+        self._reject_projected_owner_move(
+            node,
+            type_name,
+            enforce=enforce_projected_move,
+            allow=clone_projected_move and is_parameter_projection,
+        )
         descriptor = self.descriptors[type_name]
         if not _is_owner(descriptor):
             return self._expression(node, expected=type_name)
+        if clone_projected_move and is_parameter_projection:
+            if not self._clone_is_deep(type_name):
+                raise RepresentationCBackendError(
+                    f"cannot clone borrowed owner of type {type_name}"
+                )
+            source = self._address_expression(node)
+            return (
+                f"merlo_clone_{_identifier(type_name)}"
+                f"((const {_c_name(type_name)} *){source})"
+            )
         if self._has_borrowed_owner_root(node):
             if not self._clone_is_deep(type_name):
                 raise RepresentationCBackendError(

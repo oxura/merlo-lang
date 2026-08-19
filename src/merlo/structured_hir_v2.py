@@ -1477,12 +1477,15 @@ class _OwnershipChecker:
         if isinstance(node, (ast.Name, ast.Attribute, ast.Subscript)):
             return self._place_for_expr(node, state)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            if (
+                node.func.attr in {"get", "get_mut"}
+                and not self._contains_borrow(self._expr_type(node))
+            ):
+                return None
             if node.func.attr in {
                 "get",
                 "get_mut",
                 "byte",
-                "unwrap",
-                "unwrap_err",
                 "view",
                 "as_view",
                 "slice",
@@ -1587,6 +1590,16 @@ class _OwnershipChecker:
                     return receiver.project(
                         PlaceStep.index(self._index_class(node.args[0]))
                     )
+                if (
+                    method in {"get", "get_mut"}
+                    and not node.args
+                    and generic_parts(
+                        self._expr_type(node.func.value) or "",
+                        "Box",
+                        arity=1,
+                    )
+                ):
+                    return receiver.project(PlaceStep.dereference())
                 if method in {"unwrap", "unwrap_err"}:
                     receiver_type = self._expr_type(node.func.value)
                     variant = (
@@ -2182,14 +2195,43 @@ class _OwnershipChecker:
             name=name,
             display=name,
         )
+    def _reject_projected_owner_move(
+        self,
+        place: Place | None,
+        type_name: str | None,
+        *,
+        allow_borrowed_or_temporary_parent: bool = False,
+    ) -> None:
+        if (
+            place is not None
+            and place.steps
+            and self._owner(type_name)
+            and not _is_borrowed(type_name)
+            and not allow_borrowed_or_temporary_parent
+        ):
+            self._error("ProjectedOwnerMoveRequiresPartialMoveSupport")
 
-    def _consume_expr(self, node: ast.AST, state: _OwnershipState) -> None:
+
+    def _consume_expr(
+        self,
+        node: ast.AST,
+        state: _OwnershipState,
+        *,
+        expected: str | None = None,
+        allow_projected_owner_move: bool = False,
+    ) -> None:
         if isinstance(node, ast.Call):
             qualified = _ast_qualified_name(node.func)
             if qualified in {"Some", "Ok", "Err"}:
                 for argument in node.args:
-                    if self._owner(self._expr_type(argument)):
-                        self._consume_expr(argument, state)
+                    argument_type = self._expr_type(argument)
+                    if self._owner(argument_type):
+                        self._consume_expr(
+                            argument,
+                            state,
+                            expected=argument_type,
+                            allow_projected_owner_move=allow_projected_owner_move,
+                        )
             elif isinstance(node.func, ast.Name) and node.func.id in self.types:
                 declaration = self.types[node.func.id]
                 if declaration.kind == "record":
@@ -2199,16 +2241,43 @@ class _OwnershipChecker:
                         strict=False,
                     ):
                         if self._owner(field_decl.type_name):
-                            self._consume_expr(argument, state)
+                            self._consume_expr(
+                                argument,
+                                state,
+                                expected=field_decl.type_name,
+                                allow_projected_owner_move=allow_projected_owner_move,
+                            )
+            if isinstance(node.func, ast.Attribute) and node.func.attr == "get":
+                receiver = node.func.value
+                receiver_type = self._expr_type(receiver)
+                receiver_generic = generic_parts(receiver_type or "", "Box", arity=1)
+                result_type = self._expr_type(node, expected)
+                if (
+                    receiver_generic is not None
+                    and self._owner(result_type)
+                ):
+                    self._reject_projected_owner_move(
+                        self._place_for_expr(node, state),
+                        result_type,
+                        allow_borrowed_or_temporary_parent=isinstance(
+                            receiver,
+                            ast.Call,
+                        ),
+                    )
             return
         if not isinstance(node, (ast.Name, ast.Attribute, ast.Subscript)):
             return
         root = self._root_name(node)
+        if root is not None:
+            self._check_name(root, state)
         place = self._place_for_expr(node, state)
-        if place is None:
-            if root is not None:
-                self._consume(root, state)
-            return
+        self._reject_projected_owner_move(
+            place,
+            self._expr_type(node, expected),
+            allow_borrowed_or_temporary_parent=(
+                allow_projected_owner_move and root in self.parameters
+            ),
+        )
         self._consume_place(
             place,
             state,
@@ -2408,7 +2477,11 @@ class _OwnershipChecker:
                                 display=ast.unparse(argument),
                             )
                     elif parameter_ownership in {"owned", "consuming"}:
-                        self._consume_expr(argument, state)
+                        self._consume_expr(
+                            argument,
+                            state,
+                            expected=self._expr_type(argument),
+                        )
             signature = intrinsic_signature(name)
             if signature is not None:
                 for argument, parameter_ownership in zip(
@@ -2427,7 +2500,11 @@ class _OwnershipChecker:
                                 display=ast.unparse(argument),
                             )
                     elif parameter_ownership in {"owned", "consuming"}:
-                        self._consume_expr(argument, state)
+                        self._consume_expr(
+                            argument,
+                            state,
+                            expected=self._expr_type(argument),
+                        )
             if isinstance(node.func, ast.Name) and node.func.id in self.functions:
                 callee = self.functions[node.func.id]
                 for argument, parameter in zip(node.args, callee.args.args):
@@ -2439,7 +2516,11 @@ class _OwnershipChecker:
                         for item in ast.walk(callee)
                     )
                     if self._owner(parameter_type) and returned:
-                        self._consume_expr(argument, state)
+                        self._consume_expr(
+                            argument,
+                            state,
+                            expected=parameter_type,
+                        )
             elif (
                 method_signature is None
                 and receiver_root
@@ -2449,7 +2530,11 @@ class _OwnershipChecker:
                 vec_parts = generic_parts(receiver_type, "Vec", arity=1)
                 element = vec_parts[0] if vec_parts is not None else None
                 if self._owner(element):
-                    self._consume_expr(node.args[0], state)
+                    self._consume_expr(
+                        node.args[0],
+                        state,
+                        expected=element,
+                    )
             if receiver_root and method == "push" and node.args:
                 vec_parts = generic_parts(receiver_type, "Vec", arity=1)
                 element_type = vec_parts[0] if vec_parts is not None else None
@@ -2569,7 +2654,11 @@ class _OwnershipChecker:
                     )
                     self._check_expr(node.value, state, expected=type_name)
                     if self._owner(type_name):
-                        self._consume_expr(node.value, state)
+                        self._consume_expr(
+                            node.value,
+                            state,
+                            expected=type_name,
+                        )
                     if self._contains_borrow(type_name):
                         self._register_record_borrows(
                             state,
@@ -2615,7 +2704,11 @@ class _OwnershipChecker:
                             else self._root_place(target.id)
                         )
                         if target_type and self._owner(target_type):
-                            self._consume_expr(node.value, state)
+                            self._consume_expr(
+                                node.value,
+                                state,
+                                expected=target_type,
+                            )
                             state.statuses[target.id] = "available"
                         if target_type and self._contains_borrow(target_type):
                             self._register_borrows(
@@ -2722,7 +2815,12 @@ class _OwnershipChecker:
                             ):
                                 state.borrows.pop(name, None)
                                 state.borrow_places.pop(name, None)
-                    self._consume_expr(node.value, state)
+                    self._consume_expr(
+                        node.value,
+                        state,
+                        expected=result_type,
+                        allow_projected_owner_move=True,
+                    )
                 state.terminal = True
                 break
             if isinstance(node, ast.If):

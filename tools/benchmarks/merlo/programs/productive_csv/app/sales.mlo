@@ -69,7 +69,7 @@ parse_row(line: TextView, delimiter: UInt64) -> Result[Row,AppError]:
         return Err(AppError.InvalidRow)
     quantity = parse_uint64(fields[3].as_view(), "quantity")?
     price = parse_uint64(fields[4].as_view(), "unit_price_cents")?
-    Ok(Row(fields[0], fields[1], fields[2], quantity, price))
+    Ok(Row(fields[0].clone(), fields[1].clone(), fields[2].clone(), quantity, price))
 
 export aggregate(lines: FileLines, options: Options) -> Result[Text,AppError]:
     if options.delimiter > 127:
