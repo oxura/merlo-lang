@@ -1816,6 +1816,13 @@ class _OwnershipChecker:
             receiver = node.func.value if isinstance(node.func, ast.Attribute) else None
             receiver_type = self._expr_type(receiver)
             method = node.func.attr if isinstance(node.func, ast.Attribute) else ""
+            map_types = generic_parts(receiver_type or "", "Map", arity=2)
+            if (
+                map_types is not None
+                and self._owner(map_types[1])
+                and method in {"get", "insert", "increment", "entries"}
+            ):
+                self._error("MapOperationsRequireScalarValues", receiver_type)
             receiver_root = self._root_name(receiver)
             if receiver_root is not None:
                 self._check_name(receiver_root, state)

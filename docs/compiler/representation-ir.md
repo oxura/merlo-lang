@@ -15,7 +15,7 @@ unrelated source text.
 ## Outputs
 
 The function returns `RepresentationProgram`, contract
-`merlo.representation-ir.v4`, schema version `4`. It contains `TypeDescriptor`
+`merlo.representation-ir.v5`, schema version `5`. It contains `TypeDescriptor`
 values, type-directed `DropPlan` values, and `RIRFunction` trees of
 `RIROperation` nodes. Descriptors record size, alignment, ABI class,
 copy/move/drop classes, dependencies, contained-borrow/resource properties,

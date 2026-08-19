@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 
 import pytest
@@ -11,7 +12,11 @@ from merlo.representation_ir import (
     lower_structured_hir_to_rir,
     validate_recursive_layouts,
 )
-from merlo.structured_hir_v2 import StructuredHIRProgram, compile_structured_hir
+from merlo.structured_hir_v2 import (
+    StructuredHIRCompileError,
+    StructuredHIRProgram,
+    compile_structured_hir,
+)
 
 
 _MAIN = "fn main(input: BytesView) -> UInt64:\n    return 0\n"
@@ -133,6 +138,53 @@ def test_owner_map_layout_and_drop_plan_are_structural() -> None:
         ("value", "Box[Graph]", "box_payload_then_free"),
     ]
 
+
+def test_owner_map_operations_fail_during_hir_validation() -> None:
+    source = (
+        "record Graph:\n    nodes: Map[Text,Box[Graph]]\n"
+        "fn update(graph: Graph, key: Text) -> Unit:\n"
+        "    graph.nodes.get(key)\n"
+    )
+    with pytest.raises(StructuredHIRCompileError, match="MapOperationsRequireScalarValues"):
+        compile_structured_hir(source, entry_function="update")
+
+
+def test_layout_parse_failures_are_rejected_before_descriptor_build() -> None:
+    hir = compile_structured_hir("record Outer:\n    value: UInt64\n" + _MAIN)
+    field = hir.types[0].fields[0]
+    malformed_type = replace(field, type_name="Option[UInt64")
+    malformed_decl = replace(hir.types[0], fields=(malformed_type,))
+    malformed_hir = replace(hir, types=(malformed_decl,))
+
+    validation = validate_recursive_layouts(malformed_hir.types)
+    assert validation.accepted is False
+    assert validation.minimal_cycle_path == ()
+    assert validation.diagnostic is not None
+    assert validation.diagnostic.startswith("MalformedLayoutType: Option[UInt64")
+    with pytest.raises(RepresentationCompileError, match="MalformedLayoutType"):
+        build_type_descriptors(malformed_hir)
+
+
+def test_qualified_nominal_names_remain_distinct_layout_dependencies() -> None:
+    source = (
+        "record Merlo_left__Item:\n    value: UInt64\n"
+        "record Merlo_right__Item:\n    value: UInt64\n"
+        "record Pair:\n"
+        "    left: Merlo_left__Item\n"
+        "    right: Merlo_right__Item\n"
+        + _MAIN
+    )
+    representation = lower_structured_hir_to_rir(compile_structured_hir(source))
+    descriptors = {item.name: item for item in representation.descriptors}
+
+    assert descriptors["Pair"].inline_dependencies == (
+        "Merlo_left__Item",
+        "Merlo_right__Item",
+    )
+    assert (
+        descriptors["Merlo_left__Item"].source_type_identity
+        != descriptors["Merlo_right__Item"].source_type_identity
+    )
 
 def test_shortest_lexicographic_structural_cycle_is_invariant() -> None:
     declarations = (

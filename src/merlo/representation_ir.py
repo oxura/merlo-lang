@@ -20,8 +20,8 @@ from merlo.type_properties import TypePropertyResolver
 from merlo.borrow_summary import BorrowSummary
 
 
-REPRESENTATION_IR_SCHEMA_VERSION = 4
-REPRESENTATION_IR_CONTRACT = "merlo.representation-ir.v4"
+REPRESENTATION_IR_SCHEMA_VERSION = 5
+REPRESENTATION_IR_CONTRACT = "merlo.representation-ir.v5"
 MAX_U64 = (1 << 64) - 1
 
 def _type_leaf(type_name: str) -> str:
@@ -408,6 +408,16 @@ def _callback_parts(type_name: str) -> tuple[tuple[str, ...], str] | None:
     return parts[:-1], parts[-1]
 
 
+
+
+class _LayoutParseError(ValueError):
+    def __init__(self, type_name: str, path: tuple[str, ...], reason: str) -> None:
+        self.type_name = type_name
+        self.path = path
+        self.reason = reason
+        super().__init__(reason)
+
+
 @dataclass(frozen=True, order=True)
 class _LayoutDependency:
     target: str
@@ -452,8 +462,8 @@ def _layout_dependencies(
 
     try:
         expression = parse_type(type_name)
-    except ValueError:
-        return ()
+    except ValueError as exc:
+        raise _LayoutParseError(type_name, path, str(exc)) from exc
 
     def visit(
         node: TypeExpr,
@@ -467,8 +477,12 @@ def _layout_dependencies(
         if pointer is not None:
             try:
                 pointee = parse_type(pointer.pointee)
-            except ValueError:
-                return ()
+            except ValueError as exc:
+                raise _LayoutParseError(
+                    pointer.pointee,
+                    (*current_path, f"{node.name}.pointee"),
+                    str(exc),
+                ) from exc
             return visit(
                 pointee,
                 (*current_path, f"{node.name}.pointee"),
@@ -582,6 +596,7 @@ def validate_recursive_layouts(types: Iterable[HIRTypeDecl]) -> LayoutValidation
     edge_graph: dict[str, set[_LayoutEdge]] = {
         name: set() for name in declarations
     }
+    dependencies_by_declaration: dict[str, tuple[_LayoutDependency, ...]] = {}
     for declaration in declarations.values():
         if declaration.kind == "record":
             members = (
@@ -597,17 +612,32 @@ def validate_recursive_layouts(types: Iterable[HIRTypeDecl]) -> LayoutValidation
                 for variant in declaration.variants
                 if variant.payload_type is not None
             )
-        for type_name, path in members:
-            assert type_name is not None
-            for dependency in _layout_dependencies(
-                type_name,
-                nominal_names,
-                path=path,
-            ):
-                if not dependency.indirect:
-                    edge_graph[declaration.name].add(
-                        _LayoutEdge(dependency.target, dependency.path)
+        dependencies: list[_LayoutDependency] = []
+        try:
+            for type_name, path in members:
+                assert type_name is not None
+                dependencies.extend(
+                    _layout_dependencies(
+                        type_name,
+                        nominal_names,
+                        path=path,
                     )
+                )
+        except _LayoutParseError as exc:
+            location = "/".join(exc.path) or "<root>"
+            return LayoutValidation(
+                False,
+                (),
+                (),
+                f"MalformedLayoutType: {exc.type_name} at {location}: {exc.reason}",
+            )
+        dependencies_by_declaration[declaration.name] = tuple(dependencies)
+    for declaration in declarations.values():
+        for dependency in dependencies_by_declaration[declaration.name]:
+            if not dependency.indirect:
+                edge_graph[declaration.name].add(
+                    _LayoutEdge(dependency.target, dependency.path)
+                )
     graph = {
         name: tuple(sorted(edges))
         for name, edges in sorted(edge_graph.items())
