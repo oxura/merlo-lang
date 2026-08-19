@@ -118,6 +118,16 @@ borrows or clones them. Representation descriptors determine copy, move,
 invalidation, and drop behavior. The C backend emits type-specific drop glue
 for text, bytes, collections, boxes, enum payloads, and file resources.
 
+Interprocedural returned-borrow provenance is a finite `BorrowRelation` lattice,
+not a diagnostic call trace. Structural places and SCC-level recursive tails
+form semantic identity. Monotone convergence and post-convergence bounded
+witnesses preserve HIR/RIR/SemanticWorld semantic digests under diagnostic-only
+changes. The call graph and SCC passes are iterative, so analysis depth is not
+bounded by Python recursion. Unknown, unsupported, or non-monotone borrow
+relations fail closed before representation lowering. Stable borrowed
+expressions retain their backing owner; true temporary-owner escapes remain
+rejected.
+
 Capabilities narrow checked filesystem, network, environment, time, randomness,
 and FFI operations. They are program semantics, not an OS sandbox; untrusted
 native binaries still require host isolation.

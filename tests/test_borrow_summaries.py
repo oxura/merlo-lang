@@ -7,7 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from merlo.borrow_summary import BORROW_SUMMARY_CYCLE_MARKER
+from merlo.borrow_summary import (
+    BORROW_SUMMARY_CYCLE_MARKER,
+    BorrowPlacePath,
+    BorrowPlaceStep,
+    BorrowSummaryEntry,
+)
 from merlo.representation_ir import lower_structured_hir_to_rir
 from merlo.semantic_world import SemanticWorld
 from merlo.structured_hir_v2 import (
@@ -130,9 +135,9 @@ def test_contained_borrow_lifetime_positive_and_owned_return_unchanged() -> None
     hir = compile_structured_hir(source)
     make_summary = hir.function("make_views").borrow_summary
     assert make_summary.status == "known"
-    assert make_summary.entries[0].kind == "contained"
-    assert make_summary.entries[0].source_parameter_index == 0
-    assert make_summary.entries[0].result_path == ("elements",)
+    assert make_summary.entries[0].relation.kind == "contained"
+    assert make_summary.entries[0].relation.source_parameter_index == 0
+    assert make_summary.entries[0].relation.result_path == BorrowPlacePath((BorrowPlaceStep.element(),))
     assert not hir.function("own").borrow_summary.entries
 
 
@@ -152,8 +157,8 @@ def test_existing_contained_container_provenance_transfers_through_identity() ->
     hir = compile_structured_hir(source)
     summary = hir.function("identity").borrow_summary
     assert summary.status == "known"
-    assert summary.entries[0].source_parameter_index == 0
-    assert summary.entries[0].kind == "contained"
+    assert summary.entries[0].relation.source_parameter_index == 0
+    assert summary.entries[0].relation.kind == "contained"
 
 
 def test_summary_hir_roundtrip_rir_and_cross_process() -> None:
@@ -172,7 +177,7 @@ def test_summary_hir_roundtrip_rir_and_cross_process() -> None:
     restored = StructuredHIRProgram.from_json(hir.to_json())
     assert restored.digest == hir.digest
     tampered = json.loads(hir.to_json())
-    tampered["functions"][0]["borrow_summary"]["entries"][0]["borrow_type"] = "BytesView"
+    tampered["functions"][0]["borrow_summary"]["entries"][0]["relation"]["borrow_type"] = "BytesView"
     assert StructuredHIRProgram.from_dict(tampered).digest != hir.digest
     rir = lower_structured_hir_to_rir(restored)
     assert rir.function("borrow_text").borrow_summary == restored.function("borrow_text").borrow_summary
@@ -209,8 +214,8 @@ def test_semantic_world_exposes_function_borrow_summary(tmp_path: Path) -> None:
     world = SemanticWorld.build(source, require_interface_lock=False)
     symbol = world.inspect("app.main.borrow_text")["symbol"]
     summary = symbol["borrow_summary"]
-    assert summary["schema_version"] == 2
-    assert summary["entries"][0]["source_parameter_index"] == 0
+    assert summary["schema_version"] == 3
+    assert summary["entries"][0]["relation"]["source_parameter_index"] == 0
     assert world.data["borrow_summaries"]
 
 
@@ -228,8 +233,13 @@ def test_direct_recursion_has_one_semantic_relation_and_bounded_witness() -> Non
     hir = compile_structured_hir(source)
     summary = hir.function("recursive_view").borrow_summary
     assert len(summary.entries) == 1
-    assert summary.entries[0].semantic_key() == (
-        0, ("text",), "TextView", (), "direct", "borrow"
+    assert summary.entries[0].relation.semantic_key() == (
+        0,
+        BorrowPlacePath.parameter(0),
+        "TextView",
+        BorrowPlacePath(),
+        "direct",
+        "borrow",
     )
     assert len(summary.entries[0].witness_path) <= 1
     assert summary.entries[0].witness_path.count("recursive_view") <= 1
@@ -254,7 +264,7 @@ def test_mutual_recursion_converges_deterministically() -> None:
     second = compile_structured_hir(source)
     assert first.function("left").borrow_summary == second.function("left").borrow_summary
     assert first.function("right").borrow_summary == second.function("right").borrow_summary
-    assert first.function("left").borrow_summary.entries[0].call_path == ()
+    assert first.function("left").borrow_summary.entries[0].witness_path == ()
 
 
 def test_recursive_contained_borrow_summary_is_finite() -> None:
@@ -272,8 +282,8 @@ def test_recursive_contained_borrow_summary_is_finite() -> None:
     )
     summary = compile_structured_hir(source).function("recursive_views").borrow_summary
     assert len(summary.entries) == 1
-    assert summary.entries[0].kind == "contained"
-    assert summary.entries[0].result_path == ("elements",)
+    assert summary.entries[0].relation.kind == "contained"
+    assert summary.entries[0].relation.result_path == BorrowPlacePath((BorrowPlaceStep.element(),))
 
 
 def test_recursive_projection_uses_cycle_marker_instead_of_growing_path() -> None:
@@ -288,13 +298,16 @@ def test_recursive_projection_uses_cycle_marker_instead_of_growing_path() -> Non
         "    return view.len()\n"
     )
     summary = compile_structured_hir(source).function("recursive_view").borrow_summary
-    assert len(summary.entries) == 3
-    cycle_entries = [
-        item for item in summary.entries
-        if BORROW_SUMMARY_CYCLE_MARKER in item.result_path
+    assert len(summary.entries) == 2
+    recursive_entries = [
+        item
+        for item in summary.entries
+        if item.relation.result_path.steps
+        and item.relation.result_path.steps[-1].kind == "RecursiveTail"
     ]
-    assert cycle_entries
-    assert all(item.witness_path.count(BORROW_SUMMARY_CYCLE_MARKER) == 1 for item in cycle_entries)
+    assert len(recursive_entries) == 1
+    assert recursive_entries[0].relation.result_path.steps[-1].value == "recursive_view"
+    assert recursive_entries[0].witness_path.count(BORROW_SUMMARY_CYCLE_MARKER) == 1
 
 
 def test_no_origin_recursion_is_opaque_and_fails_closed() -> None:
@@ -360,17 +373,12 @@ def test_semantic_equality_ignores_witness_path() -> None:
         "    return view.len()\n"
     )
     entry = compile_structured_hir(source).function("borrow_text").borrow_summary.entries[0]
-    altered = type(entry)(
-        entry.source_parameter_index,
-        entry.source_path,
-        entry.borrow_type,
-        entry.result_path,
-        entry.kind,
-        entry.ownership,
+    altered = BorrowSummaryEntry(
+        entry.relation,
         (BORROW_SUMMARY_CYCLE_MARKER,),
     )
     assert entry == altered
-    assert entry.semantic_key() == altered.semantic_key()
+    assert entry.relation.semantic_key() == altered.relation.semantic_key()
     serialized = entry.to_dict()
     assert "witness_path" in serialized
-    assert "call_path" not in serialized
+    assert "relation" in serialized

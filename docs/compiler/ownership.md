@@ -10,12 +10,19 @@ obligations without pretending that metadata alone proves runtime safety.
 
 HIR carries ownership labels on `HIRParameter` and `HIRNode` in
 [`src/merlo/structured_hir_v2.py`](../../src/merlo/structured_hir_v2.py).
-Each HIR function also carries a versioned `BorrowSummary`. A summary entry
-binds a returned direct or contained borrow to a formal parameter index,
-source/result paths, borrow type, and one of the ownership modes `value`,
-`borrow`, `borrow_mut`, `owned`, `contained_borrow`, or
-`owned_contained_borrow`. Summaries are computed to a deterministic fixed
-point over local calls and are part of the HIR digest.
+Each HIR function also carries a versioned `BorrowSummary`. Its semantic payload
+is a set of `BorrowRelation` values: formal parameter index, finite structural
+source/result places, borrow type, direct/contained kind, and ownership mode.
+`BorrowPlacePath` admits only `Parameter`, `Field`, `Element`,
+`VariantPayload`, `Deref`, and one canonical `RecursiveTail` step. Diagnostic
+`witness_path` values are serialized beside relations but are excluded from
+relation equality, HIR function revisions, and HIR/RIR/SemanticWorld semantic
+digests.
+Summaries are computed as a monotone union lattice over the local call graph.
+An iterative strongly-connected-component pass identifies recursive relations;
+recursive widening uses the component identity rather than an expanding call
+stack. A separate post-convergence pass chooses the shortest,
+lexicographically smallest bounded witness.
 RIR consumes those labels through `TypeDescriptor` and `DropPlan` in
 [`src/merlo/representation_ir.py`](../../src/merlo/representation_ir.py).
 MIR materializes ownership operations and `drop_value` instructions in
@@ -41,6 +48,14 @@ owning actuals that do not themselves contain a borrow. Conditional and
 transitive origins are unioned. Missing or opaque summaries fail closed;
 temporary owners are rejected at the entry boundary or by the native artifact
 gate rather than treated as independent storage.
+
+The semantic worklist requeues callers only when a relation is added; the
+witness worklist separately requeues callers when a better witness is found.
+Deleting an established relation is a compiler invariant violation and yields
+opaque `BorrowSummaryNonMonotone` summaries rather than a partially known
+result. Stable borrowed expressions such as `identity(text.as_view())` retain
+`text` as their backing owner. Expressions whose borrowed result is rooted in a
+temporary owner remain rejected as `BorrowFromTemporaryEscapes`.
 
 Recursive records and enums must cross an owning `Box[T]` or `Vec[T]`
 indirection; inline layout cycles are rejected with their minimal cycle path.

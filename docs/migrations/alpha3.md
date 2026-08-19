@@ -1,12 +1,12 @@
 # Migrating from alpha.2 to alpha.3
 
 Alpha.3 intentionally changes the filesystem and verification models. The
-compiler reports language `0.3`, frontend `8`, canonical `6`, HIR `6`,
+compiler reports language `0.3`, frontend `8`, canonical `6`, HIR `9`,
 Obligation IR `1`, range analysis `1`, bounded symbolic execution `1`, optional
 SMT `1`, property evidence `1`, verification metrics `1`, ChangeIR `1`,
 semantic capsule `1`, semantic impact `1`, patch evidence `1`, preservation
-report `1`, change transaction `1`, RIR/MIR `2`, runtime ABI `2`, and
-SemanticWorld `14`; earlier lockfiles must be regenerated with the alpha.3
+report `1`, change transaction `1`, RIR `4`, MIR `2`, runtime ABI `2`, and
+SemanticWorld `17`; earlier lockfiles must be regenerated with the alpha.3
 compiler.
 
 SemanticWorld now includes the canonical constant-range analysis payload.
@@ -43,6 +43,21 @@ proves the observed structural apply/rebuild chain. Preservation reports check
 that the renamed program retained behavior-facing contracts, authority, and
 verification evidence.
 
+
+## Borrow summary v3
+
+`merlo.borrow-summary.v3` replaces string source/result paths and semantic
+`call_path` values with a `BorrowRelation` plus a finite structural
+`BorrowPlacePath`. Consumers must read relation fields below `relation` and
+treat `witness_path` as diagnostic-only. The allowed path steps are
+`Parameter`, `Field`, `Element`, `VariantPayload`, `Deref`, and
+`RecursiveTail`; arbitrary strings are rejected. Recursive summaries now
+converge by SCC relation widening and fail closed with
+`BorrowSummaryNonMonotone` if an established relation disappears.
+
+The HIR, RIR, and SemanticWorld schema bumps are mandatory. Regenerate lockfiles
+and stored HIR/RIR/SemanticWorld artifacts; there is no compatibility shim for
+v2 summary entries.
 
 ## File handles
 
