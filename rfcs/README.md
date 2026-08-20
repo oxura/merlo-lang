@@ -23,3 +23,5 @@ Small bug fixes, diagnostics that do not change behavior, internal refactors, do
 - [RFC 0001: repository and frontend stabilization](0001-repository-and-frontend-stabilization.md)
 - [RFC 0002: Concurrency Model v1](0002-concurrency-model-v1.md), proposed and
   explicitly outside the production alpha contract
+- [RFC 0003: Repository Hardening and Deterministic Package Resolution v1](0003-repository-hardening-v1.md),
+  Accepted 2026-08-21; implementation is PR #82

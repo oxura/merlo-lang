@@ -1,0 +1,80 @@
+name: Pull request policy
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  policy:
+    name: Pull request policy gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce size and RFC gates
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pull = context.payload.pull_request;
+            if (!pull) {
+              return;
+            }
+            const failures = [];
+
+            const files = await github.paginate(
+              github.rest.pulls.listFiles,
+              { owner, repo, pull_number: pull.number, per_page: 100 },
+            );
+            const changedLines = files.reduce(
+              (total, file) => total + file.additions + file.deletions,
+              0,
+            );
+            if (files.length >= 3000) {
+              failures.push("changed-file listing reached the API limit; split the pull request");
+            }
+            if (changedLines > 1200) {
+              const body = pull.body || "";
+              const rfcMatch = body.match(
+                /^[ \t]*RFC(?:[ \t]+link)?[ \t]*:[ \t]+https:\/\/github\.com\/([^/\s]+)\/([^/\s]+)\/blob\/([0-9a-f]{40})\/(rfcs\/[0-9]{4}-[-a-z0-9]+\.md)[ \t]*$/im,
+              );
+              const hasPlan = /^[ \t]*Review plan[ \t]*:[ \t]+(?!<!--)\S.*$/im.test(body);
+              if (!rfcMatch || !hasPlan) {
+                failures.push("pull requests over 1,200 changed lines require an exact-head RFC link and review plan");
+              } else {
+                const [, rfcOwner, rfcRepo, rfcRevision, rfcPath] = rfcMatch;
+                if (
+                  rfcOwner.toLowerCase() !== owner.toLowerCase()
+                  || rfcRepo.toLowerCase() !== repo.toLowerCase()
+                  || rfcRevision !== pull.head.sha
+                ) {
+                  failures.push("the RFC URL must reference this repository and exact pull-request head");
+                } else {
+                  try {
+                    const response = await github.rest.repos.getContent({
+                      owner,
+                      repo,
+                      path: rfcPath,
+                      ref: pull.head.sha,
+                    });
+                    if (Array.isArray(response.data) || !response.data.content) {
+                      failures.push("the RFC URL must reference one RFC file");
+                    } else {
+                      const rfc = Buffer.from(response.data.content, "base64").toString("utf8");
+                      if (!/^- Status: (?:Accepted|Implemented)$/m.test(rfc)) {
+                        failures.push("large pull requests require an Accepted or Implemented RFC");
+                      }
+                    }
+                  } catch (error) {
+                    failures.push(`the RFC could not be read from the pull-request head: ${error.message}`);
+                  }
+                }
+              }
+            }
+
+
+            if (failures.length) {
+              core.setFailed(failures.join("; "));
+            }

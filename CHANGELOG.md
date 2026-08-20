@@ -6,6 +6,14 @@
   `0.3`, frontend `8`, canonical `6`, HIR `9`, Obligation IR `1`, RIR `4`,
   MIR `2`, runtime ABI `2`, and SemanticWorld `17`. Earlier lockfiles must be
   regenerated; see the migration guide.
+- Resolves complete root and transitive package constraints with deterministic
+  backtracking, validates malformed semver terms strictly, and revalidates online
+  locks against the current registry while preserving verified offline replay.
+- Hardens repository and alpha-release policy with immutable Action revisions,
+  exact pull-request-head checks, read-only pull-request tokens, explicit
+  solo-maintainer governance without fabricated approvals, immutable
+  administrator-created tags, and executable verified-tag ancestry checks before
+  release jobs run.
 - Replaces the stale roadmap with a checked maturity matrix and explicit Deep
   Core, Native Scale, heterogeneous-compute, product-proof, general-purpose,
   and self-host gates. Adds the normative Memory Model v1 safe-subset contract

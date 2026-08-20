@@ -8,8 +8,40 @@ on:
 permissions:
   contents: read
 
+
 jobs:
+  verify-tag:
+    name: Verify signed annotated release tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Require verified tag on reviewed main history
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_COMMIT: ${{ github.sha }}
+          TAG_NAME: ${{ github.ref_name }}
+          MAIN_BRANCH: main
+        run: |
+          set -euo pipefail
+          ref_json="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG_NAME}")"
+          tag_sha="$(jq -r '.object.sha' <<<"$ref_json")"
+          tag_json="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${tag_sha}")"
+          main_json="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${MAIN_BRANCH}")"
+          main_sha="$(jq -r '.object.sha' <<<"$main_json")"
+          target_sha="$(jq -r '.object.sha' <<<"$tag_json")"
+          comparison="$(gh api "repos/${GITHUB_REPOSITORY}/compare/${target_sha}...${main_sha}")"
+          export RELEASE_REF_JSON="$ref_json"
+          export RELEASE_TAG_JSON="$tag_json"
+          export RELEASE_MAIN_JSON="$main_json"
+          export RELEASE_COMPARISON_JSON="$comparison"
+          python tools/release/merlo/release_tag_policy.py --expected-commit "$EXPECTED_COMMIT"
   production:
+    needs: [verify-tag]
     name: Production Python ${{ matrix.python }}
     runs-on: ubuntu-latest
     strategy:
@@ -17,8 +49,10 @@ jobs:
       matrix:
         python: ["3.11", "3.14"]
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: ${{ matrix.python }}
           cache: pip
@@ -27,14 +61,17 @@ jobs:
       - name: Production tests
         run: python -m pytest tests/ -q
       - name: Production pyflakes
-        run: python -m pyflakes src/merlo tests
+        run: python -m pyflakes src/merlo tests tools/benchmarks/merlo tools/release/merlo
 
   tooling:
+    needs: [verify-tag]
     name: Python 3.14 tooling tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
           cache: pip
@@ -46,11 +83,14 @@ jobs:
         run: python -m pytest tools/release/merlo/tests/ -q
 
   archive:
+    needs: [verify-tag]
     name: Python 3.14 archive tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
           cache: pip
@@ -62,13 +102,14 @@ jobs:
         run: python -m pytest research/archive/alpha1/tests/ -q
 
   artifacts:
+    needs: [verify-tag]
     name: Build and smoke release artifacts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
           cache: pip
@@ -174,14 +215,14 @@ jobs:
           "$smoke_root/venv/bin/merlo" build --json "$GITHUB_WORKSPACE/examples/capacity-ledger"
           "$smoke_root/venv/bin/merlo" run --json "$GITHUB_WORKSPACE/examples/capacity-ledger" "$GITHUB_WORKSPACE/examples/capacity-ledger/input.txt"
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: merlo-${{ github.ref_name }}-artifacts
           path: dist/*
           if-no-files-found: error
           retention-days: 14
       - name: Upload capacity-ledger smoke binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: merlo-${{ github.ref_name }}-capacity-ledger-smoke
           path: examples/capacity-ledger/.merlo/build/app
@@ -190,27 +231,28 @@ jobs:
 
   release:
     name: Create GitHub prerelease
-    needs: [production, tooling, archive, artifacts]
+    needs: [verify-tag, production, tooling, archive, artifacts]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - name: Checkout exact release tag
-        uses: actions/checkout@v7
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.ref_name }}
           fetch-depth: 1
+          persist-credentials: false
       - name: Download capacity-ledger smoke binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: merlo-${{ github.ref_name }}-capacity-ledger-smoke
           path: smoke
       - name: Download release artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: merlo-${{ github.ref_name }}-artifacts
           path: dist
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.14"
       - name: Install release builder frontend
@@ -277,7 +319,7 @@ jobs:
             --binary "$GITHUB_WORKSPACE/.merlo-release-smoke" \
             --attestation "$GITHUB_WORKSPACE/.merlo-ci-attestation.json"
       - name: Upload assembled release bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: merlo-${{ github.ref_name }}-release
           path: release/**
@@ -291,7 +333,7 @@ jobs:
           cp release/assets/*-evidence.zip dist/
           cp release/manifest.json release/SHA256SUMS release/checksums.sha256 dist/
       - name: Create prerelease with generated notes
-        uses: actions/github-script@v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
             const fs = require("fs");
