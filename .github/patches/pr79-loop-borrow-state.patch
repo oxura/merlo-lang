@@ -1,21 +1,18 @@
 diff --git a/src/merlo/structured_hir_v2.py b/src/merlo/structured_hir_v2.py
 --- a/src/merlo/structured_hir_v2.py
 +++ b/src/merlo/structured_hir_v2.py
-@@ -2699,12 +2699,35 @@ class _OwnershipChecker:
-             dict(state.borrow_places),
-         )
-+
+@@ -2705,8 +2705,34 @@
 +    @staticmethod
 +    def _loop_tracked_borrow_names(
 +        before: _OwnershipState,
 +        candidate: _OwnershipState,
 +    ) -> set[str]:
-+        """Return borrow storage rooted in places visible at loop entry.
++        """Return borrow-storage names rooted in places visible at loop entry.
 +
 +        A pre-existing container may acquire its first contained borrow inside
 +        a loop. Such a new entry is ownership-visible even though its key was
 +        absent from ``before.borrows``. Projection is therefore driven by
-+        pre-loop storage roots, not only by pre-existing borrow keys.
++        pre-loop storage roots rather than only by pre-existing borrow keys.
 +        """
 +        preloop_roots = {place.root for place in before.places.values()}
 +        names = set(before.borrows) | set(before.borrow_places)
@@ -39,7 +36,7 @@ diff --git a/src/merlo/structured_hir_v2.py b/src/merlo/structured_hir_v2.py
          return _OwnershipState(
              {
                  name: candidate.statuses.get(name, "absent")
-@@ -2712,7 +2735,7 @@ class _OwnershipChecker:
+@@ -2714,7 +2740,7 @@
              },
              {
                  name: candidate.borrows[name]
@@ -48,7 +45,7 @@ diff --git a/src/merlo/structured_hir_v2.py b/src/merlo/structured_hir_v2.py
                  if name in candidate.borrows
              },
              {
-@@ -2723,7 +2746,7 @@ class _OwnershipChecker:
+@@ -2725,7 +2751,7 @@
              False,
              {
                  name: candidate.borrow_places[name]
@@ -57,10 +54,7 @@ diff --git a/src/merlo/structured_hir_v2.py b/src/merlo/structured_hir_v2.py
                  if name in candidate.borrow_places
              },
          )
-@@ -2781,18 +2804,15 @@ class _OwnershipChecker:
-                     "LoopOwnershipBackedgeRequiresFixedPointSupport: OwnershipAmbiguity",
-                     name,
-                 )
+@@ -2807,12 +2833,11 @@
 -        for name in sorted(before.borrows):
 -            if candidate.borrows.get(name) != before.borrows[name]:
 +        for name in sorted(self._loop_tracked_borrow_names(before, candidate)):
