@@ -3165,7 +3165,9 @@ class _OwnershipChecker:
                 )
                 continue
             if isinstance(node, ast.Match):
-                self._check_expr(node.subject, state)
+                subject_type = self._check_expr(node.subject, state)
+                if isinstance(node.subject, ast.Name) and self._owner(subject_type):
+                    self._consume(node.subject.id, state)
                 branches = []
                 before_statuses = set(state.statuses)
                 before_borrows = set(state.borrows)
