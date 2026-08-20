@@ -1271,7 +1271,7 @@ class _OwnershipState:
     terminal: bool = False
     borrow_places: dict[str, Place] = field(default_factory=dict)
     break_paths: tuple["_OwnershipState", ...] = ()
-    continue_paths: tuple["_OwnershipState", ...] = ()
+    backedge_paths: tuple["_OwnershipState", ...] = ()
 
     def clone(self) -> "_OwnershipState":
         return _OwnershipState(
@@ -1281,7 +1281,7 @@ class _OwnershipState:
             self.terminal,
             dict(self.borrow_places),
             tuple(path.clone() for path in self.break_paths),
-            tuple(path.clone() for path in self.continue_paths),
+            tuple(path.clone() for path in self.backedge_paths),
         )
 
 
@@ -1305,16 +1305,18 @@ class _OwnershipChecker:
         types: dict[str, HIRTypeDecl],
         functions: dict[str, ast.FunctionDef],
         borrow_summaries: dict[str, BorrowSummary] | None = None,
+        binding_kinds: Mapping[int, str] | None = None,
     ) -> None:
         self.path = path
         self.types = types
         self.functions = functions
         self.borrow_summaries = borrow_summaries or {}
+        self.binding_kinds = binding_kinds or {}
+        self.binding_kinds_by_name: dict[str, str] = {}
         self.current: ast.FunctionDef | None = None
         self.type_properties = TypePropertyResolver(types)
         self.env: dict[str, str] = {}
         self.parameters: set[str] = set()
-
     def _error(self, name: str, variable: str | None = None) -> None:
         suffix = f": {variable}" if variable else ""
         raise StructuredHIRCompileError(f"{name}{suffix}")
@@ -2639,10 +2641,10 @@ class _OwnershipChecker:
             for branch in branches
             for path in branch.break_paths
         )
-        continue_paths = tuple(
+        backedge_paths = tuple(
             path
             for branch in branches
-            for path in branch.continue_paths
+            for path in branch.backedge_paths
         )
         if not live:
             return _OwnershipState(
@@ -2652,7 +2654,7 @@ class _OwnershipChecker:
                 True,
                 dict(before.borrow_places),
                 break_paths,
-                continue_paths,
+                backedge_paths,
             )
         merged_statuses = dict(live[0].statuses)
         for name in sorted(before.statuses):
@@ -2661,6 +2663,10 @@ class _OwnershipChecker:
                 for branch in live
             }
             if len(statuses) > 1:
+                if self.binding_kinds_by_name.get(name) != "binding":
+                    self._error("OwnershipAmbiguity", name)
+                # Inferred rebindings use drop-flag slots; keep the ambiguity
+                # visible to any use until a later assignment resolves it.
                 merged_statuses[name] = "ambiguous"
         borrows = [branch.borrows for branch in live]
         if borrows and any(item != borrows[0] for item in borrows[1:]):
@@ -2685,7 +2691,7 @@ class _OwnershipChecker:
             False,
             dict(live[0].borrow_places),
             break_paths,
-            continue_paths,
+            backedge_paths,
         )
     @staticmethod
     def _snapshot_state(state: _OwnershipState) -> _OwnershipState:
@@ -2696,7 +2702,6 @@ class _OwnershipChecker:
             False,
             dict(state.borrow_places),
         )
-
     @staticmethod
     def _loop_visible_state(
         before: _OwnershipState,
@@ -2724,23 +2729,138 @@ class _OwnershipChecker:
                 if name in candidate.borrow_places
             },
         )
+    @staticmethod
+    def _loop_assignment_names(
+        statements: list[ast.stmt],
+        binding_kinds: Mapping[int, str],
+    ) -> set[str]:
+        """Find compiler-managed inferred bindings in a loop body."""
+        names = {
+            target.id
+            for statement in statements
+            for node in ast.walk(statement)
+            if isinstance(node, ast.Assign)
+            for target in node.targets
+            if isinstance(target, ast.Name)
+        }
+        names.update(
+            node.target.id
+            for statement in statements
+            for node in ast.walk(statement)
+            if (
+                isinstance(node, ast.AnnAssign)
+                and isinstance(node.target, ast.Name)
+                and getattr(
+                    node,
+                    "_merlo_binding_kind",
+                    binding_kinds.get(node.lineno),
+                )
+                not in {"let", "var"}
+            )
+        )
+        return names
 
+    @staticmethod
+    def _loop_implicit_cleanup_names(statements: list[ast.stmt]) -> set[str]:
+        """Recognize owned collection values whose scope cleanup is deterministic."""
+        return {
+            node.target.id
+            for statement in statements
+            for node in ast.walk(statement)
+            if (
+                isinstance(node, ast.AnnAssign)
+                and isinstance(node.target, ast.Name)
+                and isinstance(node.value, ast.Call)
+                and isinstance(node.value.func, ast.Attribute)
+                and node.value.func.attr == "get"
+            )
+        }
+    def _require_loop_backedge_stable(
+        self,
+        before: _OwnershipState,
+        candidate: _OwnershipState,
+        *,
+        assignment_names: set[str] | frozenset[str] = frozenset(),
+    ) -> None:
+        """Require every ownership-visible backedge to reach the loop entry."""
+        for name in sorted(set(candidate.statuses) - set(before.statuses)):
+            if (
+                candidate.statuses[name] not in {"dropped", "moved"}
+                and name not in assignment_names
+            ):
+                self._error(
+                    "LoopOwnershipBackedgeRequiresFixedPointSupport: OwnershipAmbiguity",
+                    name,
+                )
+        for name in sorted(before.statuses):
+            if candidate.statuses.get(name, "absent") != before.statuses[name]:
+                self._error(
+                    "LoopOwnershipBackedgeRequiresFixedPointSupport: OwnershipAmbiguity",
+                    name,
+                )
+        for name in sorted(before.places):
+            if candidate.places.get(name) != before.places[name]:
+                self._error(
+                    "LoopOwnershipBackedgeRequiresFixedPointSupport: OwnershipAmbiguity",
+                    name,
+                )
+        for name in sorted(before.borrows):
+            if candidate.borrows.get(name) != before.borrows[name]:
+                self._error(
+                    "LoopOwnershipBackedgeRequiresFixedPointSupport: OwnershipAmbiguity",
+                    name,
+                )
+        for name in sorted(before.borrow_places):
+            if candidate.borrow_places.get(name) != before.borrow_places[name]:
+                self._error(
+                    "LoopOwnershipBackedgeRequiresFixedPointSupport: OwnershipAmbiguity",
+                    name,
+                )
+    def _loop_exit_state(
+        self,
+        before: _OwnershipState,
+        candidate: _OwnershipState,
+        *,
+        assignment_names: set[str] | frozenset[str] = frozenset(),
+    ) -> _OwnershipState:
+        """Project a break exit only after cleaning iteration-local owners."""
+        for name in sorted(set(candidate.statuses) - set(before.statuses)):
+            if (
+                candidate.statuses[name] not in {"dropped", "moved"}
+                and name not in assignment_names
+            ):
+                self._error("OwnershipAmbiguity", name)
+        return self._loop_visible_state(before, candidate)
     def _join_loop_states(
         self,
         before: _OwnershipState,
         candidates: tuple[_OwnershipState, ...],
     ) -> _OwnershipState:
-        return self._merge(
+        joined = self._merge(
             before,
             tuple(
                 self._loop_visible_state(before, candidate)
                 for candidate in candidates
             ),
         )
-
+        return _OwnershipState(
+            dict(joined.statuses),
+            dict(joined.borrows),
+            dict(joined.places),
+            joined.terminal,
+            dict(joined.borrow_places),
+        )
     def _check_statements(self, statements: list[ast.stmt], state: _OwnershipState) -> _OwnershipState:
         for node in statements:
             if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                self.binding_kinds_by_name.setdefault(
+                    node.target.id,
+                    getattr(
+                        node,
+                        "_merlo_binding_kind",
+                        self.binding_kinds.get(node.lineno, "let"),
+                    ),
+                )
                 type_name = _type_name(node.annotation)
                 if node.value is not None:
                     provenances = self._borrow_provenances(
@@ -2791,6 +2911,7 @@ class _OwnershipChecker:
                 value_type = self._check_expr(node.value, state)
                 for target in node.targets:
                     if isinstance(target, ast.Name):
+                        self.binding_kinds_by_name.setdefault(target.id, "binding")
                         target_type = self.env.get(target.id)
                         target_place = (
                             state.places.get(target.id)
@@ -2864,8 +2985,8 @@ class _OwnershipChecker:
                 state.terminal = True
                 break
             if isinstance(node, ast.Continue):
-                state.continue_paths = (
-                    *state.continue_paths,
+                state.backedge_paths = (
+                    *state.backedge_paths,
                     self._snapshot_state(state),
                 )
                 state.terminal = True
@@ -2951,20 +3072,43 @@ class _OwnershipChecker:
                 state = self._merge(state, (then_state, else_state))
                 continue
             if isinstance(node, ast.While):
-                test_state = state.clone()
+                loop_entry = state.clone()
+                test_state = loop_entry.clone()
                 self._check_expr(node.test, test_state)
+                self._require_loop_backedge_stable(loop_entry, test_state)
                 body_state = self._check_statements(
                     node.body,
                     test_state.clone(),
                 )
-                candidates = [test_state]
+                assignment_names = (
+                    self._loop_assignment_names(
+                        node.body,
+                        self.binding_kinds,
+                    )
+                    | self._loop_implicit_cleanup_names(node.body)
+                )
+                exit_candidates = [test_state]
+                backedge_candidates = []
                 if not body_state.terminal:
-                    candidates.append(body_state)
-                candidates.extend(body_state.break_paths)
-                candidates.extend(body_state.continue_paths)
+                    backedge_candidates.append(body_state)
+                backedge_candidates.extend(body_state.backedge_paths)
+                for candidate in backedge_candidates:
+                    self._require_loop_backedge_stable(
+                        test_state,
+                        candidate,
+                        assignment_names=assignment_names,
+                    )
+                exit_candidates.extend(
+                    self._loop_exit_state(
+                        test_state,
+                        path,
+                        assignment_names=assignment_names,
+                    )
+                    for path in body_state.break_paths
+                )
                 state = self._join_loop_states(
                     test_state,
-                    tuple(candidates),
+                    tuple(exit_candidates),
                 )
                 continue
             if isinstance(node, ast.For):
@@ -2973,23 +3117,51 @@ class _OwnershipChecker:
                 loop_state = before_loop.clone()
                 if isinstance(node.target, ast.Name):
                     shape = collection_shape(iterable_type)
-                    self.env[node.target.id] = (
+                    target_type = (
                         shape.element_type
                         if shape is not None
                         else "TextView"
                         if iterable_type == "FileLines"
                         else "Inferred"
                     )
+                    self.env[node.target.id] = target_type
                     loop_state.places[node.target.id] = self._root_place(node.target.id)
+                    if (
+                        not iterable_type.startswith("Borrow[")
+                        and target_type != "Inferred"
+                        and self._owner(target_type)
+                    ):
+                        loop_state.statuses[node.target.id] = "available"
                 body_state = self._check_statements(node.body, loop_state)
-                candidates = [before_loop]
+                assignment_names = (
+                    self._loop_assignment_names(
+                        node.body,
+                        self.binding_kinds,
+                    )
+                    | self._loop_implicit_cleanup_names(node.body)
+                )
+                exit_candidates = [before_loop]
+                backedge_candidates = []
                 if not body_state.terminal:
-                    candidates.append(body_state)
-                candidates.extend(body_state.break_paths)
-                candidates.extend(body_state.continue_paths)
+                    backedge_candidates.append(body_state)
+                backedge_candidates.extend(body_state.backedge_paths)
+                for candidate in backedge_candidates:
+                    self._require_loop_backedge_stable(
+                        before_loop,
+                        candidate,
+                        assignment_names=assignment_names,
+                    )
+                exit_candidates.extend(
+                    self._loop_exit_state(
+                        before_loop,
+                        path,
+                        assignment_names=assignment_names,
+                    )
+                    for path in body_state.break_paths
+                )
                 state = self._join_loop_states(
                     before_loop,
-                    tuple(candidates),
+                    tuple(exit_candidates),
                 )
                 continue
             if isinstance(node, ast.Match):
@@ -3016,9 +3188,17 @@ class _OwnershipChecker:
                 continue
         return state
 
+    def _validate_function_end(self, state: _OwnershipState) -> None:
+        for name, status in sorted(state.statuses.items()):
+            if (
+                status == "ambiguous"
+                and self.binding_kinds_by_name.get(name) != "binding"
+            ):
+                self._error("OwnershipAmbiguity", name)
     def check(self) -> None:
         for function in self.functions.values():
             self.current = function
+            self.binding_kinds_by_name = {}
             self.env = {
                 argument.arg: _type_name(argument.annotation)
                 for argument in function.args.args
@@ -3036,7 +3216,8 @@ class _OwnershipChecker:
                     for name in self.env
                 },
             )
-            self._check_statements(function.body, state)
+            final_state = self._check_statements(function.body, state)
+            self._validate_function_end(final_state)
 
 
 class _HIRBuilder:
@@ -4289,7 +4470,11 @@ class _HIRBuilder:
                         f"{node.target.id} expects {type_name}, got {value.type_name}; "
                         "propagate or match the Result explicitly"
                     )
-            binding = self.preprocessed.binding_kinds.get(node.lineno, "let")
+            binding = getattr(
+                node,
+                "_merlo_binding_kind",
+                self.preprocessed.binding_kinds.get(node.lineno, "let"),
+            )
             return self._new_node(
                 node,
                 "VarBinding" if binding == "var" else "LetBinding",
@@ -4874,7 +5059,13 @@ def compile_structured_hir(
     if entry_function not in function_nodes:
         raise StructuredHIRCompileError(f"missing entry function: {entry_function}")
     borrow_summaries = compute_borrow_summaries(function_nodes, types)
-    _OwnershipChecker(path, types, function_nodes, borrow_summaries).check()
+    _OwnershipChecker(
+        path,
+        types,
+        function_nodes,
+        borrow_summaries,
+        preprocessed.binding_kinds,
+    ).check()
     builder = _HIRBuilder(
         path,
         source,
@@ -4957,7 +5148,13 @@ def compile_canonical_hir(
             f"missing entry function: {entry_function}"
         )
     borrow_summaries = compute_borrow_summaries(function_nodes, types)
-    _OwnershipChecker(path, types, function_nodes, borrow_summaries).check()
+    _OwnershipChecker(
+        path,
+        types,
+        function_nodes,
+        borrow_summaries,
+        preprocessed.binding_kinds,
+    ).check()
     builder = _HIRBuilder(
         path,
         source,
@@ -4969,6 +5166,9 @@ def compile_canonical_hir(
     functions = tuple(
         builder.function(item) for item in function_nodes.values()
     )
+    for node in ast.walk(module):
+        if hasattr(node, "_merlo_binding_kind"):
+            delattr(node, "_merlo_binding_kind")
     return StructuredHIRProgram(
         source,
         path,

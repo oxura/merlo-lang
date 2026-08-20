@@ -436,7 +436,7 @@ class _SurfaceNativeBuilder:
             binding_type = binding.type_name
             value = self._expr(statement.value)
             self.local_types[statement.name] = binding_type
-            return self._loc(
+            result = self._loc(
                 ast.AnnAssign(
                     target=self._name(statement.name, statement.span, ctx=ast.Store()),
                     annotation=self._annotation(binding_type, statement.span),
@@ -445,6 +445,14 @@ class _SurfaceNativeBuilder:
                 ),
                 statement.span,
             )
+            result._merlo_binding_kind = (
+                "var"
+                if statement.explicit_kind == "var"
+                else "let"
+                if statement.explicit_kind == "let"
+                else "binding"
+            )
+            return result
         if isinstance(statement, SurfaceAnnotation):
             self.local_types[statement.name] = statement.type_name
             return self._loc(
@@ -796,7 +804,11 @@ class _SurfaceNativeBuilder:
                 for nested in statement.walk():
                     if isinstance(nested, SurfaceBinding):
                         binding_kinds[nested.span.start_line] = (
-                            "var" if nested.explicit_kind == "var" else "let"
+                            "var"
+                            if nested.explicit_kind == "var"
+                            else "let"
+                            if nested.explicit_kind == "let"
+                            else "binding"
                         )
         module = self._loc(ast.Module(body=body, type_ignores=[]), self.program.span)
         ast.fix_missing_locations(module)
