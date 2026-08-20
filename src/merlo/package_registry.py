@@ -6,7 +6,6 @@ injected transport is supplied.
 """
 from __future__ import annotations
 
-from collections import deque
 import io
 import hashlib
 import json
@@ -67,6 +66,8 @@ class PackageMetadata:
         }
         if len(dependencies) != len(self.dependencies):
             raise RegistryError("invalid dependency constraint", "InvalidMetadata")
+        for constraint in dependencies.values():
+            _validate_constraint(constraint)
         object.__setattr__(self, "dependencies", MappingProxyType(dict(sorted(dependencies.items()))))
 
     def to_dict(self) -> dict[str, Any]:
@@ -158,11 +159,25 @@ class ResolvedLock:
         if len({item.name for item in packages}) != len(packages):
             raise RegistryError("duplicate locked package", "InvalidLock")
         try:
-            roots = tuple(sorted((str(name), str(constraint)) for name, constraint in self.roots))
+            roots = tuple(sorted((name, constraint) for name, constraint in self.roots))
         except (TypeError, ValueError) as exc:
             raise RegistryError("invalid lock roots", "InvalidLock") from exc
-        if any(not name or not constraint for name, constraint in roots) or len({name for name, _ in roots}) != len(roots):
+        if (
+            any(
+                not isinstance(name, str)
+                or not isinstance(constraint, str)
+                or not name
+                or not constraint
+                for name, constraint in roots
+            )
+            or len({name for name, _ in roots}) != len(roots)
+        ):
             raise RegistryError("invalid lock roots", "InvalidLock")
+        for _, constraint in roots:
+            try:
+                _validate_constraint(constraint)
+            except RegistryError as exc:
+                raise RegistryError(str(exc), "InvalidLock") from exc
         object.__setattr__(self, "packages", packages)
         object.__setattr__(self, "roots", roots)
 
@@ -233,43 +248,230 @@ def _version_key(value: str) -> tuple[int, int, int, int, tuple[tuple[int, int |
     return major, minor, patch, 1 if prerelease is None else 0, prerelease or ()
 
 
-def satisfies(version: str, constraint: str) -> bool:
-    """Evaluate the small deterministic constraint language used by indexes."""
-    if not constraint or constraint.strip() in {"*", "any"}:
-        return True
-    parsed = _parse_version(version)
-    if parsed is None:
-        return False
-    if parsed[3] is not None and "-" not in constraint:
-        return False
-    v = parsed[:3]
-    for term in re.split(r"\s*,\s*|\s+", constraint.strip()):
-        if not term:
-            continue
+_CONSTRAINT_OPERATORS = (">=", "<=", "!=", "^", "~", ">", "<", "=")
+
+
+def _constraint_terms(constraint: str) -> tuple[tuple[str, str, tuple[int, int, int, tuple[tuple[int, int | str], ...] | None] | None, tuple[str, ...] | None], ...]:
+    """Parse and validate every term before any tuple indexing occurs."""
+    if not isinstance(constraint, str):
+        raise RegistryError("constraint must be a string", "InvalidConstraint")
+    value = constraint.strip()
+    if value in {"*", "any"}:
+        return (("any", "", None, None),)
+    if not value:
+        raise RegistryError("empty constraint", "InvalidConstraint")
+    raw_terms = re.split(r"\s*,\s*|\s+", value)
+    if any(not term for term in raw_terms):
+        raise RegistryError(value, "InvalidConstraint")
+    parsed: list[tuple[str, str, tuple[int, int, int, tuple[tuple[int, int | str], ...] | None] | None, tuple[str, ...] | None]] = []
+    for term in raw_terms:
         op, raw = "==", term
-        for candidate in (">=", "<=", "!=", "^", "~", ">", "<", "="):
+        for candidate in _CONSTRAINT_OPERATORS:
             if term.startswith(candidate):
                 op, raw = candidate, term[len(candidate):]
                 break
-        parsed_constraint = _parse_version(raw)
-        w = parsed_constraint[:3] if parsed_constraint is not None else (0, 0, 0)
+        if not raw:
+            raise RegistryError(term, "InvalidConstraint")
+        lowered = raw.lower()
+        wildcard_parts: tuple[str, ...] | None = None
+        if "*" in raw or any(part == "x" for part in lowered.split(".")):
+            if op not in {"==", "="}:
+                raise RegistryError(term, "InvalidConstraint")
+            normalized = lowered.replace("*", "x")
+            parts = tuple(normalized.split("."))
+            if not 1 <= len(parts) <= 3 or any(part == "" for part in parts):
+                raise RegistryError(term, "InvalidConstraint")
+            if parts.count("x") > 1:
+                raise RegistryError(term, "InvalidConstraint")
+            wildcard_seen = False
+            for part in parts:
+                if part == "x":
+                    wildcard_seen = True
+                elif wildcard_seen or not part.isdigit():
+                    raise RegistryError(term, "InvalidConstraint")
+            wildcard_parts = parts
+            parsed.append((op, raw, None, wildcard_parts))
+            continue
+        parsed_version = _parse_version(raw)
+        if parsed_version is None:
+            raise RegistryError(term, "InvalidConstraint")
+        parsed.append((op, raw, parsed_version, None))
+    return tuple(parsed)
+
+
+def _validate_constraint(constraint: str) -> None:
+    _constraint_terms(constraint)
+
+
+def satisfies(version: str, constraint: str) -> bool:
+    """Evaluate the deterministic constraint language used by indexes."""
+    terms = _constraint_terms(constraint)
+    parsed = _parse_version(version)
+    if parsed is None:
+        return False
+    if parsed[3] is not None and not any("-" in raw for _, raw, _, _ in terms):
+        return False
+    version_key = _version_key(version)
+    release = parsed[:3]
+    for op, raw, parsed_constraint, wildcard_parts in terms:
+        if op == "any":
+            continue
+        if wildcard_parts is not None:
+            if any(part != "x" and int(part) != release[index] for index, part in enumerate(wildcard_parts)):
+                return False
+            continue
+        assert parsed_constraint is not None
+        bound = parsed_constraint[:3]
         if op == "^":
-            upper = (w[0] + 1, 0, 0) if w[0] else ((0, w[1] + 1, 0) if w[1] else (0, 0, w[2] + 1))
-            if not (v >= w and v < upper): return False
-        elif op == "~" and not (v >= w and v[:2] == w[:2]): return False
-        elif op in {"==", "="}:
-            if "x" in raw.lower() or "*" in raw:
-                parts = raw.replace("*", "x").lower().split(".")
-                if any(str(v[i]) != p for i, p in enumerate(parts) if p != "x"): return False
-            elif parsed_constraint is None or _version_key(version) != _version_key(raw): return False
-        elif parsed_constraint is None:
-            raise RegistryError(raw, "InvalidConstraint")
-        elif op == ">=" and not _version_key(version) >= _version_key(raw): return False
-        elif op == "<=" and not _version_key(version) <= _version_key(raw): return False
-        elif op == ">" and not _version_key(version) > _version_key(raw): return False
-        elif op == "<" and not _version_key(version) < _version_key(raw): return False
-        elif op == "!=" and _version_key(version) == _version_key(raw): return False
+            upper = (bound[0] + 1, 0, 0) if bound[0] else (
+                (0, bound[1] + 1, 0) if bound[1] else (0, 0, bound[2] + 1)
+            )
+            if not (version_key >= _version_key(raw) and release < upper):
+                return False
+        elif op == "~":
+            upper = (bound[0] + 1, 0, 0) if raw.count(".") == 0 else (bound[0], bound[1] + 1, 0)
+            if not (version_key >= _version_key(raw) and release < upper):
+                return False
+        elif op in {"==", "="} and version_key != _version_key(raw):
+            return False
+        elif op == ">=" and version_key < _version_key(raw):
+            return False
+        elif op == "<=" and version_key > _version_key(raw):
+            return False
+        elif op == ">" and version_key <= _version_key(raw):
+            return False
+        elif op == "<" and version_key >= _version_key(raw):
+            return False
+        elif op == "!=" and version_key == _version_key(raw):
+            return False
     return True
+
+
+def _constraints_conflict(constraints: tuple[str, ...]) -> bool:
+    """Check conjunction satisfiability using normalized interval bounds."""
+    version_key = tuple[int, int, int, int, tuple[tuple[int, int | str], ...]]
+    parsed_constraints = tuple(_constraint_terms(constraint) for constraint in constraints)
+    terms = tuple(term for parsed in parsed_constraints for term in parsed)
+    allow_prerelease = all(
+        any("-" in raw for _, raw, _, _ in parsed)
+        for parsed in parsed_constraints
+    )
+    lower: tuple[version_key, bool] | None = (
+        ((0, 0, 0, 0, ((0, 0),)) if allow_prerelease else (0, 0, 0, 1, ()), True)
+    )
+    upper: tuple[version_key, bool] | None = None
+    exact: version_key | None = None
+    exact_raw: str | None = None
+    excluded: set[version_key] = set()
+
+    def key(parsed: tuple[int, int, int, tuple[tuple[int, int | str], ...] | None]) -> version_key:
+        return parsed[:3] + (1 if parsed[3] is None else 0, parsed[3] or ())
+
+    def prerelease_floor(release: tuple[int, int, int]) -> version_key:
+        return release + (0, ((0, 0),))
+
+    def stable(release: tuple[int, int, int]) -> version_key:
+        return release + (1, ())
+
+    def tighten_lower(candidate: version_key, inclusive: bool) -> None:
+        nonlocal lower
+        if lower is None or candidate > lower[0] or (candidate == lower[0] and not inclusive and lower[1]):
+            lower = (candidate, inclusive)
+
+    def tighten_upper(candidate: version_key, inclusive: bool) -> None:
+        nonlocal upper
+        if upper is None or candidate < upper[0] or (candidate == upper[0] and not inclusive and upper[1]):
+            upper = (candidate, inclusive)
+
+    for operator, raw, parsed, wildcard_parts in terms:
+        if operator == "any":
+            continue
+        if wildcard_parts is not None:
+            release = [0, 0, 0]
+            wildcard_index = len(wildcard_parts) - 1
+            for index, part in enumerate(wildcard_parts):
+                if part == "x":
+                    wildcard_index = index
+                    break
+                release[index] = int(part)
+            if wildcard_index == 0:
+                continue
+            release_tuple = (release[0], release[1], release[2])
+            tighten_lower(
+                prerelease_floor(release_tuple)
+                if allow_prerelease
+                else stable(release_tuple),
+                True,
+            )
+            if wildcard_index == 1:
+                next_release = (release[0] + 1, 0, 0)
+            else:
+                next_release = (release[0], release[1] + 1, 0)
+            tighten_upper(
+                prerelease_floor(next_release) if allow_prerelease else stable(next_release),
+                False,
+            )
+            continue
+        assert parsed is not None
+        bound = key(parsed)
+        release = parsed[:3]
+        if operator in {"==", "="}:
+            if exact is not None and exact != bound:
+                return True
+            exact = bound
+            exact_raw = raw
+        elif operator == "!=":
+            excluded.add(bound)
+        elif operator == ">=":
+            tighten_lower(bound, True)
+        elif operator == ">":
+            tighten_lower(bound, False)
+        elif operator == "<=":
+            tighten_upper(bound, True)
+        elif operator == "<":
+            tighten_upper(bound, False)
+        else:
+            tighten_lower(bound, True)
+            if operator == "^":
+                next_release = (release[0] + 1, 0, 0) if release[0] else (
+                    (0, release[1] + 1, 0) if release[1] else (0, 0, release[2] + 1)
+                )
+            else:
+                next_release = (
+                    (release[0] + 1, 0, 0)
+                    if raw.count(".") == 0
+                    else (release[0], release[1] + 1, 0)
+                )
+            tighten_upper(
+                prerelease_floor(next_release) if allow_prerelease else stable(next_release),
+                False,
+            )
+
+    if lower is not None and upper is not None:
+        if lower[0] > upper[0] or (lower[0] == upper[0] and not (lower[1] and upper[1])):
+            return True
+    if exact is not None:
+        if exact_raw is None or not all(satisfies(exact_raw, constraint) for constraint in constraints):
+            return True
+        return False
+    stable_candidate = (0, 0, 0)
+    if lower is not None:
+        release = lower[0][:3]
+        if lower[0][3] == 1 and not lower[1]:
+            release = (release[0], release[1], release[2] + 1)
+        stable_candidate = release
+    for _ in range(len(excluded) + 1):
+        candidate_key = stable(stable_candidate)
+        if candidate_key not in excluded:
+            break
+        stable_candidate = (stable_candidate[0], stable_candidate[1], stable_candidate[2] + 1)
+    else:
+        candidate_key = stable(stable_candidate)
+    if upper is None or candidate_key < upper[0] or (candidate_key == upper[0] and upper[1]):
+        return False
+    return not allow_prerelease
+
+
 
 
 class PackageResolver:
@@ -285,40 +487,202 @@ class PackageResolver:
             if not isinstance(lock, ResolvedLock):
                 raise RegistryError("invalid lock", "InvalidLock")
             if requirements is not None:
-                supplied_roots = tuple(sorted((str(name), str(constraint)) for name, constraint in requirements.items()))
+                if not isinstance(requirements, Mapping):
+                    raise RegistryError("requirements must be an object", "InvalidRequirements")
+                if any(not isinstance(name, str) or not isinstance(constraint, str) for name, constraint in requirements.items()):
+                    raise RegistryError("invalid requirement", "InvalidRequirements")
+                for constraint in requirements.values():
+                    _validate_constraint(constraint)
+                supplied_roots = tuple(sorted(requirements.items()))
                 if supplied_roots != lock.roots:
                     raise RegistryError("lock roots do not match requirements", "LockTampered")
-            expected = self.resolve(dict(lock.roots))
-            if [item.to_dict() for item in expected.packages] != [item.to_dict() for item in lock.packages]:
-                raise RegistryError("lock dependency closure mismatch", "LockTampered")
+            if not offline:
+                self._validate_lock_index(lock)
+            self._validate_lock_closure(lock)
             if offline:
                 for package in lock.packages:
                     self._verify_file(package, self._cache_path(package))
             return lock
         if requirements is not None and not isinstance(requirements, Mapping):
             raise RegistryError("requirements must be an object", "InvalidRequirements")
-        roots = tuple(sorted((str(name), str(constraint)) for name, constraint in (requirements or {}).items()))
-        if any(not name or not constraint for name, constraint in roots):
+        raw_requirements = requirements or {}
+        if any(not isinstance(name, str) or not name for name in raw_requirements):
             raise RegistryError("invalid requirement", "InvalidRequirements")
+        for constraint in raw_requirements.values():
+            _validate_constraint(constraint)
+        roots = tuple(sorted(raw_requirements.items()))
+        root_names = {name for name, _ in roots}
+        if any(not constraint for _, constraint in roots):
+            raise RegistryError("invalid requirement", "InvalidRequirements")
+
+        constraints: dict[str, list[str]] = {name: [constraint] for name, constraint in roots}
         selected: dict[str, PackageMetadata] = {}
-        pending = deque(roots)
-        while pending:
-            name, constraint = pending.popleft()
-            item = self.index.find(name, constraint)
-            previous = selected.get(name)
-            if previous is not None:
-                if not satisfies(previous.version, constraint):
-                    raise RegistryError(name, "ConflictingConstraint")
+        # Each frame represents one selected package and the untried candidates
+        # for that package.  It is the explicit equivalent of recursive DFS.
+        frames: list[dict[str, Any]] = []
+        selected_result: dict[str, PackageMetadata] | None = None
+        missing_seen = False
+        conflict_seen = False
+        cycle_seen = False
+
+        def apply(frame: dict[str, Any], package: PackageMetadata) -> None:
+            name = frame["name"]
+            selected[name] = package
+            frame["package"] = package
+            for dependency, dependency_constraint in package.dependencies.items():
+                constraints.setdefault(dependency, []).append(dependency_constraint)
+
+        def undo(frame: dict[str, Any]) -> None:
+            name = frame["name"]
+            package = frame["package"]
+            selected.pop(name, None)
+            for dependency in package.dependencies:
+                terms = constraints[dependency]
+                terms.pop()
+                if not terms:
+                    del constraints[dependency]
+
+        def backtrack() -> bool:
+            while frames:
+                frame = frames[-1]
+                undo(frame)
+                candidates = frame["candidates"]
+                next_candidate = frame["next"]
+                if next_candidate < len(candidates):
+                    frame["next"] = next_candidate + 1
+                    apply(frame, candidates[next_candidate])
+                    return True
+                frames.pop()
+            return False
+
+        while True:
+            invalid = next(
+                (
+                    name
+                    for name, package in selected.items()
+                    if not all(satisfies(package.version, term) for term in constraints[name])
+                ),
+                None,
+            )
+            if invalid is not None:
+                invalid_terms = tuple(constraints[invalid])
+                if _constraints_conflict(invalid_terms):
+                    conflict_seen = True
+                else:
+                    missing_seen = True
+                if not backtrack():
+                    break
                 continue
-            selected[name] = item
-            pending.extend(sorted(item.dependencies.items()))
-        result = ResolvedLock(tuple(selected[name] for name in sorted(selected)), roots)
+
+            unresolved = sorted(
+                (name for name in constraints if name not in selected),
+                key=lambda name: (name not in root_names, name),
+            )
+            if not unresolved:
+                candidate_lock = ResolvedLock(tuple(selected[name] for name in sorted(selected)), roots)
+                try:
+                    self._validate_lock_closure(candidate_lock)
+                except RegistryError as exc:
+                    if exc.code != "DependencyCycle":
+                        raise
+                    cycle_seen = True
+                    if not backtrack():
+                        break
+                    continue
+                selected_result = selected
+                break
+
+            name = unresolved[0]
+            terms = tuple(constraints[name])
+            available = tuple(package for package in self.index.packages if package.name == name)
+            if not available:
+                missing_seen = True
+                if not backtrack():
+                    break
+                continue
+            candidates = tuple(
+                sorted(
+                    (
+                        package
+                        for package in available
+                        if all(satisfies(package.version, term) for term in terms)
+                    ),
+                    key=lambda package: _version_key(package.version),
+                    reverse=True,
+                )
+            )
+            if not candidates:
+                if _constraints_conflict(terms):
+                    conflict_seen = True
+                else:
+                    missing_seen = True
+                if not backtrack():
+                    break
+                continue
+            frame = {"name": name, "candidates": candidates, "next": 1}
+            frames.append(frame)
+            apply(frame, candidates[0])
+
+        if selected_result is None:
+            if cycle_seen:
+                raise RegistryError("dependency graph contains a cycle", "DependencyCycle")
+            if conflict_seen:
+                raise RegistryError("package constraints conflict", "ConflictingConstraint")
+            if missing_seen:
+                raise RegistryError("dependency graph has no compatible solution", "UnsatisfiedConstraint")
+            raise RegistryError("dependency graph has no compatible solution", "UnsatisfiedConstraint")
+        result = ResolvedLock(tuple(selected_result[name] for name in sorted(selected_result)), roots)
+        self._validate_lock_closure(result)
         if offline:
             for item in result.packages:
                 if self.cache_dir is None or not self._cache_path(item).is_file():
                     raise RegistryError(item.name, "OfflineArtifactMissing")
                 self._verify_file(item, self._cache_path(item))
         return result
+
+    def _validate_lock_index(self, lock: ResolvedLock) -> None:
+        current = {(package.name, package.version): package for package in self.index.packages}
+        for package in lock.packages:
+            if current.get((package.name, package.version)) != package:
+                raise RegistryError(package.name, "LockTampered")
+
+    @staticmethod
+    def _validate_lock_closure(lock: ResolvedLock) -> None:
+        packages = {package.name: package for package in lock.packages}
+        constraints: dict[str, list[str]] = {name: [constraint] for name, constraint in lock.roots}
+        for package in lock.packages:
+            for name, constraint in package.dependencies.items():
+                constraints.setdefault(name, []).append(constraint)
+        if set(packages) != set(constraints):
+            missing = sorted(set(constraints) - set(packages))
+            raise RegistryError(",".join(missing), "LockTampered")
+        for name, package in packages.items():
+            if not all(satisfies(package.version, constraint) for constraint in constraints[name]):
+                raise RegistryError(name, "LockTampered")
+
+        state: dict[str, int] = {}
+        for start in sorted(packages):
+            if state.get(start, 0) == 2:
+                continue
+            stack: list[tuple[str, bool]] = [(start, False)]
+            while stack:
+                name, exiting = stack.pop()
+                if exiting:
+                    state[name] = 2
+                    continue
+                current_state = state.get(name, 0)
+                if current_state == 1:
+                    raise RegistryError(name, "DependencyCycle")
+                if current_state == 2:
+                    continue
+                state[name] = 1
+                stack.append((name, True))
+                for dependency in reversed(sorted(packages[name].dependencies)):
+                    dependency_state = state.get(dependency, 0)
+                    if dependency_state == 1:
+                        raise RegistryError(dependency, "DependencyCycle")
+                    if dependency_state == 0:
+                        stack.append((dependency, False))
 
     def fetch(self, package: PackageMetadata, *, url: str | None = None) -> Path:
         if self.transport is None:

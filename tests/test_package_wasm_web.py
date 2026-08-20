@@ -16,6 +16,7 @@ from merlo.package_registry import (
     RegistryError,
     RegistryIndex,
     ResolvedLock,
+    satisfies,
 )
 from merlo.project import Project, resolve_dependencies
 from merlo.wasm_backend import WasmBackend, WasmCompileError
@@ -70,6 +71,174 @@ def test_registry_semver_lock_closure_and_immutability() -> None:
     with pytest.raises(TypeError):
         root.dependencies["other"] = "*"
 
+
+
+def test_registry_aggregates_transitive_constraints_and_backtracks() -> None:
+    b_old = PackageMetadata("b", "1.0.0", "1" * 64)
+    b_new = PackageMetadata("b", "2.0.0", "2" * 64)
+    left = PackageMetadata("left", "1.0.0", "3" * 64, dependencies={"b": ">=1"})
+    right = PackageMetadata("right", "1.0.0", "4" * 64, dependencies={"b": "<2"})
+    lock = PackageResolver(RegistryIndex((b_old, b_new, left, right))).resolve({"left": "*", "right": "*"})
+    assert [(item.name, item.version) for item in lock.packages] == [
+        ("b", "1.0.0"),
+        ("left", "1.0.0"),
+        ("right", "1.0.0"),
+    ]
+
+
+def test_registry_reports_true_constraint_conflict() -> None:
+    left = PackageMetadata("left", "1.0.0", "1" * 64, dependencies={"b": ">=2"})
+    right = PackageMetadata("right", "1.0.0", "2" * 64, dependencies={"b": "<2"})
+    b = PackageMetadata("b", "1.0.0", "3" * 64)
+    with pytest.raises(RegistryError, match="ConflictingConstraint"):
+        PackageResolver(RegistryIndex((left, right, b))).resolve({"left": "*", "right": "*"})
+
+@pytest.mark.parametrize(
+    ("left_constraint", "right_constraint", "expected"),
+    [
+        (">=2", "<2", "ConflictingConstraint"),
+        (">=2", "<3", "UnsatisfiedConstraint"),
+        (">=2", None, "UnsatisfiedConstraint"),
+        ("=2", "=3", "ConflictingConstraint"),
+        ("=2", "!=2", "ConflictingConstraint"),
+        (">=1.0.0 <1.0.1 !=1.0.0", None, "ConflictingConstraint"),
+        (">1.0.0 <1.0.2 !=1.0.1", None, "ConflictingConstraint"),
+        ("1.0.x >=1.0.0-alpha <1.0.0", None, "UnsatisfiedConstraint"),
+    ],
+)
+def test_registry_classifies_no_candidate_constraint_intersections(
+    left_constraint: str,
+    right_constraint: str | None,
+    expected: str,
+) -> None:
+    b = PackageMetadata("b", "1.0.0", "3" * 64)
+    left = PackageMetadata("left", "1.0.0", "1" * 64, dependencies={"b": left_constraint})
+    packages = [b, left]
+    roots = {"left": "*"}
+    if right_constraint is not None:
+        right = PackageMetadata("right", "1.0.0", "2" * 64, dependencies={"b": right_constraint})
+        packages.append(right)
+        roots["right"] = "*"
+    with pytest.raises(RegistryError) as raised:
+        PackageResolver(RegistryIndex(tuple(packages))).resolve(roots)
+    assert raised.value.code == expected
+
+@pytest.mark.parametrize(
+    "constraints",
+    [
+        ("x", ">=2", "<3"),
+        ("1.x", ">=1.5", "<1.6"),
+    ],
+)
+def test_registry_classifies_wildcard_intersections_as_unsatisfied(
+    constraints: tuple[str, ...],
+) -> None:
+    b = PackageMetadata("b", "1.0.0", "3" * 64)
+    packages = [b]
+    roots = {}
+    for index, constraint in enumerate(constraints):
+        name = f"root{index}"
+        packages.append(PackageMetadata(name, "1.0.0", f"{index + 1:x}" * 64, dependencies={"b": constraint}))
+        roots[name] = "*"
+    with pytest.raises(RegistryError) as raised:
+        PackageResolver(RegistryIndex(tuple(packages))).resolve(roots)
+    assert raised.value.code == "UnsatisfiedConstraint"
+
+@pytest.mark.parametrize(
+    "constraints",
+    [
+        ("<0",),
+        ("<0-0",),
+        ("=1.0.0-alpha", "1.x"),
+    ],
+)
+def test_registry_rejects_empty_prerelease_and_exact_intersections(
+    constraints: tuple[str, ...],
+) -> None:
+    b = PackageMetadata("b", "1.0.0", "3" * 64)
+    packages = [b]
+    roots = {}
+    for index, constraint in enumerate(constraints):
+        name = f"root{index}"
+        packages.append(PackageMetadata(name, "1.0.0", f"{index + 1:x}" * 64, dependencies={"b": constraint}))
+        roots[name] = "*"
+    with pytest.raises(RegistryError, match="ConflictingConstraint"):
+        PackageResolver(RegistryIndex(tuple(packages))).resolve(roots)
+
+
+
+
+def test_registry_missing_transitive_candidate_is_unsatisfied() -> None:
+    root = PackageMetadata("root", "1.0.0", "1" * 64, dependencies={"missing": "*"})
+    with pytest.raises(RegistryError) as raised:
+        PackageResolver(RegistryIndex((root,))).resolve({"root": "*"})
+    assert raised.value.code == "UnsatisfiedConstraint"
+
+
+def test_registry_accepts_prerelease_caret_and_tilde_lower_bounds() -> None:
+    assert satisfies("1.0.0-alpha", "^1.0.0-alpha")
+    assert satisfies("1.0.0", "^1.0.0-alpha")
+    assert satisfies("1.0.0-alpha", "~1.0.0-alpha")
+    assert not satisfies("1.0.0-alpha", "^1.0.0")
+    index = RegistryIndex(
+        (
+            PackageMetadata("dep", "1.0.0-alpha", "1" * 64),
+            PackageMetadata("dep", "1.0.0", "2" * 64),
+        )
+    )
+    assert PackageResolver(index).resolve({"dep": "^1.0.0-alpha"}).packages[0].version == "1.0.0"
+
+
+def test_registry_online_lock_revalidates_current_index_metadata() -> None:
+    locked = PackageMetadata("demo", "1.0.0", "1" * 64)
+    lock = ResolvedLock((locked,), (("demo", "^1"),))
+    changed = PackageMetadata("demo", "1.0.0", "2" * 64)
+    with pytest.raises(RegistryError, match="LockTampered"):
+        PackageResolver(RegistryIndex((changed,))).resolve(lock=lock)
+
+
+def test_registry_resolves_deep_chain_without_python_recursion() -> None:
+    packages = []
+    for index in reversed(range(1105)):
+        dependencies = {f"p{index + 1:04d}": "*"} if index < 1104 else {}
+        packages.append(PackageMetadata(f"p{index:04d}", "1.0.0", f"{index:064x}", dependencies=dependencies))
+    lock = PackageResolver(RegistryIndex(tuple(packages))).resolve({"p0000": "*"})
+    assert len(lock.packages) == 1105
+
+
+def test_registry_lock_cycle_validation_is_iterative() -> None:
+    first = PackageMetadata("a", "1.0.0", "1" * 64, dependencies={"b": "*"})
+    second = PackageMetadata("b", "1.0.0", "2" * 64, dependencies={"a": "*"})
+    lock = ResolvedLock((first, second), (("a", "*"),))
+    with pytest.raises(RegistryError, match="DependencyCycle"):
+        PackageResolver(RegistryIndex((first, second))).resolve(lock=lock)
+
+
+@pytest.mark.parametrize("constraint", ["1.2.3.4", "1.*.2", ">=1.x", "1,,2", ""])
+def test_registry_rejects_malformed_constraints(constraint: str) -> None:
+    with pytest.raises(RegistryError, match="InvalidConstraint"):
+        satisfies("1.0.0", constraint)
+
+
+def test_registry_choice_is_deterministic_and_maximal() -> None:
+    versions = tuple(
+        PackageMetadata("b", version, f"{index:064x}")
+        for index, version in enumerate(("1.0.0", "1.2.0", "1.1.0"), 1)
+    )
+    resolver = PackageResolver(RegistryIndex(versions))
+    assert resolver.resolve({"b": "^1"}).packages[0].version == "1.2.0"
+    assert resolver.resolve({"b": "^1"}).to_json() == resolver.resolve({"b": "^1"}).to_json()
+
+
+def test_registry_offline_lock_uses_lock_closure_not_current_index(tmp_path) -> None:
+    payload = _archive()
+    package = PackageMetadata("demo", "1.0.0", hashlib.sha256(payload).hexdigest())
+    cache = tmp_path / "cache"
+    source = PackageResolver(RegistryIndex((package,)), transport=lambda _: payload, cache_dir=cache)
+    source.fetch(package, url="https://registry.invalid/demo.zip")
+    lock = source.resolve({"demo": "^1"}, offline=True)
+    offline = PackageResolver(RegistryIndex(()), cache_dir=cache)
+    assert offline.resolve(lock=lock, offline=True).to_json() == lock.to_json()
 
 def test_registry_rejects_malformed_lock_metadata_and_cache_symlink(tmp_path) -> None:
     with pytest.raises(RegistryError, match="InvalidMetadata"):
