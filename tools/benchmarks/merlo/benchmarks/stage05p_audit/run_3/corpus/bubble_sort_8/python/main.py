@@ -10,5 +10,5 @@ def run(n):
                 if v[i]>v[i+1]: v[i],v[i+1]=v[i+1],v[i]
     return v[0]*131+v[7]
 result=run(int(sys.argv[1]))
-print(f"BENCH_ALLOCATIONS=0",file=sys.stderr)
+print("BENCH_ALLOCATIONS=0",file=sys.stderr)
 print(result)

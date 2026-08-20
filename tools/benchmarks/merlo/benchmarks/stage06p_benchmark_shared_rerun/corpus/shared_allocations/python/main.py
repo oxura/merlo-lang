@@ -8,5 +8,5 @@ def run(n):
         v=make_values(i); checksum=(checksum+v[0]+v[7])&MASK
     return checksum
 result=run(int(sys.argv[1]))
-print(f"BENCH_ALLOCATIONS=5000000",file=sys.stderr)
+print("BENCH_ALLOCATIONS=5000000",file=sys.stderr)
 print(result)

@@ -6,7 +6,6 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TextIO
 
 UINT64_MAX = (1 << 64) - 1
 
