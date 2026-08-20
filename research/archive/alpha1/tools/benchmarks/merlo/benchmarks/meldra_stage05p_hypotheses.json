@@ -54,15 +54,15 @@
     {
       "evidence": {
         "binary_equal": true,
-        "binary_sha256_a": "6218d27ae5c40211246b68571e31125650cbb201417c0479a347f582bcc3b413",
-        "binary_sha256_b": "6218d27ae5c40211246b68571e31125650cbb201417c0479a347f582bcc3b413",
+        "binary_sha256_a": "d5006730328211ef5ba250bedb77cb68371e6edb4a5f51cdc0752501db0c3993",
+        "binary_sha256_b": "d5006730328211ef5ba250bedb77cb68371e6edb4a5f51cdc0752501db0c3993",
         "build_statuses": [
           "MEASURED",
           "MEASURED"
         ],
         "c_source_equal": true,
-        "c_source_sha256_a": "c041e8c852373c6d2c0a01a427dcae1ca6377ead98444fd5ca027d97e65ed4ac",
-        "c_source_sha256_b": "c041e8c852373c6d2c0a01a427dcae1ca6377ead98444fd5ca027d97e65ed4ac",
+        "c_source_sha256_a": "10271882d85078a103e57ed446f0de415a008188f2c6473fd3a3869d3b62f941",
+        "c_source_sha256_b": "10271882d85078a103e57ed446f0de415a008188f2c6473fd3a3869d3b62f941",
         "compiler": "/usr/bin/clang",
         "mir_digest_a": "fcd6d86a2b24ff09541dc305329b266e6ae79988ce0c0d2fdbcfb1b2ee3fe6fb",
         "mir_digest_b": "fcd6d86a2b24ff09541dc305329b266e6ae79988ce0c0d2fdbcfb1b2ee3fe6fb",

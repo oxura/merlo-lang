@@ -222,7 +222,7 @@ export required(fields: Vec[JsonField], key: Text) -> Json:
     while index < fields.len():
         field = fields.get(index)
         if field.key == key:
-            return field.value
+            return field.value.clone()
         index = index + 1
     Json.Null
 
@@ -231,6 +231,6 @@ export optional(fields: Vec[JsonField], key: Text, fallback: Json) -> Json:
     while index < fields.len():
         field = fields.get(index)
         if field.key == key:
-            return field.value
+            return field.value.clone()
         index = index + 1
     fallback

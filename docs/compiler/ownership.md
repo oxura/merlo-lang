@@ -18,6 +18,14 @@ source/result places, borrow type, direct/contained kind, and ownership mode.
 `witness_path` values are serialized beside relations but are excluded from
 relation equality, HIR function revisions, and HIR/RIR/SemanticWorld semantic
 digests.
+Places used by the source ownership checker follow the versioned
+[`merlo.place.v1`](../../src/merlo/place.py) contract. A `PlaceRoot` is tagged as
+`Local`, `Param`, or `Self`; its `symbol_id` is a compilation-local binding
+identity. It is not a source spelling, a process address, or a package-global
+identifier, and it must not be compared across compilations. Field, variant,
+index, and dereference steps extend that root structurally. Unknown index
+relations remain `MayOverlap` rather than being treated as equal.
+
 Summaries are computed as a monotone union lattice over the local call graph.
 An iterative strongly-connected-component pass identifies recursive relations;
 recursive widening uses the component identity rather than an expanding call

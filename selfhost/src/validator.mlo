@@ -53,7 +53,7 @@ validator_duplicate_parameters(function: Function) -> Text:
             left_parameter = function.parameters.get(index)
             right_parameter = function.parameters.get(other)
             if left_parameter.name == right_parameter.name:
-                return left_parameter.name
+                return left_parameter.name.clone()
             other = other + 1
         index = index + 1
     ""
@@ -71,7 +71,7 @@ validator_unsupported(source: Text, function: Function) -> Text:
     index: UInt64 = 0
     while index < words.len():
         if validator_contains(body, words.get(index)):
-            return words.get(index)
+            return words.get(index).clone()
         index = index + 1
     ""
 
@@ -83,12 +83,12 @@ validator_check_fields(program: Program) -> Text:
         while field < record.fields.len():
             item = record.fields.get(field)
             if item.name.len() == 0 or not validator_known_type(item.type_name, program):
-                return record.name
+                return record.name.clone()
             other: UInt64 = field + 1
             while other < record.fields.len():
                 other_field = record.fields.get(other)
                 if item.name == other_field.name:
-                    return item.name
+                    return item.name.clone()
                 other = other + 1
             field = field + 1
         index = index + 1
@@ -99,7 +99,7 @@ validator_check_fields(program: Program) -> Text:
         while variant < declaration.variants.len():
             variant_item = declaration.variants.get(variant)
             if variant_item.name.len() == 0 or (variant_item.payload_type.len() > 0 and not validator_known_type(variant_item.payload_type, program)):
-                return declaration.name
+                return declaration.name.clone()
             variant = variant + 1
         index = index + 1
     ""
@@ -115,7 +115,7 @@ export validate(program: Program) -> Program:
     index: UInt64 = 0
     while index < program.records.len():
         record_item = program.records.get(index)
-        name = record_item.name
+        name = record_item.name.clone()
         other: UInt64 = index + 1
         while other < program.records.len():
             other_record = program.records.get(other)
@@ -132,7 +132,7 @@ export validate(program: Program) -> Program:
     index = 0
     while index < program.enums.len():
         enum_item = program.enums.get(index)
-        name = enum_item.name
+        name = enum_item.name.clone()
         other: UInt64 = index + 1
         while other < program.enums.len():
             other_enum = program.enums.get(other)
