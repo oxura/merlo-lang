@@ -1,0 +1,1 @@
+Trigger the main-branch pull_request_target repair workflow after it is registered.
