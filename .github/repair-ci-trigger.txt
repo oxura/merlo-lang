@@ -1,1 +1,0 @@
-Trigger the registered CI repair job for the confirmed loop borrow-state regression.
