@@ -14,9 +14,13 @@ from merlo import native_syntax as ast
 from merlo.borrow_summary import BorrowSummary
 from merlo.collection_protocol import collection_shape
 from merlo.place import IndexClass, OverlapRelation, Place, PlaceRoot, PlaceStep, overlap_relation
-from merlo.intrinsics import CONTRACT_GRAPH, intrinsic_signature
+from merlo.intrinsics import BoundContractGraph, intrinsic_signature
 from merlo.type_arena import TypeArenaError, TypeId
-from merlo.type_properties import TypeAuthority, TypeProperties, TypePropertyResolver
+from merlo.type_properties import (
+    TypeAuthority,
+    TypeProperties,
+    TypePropertyResolver,
+)
 
 
 def _stable_id(prefix: str, *parts: Any) -> str:
@@ -109,6 +113,7 @@ class _OwnershipChecker:
         *,
         type_context: TypeAuthority,
         typed_ast: Any,
+        contract_graph: BoundContractGraph,
         compile_error: Callable[[str], Exception] = ValueError,
         stable_id: Callable[..., str] = _stable_id,
         qualified_name: Callable[[ast.AST], str] = ast.unparse,
@@ -123,6 +128,7 @@ class _OwnershipChecker:
         self.typed_ast = typed_ast
         self.binding_kinds_by_name: dict[str, str] = {}
         self.current: ast.FunctionDef | None = None
+        self.contract_graph = contract_graph
         self.type_context = type_context
         self.type_properties = TypePropertyResolver(type_context)
         self.env: dict[str, TypeId] = {}
@@ -163,6 +169,13 @@ class _OwnershipChecker:
             if type_id is not None
             else "<unknown>"
         )
+
+    def _static_type(self, type_name: str) -> TypeId | str:
+        try:
+            return self.type_context.type_id(type_name)
+        except TypeArenaError:
+            return type_name
+
 
     def _type_args(self, type_id: TypeId | None, constructor: str) -> tuple[TypeId, ...] | None:
         if type_id is None:
@@ -1139,8 +1152,13 @@ class _OwnershipChecker:
             static_receiver = (
                 isinstance(raw_receiver, ast.Name)
                 and (
-                    CONTRACT_GRAPH.static_method(raw_receiver.id, method) is not None
-                    or intrinsic_signature(f"{raw_receiver.id}.{method}") is not None
+                    self.contract_graph.static_method(
+                        self._static_type(raw_receiver.id),
+                        method,
+                    )
+                    is not None
+                    or intrinsic_signature(f"{raw_receiver.id}.{method}")
+                    is not None
                 )
             )
             if (
@@ -1184,14 +1202,14 @@ class _OwnershipChecker:
                 if getattr(argument, "_merlo_implicit_callable", None) is None:
                     self._check_expr(argument, state)
             method_signature = (
-                CONTRACT_GRAPH.method(self._render_type(receiver_type), method)
+                self.contract_graph.method(receiver_type, method)
                 if receiver_type is not None and method
                 else None
             )
             if method_signature is None and method:
                 static_receiver = self._qualified_name(raw_receiver)
-                static_signature = CONTRACT_GRAPH.static_method(
-                    static_receiver,
+                static_signature = self.contract_graph.static_method(
+                    self._static_type(static_receiver),
                     method,
                 )
                 if static_signature is not None:

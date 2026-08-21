@@ -129,9 +129,12 @@ remain unchanged.
 Aliases are already canonicalized before HIR stores them, so readers compare
 the arena's canonical spelling with retained canonical HIR spelling rather than
 reparsing source syntax. Qualified nominal names remain qualified and distinct.
-Ownership, Place lookup, and borrow provenance now consume `TypeId` from the
-same mutable-then-frozen `TypeContext`; retained spelling remains diagnostic
-only. Issue #84 records that authority migration. Issue #85 covers
+Ownership, Place lookup, borrow provenance, and ContractGraph scheme resolution
+now consume `TypeId` from the same mutable-then-frozen `TypeContext`; retained
+spelling remains diagnostic or an out-of-scope backend projection only.
+ContractGraph binds explicit variables, concrete identities, applied
+constructors, and const arguments, then matches and instantiates through
+`TypeRef` without reparsing actual types. Issue #85 covers
 representation/layout identity and issue #86 covers later executable-IR scope;
 both remain open.
 
@@ -150,13 +153,14 @@ boundary, not a whole-compiler cutover. This migration:
   canonical scalar types instead of treating them as unknown owner types;
 - rejects malformed generic arities and unknown generic constructors earlier;
 - preserves existing RIR, MIR, backend, and generated-C semantics while
-  ownership, Place lookup, and borrow provenance use TypeId authority.
+  ownership, Place lookup, borrow provenance, and ContractGraph use TypeId
+  authority.
 
 The migration proceeds in narrow commits:
 
 1. Add `TypeId` beside existing HIR positions (the HIR v11 migration).
-2. Migrate ownership, Place lookup, and borrow provenance consumers and remove
-   duplicate parsing (issue #84 scope, now landed).
+2. Migrate ownership, Place lookup, borrow provenance, and ContractGraph
+   consumers and remove duplicate parsing (issue #84 scope, now landed).
 3. Migrate representation IR descriptors and later physical layout identity
    (issue #85 scope).
 4. Migrate executable MIR only under a separately reviewed contract (issue #86

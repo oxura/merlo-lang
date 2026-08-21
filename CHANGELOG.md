@@ -16,6 +16,13 @@
   TypeId authority through ownership, `Place` lookup, and borrow provenance;
   retained spellings are diagnostic only. RIR v5, MIR v2, backend, and
   generated-C semantics remain unchanged.
+- Replaces ContractGraph's regex and generic-spelling matcher with structural
+  `TypeScheme` nodes (`TypeVarId`, concrete `TypeId`, applied constructors, and
+  const arguments). Surface elaboration, structured HIR, and ownership share a
+  `BoundContractGraph` over the compilation's existing `TypeContext`; matching
+  and result instantiation traverse validated `TypeRef` nodes while preserving
+  optional arity, ownership, effects, ABI metadata, and contextual numeric
+  results.
 - Replaces `merlo.borrow-summary.v3` with the strict v4 contract: semantic
   relations use `TypeId` for borrow provenance and revisions, while retained
   canonical spellings and bounded witnesses remain diagnostic-only. Issues

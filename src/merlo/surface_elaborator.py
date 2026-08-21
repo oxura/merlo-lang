@@ -1,6 +1,5 @@
 from __future__ import annotations
 import hashlib
-import re
 
 from dataclasses import replace
 from typing import Iterable
@@ -89,7 +88,13 @@ from merlo.surface_ast import (
 )
 from merlo.type_parser import generic_parts
 from merlo.type_properties import TypePropertyResolver
-from merlo.type_arena import TypeContextBuilder, TypeDeclaration, TypeMember
+from merlo.type_arena import (
+    TypeArenaError,
+    TypeContextBuilder,
+    TypeDeclaration,
+    TypeId,
+    TypeMember,
+)
 from merlo.intrinsics import (
     CONTRACT_GRAPH,
     INSTANCE_METHOD_NAMES,
@@ -190,6 +195,7 @@ class _Elaborator:
                         ),
                     )
                 )
+        self.contract_graph = CONTRACT_GRAPH.prepare(self.type_context)
         self.type_properties = TypePropertyResolver(self.type_context)
         invariant_function_names = {
             f"__merlo_invariant_{record.name}_{index}"
@@ -974,6 +980,12 @@ class _Elaborator:
             )
         return term
 
+    def _contract_static_receiver(self, receiver: str) -> TypeId | str:
+        try:
+            return self.type_context.type_id(receiver)
+        except TypeArenaError:
+            return receiver
+
     def _contract_method_call(
         self,
         expression: SurfaceCall,
@@ -997,7 +1009,17 @@ class _Elaborator:
             return None
         receiver = self._expression(receiver_expression, function)
         receiver_type = self.types.concrete.get(self.types.find(receiver))
-        signature = CONTRACT_GRAPH.method(receiver_type or "", method)
+        if receiver_type is None:
+            return None
+        signature = self.contract_graph.method(
+            self.type_context.intern_text(receiver_type),
+            method,
+            (
+                self.type_context.intern_text(expected)
+                if expected is not None
+                else None
+            ),
+        )
         if signature is None or signature.static:
             return None
         if not signature.accepts_arity(len(expression.arguments)):
@@ -1024,7 +1046,10 @@ class _Elaborator:
             return None
         receiver = receiver_expression.name
         method = expression.callee.field
-        signature = CONTRACT_GRAPH.static_method(receiver, method)
+        signature = self.contract_graph.static_method(
+            self._contract_static_receiver(receiver),
+            method,
+        )
         if signature is None:
             return None
         if not signature.accepts_arity(len(expression.arguments)):
@@ -1033,15 +1058,21 @@ class _Elaborator:
             )
         argument_terms: list[str] = []
         argument_types: list[str | None] = []
-        for argument, parameter_type in zip(
+        parameter_type_ids = self.contract_graph.static_parameter_type_ids(
+            receiver,
+            method,
+            len(expression.arguments),
+        )
+        assert parameter_type_ids is not None
+        for argument, parameter_type_id in zip(
             expression.arguments,
-            signature.parameters_for(len(expression.arguments)),
+            parameter_type_ids,
             strict=True,
         ):
             argument_expected = (
-                None
-                if re.search(r"\b[A-Z]\b", parameter_type)
-                else parameter_type
+                self.type_context.render(parameter_type_id)
+                if parameter_type_id is not None
+                else None
             )
             argument_term = self._expression(
                 argument.value,
@@ -1053,11 +1084,20 @@ class _Elaborator:
                 self.types.concrete.get(self.types.find(argument_term))
             )
         try:
-            resolved = CONTRACT_GRAPH.resolve_static_method(
-                receiver,
+            resolved = self.contract_graph.resolve_static_method(
+                self._contract_static_receiver(receiver),
                 method,
-                tuple(argument_types),
-                expected,
+                tuple(
+                    self.type_context.intern_text(item)
+                    if item is not None
+                    else None
+                    for item in argument_types
+                ),
+                (
+                    self.type_context.intern_text(expected)
+                    if expected is not None
+                    else None
+                ),
             )
         except ValueError as exc:
             raise SurfaceElaborationError(
@@ -1983,7 +2023,19 @@ class _Elaborator:
                     receiver_type = self.types.concrete.get(
                         self.types.find(receiver)
                     )
-                    signature = CONTRACT_GRAPH.method(receiver_type or "", method)
+                    signature = (
+                        self.contract_graph.method(
+                            self.type_context.intern_text(receiver_type),
+                            method,
+                            (
+                                self.type_context.intern_text(expected)
+                                if expected is not None
+                                else None
+                            ),
+                        )
+                        if receiver_type is not None
+                        else None
+                    )
                     if signature is None:
                         raise SurfaceElaborationError(
                             f"UnknownCall: {receiver_type or 'unresolved'}.{method}"

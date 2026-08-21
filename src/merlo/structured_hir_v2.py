@@ -37,6 +37,7 @@ from merlo.type_arena import (
 )
 from merlo.intrinsics import (
     CONTRACT_GRAPH,
+    BoundContractGraph,
     contextual_result_type,
     format_intrinsic_arity,
     intrinsic_signature,
@@ -1327,6 +1328,7 @@ class _HIRBuilder:
         type_arena: TypeArena | None = None,
         type_cache: dict[str, tuple[str, TypeId]] | None = None,
         typed_ast: TypedAst | None = None,
+        contract_graph: BoundContractGraph | None = None,
     ) -> None:
         self.path = path
         self.source = source
@@ -1350,6 +1352,9 @@ class _HIRBuilder:
         self.mutable_parameters = self._mutable_parameter_table(functions)
         self.local_types: dict[str, str] = {}
         self.current_function = ""
+        if not isinstance(contract_graph, BoundContractGraph):
+            raise TypeError("_HIRBuilder requires BoundContractGraph")
+        self.contract_graph = contract_graph
         self.ordinal = 0
         self.type_properties = TypePropertyResolver(self.type_arena)
         self.typed_ast = typed_ast or TypedAst()
@@ -1394,6 +1399,56 @@ class _HIRBuilder:
                 payload_type_id,
             )
         return typed
+    def _contract_method(
+        self,
+        receiver_type: str | None,
+        name: str,
+        expected: str | None = None,
+    ):
+        if receiver_type is None:
+            return None
+        typed = self._intern_type(receiver_type)
+        if typed is None:
+            return None
+        expected_type = (
+            self._intern_type(expected) if expected is not None else None
+        )
+        return self.contract_graph.method(
+            typed[1],
+            name,
+            expected_type[1] if expected_type is not None else None,
+        )
+
+    def _contract_static_receiver(self, receiver_type: str) -> TypeId | str:
+        try:
+            return self.type_arena.type_id(receiver_type)
+        except TypeArenaError:
+            return receiver_type
+
+    def _contract_static(self, receiver_type: str, name: str):
+        return self.contract_graph.static_method(
+            self._contract_static_receiver(receiver_type),
+            name,
+        )
+
+    def _contract_resolve_static(
+        self,
+        receiver_type: str,
+        name: str,
+        argument_types: tuple[str | None, ...],
+        expected: str | None = None,
+    ):
+        argument_ids = []
+        for item in argument_types:
+            typed = self._intern_type(item) if item is not None else None
+            argument_ids.append(typed[1] if typed is not None else None)
+        expected_typed = self._intern_type(expected) if expected is not None else None
+        return self.contract_graph.resolve_static_method(
+            self._contract_static_receiver(receiver_type),
+            name,
+            tuple(argument_ids),
+            expected_typed[1] if expected_typed is not None else None,
+        )
 
     def _type_id(self, type_name: str | None) -> TypeId | None:
         item = self._intern_type(type_name)
@@ -1695,8 +1750,8 @@ class _HIRBuilder:
                 if isinstance(node.func, ast.Attribute):
                     receiver_name = _ast_qualified_name(node.func.value)
                     receiver_type = self.local_types.get(receiver_name)
-                    method_contract = CONTRACT_GRAPH.method(
-                        receiver_type or "",
+                    method_contract = self._contract_method(
+                        receiver_type,
                         node.func.attr,
                     )
                     if (
@@ -2234,7 +2289,7 @@ class _HIRBuilder:
             method = node.func.attr
             callee = f"{receiver_text}.{method}"
             signature = intrinsic_signature(callee)
-            static_contract = CONTRACT_GRAPH.static_method(
+            static_contract = self._contract_static(
                 receiver_text,
                 method,
             )
@@ -2244,7 +2299,7 @@ class _HIRBuilder:
                 and static_contract.accepts_arity(len(arguments))
             ):
                 try:
-                    static_signature = CONTRACT_GRAPH.resolve_static_method(
+                    static_signature = self._contract_resolve_static(
                         receiver_text,
                         method,
                         tuple(argument.type_name for argument in arguments),
@@ -2273,9 +2328,10 @@ class _HIRBuilder:
                     node.func.value,
                     typed_receiver[1],
                 )
-            method_signature = CONTRACT_GRAPH.method(
-                receiver_type or "",
+            method_signature = self._contract_method(
+                receiver_type,
                 method,
+                expected,
             )
             if method_signature is not None and not method_signature.static:
                 call_attributes.update(
@@ -2690,7 +2746,7 @@ class _HIRBuilder:
                     effects.update(("allocate", "may_fail"))
                 receiver, separator, method = name.partition(".")
                 static_signature = (
-                    CONTRACT_GRAPH.static_method(receiver, method)
+                    self._contract_static(receiver, method)
                     if separator
                     else None
                 )
@@ -3507,7 +3563,7 @@ def _preintern_analysis_types(
     type_context: TypeContextBuilder,
     type_cache: dict[str, tuple[str, TypeId]],
     path: str,
-) -> None:
+) -> BoundContractGraph:
     for spelling in (
         "Unit", "Bool", "Byte", "Int8", "UInt8", "Int16", "UInt16",
         "Int32", "UInt32", "Int64", "UInt64", "Float32", "Float64",
@@ -3536,6 +3592,7 @@ def _preintern_analysis_types(
                     _type_name(annotation),
                     path,
                 )
+    return CONTRACT_GRAPH.prepare(type_context)
 
 def _finalize_hir_function(function: HIRFunction, summary: BorrowSummary) -> HIRFunction:
     revision_id = _stable_id(
@@ -3594,7 +3651,9 @@ def compile_structured_hir(
         raise StructuredHIRCompileError(f"unsupported top-level declarations: {unsupported}")
     if entry_function not in function_nodes:
         raise StructuredHIRCompileError(f"missing entry function: {entry_function}")
-    _preintern_analysis_types(function_nodes, type_arena, type_cache, path)
+    contract_graph = _preintern_analysis_types(
+        function_nodes, type_arena, type_cache, path
+    )
     for item in types.values():
         type_arena.register_declaration(_type_declaration_projection(item))
     builder = _HIRBuilder(
@@ -3608,6 +3667,7 @@ def compile_structured_hir(
         type_arena=type_arena,
         type_cache=type_cache,
         typed_ast=typed_ast,
+        contract_graph=contract_graph,
     )
     provisional_functions = tuple(builder.function(item) for item in function_nodes.values())
     borrow_summaries = compute_borrow_summaries(
@@ -3625,6 +3685,7 @@ def compile_structured_hir(
         stable_id=_stable_id,
         qualified_name=_ast_qualified_name,
         typed_ast=typed_ast,
+        contract_graph=contract_graph,
     ).check()
     if builder.unresolved_names:
         raise StructuredHIRCompileError(
@@ -3725,7 +3786,9 @@ def compile_canonical_hir(
         raise StructuredHIRCompileError(
             f"missing entry function: {entry_function}"
         )
-    _preintern_analysis_types(function_nodes, type_arena, type_cache, path)
+    contract_graph = _preintern_analysis_types(
+        function_nodes, type_arena, type_cache, path
+    )
     for item in types.values():
         type_arena.register_declaration(_type_declaration_projection(item))
     builder = _HIRBuilder(
@@ -3738,6 +3801,7 @@ def compile_canonical_hir(
         type_arena=type_arena,
         type_cache=type_cache,
         typed_ast=typed_ast,
+        contract_graph=contract_graph,
     )
     provisional_functions = tuple(
         builder.function(item) for item in function_nodes.values()
@@ -3757,6 +3821,7 @@ def compile_canonical_hir(
         stable_id=_stable_id,
         qualified_name=_ast_qualified_name,
         typed_ast=typed_ast,
+        contract_graph=contract_graph,
     ).check()
     if builder.unresolved_names:
         raise StructuredHIRCompileError(
