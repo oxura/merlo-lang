@@ -1,9 +1,11 @@
 # RFC 0004: Type Arena and Structural Type Identity v1
 
-- Status: Accepted
+- Status: Implemented
 - Accepted: 2026-08-21
 - Accepted by: `@oxura`
 - Acceptance evidence: https://github.com/oxura/merlo-lang/issues/88
+- Implemented: 2026-08-21
+- Implementation: PR #81, merge `e2c31b57b32be5befd5d25a213b13102d2d671c7`
 - Target: `0.1.0-alpha.3-dev`
 
 ## Problem
@@ -161,6 +163,6 @@ Issue #88 records the review boundary; issues #83-#86 are explicitly future
 migrations or v2 work and do not broaden this v1 contract.
 
 Acceptance is not an independent human approval and does not claim that the arena
-has replaced textual HIR/RIR/MIR fields. The exact rebased head must still pass
-production, pyflakes, native, and repository policy gates. The RFC becomes
-`Implemented` only after the reviewed Type Arena behavior is merged to `main`.
+has replaced textual HIR/RIR/MIR fields. PR #81 merged the exact reviewed Type
+Arena behavior to `main` as `e2c31b57b32be5befd5d25a213b13102d2d671c7`
+after production, pyflakes, native, and repository policy gates passed.

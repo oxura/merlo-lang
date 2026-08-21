@@ -1,9 +1,11 @@
 # RFC 0003: Repository Hardening and Deterministic Package Resolution v1
 
-- Status: Accepted
+- Status: Implemented
 - Accepted: 2026-08-21
 - Accepted by: `@oxura`
 - Acceptance evidence: https://github.com/oxura/merlo-lang/issues/87
+- Implemented: 2026-08-21
+- Implementation: PR #82, merge `4e1e175a1da7ee837657e550fd96fd14f4cf34c0`
 - Target: `0.1.0-alpha.3-dev`
 
 ## Problem
@@ -229,5 +231,6 @@ This is semantic RFC acceptance, not a claim that two independent human reviewer
 exist. The repository has one eligible human maintainer, so its explicit
 solo-maintainer policy forbids fake approvals and compensates with no-bypass
 rulesets, exact-head CI, conversation resolution, and exact-revision Accepted-RFC
-enforcement. The RFC becomes `Implemented` only after the reviewed behavior is
-merged to `main`.
+enforcement. PR #82 merged the reviewed behavior to `main` as
+`4e1e175a1da7ee837657e550fd96fd14f4cf34c0`; the required CI and policy gates
+passed on its exact head.
