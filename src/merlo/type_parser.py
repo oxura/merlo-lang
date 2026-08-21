@@ -79,17 +79,59 @@ class _Parser:
             self.index += 1
 
 
+_UNKNOWN_CONSTRUCTOR = object()
+
+# One authority for all structural constructor arities. ``None`` means a
+# variadic constructor with a minimum arity (currently function-like types).
+TYPE_CONSTRUCTOR_ARITIES: dict[str, int | None] = {
+    "Option": 1,
+    "Result": 2,
+    "Vec": 1,
+    "Box": 1,
+    "Map": 2,
+    "Array": 2,
+    "Fn": None,
+    "Closure": None,
+    "Slice": 1,
+    "Borrow": 1,
+    "Future": 1,
+    "Shared": 1,
+    "MapEntry": 2,
+    "RawPointer": 1,
+}
+
+
+def validate_constructor_arity(constructor: str, argument_count: int) -> None:
+    """Validate one constructor shape, including unknown nominal generics."""
+    expected = TYPE_CONSTRUCTOR_ARITIES.get(constructor, _UNKNOWN_CONSTRUCTOR)
+    if constructor == "?":
+        if argument_count:
+            raise GenericTypeSyntaxError("unresolved type cannot have arguments")
+        return
+    if expected is _UNKNOWN_CONSTRUCTOR:
+        if argument_count:
+            raise GenericTypeSyntaxError(
+                f"unknown type constructor {constructor} with "
+                f"{argument_count} arguments"
+            )
+        return
+    if expected is None:
+        if argument_count < 2:
+            raise GenericTypeSyntaxError(
+                f"{constructor} expects at least one parameter and a return type"
+            )
+        return
+    if argument_count != expected:
+        raise GenericTypeSyntaxError(
+            f"{constructor} expects {expected} arguments, got {argument_count}"
+        )
+
+
 def validate_type_expr(expression: TypeExpr) -> TypeExpr:
     """Validate fixed constructor arities recursively."""
-
-    arities = {"Option": 1, "Result": 2, "Vec": 1, "Box": 1, "Map": 2}
-    expected = arities.get(expression.name)
-    if expected is not None and len(expression.args) != expected:
-        raise GenericTypeSyntaxError(
-            f"{expression.name} expects {expected} arguments, got {len(expression.args)}"
-        )
-    if expression.name == "Fn" and len(expression.args) < 2:
-        raise GenericTypeSyntaxError("Fn expects at least one parameter and a return type")
+    if not isinstance(expression, TypeExpr):
+        raise GenericTypeSyntaxError("type expression must be TypeExpr")
+    validate_constructor_arity(expression.name, len(expression.args))
     for argument in expression.args:
         validate_type_expr(argument)
     return expression
@@ -108,11 +150,17 @@ def generic_arguments(type_name: str | TypeExpr) -> tuple[str, ...]:
     return tuple(item.canonical for item in parsed.args)
 
 
-def generic_parts(type_name: str | None, constructor: str, *, arity: int | None = None) -> tuple[str, ...] | None:
+def generic_parts(
+    type_name: str | None,
+    constructor: str,
+    *,
+    arity: int | None = None,
+) -> tuple[str, ...] | None:
     if not type_name:
         return None
     try:
         parsed = parse_type(type_name)
+        validate_type_expr(parsed)
     except GenericTypeSyntaxError:
         return None
     if parsed.name != constructor or not parsed.args:
@@ -124,9 +172,11 @@ def generic_parts(type_name: str | None, constructor: str, *, arity: int | None 
 
 __all__ = [
     "GenericTypeSyntaxError",
+    "TYPE_CONSTRUCTOR_ARITIES",
     "TypeExpr",
     "generic_arguments",
     "generic_parts",
     "parse_type",
+    "validate_constructor_arity",
     "validate_type_expr",
 ]

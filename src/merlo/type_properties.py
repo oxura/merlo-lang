@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping
 
-from merlo.type_parser import generic_parts
+from merlo.type_arena import TypeArena, TypeArenaError
 
 
 @dataclass(frozen=True)
@@ -57,6 +57,37 @@ class TypePropertyResolver:
     def __init__(self, declarations: Mapping[str, object] | None = None) -> None:
         self.declarations = declarations or {}
         self._cache: dict[str, TypeProperties] = {}
+        # This is deliberately resolver-local rather than a process-wide arena:
+        # property analysis remains isolated while all structural validation is
+        # delegated to the same authority used by TypeArena serialization.
+        self._type_arena = TypeArena()
+
+    def _canonical_type(self, type_name: str) -> str:
+        try:
+            type_id = self._type_arena.intern_text(type_name)
+        except TypeArenaError:
+            # Preserve the resolver's conservative fallback for malformed or
+            # unsupported names while valid structural names use one parser.
+            return type_name
+        return self._type_arena.canonical(type_id)
+
+    def _generic_parts(
+        self,
+        type_name: str,
+        constructor: str,
+        *,
+        arity: int | None = None,
+    ) -> tuple[str, ...] | None:
+        try:
+            type_id = self._type_arena.intern_text(type_name)
+            reference = self._type_arena.resolve(type_id)
+        except TypeArenaError:
+            return None
+        if reference.constructor != constructor or not reference.arguments:
+            return None
+        if arity is not None and len(reference.arguments) != arity:
+            return None
+        return tuple(self._type_arena.canonical(argument) for argument in reference.arguments)
 
     def resolve(
         self,
@@ -65,6 +96,7 @@ class TypePropertyResolver:
     ) -> TypeProperties:
         if not type_name:
             return _COPY
+        type_name = self._canonical_type(type_name)
         cached = self._cache.get(type_name)
         if cached is not None and type_name not in seen:
             return cached
@@ -92,7 +124,7 @@ class TypePropertyResolver:
                 borrow_types=(type_name,),
             )
         for constructor in ("Slice", "Borrow"):
-            if generic_parts(type_name, constructor) is not None:
+            if self._generic_parts(type_name, constructor) is not None:
                 return TypeProperties(
                     True,
                     False,
@@ -101,7 +133,7 @@ class TypePropertyResolver:
                     layout="view",
                     borrow_types=(type_name,),
                 )
-        if generic_parts(type_name, "Fn") is not None:
+        if self._generic_parts(type_name, "Fn") is not None:
             return TypeProperties(
                 False,
                 True,
@@ -115,7 +147,7 @@ class TypePropertyResolver:
             return _OWNER
         next_seen = seen | {type_name}
 
-        array = generic_parts(type_name, "Array", arity=2)
+        array = self._generic_parts(type_name, "Array", arity=2)
         if array is not None:
             result = self._aggregate((array[0],), next_seen, layout="array")
             self._cache[type_name] = result
@@ -124,13 +156,13 @@ class TypePropertyResolver:
             ("Option", "enum"),
             ("Result", "enum"),
         ):
-            parts = generic_parts(type_name, constructor)
+            parts = self._generic_parts(type_name, constructor)
             if parts is not None:
                 result = self._aggregate(parts, next_seen, layout=layout)
                 self._cache[type_name] = result
                 return result
         for constructor in ("Vec", "Box", "Future", "Shared"):
-            parts = generic_parts(type_name, constructor, arity=1)
+            parts = self._generic_parts(type_name, constructor, arity=1)
             if parts is not None:
                 result = self._owning_generic(
                     parts,
@@ -141,7 +173,7 @@ class TypePropertyResolver:
                 )
                 self._cache[type_name] = result
                 return result
-        map_parts = generic_parts(type_name, "Map", arity=2)
+        map_parts = self._generic_parts(type_name, "Map", arity=2)
         if map_parts is not None:
             result = self._owning_generic(
                 map_parts,
@@ -164,8 +196,7 @@ class TypePropertyResolver:
                 )
             else:
                 children = tuple(
-                    variant.payload_type
-                    for variant in getattr(declaration, "variants", ())
+                    variant.payload_type for variant in getattr(declaration, "variants", ())
                     if variant.payload_type is not None
                 )
             result = self._aggregate(children, next_seen, layout=kind)
@@ -187,8 +218,7 @@ class TypePropertyResolver:
         needs_drop = any(item.needs_drop for item in properties)
         contains_borrow = any(item.contains_borrow for item in properties)
         contains_resource = any(
-            item.is_resource or item.contains_resource
-            for item in properties
+            item.is_resource or item.contains_resource for item in properties
         )
         return TypeProperties(
             is_copy=not needs_drop and not contains_borrow,
@@ -198,14 +228,10 @@ class TypePropertyResolver:
             contains_resource=contains_resource,
             layout=layout,
             borrow_types=tuple(sorted({
-                borrow
-                for item in properties
-                for borrow in item.borrow_types
+                borrow for item in properties for borrow in item.borrow_types
             })),
             resource_types=tuple(sorted({
-                resource
-                for item in properties
-                for resource in item.resource_types
+                resource for item in properties for resource in item.resource_types
             })),
         )
 
@@ -220,14 +246,10 @@ class TypePropertyResolver:
     ) -> TypeProperties:
         properties = tuple(self.resolve(child, seen) for child in children)
         borrow_types = tuple(sorted({
-            borrow
-            for item in properties
-            for borrow in item.borrow_types
+            borrow for item in properties for borrow in item.borrow_types
         }))
         resource_types = {
-            resource
-            for item in properties
-            for resource in item.resource_types
+            resource for item in properties for resource in item.resource_types
         }
         if resource_name is not None:
             resource_types.add(resource_name)
@@ -238,8 +260,7 @@ class TypePropertyResolver:
             contains_borrow=any(item.contains_borrow for item in properties),
             is_resource=is_resource,
             contains_resource=is_resource or any(
-                item.is_resource or item.contains_resource
-                for item in properties
+                item.is_resource or item.contains_resource for item in properties
             ),
             layout=layout,
             borrow_types=borrow_types,
