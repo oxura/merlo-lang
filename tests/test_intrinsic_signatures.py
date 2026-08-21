@@ -111,7 +111,7 @@ def test_bound_contract_graph_matches_nested_type_ids_and_aliases() -> None:
     assert contextual_len is not None
     assert contextual_len.result_type_id == int64
     assert contextual_len.result_type == "Int64"
-    assert CONTRACT_GRAPH.bind(builder) is bound
+    assert CONTRACT_GRAPH.bind(builder).method(nested, "get") == nested_get
 
 
 def test_bound_contract_graph_matches_const_arguments_structurally() -> None:

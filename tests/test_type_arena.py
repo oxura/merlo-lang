@@ -167,6 +167,14 @@ def test_type_context_uses_immutable_type_id_declarations() -> None:
         context.arena = context.arena
     with pytest.raises(FrozenTypeArenaMutation):
         builder.intern_text("Bool")
+    for target, attribute in (
+        (context, "_declarations"),
+        (context, "_type_ids"),
+        (context.arena, "_nodes"),
+        (context.arena, "allow_unresolved"),
+    ):
+        with pytest.raises(FrozenTypeArenaMutation):
+            delattr(target, attribute)
     with pytest.raises(AttributeError):
         declaration.kind = "enum"
 

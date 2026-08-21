@@ -505,6 +505,10 @@ class FrozenTypeArena:
         if getattr(self, "_sealed", False):
             raise FrozenTypeArenaMutation("FrozenTypeArena is immutable")
         object.__setattr__(self, name, value)
+    def __delattr__(self, name: str) -> None:
+        if getattr(self, "_sealed", False):
+            raise FrozenTypeArenaMutation("FrozenTypeArena is immutable")
+        object.__delattr__(self, name)
 
     def __len__(self) -> int:
         return len(self._nodes)
@@ -772,6 +776,10 @@ class TypeContext:
         if getattr(self, "_sealed", False):
             raise FrozenTypeArenaMutation("TypeContext is immutable")
         object.__setattr__(self, name, value)
+    def __delattr__(self, name: str) -> None:
+        if getattr(self, "_sealed", False):
+            raise FrozenTypeArenaMutation("TypeContext is immutable")
+        object.__delattr__(self, name)
 
     @property
     def declarations(self) -> Mapping[TypeId, TypeDeclaration]:

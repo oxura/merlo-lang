@@ -8,7 +8,6 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from types import MappingProxyType
 from typing import Mapping
-from weakref import WeakValueDictionary
 
 from merlo.type_parser import (
     GenericTypeSyntaxError,
@@ -1150,7 +1149,6 @@ class BuiltinContractGraph:
         missing = set(self.intrinsics) - set(self.abi_lowerings)
         if missing:
             raise ValueError(f"intrinsics without ABI lowering: {sorted(missing)}")
-        object.__setattr__(self, "_bound", WeakValueDictionary())
 
     def intrinsic(self, symbol: str) -> IntrinsicSignature | None:
         return self.intrinsics.get(symbol)
@@ -1178,10 +1176,6 @@ class BuiltinContractGraph:
     ) -> BoundContractGraph:
         if not isinstance(context, (TypeContext, TypeContextBuilder)):
             raise TypeArenaError("contract graph requires a TypeContext")
-        cache: WeakValueDictionary[int, BoundContractGraph] = self._bound
-        cached = cache.get(id(context))
-        if cached is not None and cached.context is context:
-            return cached
         method_schemes: dict[tuple[str, str], tuple[TypeSchemeNode, tuple[TypeSchemeNode, ...], TypeSchemeNode]] = {}
         fallback_schemes: dict[tuple[str, str], TypeSchemeNode | None] = {}
         for key, signature in self.methods.items():
@@ -1201,7 +1195,6 @@ class BuiltinContractGraph:
             MappingProxyType(method_schemes),
             MappingProxyType(fallback_schemes),
         )
-        cache[id(context)] = bound
         return bound
 
     def _legacy_context(self, values: tuple[str, ...]) -> TypeContextBuilder:
