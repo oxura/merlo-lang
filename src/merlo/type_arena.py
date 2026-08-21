@@ -433,6 +433,53 @@ class TypeArena:
         return arena
 
 
+def _validate_frozen_nodes(
+    nodes: Mapping[TypeId, TypeRef],
+    *,
+    allow_unresolved: bool,
+) -> dict[TypeId, TypeRef]:
+    """Validate a closed structural graph before exposing an immutable view."""
+    if not isinstance(nodes, Mapping):
+        raise TypeArenaError("FrozenTypeArena nodes must be a mapping")
+    normalized = dict(nodes)
+    for type_id, reference in normalized.items():
+        if not isinstance(type_id, TypeId):
+            raise TypeArenaError("FrozenTypeArena keys must be TypeId")
+        if not isinstance(reference, TypeRef):
+            raise TypeArenaError("FrozenTypeArena values must be TypeRef")
+        if reference.constructor == "?" and not allow_unresolved:
+            raise UnresolvedTypeError(
+                "unresolved type is not allowed by frozen TypeArena"
+            )
+        if _identity(reference) != type_id:
+            raise TypeArenaSchemaError(
+                f"TypeId/content mismatch for {type_id.value}"
+            )
+        for argument in reference.arguments:
+            if argument not in normalized:
+                raise UnknownTypeIdError(
+                    f"TypeId {type_id.value} references unknown argument "
+                    f"{argument.value}"
+                )
+    visiting: set[TypeId] = set()
+    visited: set[TypeId] = set()
+
+    def visit(type_id: TypeId) -> None:
+        if type_id in visited:
+            return
+        if type_id in visiting:
+            raise TypeArenaSchemaError("cyclic TypeRef graph")
+        visiting.add(type_id)
+        for argument in normalized[type_id].arguments:
+            visit(argument)
+        visiting.remove(type_id)
+        visited.add(type_id)
+
+    for type_id in sorted(normalized):
+        visit(type_id)
+    return normalized
+
+
 class FrozenTypeArena:
     """Immutable post-build snapshot of a ``TypeArena``."""
 
@@ -444,8 +491,14 @@ class FrozenTypeArena:
         *,
         allow_unresolved: bool = False,
     ) -> None:
-        object.__setattr__(self, "allow_unresolved", bool(allow_unresolved))
-        object.__setattr__(self, "_nodes", MappingProxyType(dict(nodes)))
+        if type(allow_unresolved) is not bool:
+            raise TypeArenaError("allow_unresolved must be boolean")
+        normalized = _validate_frozen_nodes(
+            nodes,
+            allow_unresolved=allow_unresolved,
+        )
+        object.__setattr__(self, "allow_unresolved", allow_unresolved)
+        object.__setattr__(self, "_nodes", MappingProxyType(normalized))
         object.__setattr__(self, "_sealed", True)
 
     def __setattr__(self, name: str, value: object) -> None:
@@ -535,6 +588,153 @@ class FrozenTypeArena:
         return _canonical_json(self.to_dict()) + "\n"
 
 
+@dataclass(frozen=True)
+class TypeMember:
+    """Stage-independent nominal member projection."""
+
+    name: str
+    type_id: TypeId | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.name, str):
+            raise TypeArenaError("TypeMember name must be text")
+        if self.type_id is not None and not isinstance(self.type_id, TypeId):
+            raise TypeArenaError("TypeMember type_id must be TypeId")
+
+
+@dataclass(frozen=True)
+class TypeDeclaration:
+    """Immutable nominal declaration projection keyed by its TypeId."""
+
+    type_id: TypeId
+    kind: str
+    fields: tuple[TypeMember, ...] = ()
+    variants: tuple[TypeMember, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.type_id, TypeId):
+            raise TypeArenaError("TypeDeclaration type_id must be TypeId")
+        if self.kind not in {"record", "enum"}:
+            raise TypeArenaError("TypeDeclaration kind must be record or enum")
+        fields = tuple(self.fields)
+        variants = tuple(self.variants)
+        if any(not isinstance(item, TypeMember) for item in (*fields, *variants)):
+            raise TypeArenaError("TypeDeclaration members must be TypeMember")
+        object.__setattr__(self, "fields", fields)
+        object.__setattr__(self, "variants", variants)
+
+
+class TypeContextBuilder:
+    """One mutable compiler-local arena and declaration projection registry."""
+
+    __slots__ = ("arena", "_declarations", "_frozen_context", "_type_ids")
+
+    def __init__(self, *, allow_unresolved: bool = False) -> None:
+        self.arena = TypeArena(allow_unresolved=allow_unresolved)
+        self._declarations: dict[TypeId, TypeDeclaration] = {}
+        self._frozen_context: TypeContext | None = None
+        self._type_ids: dict[str, TypeId] = {}
+
+    def _assert_mutable(self) -> None:
+        if self._frozen_context is not None:
+            raise FrozenTypeArenaMutation("TypeContextBuilder is frozen")
+
+    def _remember(self, type_id: TypeId) -> TypeId:
+        pending = [type_id]
+        while pending:
+            current = pending.pop()
+            canonical = self.arena.canonical(current)
+            if canonical in self._type_ids:
+                continue
+            self._type_ids[canonical] = current
+            pending.extend(self.arena.resolve(current).arguments)
+        return type_id
+
+    def intern_text(self, type_name: str) -> TypeId:
+        self._assert_mutable()
+        return self._remember(self.arena.intern_text(type_name))
+
+    def intern_many(self, type_names: Iterable[str]) -> tuple[TypeId, ...]:
+        self._assert_mutable()
+        return tuple(self.intern_text(type_name) for type_name in type_names)
+
+    def intern_expr(self, expression: TypeExpr) -> TypeId:
+        self._assert_mutable()
+        return self._remember(self.arena.intern_expr(expression))
+
+    def intern_node(
+        self,
+        constructor: str,
+        arguments: Iterable[TypeId] = (),
+    ) -> TypeId:
+        self._assert_mutable()
+        return self._remember(self.arena.intern_node(constructor, arguments))
+
+    def register_declaration(self, declaration: TypeDeclaration) -> TypeId:
+        self._assert_mutable()
+        if not isinstance(declaration, TypeDeclaration):
+            raise TypeArenaError(
+                "TypeContextBuilder.register_declaration requires TypeDeclaration"
+            )
+        if declaration.type_id not in self.arena:
+            raise UnknownTypeIdError(
+                f"declaration identity is absent: {declaration.type_id.value}"
+            )
+        for member in (*declaration.fields, *declaration.variants):
+            if member.type_id is not None and member.type_id not in self.arena:
+                raise UnknownTypeIdError(
+                    f"declaration member identity is absent: {member.type_id.value}"
+                )
+        existing = self._declarations.get(declaration.type_id)
+        if existing is not None and existing != declaration:
+            raise TypeArenaError(
+                f"conflicting declaration: {declaration.type_id.value}"
+            )
+        self._declarations[declaration.type_id] = declaration
+        return declaration.type_id
+
+    def resolve(self, type_id: TypeId) -> TypeRef:
+        return self.arena.resolve(type_id)
+
+    def type_id(self, spelling: str) -> TypeId:
+        if not isinstance(spelling, str):
+            raise TypeArenaError("type_id requires canonical text")
+        try:
+            return self._type_ids[spelling]
+        except KeyError as exc:
+            raise UnknownTypeIdError(
+                f"unknown canonical type spelling: {spelling}"
+            ) from exc
+
+    def render(self, type_id: TypeId) -> str:
+        return self.arena.canonical(type_id)
+
+    def canonical(self, type_id: TypeId) -> str:
+        return self.render(type_id)
+
+    def declaration(self, type_id: TypeId) -> TypeDeclaration:
+        if not isinstance(type_id, TypeId):
+            raise TypeArenaError("declaration requires TypeId")
+        try:
+            return self._declarations[type_id]
+        except KeyError as exc:
+            raise UnknownTypeIdError(
+                f"unknown declaration TypeId: {type_id.value}"
+            ) from exc
+
+    @property
+    def declarations(self) -> Mapping[TypeId, TypeDeclaration]:
+        return MappingProxyType(dict(self._declarations))
+
+    def freeze(self) -> TypeContext:
+        if self._frozen_context is None:
+            self._frozen_context = TypeContext(
+                self.arena.freeze(),
+                self._declarations,
+            )
+        return self._frozen_context
+
+
 class TypeContext:
     """Immutable compiler-local authority for types and nominal declarations."""
 
@@ -543,16 +743,25 @@ class TypeContext:
     def __init__(
         self,
         arena: FrozenTypeArena,
-        declarations: Mapping[TypeId, object] | None = None,
+        declarations: Mapping[TypeId, TypeDeclaration] | None = None,
     ) -> None:
         if not isinstance(arena, FrozenTypeArena):
             raise TypeArenaError("TypeContext requires a FrozenTypeArena")
         declaration_map = dict(declarations or {})
-        if any(
-            not isinstance(type_id, TypeId) or type_id not in arena
-            for type_id in declaration_map
-        ):
-            raise UnknownTypeIdError("TypeContext declaration identity is absent")
+        for type_id, declaration in declaration_map.items():
+            if not isinstance(type_id, TypeId):
+                raise TypeArenaError("TypeContext declaration keys must be TypeId")
+            if not isinstance(declaration, TypeDeclaration):
+                raise TypeArenaError(
+                    "TypeContext declarations must be TypeDeclaration"
+                )
+            if type_id != declaration.type_id or type_id not in arena:
+                raise UnknownTypeIdError("TypeContext declaration identity is absent")
+            for member in (*declaration.fields, *declaration.variants):
+                if member.type_id is not None and member.type_id not in arena:
+                    raise UnknownTypeIdError(
+                        "TypeContext declaration member identity is absent"
+                    )
         type_ids = {arena.canonical(type_id): type_id for type_id in arena.ids}
         object.__setattr__(self, "arena", arena)
         object.__setattr__(self, "_declarations", MappingProxyType(declaration_map))
@@ -565,7 +774,7 @@ class TypeContext:
         object.__setattr__(self, name, value)
 
     @property
-    def declarations(self) -> Mapping[TypeId, object]:
+    def declarations(self) -> Mapping[TypeId, TypeDeclaration]:
         return self._declarations
 
     def resolve(self, type_id: TypeId) -> TypeRef:
@@ -610,7 +819,10 @@ __all__ = [
     "TypeArenaError",
     "TypeArenaSchemaError",
     "TypeContext",
+    "TypeContextBuilder",
+    "TypeDeclaration",
     "TypeId",
+    "TypeMember",
     "TypeRef",
     "UnknownTypeIdError",
     "UnresolvedTypeError",

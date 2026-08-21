@@ -15,6 +15,7 @@ from merlo.borrow_summary import (
     _SummaryComputer,
     compute_borrow_summaries,
 )
+from merlo.type_arena import TypeContextBuilder
 from merlo.representation_ir import lower_structured_hir_to_rir
 from merlo.semantic_world import _world_digest
 from merlo.structured_hir_v2 import (
@@ -26,6 +27,12 @@ from merlo.structured_hir_v2 import (
 
 def _summary(source: str, name: str) -> BorrowSummary:
     return compile_structured_hir(source).function(name).borrow_summary
+
+
+def _summary_context():
+    builder = TypeContextBuilder()
+    builder.intern_many(("Text", "TextView", "BytesView", "UInt64"))
+    return builder.freeze()
 
 
 def test_borrow_place_path_and_relation_roundtrip() -> None:
@@ -194,7 +201,7 @@ def test_late_shorter_witness_replaces_longer_and_requeues_callers(
         return result
 
     monkeypatch.setattr(_SummaryComputer, "_compute_one", delayed_shorter)
-    summary = compute_borrow_summaries(functions)["right"]
+    summary = compute_borrow_summaries(functions, {}, _summary_context())["right"]
     assert witness_calls >= 2
     assert summary.entries[0].witness_path == ("left",)
 
@@ -287,7 +294,7 @@ def test_semantic_fixed_point_fails_closed_on_nonmonotone_mutation(
         return result
 
     monkeypatch.setattr(_SummaryComputer, "_compute_one", shrinking)
-    summary = compute_borrow_summaries(functions)["recursive_view"]
+    summary = compute_borrow_summaries(functions, {}, _summary_context())["recursive_view"]
     assert semantic_calls == 2
     assert summary.status == "opaque"
     assert summary.reason == "BorrowSummaryNonMonotone"
@@ -311,7 +318,7 @@ def test_five_thousand_function_chain_has_no_python_recursion() -> None:
     functions = {
         item.name: item for item in module.body if isinstance(item, ast.FunctionDef)
     }
-    summaries = compute_borrow_summaries(functions)
+    summaries = compute_borrow_summaries(functions, {}, _summary_context())
     assert len(summaries) == count
     assert summaries["f0000"].status == "known"
     assert len(summaries["f0000"].relations) == 1

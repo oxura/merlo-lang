@@ -17,7 +17,8 @@ from typing import Any, Mapping
 
 from merlo import native_syntax as ast
 from merlo.type_parser import generic_parts
-from merlo.type_properties import TypePropertyResolver
+from merlo.type_arena import TypeContextBuilder
+from merlo.type_properties import TypeAuthority, TypeProperties, TypePropertyResolver
 
 
 BORROW_SUMMARY_SCHEMA_VERSION = 3
@@ -504,9 +505,12 @@ class _SummaryComputer:
         self,
         functions: Mapping[str, ast.FunctionDef],
         declarations: Mapping[str, object],
+        type_context: TypeAuthority,
     ) -> None:
         self.functions = dict(functions)
-        self.resolver = TypePropertyResolver(declarations)
+        self.declarations = dict(declarations)
+        self.type_context = type_context
+        self.resolver = TypePropertyResolver(type_context)
         self._summaries: dict[str, BorrowSummary] = {
             name: BorrowSummary() for name in sorted(self.functions)
         }
@@ -622,13 +626,23 @@ class _SummaryComputer:
         return self._scc_ids[component]
 
     def _properties(self, type_name: str | None):
-        return self.resolver.resolve(type_name)
+        if type_name is None:
+            return TypeProperties(True, False, False)
+        type_id = (
+            self.type_context.intern_text(type_name)
+            if isinstance(self.type_context, TypeContextBuilder)
+            else self.type_context.type_id(type_name)
+        )
+        return self.resolver.resolve(type_id)
 
     def _contains(self, type_name: str | None) -> bool:
         return self._properties(type_name).contains_borrow
 
     def _borrow_types(self, type_name: str | None) -> tuple[str, ...]:
-        return self._properties(type_name).borrow_types
+        return tuple(
+            self.type_context.render(item)
+            for item in self._properties(type_name).borrow_types
+        )
 
     def _owner(self, type_name: str | None) -> bool:
         return self._properties(type_name).needs_drop
@@ -689,7 +703,7 @@ class _SummaryComputer:
             return "Unit"
         if isinstance(node, ast.Attribute):
             owner = self._expr_type(node.value, flow)
-            declaration = self.resolver.declarations.get(owner) if owner else None
+            declaration = self.declarations.get(owner) if owner else None
             if declaration is not None and getattr(declaration, "kind", "") == "record":
                 for declaration_field in getattr(declaration, "fields", ()):
                     if declaration_field.name == node.attr:
@@ -719,7 +733,7 @@ class _SummaryComputer:
                     _Origin(
                         index,
                         BorrowPlacePath.parameter(index),
-                        borrow_type,
+                        self.type_context.render(borrow_type),
                         BorrowPlacePath(),
                         kind,
                         ownership,
@@ -780,7 +794,11 @@ class _SummaryComputer:
             type_name is not None
             and type_name.startswith(("Borrow[", "Slice["))
         )
-        borrow_type = properties.borrow_types[0] if properties.borrow_types else ""
+        borrow_type = (
+            self.type_context.render(properties.borrow_types[0])
+            if properties.borrow_types
+            else ""
+        )
         return _Origin(
             parameter_index,
             BorrowPlacePath.parameter(parameter_index).append(*self._source_steps(node, flow)),
@@ -1199,11 +1217,12 @@ class _SummaryComputer:
 
 def compute_borrow_summaries(
     functions: Mapping[str, ast.FunctionDef],
-    declarations: Mapping[str, object] | None = None,
+    declarations: Mapping[str, object],
+    type_context: TypeAuthority,
 ) -> dict[str, BorrowSummary]:
     """Compute canonical summaries for all local functions."""
 
-    return _SummaryComputer(functions, declarations or {}).compute()
+    return _SummaryComputer(functions, declarations, type_context).compute()
 
 
 __all__ = [

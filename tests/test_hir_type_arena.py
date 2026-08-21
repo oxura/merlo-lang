@@ -189,8 +189,16 @@ def test_hir_owns_frozen_context_and_type_declarations() -> None:
     program = _hir()
     assert not hasattr(program, "type_arena")
     declaration = program.types[0]
-    assert program.type_context.declaration(declaration.type_id) is declaration
-    assert program.type_context.render(declaration.type_id) == declaration.name
+    projection = program.type_context.declaration(declaration.type_id)
+    assert projection.type_id == declaration.type_id
+    assert projection.kind == "record"
+    assert tuple(item.name for item in projection.fields) == tuple(
+        item.name for item in declaration.fields
+    )
+    with pytest.raises(TypeError):
+        program.type_context.declarations[declaration.type_id] = projection
+    with pytest.raises(AttributeError):
+        projection.kind = "enum"
     for operation in (
         lambda: program.type_context.arena.intern_text("Bool"),
         lambda: program.type_context.arena.intern_many(("Bool",)),
@@ -199,7 +207,6 @@ def test_hir_owns_frozen_context_and_type_declarations() -> None:
     ):
         with pytest.raises(FrozenTypeArenaMutation):
             operation()
-
 
 def test_hir_json_digest_and_reproduction_are_stable_in_a_fresh_process() -> None:
     warmup_source = (

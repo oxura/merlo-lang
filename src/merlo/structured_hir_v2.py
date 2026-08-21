@@ -31,6 +31,7 @@ from merlo.type_arena import (
     TypeArena,
     TypeArenaError,
     TypeContext,
+    TypeContextBuilder,
     TypeId,
 )
 from merlo.intrinsics import (
@@ -263,7 +264,18 @@ class HIRTypeDecl:
             "variants": [item.to_dict() for item in self.variants],
             "invariants": [item.to_dict() for item in self.invariants],
         }
+def _type_declaration_projection(declaration: HIRTypeDecl):
+    from merlo.type_arena import TypeDeclaration, TypeMember
 
+    return TypeDeclaration(
+        declaration.type_id,
+        declaration.kind,
+        fields=tuple(TypeMember(item.name, item.type_id) for item in declaration.fields),
+        variants=tuple(
+            TypeMember(item.name, item.payload_type_id)
+            for item in declaration.variants
+        ),
+    )
 
 @dataclass(frozen=True)
 class HIRParameter:
@@ -684,7 +696,7 @@ class StructuredHIRProgram:
                 context_declaration = self.type_context.declaration(declaration.type_id)
             except TypeArenaError as exc:
                 raise ValueError("unknown type declaration identity") from exc
-            if context_declaration != declaration:
+            if context_declaration != _type_declaration_projection(declaration):
                 raise ValueError("TypeContext declaration mismatch")
         for owner in (*self.functions, *self.flows, *self.machines):
             for parameter in owner.parameters:
@@ -930,7 +942,13 @@ class StructuredHIRProgram:
             _function_from_dict(item, arena)
             for item in _artifact_list(raw["functions"], "HIR functions")
         )
-        context = TypeContext(arena, {item.type_id: item for item in types})
+        context = TypeContext(
+            arena,
+            {
+                item.type_id: _type_declaration_projection(item)
+                for item in types
+            },
+        )
         program = cls(
             _artifact_text(raw["source"], "Structured HIR source"),
             _artifact_text(raw["path"], "Structured HIR path"),
@@ -1312,7 +1330,9 @@ class _HIRBuilder:
         self.ffi_program = ffi_program or FFIProgram()
         self.borrow_summaries = borrow_summaries or {}
         self.type_arena = (
-            type_arena if type_arena is not None else TypeArena(allow_unresolved=False)
+            type_arena
+            if type_arena is not None
+            else TypeContextBuilder(allow_unresolved=False)
         )
         self._type_cache = (
             type_cache if type_cache is not None else {}
@@ -1325,7 +1345,7 @@ class _HIRBuilder:
         self.local_types: dict[str, str] = {}
         self.current_function = ""
         self.ordinal = 0
-        self.type_properties = TypePropertyResolver(types)
+        self.type_properties = TypePropertyResolver(self.type_arena)
 
     def _intern_type(self, type_name: str | None) -> tuple[str, TypeId] | None:
         return _intern_cached_type(
@@ -1342,11 +1362,25 @@ class _HIRBuilder:
     def _canonical_type(self, type_name: str | None) -> str | None:
         item = self._intern_type(type_name)
         return item[0] if item is not None else None
-    def _owner(self, type_name: str | None, seen: frozenset[str] = frozenset()) -> bool:
-        return self.type_properties.resolve(type_name, seen).needs_drop
+    def _owner(self, type_name: str | None) -> bool:
+        if type_name is None:
+            return False
+        canonical = self._canonical_type(type_name)
+        if canonical is None:
+            return False
+        return self.type_properties.resolve(
+            self.type_arena.type_id(canonical)
+        ).needs_drop
 
     def _contains_borrow(self, type_name: str | None) -> bool:
-        return self.type_properties.resolve(type_name).contains_borrow
+        if type_name is None:
+            return False
+        canonical = self._canonical_type(type_name)
+        if canonical is None:
+            return False
+        return self.type_properties.resolve(
+            self.type_arena.type_id(canonical)
+        ).contains_borrow
 
     def _owned_ownership(self, type_name: str | None) -> str:
         if self._owner(type_name):
@@ -3243,13 +3277,49 @@ def _intern_ffi_types(
         typed = _intern_cached_type(type_arena, type_cache, normalized, path)
         type_cache[type_name] = typed
 
+def _preintern_analysis_types(
+    functions: Mapping[str, ast.FunctionDef],
+    type_context: TypeContextBuilder,
+    type_cache: dict[str, tuple[str, TypeId]],
+    path: str,
+) -> None:
+    for spelling in (
+        "Unit", "Bool", "Byte", "Int8", "UInt8", "Int16", "UInt16",
+        "Int32", "UInt32", "Int64", "UInt64", "Float32", "Float64",
+        "Text", "Bytes", "TextBuilder", "Json", "Path",
+        "TextView", "BytesView", "FileLines", "FileReader", "FileWriter",
+    ):
+        _intern_cached_type(type_context, type_cache, spelling, path)
+    for function in functions.values():
+        if function.returns is not None:
+            _intern_cached_type(
+                type_context,
+                type_cache,
+                _type_name(function.returns),
+                path,
+            )
+        for node in ast.walk(function):
+            annotation = (
+                node.annotation
+                if isinstance(node, (ast.arg, ast.AnnAssign))
+                else None
+            )
+            if annotation is not None:
+                _intern_cached_type(
+                    type_context,
+                    type_cache,
+                    _type_name(annotation),
+                    path,
+                )
+
+
 def compile_structured_hir(
     source: str,
     *,
     path: str = "main.mlo",
     entry_function: str = "main",
 ) -> StructuredHIRProgram:
-    type_arena = TypeArena(allow_unresolved=False)
+    type_arena = TypeContextBuilder(allow_unresolved=False)
     type_cache: dict[str, tuple[str, TypeId]] = {}
     if not source.strip():
         raise StructuredHIRCompileError("empty Structured HIR source")
@@ -3283,13 +3353,21 @@ def compile_structured_hir(
         raise StructuredHIRCompileError(f"unsupported top-level declarations: {unsupported}")
     if entry_function not in function_nodes:
         raise StructuredHIRCompileError(f"missing entry function: {entry_function}")
-    borrow_summaries = compute_borrow_summaries(function_nodes, types)
+    _preintern_analysis_types(function_nodes, type_arena, type_cache, path)
+    for item in types.values():
+        type_arena.register_declaration(_type_declaration_projection(item))
+    borrow_summaries = compute_borrow_summaries(
+        function_nodes,
+        types,
+        type_arena,
+    )
     _OwnershipChecker(
         path,
         types,
         function_nodes,
         borrow_summaries,
         preprocessed.binding_kinds,
+        type_context=type_arena,
         compile_error=StructuredHIRCompileError,
         type_name=_type_name,
         stable_id=_stable_id,
@@ -3309,11 +3387,8 @@ def compile_structured_hir(
     )
     functions = tuple(builder.function(item) for item in function_nodes.values())
     _normalize_native_context_metadata(module, path)
-    frozen_arena = type_arena.freeze()
-    type_context = TypeContext(
-        frozen_arena,
-        {item.type_id: item for item in types.values()},
-    )
+    type_context = type_arena.freeze()
+    frozen_arena = type_context.arena
     return StructuredHIRProgram(
         source=source,
         path=path,
@@ -3333,6 +3408,7 @@ def compile_canonical_hir(
     program: CanonicalProgram,
     *,
     entry_function: str = "main",
+    type_context_builder: TypeContextBuilder | None = None,
 ) -> StructuredHIRProgram:
     """Lower the retained typed Surface tree through the production HIR builder."""
     if program.surface_program is None:
@@ -3340,7 +3416,14 @@ def compile_canonical_hir(
             "CanonicalSurfaceRequired: serialized projections are not compiler input"
         )
     source = program.projection_source or ""
-    type_arena = TypeArena(allow_unresolved=False)
+    candidate = type_context_builder or program.type_context_builder
+    if (
+        isinstance(candidate, TypeContextBuilder)
+        and getattr(candidate, "_frozen_context", None) is None
+    ):
+        type_arena = candidate
+    else:
+        type_arena = TypeContextBuilder(allow_unresolved=False)
     type_cache: dict[str, tuple[str, TypeId]] = {}
     path = program.source_path or next(
         (
@@ -3392,13 +3475,21 @@ def compile_canonical_hir(
         raise StructuredHIRCompileError(
             f"missing entry function: {entry_function}"
         )
-    borrow_summaries = compute_borrow_summaries(function_nodes, types)
+    _preintern_analysis_types(function_nodes, type_arena, type_cache, path)
+    for item in types.values():
+        type_arena.register_declaration(_type_declaration_projection(item))
+    borrow_summaries = compute_borrow_summaries(
+        function_nodes,
+        types,
+        type_arena,
+    )
     _OwnershipChecker(
         path,
         types,
         function_nodes,
         borrow_summaries,
         preprocessed.binding_kinds,
+        type_context=type_arena,
         compile_error=StructuredHIRCompileError,
         type_name=_type_name,
         stable_id=_stable_id,
@@ -3422,11 +3513,8 @@ def compile_canonical_hir(
         if hasattr(node, "_merlo_binding_kind"):
             delattr(node, "_merlo_binding_kind")
     _normalize_native_context_metadata(module, path)
-    frozen_arena = type_arena.freeze()
-    type_context = TypeContext(
-        frozen_arena,
-        {item.type_id: item for item in types.values()},
-    )
+    type_context = type_arena.freeze()
+    frozen_arena = type_context.arena
     return StructuredHIRProgram(
         source=source,
         path=path,

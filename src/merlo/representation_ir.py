@@ -673,7 +673,7 @@ class _DescriptorBuilder:
     def __init__(self, hir: StructuredHIRProgram) -> None:
         self.hir = hir
         self.declarations = {item.name: item for item in hir.types}
-        self.type_properties = TypePropertyResolver(self.declarations)
+        self.type_properties = TypePropertyResolver(hir.type_context)
         self.nominal_names = frozenset(self.declarations)
         self.descriptors: dict[str, TypeDescriptor] = {}
         for name, (size, alignment) in _SCALARS.items():
@@ -746,15 +746,23 @@ class _DescriptorBuilder:
         for type_name in sorted(referenced):
             self.get(type_name)
         for name, descriptor in tuple(self.descriptors.items()):
-            properties = self.type_properties.resolve(name)
+            properties = self.type_properties.resolve(
+                self.hir.type_context.type_id(name)
+            )
             self.descriptors[name] = replace(
                 descriptor,
                 contains_borrow=properties.contains_borrow,
                 contains_resource=(
                     properties.is_resource or properties.contains_resource
                 ),
-                contained_borrow_types=properties.borrow_types,
-                contained_resource_types=properties.resource_types,
+                contained_borrow_types=tuple(
+                    self.hir.type_context.render(item)
+                    for item in properties.borrow_types
+                ),
+                contained_resource_types=tuple(
+                    self.hir.type_context.render(item)
+                    for item in properties.resource_types
+                ),
             )
         return tuple(sorted(self.descriptors.values(), key=lambda item: item.name))
 

@@ -19,6 +19,7 @@ from merlo.surface_binding import (
 )
 from merlo.surface_elaborator import SurfaceElaborationError, elaborate_surface
 from merlo.type_parser import TypeExpr, parse_type
+from merlo.type_arena import TypeContextBuilder
 
 
 
@@ -145,8 +146,12 @@ def _assemble_core(
         entry_path=str(modules[-1].path),
         source=concise,
     )
+    type_context_builder = TypeContextBuilder(allow_unresolved=False)
     try:
-        elaborated = elaborate_surface(program)
+        elaborated = elaborate_surface(
+            program,
+            type_context_builder=type_context_builder,
+        )
     except SurfaceElaborationError as exc:
         raise ConciseApplicationError(str(exc)) from exc
     canonical_program = elaborated.canonical

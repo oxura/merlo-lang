@@ -278,6 +278,7 @@ def compile_project(
         hir = compile_canonical_hir(
             elaborated.canonical_program,
             entry_function="main",
+            type_context_builder=elaborated.canonical_program.type_context_builder,
         )
         range_analysis = analyze_constant_ranges(hir)
         obligations = extend_obligations(

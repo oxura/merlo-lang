@@ -16,7 +16,8 @@ from merlo.collection_protocol import collection_shape
 from merlo.place import IndexClass, OverlapRelation, Place, PlaceRoot, PlaceStep, overlap_relation
 from merlo.intrinsics import CONTRACT_GRAPH, intrinsic_signature
 from merlo.type_parser import generic_parts
-from merlo.type_properties import TypePropertyResolver
+from merlo.type_arena import TypeContextBuilder
+from merlo.type_properties import TypeAuthority, TypeProperties, TypePropertyResolver
 
 if TYPE_CHECKING:
     from merlo.structured_hir_v2 import HIRTypeDecl
@@ -129,6 +130,7 @@ class _OwnershipChecker:
         borrow_summaries: dict[str, BorrowSummary] | None = None,
         binding_kinds: Mapping[int, str] | None = None,
         *,
+        type_context: TypeAuthority,
         compile_error: Callable[[str], Exception] = ValueError,
         type_name: Callable[[ast.AST | None], str] = _fallback_type_name,
         stable_id: Callable[..., str] = _stable_id,
@@ -147,22 +149,37 @@ class _OwnershipChecker:
         self._qualified_name = qualified_name
         self.binding_kinds_by_name: dict[str, str] = {}
         self.current: ast.FunctionDef | None = None
-        self.type_properties = TypePropertyResolver(types)
+        self.type_context = type_context
+        self.type_properties = TypePropertyResolver(type_context)
         self.env: dict[str, str] = {}
         self.parameters: set[str] = set()
     def _error(self, name: str, variable: str | None = None) -> None:
         suffix = f": {variable}" if variable else ""
         raise self._compile_error(f"{name}{suffix}")
 
+    def _properties(self, type_name: str | None) -> TypeProperties:
+        if type_name is None:
+            return TypeProperties(True, False, False)
+        type_id = (
+            self.type_context.intern_text(type_name)
+            if isinstance(self.type_context, TypeContextBuilder)
+            else self.type_context.type_id(type_name)
+        )
+        return self.type_properties.resolve(type_id)
+
     def _owner(self, type_name: str | None) -> bool:
-        return self.type_properties.resolve(type_name).needs_drop
+        return self._properties(type_name).needs_drop
 
     def _contains_borrow(self, type_name: str | None) -> bool:
-        return self.type_properties.resolve(type_name).contains_borrow
+        return self._properties(type_name).contains_borrow
 
     def _borrow_type(self, type_name: str | None) -> str:
-        properties = self.type_properties.resolve(type_name)
-        return properties.borrow_types[0] if properties.borrow_types else str(type_name)
+        properties = self._properties(type_name)
+        return (
+            self.type_context.render(properties.borrow_types[0])
+            if properties.borrow_types
+            else str(type_name)
+        )
     def _root_place(self, name: str) -> Place:
         is_parameter = name in self.parameters
         kind = "parameter" if is_parameter else "local"
@@ -1437,7 +1454,7 @@ class _OwnershipChecker:
                 self._error("CapturingClosureUnsupported")
             for name, capture_type, _ownership in metadata[3]:
                 self._check_name(name, state)
-                properties = self.type_properties.resolve(capture_type)
+                properties = self._properties(capture_type)
                 if properties.contains_borrow:
                     capture_place = state.places.get(name) or self._root_place(name)
                     provenances = self._borrow_provenances_at(

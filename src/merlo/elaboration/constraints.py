@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 from merlo.elaboration.diagnostics import SurfaceElaborationError
+from merlo.type_arena import TypeArenaError, TypeContextBuilder
 from merlo.type_parser import parse_type
 
 
 class TypeConstraints:
     """Union-find type constraints for one surface elaboration."""
 
-    def __init__(self) -> None:
+    def __init__(self, type_context: TypeContextBuilder) -> None:
+        if not isinstance(type_context, TypeContextBuilder):
+            raise TypeArenaError("TypeConstraints requires TypeContextBuilder")
+        self.type_context = type_context
         self.parent: dict[str, str] = {}
         self.concrete: dict[str, str] = {}
 
@@ -36,6 +40,10 @@ class TypeConstraints:
         canonical = parsed.canonical
         if canonical.startswith("Map[") and canonical != "Map[Text,UInt64]":
             raise SurfaceElaborationError(f"UnsupportedMapType: {canonical}")
+        try:
+            canonical = self.type_context.render(self.type_context.intern_text(canonical))
+        except TypeArenaError as error:
+            raise SurfaceElaborationError(f"MalformedType: {type_name}") from error
         term = self.variable(f"type:{canonical}")
         self.concrete[self.find(term)] = canonical
         return term

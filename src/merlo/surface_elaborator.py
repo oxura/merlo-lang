@@ -89,6 +89,7 @@ from merlo.surface_ast import (
 )
 from merlo.type_parser import generic_parts
 from merlo.type_properties import TypePropertyResolver
+from merlo.type_arena import TypeContextBuilder, TypeDeclaration, TypeMember
 from merlo.intrinsics import (
     CONTRACT_GRAPH,
     INSTANCE_METHOD_NAMES,
@@ -118,11 +119,16 @@ def _generic_parts(type_name: str, constructor: str) -> tuple[str, ...] | None:
     return generic_parts(type_name, constructor)
 
 class _Elaborator:
-    def __init__(self, program: SurfaceProgram) -> None:
+    def __init__(
+        self,
+        program: SurfaceProgram,
+        type_context: TypeContextBuilder,
+    ) -> None:
         self._active_binding: str | None = None
         self._active_contract_result: _Function | None = None
         self.program = program
-        self.types = _Types()
+        self.type_context = type_context
+        self.types = _Types(type_context)
         self.records = {
             declaration.name: declaration
             for declaration in program.declarations
@@ -133,7 +139,58 @@ class _Elaborator:
             for declaration in program.declarations
             if isinstance(declaration, SurfaceEnum)
         }
-        self.type_properties = TypePropertyResolver({**self.records, **self.enums})
+        for declaration in program.declarations:
+            if isinstance(declaration, SurfaceRecord):
+                self.type_context.intern_text(declaration.name)
+                for field in declaration.fields:
+                    self.type_context.intern_text(field.type_name)
+            elif isinstance(declaration, SurfaceEnum):
+                self.type_context.intern_text(declaration.name)
+                for variant in declaration.variants:
+                    if variant.type_name is not None:
+                        self.type_context.intern_text(variant.type_name)
+            elif isinstance(declaration, SurfaceFunction):
+                for parameter in declaration.parameters:
+                    if parameter.type_name is not None:
+                        self.type_context.intern_text(parameter.type_name)
+                if declaration.return_type is not None:
+                    self.type_context.intern_text(declaration.return_type)
+        for declaration in program.declarations:
+            if isinstance(declaration, SurfaceRecord):
+                nominal_id = self.type_context.intern_text(declaration.name)
+                self.type_context.register_declaration(
+                    TypeDeclaration(
+                        nominal_id,
+                        "record",
+                        fields=tuple(
+                            TypeMember(
+                                item.name,
+                                self.type_context.intern_text(item.type_name),
+                            )
+                            for item in declaration.fields
+                        ),
+                    )
+                )
+            elif isinstance(declaration, SurfaceEnum):
+                nominal_id = self.type_context.intern_text(declaration.name)
+                self.type_context.register_declaration(
+                    TypeDeclaration(
+                        nominal_id,
+                        "enum",
+                        variants=tuple(
+                            TypeMember(
+                                item.name,
+                                (
+                                    self.type_context.intern_text(item.type_name)
+                                    if item.type_name is not None
+                                    else None
+                                ),
+                            )
+                            for item in declaration.variants
+                        ),
+                    )
+                )
+        self.type_properties = TypePropertyResolver(self.type_context)
         invariant_function_names = {
             f"__merlo_invariant_{record.name}_{index}"
             for record in self.records.values()
@@ -1066,7 +1123,9 @@ class _Elaborator:
         callable_parameter = "__item"
         if isinstance(argument, SurfaceName) and argument.name in self.functions:
             target = self.functions[argument.name]
-            if not self.type_properties.resolve(element_type).is_copy:
+            if not self.type_properties.resolve(
+                self.type_context.type_id(element_type)
+            ).is_copy:
                 raise SurfaceElaborationError(
                     "OwnedCollectionCallableRequiresImplicitExpression: "
                     f"{argument.name}"
@@ -1173,9 +1232,14 @@ class _Elaborator:
                 self._lookup(function, node.name),
                 name=f"{function.source.name}.closure_capture.{node.name}",
             )
-            properties = self.type_properties.resolve(type_name)
+            properties = self.type_properties.resolve(
+                self.type_context.type_id(type_name)
+            )
             if properties.contains_borrow and not properties.needs_drop:
-                contained = ",".join(properties.borrow_types) or type_name
+                contained = ",".join(
+                    self.type_context.render(item)
+                    for item in properties.borrow_types
+                ) or type_name
                 raise SurfaceElaborationError(
                     f"BorrowedClosureCaptureEscapes: {node.name}; "
                     f"container={type_name}; contained_borrow={contained}; "
@@ -2953,7 +3017,7 @@ class _Elaborator:
                         (
                             "owned"
                             if self.type_properties.resolve(
-                                type_name
+                                self.type_context.type_id(type_name)
                             ).needs_drop
                             else "copy"
                         ),
@@ -2987,7 +3051,7 @@ class _Elaborator:
                             (
                                 "owned"
                                 if self.type_properties.resolve(
-                                    type_name
+                                    self.type_context.type_id(type_name)
                                 ).needs_drop
                                 else "copy"
                             ),
@@ -3077,6 +3141,7 @@ class _Elaborator:
         canonical = replace(
             canonical,
             surface_program=self.program,
+            type_context_builder=self.type_context,
             projection_source=self.program.source or None,
             source_path=self.program.span.path,
             source_sha256=hashlib.sha256(
@@ -3164,10 +3229,15 @@ def _emit_implicit_expression(expression: SurfaceExpression) -> str:
     raise SurfaceElaborationError(
         f"CannotEmitImplicitExpression: {type(expression).__name__}"
     )
-def elaborate_surface(program: SurfaceProgram) -> SurfaceElaboration:
+def elaborate_surface(
+    program: SurfaceProgram,
+    *,
+    type_context_builder: TypeContextBuilder | None = None,
+) -> SurfaceElaboration:
     from merlo.monomorphization import monomorphize_surface
 
-    return _Elaborator(monomorphize_surface(program)).result()
+    builder = type_context_builder or TypeContextBuilder(allow_unresolved=False)
+    return _Elaborator(monomorphize_surface(program), builder).result()
 
 
 __all__ = [

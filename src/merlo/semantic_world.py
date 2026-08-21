@@ -198,9 +198,7 @@ class SemanticWorld:
             (str(Path(item.source.path).resolve()), item.source.line): item
             for item in compilation.hir.types
         }
-        type_properties = TypePropertyResolver(
-            {item.name: item for item in compilation.hir.types}
-        )
+        type_properties = TypePropertyResolver(compilation.hir.type_context)
         task_by_location = {
             (str(Path(item.path).resolve()), item.line): item
             for item in compilation.elaborated.tasks
@@ -266,7 +264,9 @@ class SemanticWorld:
                     "definition": definition,
                     "types": symbol_types,
                     "type_properties": {
-                        type_name: type_properties.resolve(type_name).to_dict()
+                        type_name: type_properties.resolve(
+                            compilation.hir.type_context.type_id(type_name)
+                        ).to_dict(compilation.hir.type_context)
                         for type_name in symbol_types
                     },
                     "effects": list(effects),
@@ -519,7 +519,9 @@ class SemanticWorld:
             "calls": sorted(calls, key=lambda item: item["call_id"]),
             "types": sorted(types, key=lambda item: (item.get("name", ""), item.get("symbol_id", ""))),
             "type_properties": {
-                type_name: type_properties.resolve(type_name).to_dict()
+                type_name: type_properties.resolve(
+                    compilation.hir.type_context.type_id(type_name)
+                ).to_dict(compilation.hir.type_context)
                 for type_name in world_type_names
             },
             "data_dependencies": sorted(data_dependencies, key=lambda item: (item["owner_id"], item["target_id"])),
