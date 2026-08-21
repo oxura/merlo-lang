@@ -913,6 +913,15 @@ def _scheme_spellings(
     return tuple(values)
 
 
+def _scheme_specificity(pattern: TypeSchemeNode) -> int:
+    if isinstance(pattern, TypeSchemeVar):
+        return 0
+    if isinstance(pattern, TypeSchemeConcrete):
+        return 2
+    if isinstance(pattern, TypeSchemeConst):
+        return 1
+    return 1 + sum(_scheme_specificity(item) for item in pattern.arguments)
+
 @dataclass(frozen=True)
 class BoundContractGraph:
     """Structural contract view bound to one compiler type authority."""
@@ -958,14 +967,17 @@ class BoundContractGraph:
             return False
         if len(pattern.arguments) != len(actual_ref.arguments):
             return False
-        return all(
-            self._match(item, concrete, substitutions)
-            for item, concrete in zip(
-                pattern.arguments,
-                actual_ref.arguments,
-                strict=True,
-            )
-        )
+        candidate = dict(substitutions)
+        for item, concrete in zip(
+            pattern.arguments,
+            actual_ref.arguments,
+            strict=True,
+        ):
+            if not self._match(item, concrete, candidate):
+                return False
+        substitutions.clear()
+        substitutions.update(candidate)
+        return True
 
     def _instantiate(
         self,
@@ -994,7 +1006,11 @@ class BoundContractGraph:
         name: str,
         expected_type_id: TypeId | None = None,
     ) -> InstanceMethodSignature | None:
-        for key, schemes in self._method_schemes.items():
+        candidates = sorted(
+            self._method_schemes.items(),
+            key=lambda item: (-_scheme_specificity(item[1][0]), item[0]),
+        )
+        for key, schemes in candidates:
             pattern, parameters, result = schemes
             receiver, method_name = key
             if method_name != name:
@@ -1081,18 +1097,29 @@ class BoundContractGraph:
             )
         key = None
         substitutions: dict[TypeVarId, TypeId] = {}
-        for candidate, candidate_schemes in self._method_schemes.items():
+        candidates = sorted(
+            self._method_schemes.items(),
+            key=lambda item: (-_scheme_specificity(item[1][0]), item[0]),
+        )
+        for candidate, candidate_schemes in candidates:
             if candidate[1] != name or not self.definitions.methods[candidate].static:
                 continue
+            candidate_substitutions: dict[TypeVarId, TypeId] = {}
             if isinstance(receiver_type_id, str):
                 if candidate[0] != receiver_type_id:
                     continue
-            elif not self._match(candidate_schemes[0], receiver_type_id, substitutions):
+            elif not self._match(
+                candidate_schemes[0],
+                receiver_type_id,
+                candidate_substitutions,
+            ):
                 continue
             key = candidate
+            substitutions = candidate_substitutions
             break
         if key is None:
             return None
+        signature = self.definitions.methods[key]
         schemes = self._method_schemes[key]
         if expected_type_id is not None and not self._match(
             schemes[2], expected_type_id, substitutions
@@ -1132,7 +1159,11 @@ class BoundContractGraph:
         if signature.contextual_numeric_result and expected_type_id is not None:
             expected_name = self.context.render(expected_type_id)
             if expected_name in {"Byte", "UInt64", "Int64", "Float32", "Float64"}:
-                result = replace(result, result_type=expected_name, result_type_id=expected_type_id)
+                result = replace(
+                    result,
+                    result_type=expected_name,
+                    result_type_id=expected_type_id,
+                )
         return result
 
 
@@ -1146,6 +1177,26 @@ class BuiltinContractGraph:
     abi_lowerings: Mapping[str, str]
 
     def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "intrinsics",
+            MappingProxyType(dict(self.intrinsics)),
+        )
+        object.__setattr__(
+            self,
+            "methods",
+            MappingProxyType(dict(self.methods)),
+        )
+        object.__setattr__(
+            self,
+            "functions",
+            MappingProxyType(dict(self.functions)),
+        )
+        object.__setattr__(
+            self,
+            "abi_lowerings",
+            MappingProxyType(dict(self.abi_lowerings)),
+        )
         missing = set(self.intrinsics) - set(self.abi_lowerings)
         if missing:
             raise ValueError(f"intrinsics without ABI lowering: {sorted(missing)}")

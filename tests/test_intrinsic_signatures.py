@@ -84,6 +84,78 @@ def test_table_entries_are_immutable() -> None:
         INTRINSIC_SIGNATURES["clock.now"] = intrinsic_signature("clock.now")  # type: ignore[index]
 
 
+
+def test_custom_contract_graph_mappings_are_immutable() -> None:
+    graph = BuiltinContractGraph(
+        {},
+        {
+            ("Vec[T]", "get"): InstanceMethodSignature(
+                "Vec[T]",
+                "get",
+                (),
+                "T",
+            )
+        },
+        {},
+        {},
+    )
+    with pytest.raises(TypeError):
+        graph.methods[("Vec[T]", "get")] = graph.methods[("Vec[T]", "get")]
+
+
+def test_contract_graph_unification_is_transactional_and_order_invariant() -> None:
+    repeated = BuiltinContractGraph(
+        {},
+        {
+            ("Result[T,T]", "same"): InstanceMethodSignature(
+                "Result[T,T]",
+                "same",
+                (),
+                "Text",
+            )
+        },
+        {},
+        {},
+    )
+    repeated_builder = TypeContextBuilder()
+    repeated_actual = repeated_builder.intern_text("Result[Text,Int64]")
+    assert repeated.prepare(repeated_builder).method(repeated_actual, "same") is None
+
+    rows = [
+        (
+            ("Result[T,T]", "pick"),
+            InstanceMethodSignature(
+                "Result[T,T]",
+                "pick",
+                (),
+                "Text",
+                static=True,
+            ),
+        ),
+        (
+            ("Result[Text,T]", "pick"),
+            InstanceMethodSignature(
+                "Result[Text,T]",
+                "pick",
+                (),
+                "Bytes",
+                static=True,
+            ),
+        ),
+    ]
+    results = []
+    for ordered_rows in (rows, list(reversed(rows))):
+        builder = TypeContextBuilder()
+        actual = builder.intern_text("Result[Text,Int64]")
+        bound = BuiltinContractGraph({}, dict(ordered_rows), {}, {}).prepare(builder)
+        resolved = bound.resolve_static_method(actual, "pick", ())
+        assert resolved is not None
+        results.append((resolved.result_type, resolved.result_type_id))
+    assert results[0] == results[1] == (
+        "Bytes",
+        TypeContextBuilder().intern_text("Bytes"),
+    )
+
 def test_bound_contract_graph_matches_nested_type_ids_and_aliases() -> None:
     builder = TypeContextBuilder()
     nested = builder.intern_text("Vec[Option[Text]]")
