@@ -5,7 +5,12 @@ import pytest
 from merlo.surface_ast import SurfaceFunction
 from merlo.surface_parser import parse_surface
 from merlo.structured_hir_v2 import compile_structured_hir
-from merlo.type_parser import GenericTypeSyntaxError, generic_arguments, parse_type
+from merlo.type_parser import (
+    GenericTypeSyntaxError,
+    generic_arguments,
+    generic_parts,
+    parse_type,
+)
 
 
 def test_parse_type_recursively_normalizes_nested_arguments() -> None:
@@ -29,6 +34,14 @@ def test_parse_type_rejects_unbalanced_and_empty_input() -> None:
 def test_generic_arguments_preserve_wrong_arity_for_caller_validation() -> None:
     parsed = parse_type("Result[Text,AppError,Extra]")
     assert generic_arguments(parsed) == ("Text", "AppError", "Extra")
+
+
+def test_generic_parts_rejects_invalid_nested_constructor_arity() -> None:
+    assert generic_parts("Option[Text,AppError]", "Option") is None
+
+
+def test_generic_parts_rejects_unknown_generic_constructors() -> None:
+    assert generic_parts("Mystery[Text]", "Mystery") is None
 
 
 def test_nested_sum_types_remain_structural_type_terms() -> None:

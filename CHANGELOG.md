@@ -14,6 +14,10 @@
   solo-maintainer governance without fabricated approvals, immutable
   administrator-created tags, and executable verified-tag ancestry checks before
   release jobs run.
+- Adds a versioned content-addressed Type Arena boundary, canonicalizes
+  `Int`/`UInt`/`Float` ownership queries through their 64-bit scalar forms, and
+  rejects malformed structural generic arities and unknown generic constructors
+  earlier without changing valid source grammar or HIR/RIR/MIR artifact schemas.
 - Replaces the stale roadmap with a checked maturity matrix and explicit Deep
   Core, Native Scale, heterogeneous-compute, product-proof, general-purpose,
   and self-host gates. Adds the normative Memory Model v1 safe-subset contract

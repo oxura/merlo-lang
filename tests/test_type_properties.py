@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from merlo.type_arena import TypeArena
 from merlo.type_properties import TypePropertyResolver
 
 
@@ -80,3 +81,13 @@ def test_non_borrowing_owning_containers_keep_existing_properties() -> None:
         assert properties.is_move
         assert properties.needs_drop
         assert not properties.contains_borrow
+
+
+def test_type_property_consumer_uses_arena_canonical_aliases() -> None:
+    resolver = TypePropertyResolver()
+    arena = TypeArena()
+
+    # The consumer's private arena is intentionally local, but it must agree
+    # with the public arena's structural identity and alias normalization.
+    assert resolver.resolve("Vec[Int]") == resolver.resolve("Vec[Int64]")
+    assert arena.canonical(arena.intern_text("Array[UInt,4]")) == "Array[UInt64,4]"
