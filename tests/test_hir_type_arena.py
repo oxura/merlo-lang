@@ -11,6 +11,8 @@ from typing import Any
 import pytest
 
 from merlo import native_syntax as ast
+from merlo import ffi as ffi_module
+from merlo.ffi import FFICompileError
 from merlo.structured_hir_v2 import (
     STRUCTURED_HIR_CONTRACT,
     StructuredHIRProgram,
@@ -99,7 +101,7 @@ def _hir(source: str = HIR_SOURCE) -> StructuredHIRProgram:
 def _typed_payload(program: StructuredHIRProgram) -> dict[str, Any]:
     payload = program.to_dict()
     assert payload["contract"] == STRUCTURED_HIR_CONTRACT
-    assert payload["schema_version"] == 11
+    assert payload["schema_version"] == 12
     assert "type_arena" in payload
     assert payload["type_arena_digest"] == program.type_arena_digest
     return payload
@@ -178,12 +180,12 @@ def _walk_nodes(node: dict[str, Any]):
         yield from _walk_nodes(child)
 
 
-def test_hir_v11_json_roundtrip_is_canonical_and_type_arena_is_closed() -> None:
+def test_hir_v12_json_roundtrip_is_canonical_and_type_arena_is_closed() -> None:
     original = _hir()
     restored = StructuredHIRProgram.from_json(original.to_json())
 
-    assert original.contract == "merlo.structured-typed-hir.v11"
-    assert original.schema_version == 11
+    assert original.contract == "merlo.structured-typed-hir.v12"
+    assert original.schema_version == 12
     assert original.type_context.arena.allow_unresolved is False
     assert original.type_arena_digest == original.type_context.arena.digest
     assert restored.to_json() == original.to_json()
@@ -315,6 +317,89 @@ def test_hir_type_ids_cover_local_contract_flow_and_machine_positions() -> None:
             "type_id": flow_machine.type_context.type_id("Text").to_dict(),
         }
     ]
+    machine = flow_machine.to_dict()["machines"][0]
+    state_ids = {
+        state["name"]: state["state_id"]
+        for state in machine["states"]
+    }
+    transition = machine["transitions"][0]
+    assert machine["initial_id"] == state_ids[machine["initial"]]
+    assert transition["type"] is None
+    assert transition["type_id"] is None
+    assert transition["attributes"]["source_ids"] == [
+        state_ids[name] for name in transition["attributes"]["sources"]
+    ]
+    assert (
+        transition["attributes"]["target_id"]
+        == state_ids[transition["attributes"]["target"]]
+    )
+
+
+def test_hir_transition_requires_nonempty_source_identity_pairs() -> None:
+    program = compile_canonical_hir(
+        elaborate_surface(
+            parse_surface(
+                FLOW_MACHINE_SOURCE,
+                path="transition-source-tamper.mlo",
+            )
+        ).canonical
+    )
+    payload = _typed_payload(program)
+    transition = payload["machines"][0]["transitions"][0]
+    del transition["attributes"]["sources"]
+    del transition["attributes"]["source_ids"]
+
+    with pytest.raises(ValueError, match="transition sources"):
+        StructuredHIRProgram.from_dict(payload)
+
+def test_hir_type_like_attributes_are_paired_and_tamper_checked() -> None:
+    program = _hir()
+    payload = _typed_payload(program)
+    cast = next(
+        node
+        for function in payload["functions"]
+        for root in function["body"]
+        for node in _walk_nodes(root)
+        if node["kind"] == "ScalarCast"
+    )
+    attributes = cast["attributes"]
+    assert attributes["target_type"] == "UInt64"
+    assert (
+        attributes["target_type_id"]
+        == program.type_context.type_id("UInt64").to_dict()
+    )
+
+    del attributes["target_type_id"]
+    with pytest.raises(ValueError, match="target_type"):
+        StructuredHIRProgram.from_dict(payload)
+
+    attributes["target_type"] = 7
+    with pytest.raises(ValueError, match="target_type must be text"):
+        StructuredHIRProgram.from_dict(payload)
+
+
+def test_non_capturing_closure_emits_empty_capture_identity_list() -> None:
+    program = compile_canonical_hir(
+        elaborate_surface(
+            parse_surface(
+                "fn make() -> Fn[UInt64,UInt64]:\n"
+                "    value => value + UInt64(1)\n",
+                path="empty-closure-captures.mlo",
+            )
+        ).canonical,
+        entry_function="make",
+    )
+    closure = next(
+        node
+        for function in program.functions
+        for node in function.walk()
+        if node.kind == "ClosureCreate"
+    )
+
+    assert closure.attribute_map["captures"] == ()
+    assert closure.attribute_map["capture_type_ids"] == ()
+
+
 
 
 def test_hir_ffi_json_annotations_validate_then_restore_unannotated_ffi() -> None:
@@ -324,7 +409,14 @@ def test_hir_ffi_json_annotations_validate_then_restore_unannotated_ffi() -> Non
     restored = StructuredHIRProgram.from_dict(payload)
 
     assert restored.ffi_program == program.ffi_program
-    assert "type_id" not in program.ffi_program.to_dict()["extern_functions"][0]["parameters"][0]
+    parameter = program.ffi_program.extern_functions[0].parameters[0]
+    assert parameter.type_id == program.type_context.type_id("Int32")
+    assert (
+        program.ffi_program.to_dict()["extern_functions"][0]["parameters"][0][
+            "type_id"
+        ]
+        == parameter.type_id.to_dict()
+    )
     assert payload["ffi"]["extern_functions"][0]["parameters"][0]["type_id"]
     assert payload["ffi"]["extern_functions"][0]["return_type_id"]
     assert payload["ffi"]["repr_c_records"][0]["fields"][0]["type_id"]
@@ -349,6 +441,66 @@ def test_hir_ffi_pointer_aliases_roundtrip_with_canonical_type_ids() -> None:
     assert [item["type_id"] for item in parameters] == [expected_id] * 4
     assert [item["type"] for item in parameters] == list(expected_spellings)
     assert StructuredHIRProgram.from_json(program.to_json()).to_json() == program.to_json()
+
+def test_bound_ffi_serialization_never_reparses_type_spelling(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    program = compile_structured_hir(
+        FFI_POINTER_ALIAS_SOURCE,
+        path="ffi-no-reparse.mlo",
+    )
+
+    def fail(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("bound FFI serialization reparsed a type")
+
+    monkeypatch.setattr(ffi_module, "parse_type", fail)
+    payload = program.to_json()
+    assert '"ffi":' in payload
+
+def test_hir_ffi_pointer_identity_and_policy_tampering_fail_closed() -> None:
+    program = compile_structured_hir(
+        FFI_POINTER_ALIAS_SOURCE,
+        path="ffi-pointer-tamper.mlo",
+    )
+    original = _typed_payload(program)
+    missing_pointee = copy.deepcopy(original)
+    pointer = missing_pointee["ffi"]["extern_functions"][0]["parameters"][0][
+        "pointer"
+    ]
+    del pointer["pointee_type_id"]
+    with pytest.raises((ValueError, FFICompileError)):
+        StructuredHIRProgram.from_dict(missing_pointee)
+
+    mismatched_pointee = copy.deepcopy(original)
+    extern = mismatched_pointee["ffi"]["extern_functions"][0]
+    extern["parameters"][0]["pointer"]["pointee_type_id"] = extern[
+        "parameters"
+    ][0]["type_id"]
+    with pytest.raises(ValueError, match="pointee"):
+        StructuredHIRProgram.from_dict(mismatched_pointee)
+
+    inconsistent_pointer = copy.deepcopy(original)
+    parameter = inconsistent_pointer["ffi"]["extern_functions"][0][
+        "parameters"
+    ][0]
+    parameter["pointer"]["type"] = "RawPointer[UInt64]"
+    parameter["pointer"]["pointee"] = "UInt64"
+    parameter["pointer"]["pointee_type_id"] = (
+        program.type_context.type_id("UInt64").to_dict()
+    )
+    inconsistent_pointer["ffi"]["extern_functions"][0]["prototype"] = (
+        inconsistent_pointer["ffi"]["extern_functions"][0]["prototype"]
+        .replace("const int32_t * raw", "const uint64_t * raw")
+    )
+    with pytest.raises(ValueError, match="pointee identity mismatch"):
+        StructuredHIRProgram.from_dict(inconsistent_pointer)
+
+    wrong_policy_parameter = copy.deepcopy(original)
+    wrong_policy_parameter["ffi"]["extern_functions"][0]["parameters"][0][
+        "policy"
+    ]["parameter"] = "other"
+    with pytest.raises(ValueError, match="policy parameter"):
+        StructuredHIRProgram.from_dict(wrong_policy_parameter)
 
 
 def test_hir_aliases_nested_generics_and_qualified_nominals_converge() -> None:
@@ -447,7 +599,6 @@ def _assert_missing_type_id_rejected(
         "flow_node",
         "machine_parameter",
         "machine_state_field",
-        "machine_transition_node",
         "ffi_parameter",
         "ffi_return",
         "ffi_error",
@@ -517,12 +668,7 @@ def test_hir_reader_rejects_missing_type_id_at_every_typed_position(
         elif position == "machine_state_field":
             item = payload["machines"][0]["states"][1]["fields"][0]
         else:
-            item = next(
-                node
-                for root in payload["machines"][0]["transitions"]
-                for node in _walk_nodes(root)
-                if node["type"] is not None
-            )
+            raise AssertionError(f"unknown typed position: {position}")
         _assert_missing_type_id_rejected(
             payload,
             item,

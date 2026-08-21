@@ -6,12 +6,12 @@ checks the ownership/unsafe obligations consumed by the compiler stages.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from typing import Any, Iterable
+from merlo.type_arena import TypeArenaError, TypeContextBuilder, TypeId
 from merlo.type_parser import generic_parts, parse_type
 
 FFI_ABI = "C"
@@ -34,13 +34,22 @@ class RawPointerType:
     pointee: str
     mutable: bool = False
     nullable: bool = False
+    pointee_type_id: TypeId | None = None
 
     @property
     def type_name(self) -> str:
         return f"RawPointer[{self.pointee}]"
 
     def to_dict(self) -> dict[str, Any]:
-        return {"type": self.type_name, "pointee": self.pointee, "mutable": self.mutable, "nullable": self.nullable}
+        result: dict[str, Any] = {
+            "type": self.type_name,
+            "pointee": self.pointee,
+            "mutable": self.mutable,
+            "nullable": self.nullable,
+        }
+        if self.pointee_type_id is not None:
+            result["pointee_type_id"] = self.pointee_type_id.to_dict()
+        return result
 
 
 @dataclass(frozen=True)
@@ -71,6 +80,7 @@ class ExternParameter:
     type_name: str
     pointer: RawPointerType | None = None
     policy: ForeignPointerPolicy | None = None
+    type_id: TypeId | None = None
 
     def __post_init__(self) -> None:
         if self.pointer is not None and self.policy is None:
@@ -79,9 +89,19 @@ class ExternParameter:
             raise FFICompileError("ForeignPointerPolicyNonPointer", self.name)
         if self.pointer is not None and self.policy is not None and self.policy.access in {"write", "store"} and not self.pointer.mutable:
             raise FFICompileError("ForeignPointerWriteRequiresMutable", self.name)
+        if self.type_id is not None and not isinstance(self.type_id, TypeId):
+            raise FFICompileError("InvalidFFITypeIdentity", self.name)
 
     def to_dict(self) -> dict[str, Any]:
-        return {"name": self.name, "type": self.type_name, "pointer": self.pointer.to_dict() if self.pointer else None, "policy": self.policy.to_dict() if self.policy else None}
+        result: dict[str, Any] = {
+            "name": self.name,
+            "type": self.type_name,
+            "pointer": self.pointer.to_dict() if self.pointer else None,
+            "policy": self.policy.to_dict() if self.policy else None,
+        }
+        if self.type_id is not None:
+            result["type_id"] = self.type_id.to_dict()
+        return result
 
 
 @dataclass(frozen=True)
@@ -94,6 +114,9 @@ class ExternFunction:
     abi: str = FFI_ABI
     safe_wrapper: bool = False
     source: tuple[str, int] | None = None
+    return_type_id: TypeId | None = None
+    error_type_id: TypeId | None = None
+    _prototype: str | None = field(default=None, repr=False)
     def __post_init__(self) -> None:
         if self.abi != FFI_ABI:
             raise FFICompileError("UnsupportedCABI", self.abi)
@@ -102,23 +125,63 @@ class ExternFunction:
             raise FFICompileError("ForeignErrorTypeMissing", self.name)
         if tuple(sorted(set(self.effects))) != self.effects:
             raise FFICompileError("NondeterministicForeignEffects", self.name)
+        if self.return_type_id is not None and not isinstance(self.return_type_id, TypeId):
+            raise FFICompileError("InvalidFFITypeIdentity", f"{self.name}.return")
+        if self.error_type_id is not None and not isinstance(self.error_type_id, TypeId):
+            raise FFICompileError("InvalidFFITypeIdentity", f"{self.name}.error")
+        if self._prototype is None:
+            object.__setattr__(self, "_prototype", self._render_prototype())
+
+    def _render_prototype(self) -> str:
+        def parameter_type(item: ExternParameter) -> str:
+            pointer = item.pointer
+            if (
+                pointer is not None
+                and item.policy is not None
+                and item.policy.access == "read"
+            ):
+                pointer = RawPointerType(
+                    pointer.pointee,
+                    mutable=False,
+                    nullable=pointer.nullable,
+                    pointee_type_id=pointer.pointee_type_id,
+                )
+            return _c_abi_type(item.type_name, pointer)
+
+        parameters = ", ".join(
+            parameter_type(item) + " " + item.name
+            for item in self.parameters
+        ) or "void"
+        return (
+            f"extern {_c_abi_type(self.return_type)} "
+            f"{self.name}({parameters});"
+        )
 
     @property
     def prototype(self) -> str:
-        def parameter_type(item: ExternParameter) -> str:
-            pointer = item.pointer
-            if pointer is not None and item.policy is not None and item.policy.access == "read":
-                pointer = RawPointerType(pointer.pointee, mutable=False, nullable=pointer.nullable)
-            return _c_abi_type(item.type_name, pointer)
-
-        parameters = ", ".join(parameter_type(item) + " " + item.name for item in self.parameters) or "void"
-        return f"extern {_c_abi_type(self.return_type)} {self.name}({parameters});"
+        assert self._prototype is not None
+        return self._prototype
 
     def call(self, arguments: Iterable[str]) -> str:
         return f"{self.name}({', '.join(arguments)})"
 
     def to_dict(self) -> dict[str, Any]:
-        return {"name": self.name, "abi": self.abi, "parameters": [item.to_dict() for item in self.parameters], "return_type": self.return_type, "effects": list(self.effects), "error_type": self.error_type, "safe_wrapper": self.safe_wrapper, "source": list(self.source) if self.source else None, "prototype": self.prototype}
+        result: dict[str, Any] = {
+            "name": self.name,
+            "abi": self.abi,
+            "parameters": [item.to_dict() for item in self.parameters],
+            "return_type": self.return_type,
+            "effects": list(self.effects),
+            "error_type": self.error_type,
+            "safe_wrapper": self.safe_wrapper,
+            "source": list(self.source) if self.source else None,
+            "prototype": self.prototype,
+        }
+        if self.return_type_id is not None:
+            result["return_type_id"] = self.return_type_id.to_dict()
+        if self.error_type_id is not None:
+            result["error_type_id"] = self.error_type_id.to_dict()
+        return result
 
 
 @dataclass(frozen=True)
@@ -128,9 +191,23 @@ class ReprCField:
     offset: int
     size: int
     alignment: int
+    type_id: TypeId | None = None
+
+    def __post_init__(self) -> None:
+        if self.type_id is not None and not isinstance(self.type_id, TypeId):
+            raise FFICompileError("InvalidFFITypeIdentity", self.name)
 
     def to_dict(self) -> dict[str, Any]:
-        return dict(self.__dict__)
+        result = {
+            "name": self.name,
+            "type_name": self.type_name,
+            "offset": self.offset,
+            "size": self.size,
+            "alignment": self.alignment,
+        }
+        if self.type_id is not None:
+            result["type_id"] = self.type_id.to_dict()
+        return result
 
 
 @dataclass(frozen=True)
@@ -172,6 +249,7 @@ class FFIProgram:
     extern_functions: tuple[ExternFunction, ...] = ()
     repr_c_records: tuple[ReprCRecord, ...] = ()
     unsafe_operations: tuple[UnsafeOperation, ...] = ()
+    _types_bound: bool = False
 
     def __post_init__(self) -> None:
         names = [item.name for item in self.extern_functions]
@@ -180,27 +258,119 @@ class FFIProgram:
             raise FFICompileError("DuplicateExternFunction", names[0])
         if len(records) != len(set(records)):
             raise FFICompileError("DuplicateReprCRecord", records[0])
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"abi": FFI_ABI, "extern_functions": [item.to_dict() for item in self.extern_functions], "repr_c_records": [item.to_dict() for item in self.repr_c_records], "unsafe_operations": [item.to_dict() for item in self.unsafe_operations]}
-
-    def to_json(self) -> str:
-        return json.dumps(self.to_dict(), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        identities = [
+            *(item.type_id for function in self.extern_functions for item in function.parameters),
+            *(item.pointer.pointee_type_id for function in self.extern_functions for item in function.parameters if item.pointer is not None),
+            *(function.return_type_id for function in self.extern_functions),
+            *(function.error_type_id for function in self.extern_functions if function.error_type is not None),
+            *(item.type_id for record in self.repr_c_records for item in record.fields),
+        ]
+        present = [identity is not None for identity in identities]
+        if any(present) and not all(present):
+            raise FFICompileError("PartialFFITypes")
+        if self._types_bound and not all(present):
+            raise FFICompileError("FFITypesMissing")
+        if any(identity is not None and not isinstance(identity, TypeId) for identity in identities):
+            raise FFICompileError("InvalidFFITypeIdentity")
 
     @property
-    def digest(self) -> str:
-        return hashlib.sha256(self.to_json().encode()).hexdigest()
+    def types_bound(self) -> bool:
+        return self._types_bound
+
+    def bind_types(self, type_context: TypeContextBuilder) -> "FFIProgram":
+        """Bind every semantic FFI type exactly once to an existing arena."""
+        if not isinstance(type_context, TypeContextBuilder):
+            raise FFICompileError("FFITypeContextRequired")
+        if self._types_bound:
+            raise FFICompileError("FFITypesAlreadyBound")
+        try:
+            def bind(spelling: str, label: str) -> TypeId:
+                return type_context.type_id(_canonical_ffi_type(spelling))
+
+            externs = []
+            for function in self.extern_functions:
+                parameters = []
+                for parameter in function.parameters:
+                    pointer = parameter.pointer
+                    if pointer is not None:
+                        pointer = replace(
+                            pointer,
+                            pointee_type_id=bind(pointer.pointee, f"{parameter.name} pointee"),
+                        )
+                    parameters.append(
+                        replace(
+                            parameter,
+                            pointer=pointer,
+                            type_id=bind(parameter.type_name, f"{parameter.name} type"),
+                        )
+                    )
+                externs.append(
+                    replace(
+                        function,
+                        parameters=tuple(parameters),
+                        return_type_id=bind(function.return_type, f"{function.name} return"),
+                        error_type_id=(
+                            bind(function.error_type, f"{function.name} error")
+                            if function.error_type is not None else None
+                        ),
+                    )
+                )
+            records = tuple(
+                replace(
+                    record,
+                    fields=tuple(
+                        replace(field, type_id=bind(field.type_name, f"{record.name}.{field.name}"))
+                        for field in record.fields
+                    ),
+                )
+                for record in self.repr_c_records
+            )
+        except (TypeArenaError, ValueError) as exc:
+            raise FFICompileError("FFITypeIdentityUnavailable", str(exc)) from exc
+        return FFIProgram(tuple(externs), records, self.unsafe_operations, True)
+
+    def to_dict(self) -> dict[str, Any]:
+        extern_functions = []
+        for item in self.extern_functions:
+            payload = item.to_dict()
+            if self._types_bound:
+                payload["return_type_id"] = item.return_type_id.to_dict() if item.return_type_id is not None else None
+                payload["error_type_id"] = item.error_type_id.to_dict() if item.error_type_id is not None else None
+            extern_functions.append(payload)
+        return {
+            "abi": FFI_ABI,
+            "types_bound": self._types_bound,
+            "extern_functions": extern_functions,
+            "repr_c_records": [item.to_dict() for item in self.repr_c_records],
+            "unsafe_operations": [
+                item.to_dict() for item in self.unsafe_operations
+            ],
+        }
+
+    def to_json(self) -> str:
+        return json.dumps(
+            self.to_dict(),
+            sort_keys=True,
+            separators=(",", ":"),
+        )
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "FFIProgram":
         """Validate and restore the typed FFI artifact without source parsing."""
         _ffi_keys(
             value,
-            {"abi", "extern_functions", "repr_c_records", "unsafe_operations"},
+            {
+                "abi",
+                "types_bound",
+                "extern_functions",
+                "repr_c_records",
+                "unsafe_operations",
+            },
             "FFI program",
         )
         if value["abi"] != FFI_ABI:
             raise FFICompileError("UnsupportedCABI", str(value["abi"]))
+        types_bound = _ffi_bool(value["types_bound"], "FFI types_bound")
         extern_values = _ffi_list(value["extern_functions"], "extern_functions")
         record_values = _ffi_list(value["repr_c_records"], "repr_c_records")
         unsafe_values = _ffi_list(value["unsafe_operations"], "unsafe_operations")
@@ -208,7 +378,22 @@ class FFIProgram:
             tuple(_extern_from_dict(item) for item in extern_values),
             tuple(_record_from_dict(item) for item in record_values),
             tuple(_unsafe_from_dict(item) for item in unsafe_values),
+            types_bound,
         )
+        identities = [
+            *(item.type_id for function in program.extern_functions for item in function.parameters),
+            *(item.pointer.pointee_type_id for function in program.extern_functions for item in function.parameters if item.pointer is not None),
+            *(function.return_type_id for function in program.extern_functions),
+            *(function.error_type_id for function in program.extern_functions if function.error_type is not None),
+            *(item.type_id for record in program.repr_c_records for item in record.fields),
+        ]
+        if types_bound and any(identity is None for identity in identities):
+            raise FFICompileError("FFITypeIdentityMissing", "bound FFI program")
+        if not types_bound and any(identity is not None for identity in identities):
+            raise FFICompileError(
+                "FFITypeIdentityUnexpected",
+                "unbound FFI program",
+            )
         if program.to_dict() != dict(value):
             raise FFICompileError("NonCanonicalFFIArtifact")
         return program
@@ -246,16 +431,35 @@ def _ffi_list(value: object, label: str) -> list[Mapping[str, Any]]:
     ]
 
 
+def _type_id_from_dict(value: object, label: str) -> TypeId:
+    try:
+        return TypeId.from_dict(value)
+    except TypeArenaError as exc:
+        raise FFICompileError("InvalidFFITypeIdentity", label) from exc
+
+
+def _optional_type_id(raw: Mapping[str, Any], key: str, label: str) -> TypeId | None:
+    if key not in raw:
+        return None
+    if raw[key] is None:
+        raise FFICompileError("FFITypeIdentityMissing", label)
+    return _type_id_from_dict(raw[key], label)
+
+
 def _pointer_from_dict(value: object) -> RawPointerType | None:
     if value is None:
         return None
-    raw = _ffi_keys(value, {"type", "pointee", "mutable", "nullable"}, "pointer")
+    expected = {"type", "pointee", "mutable", "nullable"}
+    if isinstance(value, Mapping) and "pointee_type_id" in value:
+        expected.add("pointee_type_id")
+    raw = _ffi_keys(value, expected, "pointer")
     if not isinstance(raw["pointee"], str):
         raise FFICompileError("InvalidFFIArtifact", "pointer pointee")
     pointer = RawPointerType(
         raw["pointee"],
         _ffi_bool(raw["mutable"], "pointer mutable"),
         _ffi_bool(raw["nullable"], "pointer nullable"),
+        _optional_type_id(raw, "pointee_type_id", "pointer pointee"),
     )
     if raw["type"] != pointer.type_name:
         raise FFICompileError("InvalidFFIArtifact", "pointer type")
@@ -286,7 +490,10 @@ def _policy_from_dict(value: object) -> ForeignPointerPolicy | None:
 
 
 def _parameter_from_dict(value: object) -> ExternParameter:
-    raw = _ffi_keys(value, {"name", "type", "pointer", "policy"}, "parameter")
+    raw_keys = {"name", "type", "pointer", "policy"}
+    if isinstance(value, Mapping) and "type_id" in value:
+        raw_keys.add("type_id")
+    raw = _ffi_keys(value, raw_keys, "parameter")
     if not isinstance(raw["name"], str) or not isinstance(raw["type"], str):
         raise FFICompileError("InvalidFFIArtifact", "parameter identity")
     return ExternParameter(
@@ -294,26 +501,27 @@ def _parameter_from_dict(value: object) -> ExternParameter:
         raw["type"],
         _pointer_from_dict(raw["pointer"]),
         _policy_from_dict(raw["policy"]),
+        _optional_type_id(raw, "type_id", "parameter type"),
     )
 
 
 def _extern_from_dict(value: object) -> ExternFunction:
-    raw = _ffi_keys(
-        value,
-        {
-            "name", "abi", "parameters", "return_type", "effects", "error_type",
-            "safe_wrapper", "source", "prototype",
-        },
-        "extern function",
-    )
+    expected = {
+        "name", "abi", "parameters", "return_type", "effects", "error_type",
+        "safe_wrapper", "source", "prototype",
+    }
+    if isinstance(value, Mapping):
+        if "return_type_id" in value:
+            expected.add("return_type_id")
+        if "error_type_id" in value:
+            expected.add("error_type_id")
+    raw = _ffi_keys(value, expected, "extern function")
     for name in ("name", "abi", "return_type", "prototype"):
         if not isinstance(raw[name], str):
             raise FFICompileError("InvalidFFIArtifact", f"extern {name}")
     parameters = _ffi_list(raw["parameters"], "parameters")
     effects = raw["effects"]
-    if not isinstance(effects, list) or not all(
-        isinstance(item, str) for item in effects
-    ):
+    if not isinstance(effects, list) or not all(isinstance(item, str) for item in effects):
         raise FFICompileError("InvalidFFIArtifact", "extern effects")
     error_type = raw["error_type"]
     if error_type is not None and not isinstance(error_type, str):
@@ -327,6 +535,19 @@ def _extern_from_dict(value: object) -> ExternFunction:
         and not isinstance(source[1], bool)
     ):
         raise FFICompileError("InvalidFFIArtifact", "extern source")
+    if error_type is None:
+        if raw.get("error_type_id") is not None:
+            raise FFICompileError(
+                "FFITypeIdentityUnexpected",
+                "extern error",
+            )
+        error_type_id = None
+    else:
+        error_type_id = _optional_type_id(
+            raw,
+            "error_type_id",
+            "extern error",
+        )
     result = ExternFunction(
         raw["name"],
         tuple(_parameter_from_dict(item) for item in parameters),
@@ -336,18 +557,20 @@ def _extern_from_dict(value: object) -> ExternFunction:
         raw["abi"],
         _ffi_bool(raw["safe_wrapper"], "extern safe_wrapper"),
         tuple(source) if source is not None else None,
+        _optional_type_id(raw, "return_type_id", "extern return"),
+        error_type_id,
+        raw["prototype"],
     )
-    if raw["prototype"] != result.prototype:
+    if raw["prototype"] != result._render_prototype():
         raise FFICompileError("InvalidFFIArtifact", "extern prototype")
     return result
 
 
 def _field_from_dict(value: object) -> ReprCField:
-    raw = _ffi_keys(
-        value,
-        {"name", "type_name", "offset", "size", "alignment"},
-        "repr(C) field",
-    )
+    expected = {"name", "type_name", "offset", "size", "alignment"}
+    if isinstance(value, Mapping) and "type_id" in value:
+        expected.add("type_id")
+    raw = _ffi_keys(value, expected, "repr(C) field")
     if not isinstance(raw["name"], str) or not isinstance(raw["type_name"], str):
         raise FFICompileError("InvalidFFIArtifact", "repr(C) field identity")
     return ReprCField(
@@ -356,6 +579,7 @@ def _field_from_dict(value: object) -> ReprCField:
         _ffi_int(raw["offset"], "field offset"),
         _ffi_int(raw["size"], "field size"),
         _ffi_int(raw["alignment"], "field alignment"),
+        _optional_type_id(raw, "type_id", "repr(C) field type"),
     )
 
 
@@ -467,6 +691,23 @@ def _split_parameters(text: str) -> tuple[str, ...]:
             start = index + 1
     parts.append(text[start:].strip())
     return tuple(item for item in parts if item)
+
+
+def _canonical_ffi_type(type_name: str) -> str:
+    aliases = {"Int": "Int64", "UInt": "UInt64", "Float": "Float64"}
+    pointer_aliases = {"Ptr", "ConstPointer", "MutPointer"}
+    try:
+        parsed = parse_type(type_name)
+    except ValueError as exc:
+        raise FFICompileError("InvalidFFIType", type_name) from exc
+
+    def normalize(item: Any) -> Any:
+        constructor = aliases.get(item.name, item.name)
+        if constructor in pointer_aliases:
+            constructor = "RawPointer"
+        return type(item)(constructor, tuple(normalize(argument) for argument in item.args))
+
+    return normalize(parsed).canonical
 
 
 def _abi_size_alignment(type_name: str) -> tuple[int, int]:

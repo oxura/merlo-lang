@@ -96,12 +96,12 @@ Standalone `TypeRef.from_dict` canonicalizes aliases. Arena snapshots are
 stricter: `TypeArena.from_dict` rejects a serialized alias before identity
 validation, so snapshots have one canonical byte representation.
 
-HIR v11 stores the snapshot plus `type_arena_digest` in
+HIR v12 stores the snapshot plus `type_arena_digest` in
 `StructuredHIRProgram`. The snapshot is closed (`allow_unresolved=false`).
-When reading HIR, the outer object’s exact keys, contract, schema version,
-and envelope invariants are checked first; HIR v10 is strictly rejected. The
-arena is then restored, its closedness is required, and the digest is
-recomputed and compared. HIR-only FFI annotations are validated next, then
+The reader checks the outer contract, schema version, and envelope invariants
+first; HIR v11 is strictly rejected. The arena is then restored, its
+closedness is required, and the digest is recomputed and compared. HIR-only
+FFI annotations are validated next, then
 native syntax and typed HIR records are restored. Each present `TypeId` must
 exist in the arena, and its canonical spelling must equal the retained
 canonical HIR spelling. Finally, `StructuredHIRProgram` validates source
@@ -115,16 +115,23 @@ not.
 
 ## HIR and consumer migration surface
 
-HIR v11 carries `TypeId` beside retained spelling at every HIR-visible type
-position. The serialized pairs are exact: `type` + `type_id`,
+HIR v12 carries `TypeId` beside retained spelling at every HIR-visible type
+position. Semantic attribute spellings (closures, holes, result/error,
+intrinsics, casts, foreign calls, collection operations, and map
+specializations) carry paired identities; machine state identities remain
+outside the arena. The serialized pairs are exact: `type` + `type_id`,
 `payload_type` + `payload_type_id`, and `return_type` + `return_type_id`.
 This includes declaration types, parameters, returns, record fields, enum
 payloads, flow results, local `Let`/`Var`/`Assign` nodes, and contract-condition
 result types. `HIRTypeDecl` has its nominal `type_id` beside `symbol_id` and
-`revision_id`. `HIRMachineStateField` is `{name,type,type_id}`. HIR-only FFI
-JSON annotates extern parameters, extern return/error fields, and `repr(C)`
-fields with `type_name`/`type_id`; the underlying FFI classes and contract
-remain unchanged.
+`revision_id`. `HIRMachineStateField` is `{name,type,type_id}`. The bound
+in-memory FFI model stores IDs for extern parameters, extern return/error
+types, `repr(C)` fields, and raw-pointer pointees. HIR JSON writes those stored
+IDs directly and records the bound lifecycle explicitly, including
+identity-empty FFI programs and empty `repr(C)` records. Cached C prototypes
+are serialization data, not a spelling-reparse path. Access, ownership,
+destructor, mutability, and nullability remain separate pointer policy fields
+and are cross-checked against the parameter's structural pointer TypeId.
 
 Aliases are already canonicalized before HIR stores them, so readers compare
 the arena's canonical spelling with retained canonical HIR spelling rather than
@@ -144,9 +151,7 @@ Type Arena v1 is a foundation with a complete HIR/ownership/borrow authority
 boundary, not a whole-compiler cutover. This migration:
 
 - keeps `TypeId`, `TypeRef`, and `TypeArena` as the single arena authority;
-- gives structured HIR schema 11 one closed arena snapshot and digest;
-- provides strict JSON roundtrip, closed-snapshot validation, and tamper
-  detection;
+- gives structured HIR schema 12 one closed arena snapshot and digest;
 - centralizes structural constructor arity validation;
 - makes `TypePropertyResolver` the first resolver-local production consumer;
 - consistently classifies `Int`, `UInt`, and `Float` aliases by their
@@ -158,12 +163,11 @@ boundary, not a whole-compiler cutover. This migration:
 
 The migration proceeds in narrow commits:
 
-1. Add `TypeId` beside existing HIR positions (the HIR v11 migration).
-2. Migrate ownership, Place lookup, borrow provenance, and ContractGraph
+1. Add `TypeId` beside existing HIR positions (the HIR v12 migration).
+2. Keep machine state labels in their separate deterministic identity domain;
+3. Migrate ownership, Place lookup, borrow provenance, and ContractGraph
    consumers and remove duplicate parsing (issue #84 scope, now landed).
-3. Migrate representation IR descriptors and later physical layout identity
+4. Migrate representation IR descriptors and later physical layout identity
    (issue #85 scope).
-4. Migrate executable MIR only under a separately reviewed contract (issue #86
-   scope).
 5. Make C11 and future LLVM/GPU backends consume structural identities only
    after those boundaries are explicitly reviewed.

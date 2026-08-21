@@ -3,19 +3,23 @@
 ## Unreleased
 
 - Continues the `0.1.0-alpha.3-dev` compatibility line with language contract
-  `0.3`, frontend `8`, canonical `6`, HIR `11`, Obligation IR `1`, RIR `5`,
-  MIR `2`, runtime ABI `2`, and SemanticWorld `18`. Earlier lockfiles must be
+  `0.3`, frontend `8`, canonical `6`, HIR `12`, Obligation IR `1`, RIR `5`,
+  MIR `2`, runtime ABI `2`, and SemanticWorld `19`. Earlier lockfiles must be
   regenerated with the current compiler; see the migration guide.
-  `merlo.structured-typed-hir.v10` artifacts are rejected by the v11 reader.
+  `merlo.structured-typed-hir.v11` artifacts are rejected by the v12 reader.
   The supported regeneration operation is
   `python -c 'from merlo.project import resolve_dependencies; resolve_dependencies("PROJECT")'`
   once per project root; there is no `merlo lock` command.
+- HIR v12 gives machine states deterministic non-TypeArena identities; initial
+  and transition source/target IDs are membership-validated, and Transition
+  nodes carry no type. Semantic HIR attributes and bound FFI metadata carry
+  direct paired TypeIds. FFI JSON records its bound lifecycle explicitly,
+  preserves cached prototypes without serialization-time reparsing, and
+  validates pointer/pointee identity against policy metadata. This completes
+  issue #84 while RIR v5, MIR v2, backend, and generated-C semantics remain
+  unchanged; issues #85 and #86 remain separate.
 - Structured HIR continues to store one closed `TypeArena` snapshot and
-  `type_arena_digest`, with validated `TypeId` beside retained diagnostic
-  spelling at every HIR-visible type position. Issue #84 now carries this
-  TypeId authority through ownership, `Place` lookup, and borrow provenance;
-  retained spellings are diagnostic only. RIR v5, MIR v2, backend, and
-  generated-C semantics remain unchanged.
+  `type_arena_digest`; retained spellings remain diagnostic only.
 - Replaces ContractGraph's regex and generic-spelling matcher with structural
   `TypeScheme` nodes (`TypeVarId`, concrete `TypeId`, applied constructors, and
   const arguments). Surface elaboration, structured HIR, and ownership share a

@@ -1283,6 +1283,27 @@ _HIR_TO_RIR = {
 }
 
 
+_HIR_TYPE_ID_ATTRIBUTES = frozenset(
+    {
+        "expected_type_id",
+        "result_type_id",
+        "error_type_id",
+        "numeric_type_id",
+        "target_type_id",
+        "source_collection_type_id",
+        "element_type_id",
+        "map_specialization_id",
+        "parameter_type_id",
+        "return_type_id",
+        "callable_parameter_type_id",
+        "callable_return_type_id",
+        "source_type_id",
+        "parameter_type_ids",
+        "capture_type_ids",
+    }
+)
+
+
 def _lower_operation(node: HIRNode) -> RIROperation:
     op = _HIR_TO_RIR.get(node.kind)
     if op is None:
@@ -1337,7 +1358,11 @@ def _lower_operation(node: HIRNode) -> RIROperation:
         revision,
         provenance,
         node.effects,
-        node.attributes,
+        tuple(
+            (key, value)
+            for key, value in node.attributes
+            if key not in _HIR_TYPE_ID_ATTRIBUTES
+        ),
         tuple(_lower_operation(item) for item in node.children),
     )
 

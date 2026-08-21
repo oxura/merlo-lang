@@ -4,8 +4,8 @@
 
 Structured HIR is the typed semantic tree between canonical elaboration and
 physical representation. It preserves source and semantic identity while
-leaving layout and low-level control flow to later stages. The v11 change
-gives HIR and the ownership/borrow analyses one compiler-local TypeId
+leaving layout and low-level control flow to later stages. The v12 change
+keeps the HIR and ownership/borrow analyses on one compiler-local TypeId
 authority; it does not migrate RIR, MIR, or backend representation identity.
 
 `compile_canonical_hir(program, entry_function="main")` in
@@ -17,7 +17,7 @@ tree is rejected; serialized projections are not compiler input.
 ## Version and contents
 
 The function returns `StructuredHIRProgram`, contract
-`merlo.structured-typed-hir.v11`, schema version `11`. It contains source
+`merlo.structured-typed-hir.v12`, schema version `12`. It contains source
 text/digest, one complete `TypeArena` snapshot and its digest, `HIRTypeDecl`
 values with typed record invariants, `HIRField`/`HIRVariant` values,
 `HIRFunction` records, typed parameters, function contracts, contextual
@@ -51,11 +51,17 @@ field pairs are exact:
 
 `HIRTypeDecl` additionally carries the nominal declaration's `type_id`
 alongside its existing declaration `symbol_id` and `revision_id`.
-`HIRMachineStateField` serializes exactly `{name, type, type_id}`. HIR-only
-FFI JSON annotates extern parameters with `type_id`, extern return/error
-fields with `return_type`/`return_type_id` and `error_type`/`error_type_id`,
-and `repr(C)` fields with `type_name`/`type_id`; these annotations do not
-change the underlying `FFIProgram` classes or FFI ownership contract.
+`HIRMachineState` records carry deterministic state IDs separate from the
+TypeArena. Initial and transition source/target labels are paired with those
+state IDs and validated against machine membership. A `Transition` node has no
+`type` or `type_id`; a state label is never a semantic type.
+
+Semantic type attributes are paired with direct `TypeId` values in memory and
+JSON: typed holes (`expected_type`), closures (parameter/return/capture
+types), result propagation (result/error), numeric intrinsics, scalar casts,
+foreign-call errors, implicit callables, collection source/element/callable
+types, and map specializations. Operation/effect/ownership/ABI strings remain
+policy projections.
 
 This covers formerly string-only positions in declarations, parameters,
 returns, flow results, machine state fields, record fields, enum payloads,
@@ -91,10 +97,10 @@ parser participate in the contract.
 Serialization stores the arena snapshot and `type_arena_digest` before the
 typed nodes. The snapshot is closed (`allow_unresolved=false`). Entries are
 canonical and deterministic; the digest covers the canonical snapshot. A
-A reader validates in this order:
+reader validates in this order:
 
 1. validate the outer object’s exact keys, contract, schema version, and
-   envelope invariants, rejecting HIR v10 rather than accepting it as a
+   envelope invariants, rejecting HIR v11 rather than accepting it as a
    compatibility path;
 2. restore the `TypeArena` snapshot, require a closed arena, recompute and
    compare `type_arena_digest`, and reject malformed, missing, cyclic, or
@@ -175,16 +181,13 @@ double-counting obligations proven by multiple engines. Static, exhaustive
 bounded, and SMT proofs count as closed; refutations take precedence over any
 conflicting proof. Counts, per-category/per-engine provenance, and an exact
 integer basis-points rate are serialized canonically.
-
-## Failure modes
-
 A missing retained Surface tree, unsupported expressions, invalid map
 specializations, duplicate declarations, a missing `main`, duplicate node
 IDs, forbidden low-level kinds, an open or tampered arena, a missing or
-mismatched `TypeId`, and schema drift raise `StructuredHIRCompileError` or
-`ValueError`. HIR v10 is not readable by the v11 reader. The coordinator
-surfaces construction failures as a production lowering diagnostic.
-
+mismatched `TypeId`, invalid machine state membership, and schema drift raise
+`StructuredHIRCompileError` or `ValueError`. HIR v11 is not readable by the
+v12 reader. The coordinator surfaces construction failures as a production
+lowering diagnostic.
 ## Trusted and experimental boundaries
 
 The canonical program identity, digest-bound native syntax and FFI artifacts,

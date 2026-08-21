@@ -5,10 +5,13 @@ import pytest
 from merlo.ffi import (
     ExternFunction,
     FFICompileError,
+    FFIProgram,
     ForeignPointerPolicy,
+    ReprCRecord,
     parse_ffi_declarations,
     validate_ffi,
 )
+from merlo.type_arena import TypeContextBuilder
 
 
 def test_extern_c_pointer_policy_and_prototype_are_deterministic() -> None:
@@ -51,3 +54,37 @@ def test_foreign_result_type_and_effects_are_preserved() -> None:
     function = ExternFunction("read", (), "Result[Int64,Errno]", ("fs.read",))
     assert function.return_type == "Result[Int64,Errno]"
     assert function.effects == ("fs.read",)
+
+
+def test_ffi_types_bind_once_and_serialize_stored_identities() -> None:
+    program = parse_ffi_declarations(
+        'extern "C" fn write(buf: RawPointer[UInt8] {read, borrowed}) -> Int64\n'
+        "repr(C) record Pair:\n"
+        "    value: UInt32\n"
+    )
+    assert program.types_bound is False
+    arena = TypeContextBuilder()
+    arena.intern_many(("RawPointer[UInt8]", "UInt8", "Int64", "UInt32"))
+    bound = program.bind_types(arena)
+    parameter = bound.extern_functions[0].parameters[0]
+    assert bound.types_bound is True
+    assert parameter.type_id == arena.type_id("RawPointer[UInt8]")
+    assert parameter.pointer is not None
+    assert parameter.pointer.pointee_type_id == arena.type_id("UInt8")
+    assert bound.extern_functions[0].return_type_id == arena.type_id("Int64")
+    assert bound.repr_c_records[0].fields[0].type_id == arena.type_id("UInt32")
+    assert bound.to_dict()["extern_functions"][0]["parameters"][0]["type_id"]
+    with pytest.raises(FFICompileError, match="FFITypesAlreadyBound"):
+        bound.bind_types(arena)
+
+
+def test_bound_ffi_json_and_empty_record_lifecycle_roundtrip() -> None:
+    arena = TypeContextBuilder()
+    empty = FFIProgram(
+        repr_c_records=(ReprCRecord("Empty", (), 0, 1),),
+    ).bind_types(arena)
+
+    restored = FFIProgram.from_json(empty.to_json())
+
+    assert restored.types_bound is True
+    assert restored == empty

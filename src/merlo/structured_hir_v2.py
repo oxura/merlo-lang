@@ -1,4 +1,4 @@
-"""Structured Typed HIR v11 for Merlo's general representation milestone.
+"""Structured Typed HIR v12 for Merlo's general representation milestone.
 
 The HIR is deliberately a tree. Control-flow graphs, allocation primitives, drop
 flags, and pointer arithmetic belong to lower layers.
@@ -53,8 +53,8 @@ from merlo.ownership import (
     _stable_id,
 )
 
-STRUCTURED_HIR_SCHEMA_VERSION = 11
-STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v11"
+STRUCTURED_HIR_SCHEMA_VERSION = 12
+STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v12"
 _SCALAR_TYPES = frozenset(
     {
         "Bool",
@@ -149,7 +149,9 @@ def _artifact_optional_text(value: object, label: str) -> str | None:
 
 
 def _freeze_json(value: object, label: str = "artifact value") -> Any:
-    if isinstance(value, list):
+    if isinstance(value, TypeId):
+        return value
+    if isinstance(value, (list, tuple)):
         return tuple(_freeze_json(item, label) for item in value)
     if isinstance(value, Mapping):
         if not all(isinstance(key, str) for key in value):
@@ -160,7 +162,22 @@ def _freeze_json(value: object, label: str = "artifact value") -> Any:
     raise ValueError(f"unsupported {label}: {type(value).__name__}")
 
 
+def _hydrate_typed_attributes(value: object) -> Any:
+    if isinstance(value, list):
+        return tuple(_hydrate_typed_attributes(item) for item in value)
+    if isinstance(value, Mapping):
+        if set(value) == {"contract", "value"} and value.get("contract") == "merlo.type-id.v1":
+            return TypeId.from_dict(value)
+        return {
+            str(key): _hydrate_typed_attributes(item)
+            for key, item in value.items()
+        }
+    return value
+
+
 def _json_payload(value: object) -> Any:
+    if isinstance(value, TypeId):
+        return value.to_dict()
     if isinstance(value, (list, tuple)):
         return [_json_payload(item) for item in value]
     if isinstance(value, Mapping):
@@ -428,6 +445,23 @@ class HIRFlow:
             "symbol_id": self.symbol_id,
             "revision_id": self.revision_id,
         }
+@dataclass(frozen=True)
+class HIRMachineState:
+    """Stable machine-state identity, deliberately outside the TypeArena."""
+
+    name: str
+    state_id: str
+    fields: tuple["HIRMachineStateField", ...] = ()
+    @property
+    def id(self) -> str:
+        return self.state_id
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "state_id": self.state_id,
+            "fields": [field.to_dict() for field in self.fields],
+        }
 
 
 @dataclass(frozen=True)
@@ -448,8 +482,9 @@ class HIRMachineStateField:
 class HIRMachine:
     name: str
     parameters: tuple[HIRParameter, ...]
-    states: tuple[tuple[str, tuple[HIRMachineStateField, ...]], ...]
+    states: tuple[HIRMachineState, ...]
     initial: str | None
+    initial_id: str | None
     invariant: str | None
     transitions: tuple[HIRNode, ...]
     source: SourceSpan
@@ -464,11 +499,9 @@ class HIRMachine:
         return {
             "name": self.name,
             "parameters": [item.to_dict() for item in self.parameters],
-            "states": [
-                {"name": name, "fields": [field.to_dict() for field in fields]}
-                for name, fields in self.states
-            ],
+            "states": [item.to_dict() for item in self.states],
             "initial": self.initial,
+            "initial_id": self.initial_id,
             "invariant": self.invariant,
             "transitions": [item.to_dict() for item in self.transitions],
             "source": self.source.to_dict(),
@@ -561,20 +594,19 @@ def _parameter_from_dict(value: object, arena: TypeArena) -> HIRParameter:
     assert type_name is not None and type_id is not None
     return HIRParameter(_artifact_text(raw["name"], "parameter name"), type_name, type_id, _artifact_text(raw["ownership"], "parameter ownership"), _source_span_from_dict(raw["source"]), _artifact_text(raw["symbol_id"], "parameter symbol"), _artifact_text(raw["revision_id"], "parameter revision"))
 
-
 def _node_from_dict(value: object, arena: TypeArena) -> HIRNode:
     raw = _artifact_keys(value, {"id", "kind", "source", "scope_id", "type", "type_id", "ownership", "effects", "symbol_id", "revision_id", "attributes", "children"}, "HIR node")
     attributes = raw["attributes"]
     if not isinstance(attributes, Mapping) or not all(isinstance(key, str) for key in attributes):
         raise ValueError("HIR node attributes must be a string-keyed object")
     type_name, type_id = _typed_pair(raw["type"], raw["type_id"], "node type", arena, optional=True)
-    return HIRNode(_artifact_text(raw["id"], "node id"), _artifact_text(raw["kind"], "node kind"), _source_span_from_dict(raw["source"]), _artifact_text(raw["scope_id"], "node scope"), type_name, type_id, _artifact_text(raw["ownership"], "node ownership"), tuple(_artifact_text(item, "node effect") for item in _artifact_list(raw["effects"], "node effects")), _artifact_optional_text(raw["symbol_id"], "node symbol"), _artifact_text(raw["revision_id"], "node revision"), tuple((key, _freeze_json(attributes[key], "HIR attribute")) for key in sorted(attributes)), tuple(_node_from_dict(item, arena) for item in _artifact_list(raw["children"], "node children")))
+    hydrated = _hydrate_typed_attributes(attributes)
+    return HIRNode(_artifact_text(raw["id"], "node id"), _artifact_text(raw["kind"], "node kind"), _source_span_from_dict(raw["source"]), _artifact_text(raw["scope_id"], "node scope"), type_name, type_id, _artifact_text(raw["ownership"], "node ownership"), tuple(_artifact_text(item, "node effect") for item in _artifact_list(raw["effects"], "node effects")), _artifact_optional_text(raw["symbol_id"], "node symbol"), _artifact_text(raw["revision_id"], "node revision"), tuple((key, _freeze_json(hydrated[key], "HIR attribute")) for key in sorted(hydrated)), tuple(_node_from_dict(item, arena) for item in _artifact_list(raw["children"], "node children")))
 
 
 def _contract_from_dict(value: object, arena: TypeArena) -> HIRContract:
     raw = _artifact_keys(value, {"kind", "expression", "condition", "source"}, "HIR contract")
     return HIRContract(_artifact_text(raw["kind"], "contract kind"), _artifact_text(raw["expression"], "contract expression"), _node_from_dict(raw["condition"], arena), _source_span_from_dict(raw["source"]))
-
 
 def _function_from_dict(value: object, arena: TypeArena) -> HIRFunction:
     raw = _artifact_keys(value, {"name", "parameters", "return_type", "return_type_id", "effects", "requirements", "ensures", "body", "source", "scope_id", "symbol_id", "revision_id", "borrow_summary"}, "HIR function")
@@ -590,57 +622,87 @@ def _flow_from_dict(value: object, arena: TypeArena) -> HIRFlow:
     return HIRFlow(_artifact_text(raw["name"], "flow name"), tuple(_parameter_from_dict(item, arena) for item in _artifact_list(raw["parameters"], "flow parameters")), return_name, return_id, _artifact_bool(raw["durable"], "flow durable"), tuple(_artifact_text(item, "flow effect") for item in _artifact_list(raw["effects"], "flow effects")), tuple(_artifact_text(item, "flow capability") for item in _artifact_list(raw["capabilities"], "flow capabilities")), tuple(_node_from_dict(item, arena) for item in _artifact_list(raw["body"], "flow body")), _source_span_from_dict(raw["source"]), _artifact_text(raw["symbol_id"], "flow symbol"), _artifact_text(raw["revision_id"], "flow revision"))
 
 
+
 def _machine_from_dict(value: object, arena: TypeArena) -> HIRMachine:
-    raw = _artifact_keys(value, {"name", "parameters", "states", "initial", "invariant", "transitions", "source", "symbol_id", "revision_id"}, "HIR machine")
+    raw = _artifact_keys(
+        value,
+        {"name", "parameters", "states", "initial", "initial_id", "invariant", "transitions", "source", "symbol_id", "revision_id"},
+        "HIR machine",
+    )
     states = []
     for item in _artifact_list(raw["states"], "machine states"):
-        state = _artifact_keys(item, {"name", "fields"}, "machine state")
+        state = _artifact_keys(item, {"name", "state_id", "fields"}, "machine state")
         fields = []
         for field_value in _artifact_list(state["fields"], "machine state fields"):
             field = _artifact_keys(field_value, {"name", "type", "type_id"}, "machine state field")
             field_name, field_id = _typed_pair(field["type"], field["type_id"], "machine field type", arena)
             assert field_name is not None and field_id is not None
             fields.append(HIRMachineStateField(_artifact_text(field["name"], "machine field name"), field_name, field_id))
-        states.append((_artifact_text(state["name"], "state name"), tuple(fields)))
-    return HIRMachine(_artifact_text(raw["name"], "machine name"), tuple(_parameter_from_dict(item, arena) for item in _artifact_list(raw["parameters"], "machine parameters")), tuple(states), _artifact_optional_text(raw["initial"], "machine initial state"), _artifact_optional_text(raw["invariant"], "machine invariant"), tuple(_node_from_dict(item, arena) for item in _artifact_list(raw["transitions"], "machine transitions")), _source_span_from_dict(raw["source"]), _artifact_text(raw["symbol_id"], "machine symbol"), _artifact_text(raw["revision_id"], "machine revision"))
+        states.append(HIRMachineState(_artifact_text(state["name"], "state name"), _artifact_text(state["state_id"], "state identity"), tuple(fields)))
+    return HIRMachine(
+        _artifact_text(raw["name"], "machine name"),
+        tuple(_parameter_from_dict(item, arena) for item in _artifact_list(raw["parameters"], "machine parameters")),
+        tuple(states),
+        _artifact_optional_text(raw["initial"], "machine initial state"),
+        _artifact_optional_text(raw["initial_id"], "machine initial identity"),
+        _artifact_optional_text(raw["invariant"], "machine invariant"),
+        tuple(_node_from_dict(item, arena) for item in _artifact_list(raw["transitions"], "machine transitions")),
+        _source_span_from_dict(raw["source"]),
+        _artifact_text(raw["symbol_id"], "machine symbol"),
+        _artifact_text(raw["revision_id"], "machine revision"),
+    )
+
+
 
 def _ffi_hir_dict(ffi_program: FFIProgram, arena: TypeArena) -> dict[str, Any]:
-    payload = json.loads(ffi_program.to_json())
-    canonical_ids = {arena.canonical(type_id): type_id for type_id in arena.ids}
+    """Serialize the already-bound FFI model without spelling-based recovery."""
+    if not ffi_program.types_bound:
+        raise ValueError("Structured HIR requires bound FFI types")
+    return ffi_program.to_dict()
 
-    def lookup(spelling: str, label: str) -> TypeId:
+
+def _validate_ffi_types(ffi_program: FFIProgram, context: TypeContext) -> None:
+    if not ffi_program.types_bound:
+        raise ValueError("Structured HIR requires bound FFI types")
+
+    def check(spelling: str, identity: TypeId, label: str) -> None:
+        if not isinstance(identity, TypeId):
+            raise ValueError(f"{label} identity must be TypeId")
         try:
-            normalized = _normalize_ffi_type(spelling)
-            return canonical_ids[normalized]
-        except (KeyError, ValueError) as exc:
-            raise ValueError(f"{label} is absent or noncanonical") from exc
+            rendered = context.render(identity)
+        except TypeArenaError as exc:
+            raise ValueError(f"unknown {label} identity") from exc
+        if rendered != _normalize_ffi_type(spelling):
+            raise ValueError(f"{label} identity does not match spelling")
 
-    for extern in payload["extern_functions"]:
-        for parameter in extern["parameters"]:
-            parameter["type_id"] = lookup(parameter["type"], "FFI parameter type").to_dict()
-        extern["return_type_id"] = lookup(extern["return_type"], "FFI return type").to_dict()
-        error_type = extern["error_type"]
-        extern["error_type_id"] = (
-            lookup(error_type, "FFI error type").to_dict()
-            if error_type is not None else None
-        )
-    for record in payload["repr_c_records"]:
-        for ffi_field in record["fields"]:
-            ffi_field["type_id"] = lookup(ffi_field["type_name"], "FFI repr(C) field type").to_dict()
-    return payload
-
-
-def _ffi_without_hir_ids(value: Mapping[str, Any]) -> dict[str, Any]:
-    payload = json.loads(json.dumps(value))
-    for extern in payload["extern_functions"]:
-        for parameter in extern["parameters"]:
-            parameter.pop("type_id", None)
-        extern.pop("return_type_id", None)
-        extern.pop("error_type_id", None)
-    for record in payload["repr_c_records"]:
-        for ffi_field in record["fields"]:
-            ffi_field.pop("type_id", None)
-    return payload
+    for function in ffi_program.extern_functions:
+        for parameter in function.parameters:
+            if parameter.policy is not None and parameter.policy.parameter != parameter.name:
+                raise ValueError("FFI pointer policy parameter mismatch")
+            check(parameter.type_name, parameter.type_id, "FFI parameter type")
+            parameter_ref = context.resolve(parameter.type_id)
+            is_pointer_type = parameter_ref.constructor == "RawPointer"
+            if is_pointer_type != (parameter.pointer is not None):
+                raise ValueError("FFI parameter pointer metadata mismatch")
+            if parameter.pointer is not None:
+                check(parameter.pointer.pointee, parameter.pointer.pointee_type_id, "FFI pointer pointee")
+                if parameter_ref.arguments != (
+                    parameter.pointer.pointee_type_id,
+                ):
+                    raise ValueError("FFI parameter pointee identity mismatch")
+                assert parameter.policy is not None
+                if parameter.pointer.nullable != parameter.policy.nullable:
+                    raise ValueError("FFI pointer nullability policy mismatch")
+        check(function.return_type, function.return_type_id, "FFI return type")
+        if function.error_type is not None:
+            check(function.error_type, function.error_type_id, "FFI error type")
+    for record in ffi_program.repr_c_records:
+        for ffi_field in record.fields:
+            check(
+                ffi_field.type_name,
+                ffi_field.type_id,
+                "FFI repr(C) field type",
+            )
 
 
 @dataclass(frozen=True)
@@ -674,6 +736,8 @@ class StructuredHIRProgram:
             raise ValueError("Structured HIR type arena digest mismatch")
 
         def check_type(spelling: str | None, type_id: TypeId | None, label: str) -> None:
+            if spelling is not None and not isinstance(spelling, str):
+                raise ValueError(f"{label} must be text")
             if (spelling is None) != (type_id is None):
                 raise ValueError(f"{label} and {label} identity must be paired")
             if type_id is None:
@@ -686,6 +750,58 @@ class StructuredHIRProgram:
                 raise ValueError(f"unknown {label} identity") from exc
             if canonical != spelling:
                 raise ValueError(f"{label} identity does not match spelling")
+        def check_attributes(node: HIRNode) -> None:
+            attrs = node.attribute_map
+            pairs = (
+                ("expected_type", "expected_type_id"),
+                ("result_type", "result_type_id"),
+                ("error_type", "error_type_id"),
+                ("numeric_type", "numeric_type_id"),
+                ("target_type", "target_type_id"),
+                ("source_collection_type", "source_collection_type_id"),
+                ("element_type", "element_type_id"),
+                ("map_specialization", "map_specialization_id"),
+                ("parameter_type", "parameter_type_id"),
+                ("return_type", "return_type_id"),
+                ("callable_parameter_type", "callable_parameter_type_id"),
+                ("callable_return_type", "callable_return_type_id"),
+                ("source_type", "source_type_id"),
+            )
+            for spelling_key, identity_key in pairs:
+                if spelling_key not in attrs:
+                    if identity_key in attrs:
+                        raise ValueError(
+                            f"{identity_key} has no {spelling_key}"
+                        )
+                    continue
+                spelling = attrs[spelling_key]
+                identity = attrs.get(identity_key)
+                if spelling is None:
+                    if identity is not None:
+                        raise ValueError(f"{identity_key} must be null")
+                    continue
+                check_type(spelling, identity, f"node attribute {spelling_key}")
+            for spelling_key, identity_key in (
+                ("parameters", "parameter_type_ids"),
+                ("captures", "capture_type_ids"),
+            ):
+                if spelling_key not in attrs:
+                    if identity_key in attrs:
+                        raise ValueError(
+                            f"{identity_key} has no {spelling_key}"
+                        )
+                    continue
+                values = attrs[spelling_key]
+                identities = attrs.get(identity_key)
+                if not isinstance(values, (tuple, list)) or not isinstance(identities, (tuple, list)):
+                    raise ValueError(f"{identity_key} must pair with {spelling_key}")
+                if len(values) != len(identities):
+                    raise ValueError(f"{identity_key} length mismatch")
+                for item, item_id in zip(values, identities, strict=True):
+                    if not isinstance(item, (tuple, list)) or len(item) < 2:
+                        raise ValueError(f"invalid {spelling_key} entry")
+                    check_type(item[1], item_id, f"node attribute {spelling_key}")
+
         for declaration in self.types:
             check_type(declaration.name, declaration.type_id, "type name")
             for item in declaration.fields:
@@ -703,14 +819,62 @@ class StructuredHIRProgram:
                 check_type(parameter.type_name, parameter.type_id, "parameter type")
             if isinstance(owner, (HIRFunction, HIRFlow)):
                 check_type(owner.return_type, owner.return_type_id, "return type")
-            for node in owner.walk():
-                check_type(node.type_name, node.type_id, "node type")
             if isinstance(owner, HIRMachine):
-                for _, fields in owner.states:
-                    for item in fields:
+                expected_state_ids = {
+                    state.name: _stable_id(
+                        "state",
+                        owner.symbol_id,
+                        state.name,
+                    )
+                    for state in owner.states
+                }
+                state_ids = {state.state_id for state in owner.states}
+                state_names = {state.name for state in owner.states}
+                if len(state_ids) != len(owner.states) or len(state_names) != len(owner.states):
+                    raise ValueError("duplicate machine state identity")
+                if any(state.state_id != expected_state_ids[state.name] for state in owner.states):
+                    raise ValueError("machine state identity is not deterministic")
+                if owner.initial is not None:
+                    if owner.initial not in state_names or owner.initial_id != expected_state_ids[owner.initial]:
+                        raise ValueError("machine initial state is not a member")
+                elif owner.initial_id is not None:
+                    raise ValueError("machine initial identity without state")
+                for state in owner.states:
+                    for item in state.fields:
                         check_type(item.type_name, item.type_id, "machine field type")
-        if hashlib.sha256(self.source.encode()).hexdigest() != self.source_sha256:
-            raise ValueError("Structured HIR source digest mismatch")
+                for node in owner.walk():
+                    check_type(node.type_name, node.type_id, "node type")
+                    check_attributes(node)
+                    attrs = node.attribute_map
+                    if node.kind == "Transition":
+                        if node.type_name is not None or node.type_id is not None:
+                            raise ValueError("Transition cannot carry a TypeId")
+                        raw_sources = attrs.get("sources")
+                        raw_source_ids = attrs.get("source_ids")
+                        if (
+                            not isinstance(raw_sources, (tuple, list))
+                            or not raw_sources
+                            or not all(isinstance(item, str) for item in raw_sources)
+                            or not isinstance(raw_source_ids, (tuple, list))
+                            or not all(isinstance(item, str) for item in raw_source_ids)
+                        ):
+                            raise ValueError(
+                                "transition sources and identities are required"
+                            )
+                        sources = tuple(raw_sources)
+                        source_ids = tuple(raw_source_ids)
+                        target = attrs.get("target")
+                        target_id = attrs.get("target_id")
+                        if set(sources) - state_names:
+                            raise ValueError("transition source state is not a member")
+                        if source_ids != tuple(expected_state_ids.get(item) for item in sources):
+                            raise ValueError("transition source identity is not a member")
+                        if target not in state_names or target_id != expected_state_ids[target]:
+                            raise ValueError("transition target state is not a member")
+            else:
+                for node in owner.walk():
+                    check_type(node.type_name, node.type_id, "node type")
+                    check_attributes(node)
         try:
             artifact_module = ast.module_from_json(self.native_syntax_json)
         except (TypeError, ValueError) as exc:
@@ -721,6 +885,7 @@ class StructuredHIRProgram:
             raise ValueError("Structured HIR hidden native module mismatch")
         if not isinstance(self.ffi_program, FFIProgram):
             raise ValueError("invalid Structured HIR FFI artifact")
+        _validate_ffi_types(self.ffi_program, self.type_context)
         type_names = [item.name for item in self.types]
         function_names = [item.name for item in self.functions]
         if len(type_names) != len(set(type_names)):
@@ -881,61 +1046,7 @@ class StructuredHIRProgram:
             raise ValueError("Structured HIR type arena digest mismatch")
         arena = restored_arena.freeze()
 
-        ffi = _artifact_keys(
-            raw["ffi"],
-            {"abi", "extern_functions", "repr_c_records", "unsafe_operations"},
-            "FFI artifact",
-        )
-        for extern in _artifact_list(ffi["extern_functions"], "FFI extern functions"):
-            extern_raw = _artifact_keys(
-                extern,
-                {
-                    "name", "abi", "parameters", "return_type", "effects",
-                    "error_type", "safe_wrapper", "source", "prototype",
-                    "return_type_id", "error_type_id",
-                },
-                "HIR FFI extern",
-            )
-            for parameter in _artifact_list(extern_raw["parameters"], "FFI parameters"):
-                parameter_raw = _artifact_keys(
-                    parameter,
-                    {"name", "type", "pointer", "policy", "type_id"},
-                    "HIR FFI parameter",
-                )
-                _typed_pair(
-                    parameter_raw["type"],
-                    parameter_raw["type_id"],
-                    "FFI parameter type",
-                    arena,
-                    canonicalize=_normalize_ffi_type,
-                )
-            _typed_pair(
-                extern_raw["return_type"],
-                extern_raw["return_type_id"],
-                "FFI return type",
-                arena,
-                canonicalize=_normalize_ffi_type,
-            )
-            _typed_pair(
-                extern_raw["error_type"],
-                extern_raw["error_type_id"],
-                "FFI error type",
-                arena,
-                optional=True,
-                canonicalize=_normalize_ffi_type,
-            )
-        for record in _artifact_list(ffi["repr_c_records"], "FFI repr(C) records"):
-            record_raw = _artifact_keys(record, {"name", "abi", "fields", "size", "alignment"}, "HIR FFI record")
-            for ffi_field in _artifact_list(record_raw["fields"], "FFI repr(C) fields"):
-                field_raw = _artifact_keys(ffi_field, {"name", "type_name", "offset", "size", "alignment", "type_id"}, "HIR FFI field")
-                _typed_pair(
-                    field_raw["type_name"],
-                    field_raw["type_id"],
-                    "FFI repr(C) field type",
-                    arena,
-                    canonicalize=_normalize_ffi_type,
-                )
-        ffi_program = FFIProgram.from_dict(_ffi_without_hir_ids(ffi))
+        ffi_program = FFIProgram.from_dict(raw["ffi"])
 
         native = _artifact_keys(raw["native_syntax"], {"schema_version", "contract", "module"}, "native syntax artifact")
         native_module = ast.module_from_dict(native)
@@ -1509,6 +1620,7 @@ class _HIRBuilder:
             for name, function in functions.items()
         }
         parameter_names = {
+
             name: {parameter.arg for parameter in function.args.args}
             for name, function in functions.items()
         }
@@ -1540,7 +1652,62 @@ class _HIRBuilder:
 
     def _scope(self, suffix: str = "body") -> str:
         return _stable_id("scope", self.path, self.current_function, suffix)
-
+    def _typed_attributes(self, attributes: dict[str, Any]) -> dict[str, Any]:
+        result = dict(attributes)
+        scalar_pairs = {
+            "expected_type": "expected_type_id",
+            "result_type": "result_type_id",
+            "error_type": "error_type_id",
+            "numeric_type": "numeric_type_id",
+            "target_type": "target_type_id",
+            "source_collection_type": "source_collection_type_id",
+            "element_type": "element_type_id",
+            "map_specialization": "map_specialization_id",
+            "parameter_type": "parameter_type_id",
+            "return_type": "return_type_id",
+            "callable_parameter_type": "callable_parameter_type_id",
+            "callable_return_type": "callable_return_type_id",
+            "source_type": "source_type_id",
+        }
+        for spelling_key, identity_key in scalar_pairs.items():
+            spelling = result.get(spelling_key)
+            if spelling is None:
+                if spelling_key in result:
+                    result.setdefault(identity_key, None)
+                continue
+            if isinstance(spelling, str):
+                typed = self._intern_type(spelling)
+                if typed is None:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}: missing TypeId for {spelling_key}"
+                    )
+                result[spelling_key] = typed[0]
+                result[identity_key] = typed[1]
+        parameters = result.get("parameters")
+        if isinstance(parameters, (list, tuple)):
+            ids = []
+            for item in parameters:
+                if (
+                    isinstance(item, (list, tuple))
+                    and len(item) >= 2
+                    and isinstance(item[1], str)
+                ):
+                    ids.append(self._type_id(item[1]))
+            if len(ids) == len(parameters):
+                result["parameter_type_ids"] = tuple(ids)
+        captures = result.get("captures")
+        if isinstance(captures, (list, tuple)):
+            ids = []
+            for item in captures:
+                if (
+                    isinstance(item, (list, tuple))
+                    and len(item) >= 2
+                    and isinstance(item[1], str)
+                ):
+                    ids.append(self._type_id(item[1]))
+            if len(ids) == len(captures):
+                result["capture_type_ids"] = tuple(ids)
+        return result
     def _new_node(
         self,
         node: ast.AST,
@@ -1556,20 +1723,22 @@ class _HIRBuilder:
     ) -> HIRNode:
         self.ordinal += 1
         source = _span(self.path, node)
-        attrs = tuple(sorted((attributes or {}).items()))
         child_tuple = tuple(children)
         typed = self._intern_type(type_name)
         canonical_type = typed[0] if typed is not None else None
         type_id = typed[1] if typed is not None else None
+        normalized_attributes = self._typed_attributes(attributes or {})
+        attrs = tuple(sorted(normalized_attributes.items()))
         if type_id is not None:
             self.typed_ast.record_expression(node, type_id)
         revision = _stable_id(
             "rev",
             kind,
             canonical_type,
+            type_id.value if type_id is not None else None,
             ownership,
             tuple(sorted(set(effects))),
-            attrs,
+            _json_payload(attrs),
             tuple(item.revision_id for item in child_tuple),
         )
         return HIRNode(
@@ -2396,6 +2565,8 @@ class _HIRBuilder:
                         "source_collection_type": receiver_type,
                         "element_type": shape.element_type,
                         "callable_parameter": parameter,
+                        "callable_parameter_type": parameter_type,
+                        "callable_return_type": return_type,
                     }
                 )
             elif signature is not None:
@@ -3167,7 +3338,7 @@ class _HIRBuilder:
                     ownership=ownership,
                     source=source,
                     symbol_id=symbol_id,
-                    revision_id=_stable_id("rev", node.name, argument.arg, type_name, ownership),
+                    revision_id=_stable_id("rev", node.name, argument.arg, type_name, type_id.value, ownership),
                 )
             )
         requirements = tuple(
@@ -3300,7 +3471,7 @@ def _parse_type_declarations(
                         type_id=type_id,
                         source=item_source,
                         symbol_id=symbol,
-                        revision_id=_stable_id("rev", node.name, name, type_name),
+                        revision_id=_stable_id("rev", node.name, name, type_name, type_id.value),
                     )
                 )
             else:
@@ -3328,15 +3499,15 @@ def _parse_type_declarations(
                         tag=ordinal,
                         source=item_source,
                         symbol_id=symbol,
-                        revision_id=_stable_id("rev", node.name, name, payload, ordinal),
+                        revision_id=_stable_id("rev", node.name, name, payload, payload_id.value if payload_id else None, ordinal),
                     )
                 )
         revision = _stable_id(
             "rev",
             kind,
             node.name,
-            [(item.name, item.type_name) for item in fields],
-            [(item.name, item.payload_type, item.tag) for item in variants],
+            [(item.name, item.type_name, item.type_id.value) for item in fields],
+            [(item.name, item.payload_type, item.payload_type_id.value if item.payload_type_id else None, item.tag) for item in variants],
             [item.revision_id for item in invariants],
         )
         result[node.name] = HIRTypeDecl(
@@ -3454,29 +3625,50 @@ def _canonical_flow_machine_hir(
     machines: list[HIRMachine] = []
     for machine in program.machines:
         symbol = _stable_id("shirs", machine.span.path, "machine", machine.name)
-        revision = _stable_id("rev", machine.to_payload())
+        state_ids = {
+            state.name: _stable_id("state", symbol, state.name)
+            for state in machine.states
+        }
+        if machine.initial is not None and machine.initial not in state_ids:
+            raise StructuredHIRCompileError(
+                f"{machine.span.path}: unknown initial machine state {machine.initial}"
+            )
+        revision = _stable_id(
+            "rev",
+            machine.to_payload(),
+            tuple(sorted(state_ids.items())),
+        )
         scope = _stable_id("scope", machine.span.path, machine.name, "machine")
         transitions = []
         for transition in machine.transitions:
-            typed = intern(transition.target)
-            assert typed is not None
-            target, target_id = typed
+            unknown_sources = set(transition.sources) - set(state_ids)
+            if unknown_sources or transition.target not in state_ids:
+                raise StructuredHIRCompileError(
+                    f"{transition.span.path}: transition state is not a machine member"
+                )
             transitions.append(
                 HIRNode(
                     id=_stable_id("node", machine.name, transition.node_id),
                     kind="Transition",
                     source=_canonical_span(transition.span),
                     scope_id=scope,
-                    type_name=target,
-                    type_id=target_id,
+                    type_name=None,
+                    type_id=None,
                     ownership="value",
                     effects=transition.effects,
                     symbol_id=None,
-                    revision_id=revision,
+                    revision_id=_stable_id(
+                        "rev",
+                        transition.to_payload(),
+                        tuple(state_ids[item] for item in transition.sources),
+                        state_ids[transition.target],
+                    ),
                     attributes=(
                         ("name", transition.name),
                         ("sources", transition.sources),
+                        ("source_ids", tuple(state_ids[item] for item in transition.sources)),
                         ("target", transition.target),
+                        ("target_id", state_ids[transition.target]),
                     ),
                 )
             )
@@ -3495,7 +3687,7 @@ def _canonical_flow_machine_hir(
                     symbol_id=_stable_id("symbol", machine.name, name),
                     revision_id=revision,
                 )
-            )
+                )
         states = []
         for state in machine.states:
             fields = []
@@ -3504,13 +3696,20 @@ def _canonical_flow_machine_hir(
                 assert typed is not None
                 type_name, type_id = typed
                 fields.append(HIRMachineStateField(name, type_name, type_id))
-            states.append((state.name, tuple(fields)))
+            states.append(
+                HIRMachineState(
+                    state.name,
+                    state_ids[state.name],
+                    tuple(fields),
+                )
+            )
         machines.append(
             HIRMachine(
                 name=machine.name,
                 parameters=tuple(parameters),
                 states=tuple(states),
                 initial=machine.initial,
+                initial_id=state_ids.get(machine.initial) if machine.initial is not None else None,
                 invariant=machine.invariant,
                 transitions=tuple(transitions),
                 source=_canonical_span(machine.span),
@@ -3539,7 +3738,7 @@ def _intern_ffi_types(
     type_arena: TypeArena,
     type_cache: dict[str, tuple[str, TypeId]],
     path: str,
-) -> None:
+) -> FFIProgram:
     spellings: list[str] = []
     for function in ffi_program.extern_functions:
         spellings.extend(item.type_name for item in function.parameters)
@@ -3557,6 +3756,10 @@ def _intern_ffi_types(
             ) from exc
         typed = _intern_cached_type(type_arena, type_cache, normalized, path)
         type_cache[type_name] = typed
+    try:
+        return ffi_program.bind_types(type_arena)
+    except FFICompileError as exc:
+        raise StructuredHIRCompileError(str(exc)) from exc
 
 def _preintern_analysis_types(
     functions: Mapping[str, ast.FunctionDef],
@@ -3624,7 +3827,7 @@ def compile_structured_hir(
         ffi_program = validate_ffi(source, path=path)
     except FFICompileError as exc:
         raise StructuredHIRCompileError(str(exc)) from exc
-    _intern_ffi_types(ffi_program, type_arena, type_cache, path)
+    ffi_program = _intern_ffi_types(ffi_program, type_arena, type_cache, path)
     preprocessed = _preprocess(_preprocess_ffi_surface(source))
     try:
         module = ast.parse(preprocessed.source, filename=path)
@@ -3758,7 +3961,7 @@ def compile_canonical_hir(
         dict(declaration_kinds),
         dict(binding_kinds),
     )
-    _intern_ffi_types(ffi_program, type_arena, type_cache, path)
+    ffi_program = _intern_ffi_types(ffi_program, type_arena, type_cache, path)
     types = _parse_type_declarations(
         path,
         module,
@@ -3865,8 +4068,8 @@ __all__ = [
     "HIRFunction",
     "HIRFlow",
     "HIRMachine",
+    "HIRMachineState",
     "HIRMachineStateField",
-    "HIRNode",
     "HIRParameter",
     "HIRTypeDecl",
     "HIRVariant",

@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     )
 
 WORLD_SCHEMA_VERSION = VERSIONS.semantic_world
-WORLD_CONTRACT = "merlo.semantic-world.v18"
+WORLD_CONTRACT = "merlo.semantic-world.v19"
 
 
 class WorldError(ValueError):
@@ -285,7 +285,14 @@ class SemanticWorld:
                     ] if hir_type is not None else [],
                     "holes": [
                         {
-                            **node.attribute_map,
+                            **{
+                                key: value
+                                for key, value
+                                in node.to_dict()["attributes"].items()
+                                if not key.endswith("_type_id")
+                                and not key.endswith("_type_ids")
+                                and key != "map_specialization_id"
+                            },
                             "source": node.source.to_dict(),
                             "node_id": node.id,
                         }
