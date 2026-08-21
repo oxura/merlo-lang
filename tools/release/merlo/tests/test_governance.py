@@ -123,9 +123,10 @@ def test_ruleset_requires_real_branch_protection_gates() -> None:
     payloads = {item["name"]: item for item in module.RULESET_PAYLOADS}
     creation = payloads["release-tag-creation"]
     assert creation["target"] == "tag"
-    assert creation["conditions"]["ref_name"]["include"] == [
-        "refs/tags/v*-alpha.*"
-    ]
+    assert creation["conditions"]["ref_name"] == {
+        "include": ["refs/tags/v*-alpha.*"],
+        "exclude": [],
+    }
     assert creation["bypass_actors"] == [
         {
             "actor_id": 5,
@@ -137,8 +138,27 @@ def test_ruleset_requires_real_branch_protection_gates() -> None:
 
     immutability = payloads["release-tag-immutability"]
     assert immutability["target"] == "tag"
+    assert immutability["conditions"]["ref_name"] == {
+        "include": ["refs/tags/v*-alpha.*"],
+        "exclude": [],
+    }
     assert immutability["bypass_actors"] == []
     assert {rule["type"] for rule in immutability["rules"]} == {
+        "update",
+        "deletion",
+        "non_fast_forward",
+    }
+
+    stable_freeze = payloads["stable-release-freeze"]
+    assert stable_freeze["target"] == "tag"
+    assert stable_freeze["enforcement"] == "active"
+    assert stable_freeze["conditions"]["ref_name"] == {
+        "include": ["refs/tags/v*"],
+        "exclude": ["refs/tags/v*-alpha.*"],
+    }
+    assert stable_freeze["bypass_actors"] == []
+    assert {rule["type"] for rule in stable_freeze["rules"]} == {
+        "creation",
         "update",
         "deletion",
         "non_fast_forward",
@@ -158,4 +178,5 @@ def test_ruleset_dry_run_is_executable(capsys) -> None:
         "main-hardening",
         "release-tag-creation",
         "release-tag-immutability",
+        "stable-release-freeze",
     }
