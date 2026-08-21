@@ -122,14 +122,22 @@ The GitHub API readback on 2026-08-21 reported this ruleset active as
 checked-in configurator.
 
 Two tag rulesets cover `refs/tags/v*-alpha.*`: only repository administrators may
-create a matching tag, and a separate no-bypass ruleset prevents update, deletion,
-or force movement after creation. The release workflow accepts annotated tags only,
+create a matching tag, and a separate no-bypass ruleset prevents update,
+deletion, or force movement after creation. Temporary solo-maintainer alpha mode
+also applies the no-bypass `stable-release-freeze` ruleset to
+`refs/tags/v*`, excluding `refs/tags/v*-alpha.*`; it blocks stable tag creation,
+update, deletion, and non-fast-forward movement. The alpha path therefore
+remains administrator-create-only and immutable, while stable tags are frozen
+until the repository can authorize a stable release.
+The release workflow accepts annotated tags only,
 requires GitHub verification with reason `valid`, requires the tag target to equal
 the event commit, and proves that commit is an ancestor of protected `main`. The
 write-capable release checkout does not persist credentials.
-The same readback reported the tag-creation and tag-immutability rulesets active
-as `21131166` and `21131167`. Their checked-in payloads remain the reproducible
-source used to detect later drift.
+The authenticated readback reported the tag-creation and tag-immutability
+rulesets active as `21131166` and `21131167`. The post-implementation solo-mode
+hardening apply reported `stable-release-freeze` active as `21136517`, with no
+bypass actors and the four configured blocking rules. The checked-in payloads
+remain the reproducible source used to detect later drift.
 
 GitHub tag verification does not expose a trusted signer fingerprint or configurable
 signer allowlist. Administrator-only creation, immutability, protected-main ancestry,
@@ -153,9 +161,11 @@ targets. They do change repository merge and release authorization policy.
 - A malformed constraint previously accepted accidentally must be corrected.
 - An online lock that no longer matches its index must be regenerated from that
   index; an offline lock remains replayable with verified cached artifacts.
-- Maintainers apply the three named rulesets with
+- Maintainers apply the four named rulesets with
   `.github/configure_ruleset.py`; the operation is idempotent and excludes inherited
-  parent rulesets from its lookup.
+  parent rulesets from its lookup. The dry-run output and post-application API
+  readback are the evidence for all four payloads; `stable-release-freeze` is
+  recorded as live ruleset `21136517`.
 - Existing open pull requests must pass current exact-head checks, conversation
   resolution, and the applicable Accepted-RFC gate before merge.
 
@@ -163,8 +173,8 @@ targets. They do change repository merge and release authorization policy.
 
 Revert in reverse slice order:
 
-1. governance workflow/ruleset source (and explicitly disable the remote rulesets
-   before claiming the old policy);
+1. governance workflow/ruleset source (and explicitly disable the remote rulesets,
+   including `stable-release-freeze`, before claiming the old policy);
 2. hygiene cleanup;
 3. C backend extraction;
 4. ownership extraction;
@@ -202,8 +212,9 @@ artifacts make the code slices independently reversible.
 - pyflakes is clean across production, tests, benchmark tooling, and release tooling;
 - all workflow actions are immutable SHA references and pull-request workflows have
   no write permission;
-- ruleset dry-run and live API state match all three local payloads after
-  normalizing GitHub's documented server-added defaults;
+- ruleset dry-run and live API state match all four local payloads after
+  normalizing GitHub's documented server-added defaults; the stable-freeze
+  readback is active ruleset `21136517`;
 - release verification rejects lightweight, unsigned, invalid, moved, and
   non-`main` tags;
 - GitHub CI passes on the exact reviewed heads.

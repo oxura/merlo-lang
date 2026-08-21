@@ -13,8 +13,12 @@ The target policy for `main` is:
   mandatory when independent maintainers are onboarded under issue #89;
 - force pushes and branch deletion are disabled;
 - only repository administrators may create matching `v*-alpha.*` release tags;
-- after creation, release tags are immutable: no actor, including administrators,
-  may update, delete, or force-move them;
+- after creation, alpha release tags are immutable: no actor, including
+  administrators, may update, delete, or force-move them;
+- temporary solo-maintainer alpha mode also activates the no-bypass
+  `stable-release-freeze` ruleset for `refs/tags/v*`, excluding
+  `refs/tags/v*-alpha.*`; stable tags therefore cannot be created, updated,
+  deleted, or force-moved while that mode is active;
 - release tags are annotated, GitHub-verified, and point into protected `main`
   history before publishing;
 - GitHub tag verification has no signer-key allowlist, so this policy cannot
@@ -63,14 +67,17 @@ workflow using `pull_request` grants a write token, and no workflow uses
 `pull_request_target`; pull-request code is never executed with release
 permissions.
 
-An administrator applies all three repository rulesets with
+An administrator applies all four repository rulesets with
 `GITHUB_TOKEN=... GITHUB_REPOSITORY=owner/name python .github/configure_ruleset.py`.
 The script updates each named ruleset instead of creating duplicates; use
-`--dry-run` to inspect all payloads first. It requires the GitHub administration
-permission and is intentionally not run from a pull-request workflow.
-The main ruleset has no bypass actors. The release-tag creation ruleset allows
-only the RepositoryRole administrator (`actor_id: 5`) to create matching tags;
-the separate release-tag immutability ruleset has no bypass actors.
+`--dry-run` to inspect all four payloads first. It requires the GitHub
+administration permission and is intentionally not run from a pull-request
+workflow. The checked-in payloads are the reproducible desired-state evidence.
+The authenticated API readback on 2026-08-21 records active
+`stable-release-freeze` ruleset `21136517`. The main ruleset has no bypass actors.
+The release-tag creation ruleset allows only the RepositoryRole administrator
+(`actor_id: 5`) to create matching alpha tags; the separate release-tag
+immutability ruleset and `stable-release-freeze` have no bypass actors.
 
 ## Change size
 

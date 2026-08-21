@@ -14,6 +14,12 @@
   solo-maintainer governance without fabricated approvals, immutable
   administrator-created tags, and executable verified-tag ancestry checks before
   release jobs run.
+- Adds active no-bypass `stable-release-freeze` ruleset `21136517` through the
+  four-payload configurator. During temporary solo-maintainer alpha mode it
+  blocks stable `refs/tags/v*` creation, update, deletion, and force movement
+  while excluding `refs/tags/v*-alpha.*`; the existing alpha creation and
+  immutability path is unchanged. The checked-in payload and authenticated API
+  readback establish the live enforcement state.
 - Adds a versioned content-addressed Type Arena boundary, canonicalizes
   `Int`/`UInt`/`Float` ownership queries through their 64-bit scalar forms, and
   rejects malformed structural generic arities and unknown generic constructors

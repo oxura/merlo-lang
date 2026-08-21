@@ -1,4 +1,4 @@
-"""Configure the main-branch merge ruleset through the GitHub API.
+"""Configure Merlo repository rulesets through the GitHub API.
 
 Run this script as a repository administrator with ``GITHUB_TOKEN`` and
 ``GITHUB_REPOSITORY=owner/name``. ``--dry-run`` prints the desired payloads
@@ -80,13 +80,35 @@ RELEASE_TAG_IMMUTABILITY_PAYLOAD = {
     ],
 }
 
+# Stable semver tags remain impossible to create, update, delete, or force-move
+# while temporary solo-maintainer alpha mode is active.
+STABLE_RELEASE_FREEZE_PAYLOAD = {
+    "name": "stable-release-freeze",
+    "target": "tag",
+    "enforcement": "active",
+    "conditions": {
+        "ref_name": {
+            "include": ["refs/tags/v*"],
+            "exclude": ["refs/tags/v*-alpha.*"],
+        },
+    },
+    "bypass_actors": [],
+    "rules": [
+        {"type": "creation"},
+        {"type": "update"},
+        {"type": "deletion"},
+        {"type": "non_fast_forward"},
+    ],
+}
+
 # Keep the original single-payload names available to callers while applying
-# all three named rulesets in one idempotent configuration operation.
+# all four named rulesets in one idempotent configuration operation.
 RULESET_PAYLOAD = MAIN_RULESET_PAYLOAD
 RULESET_PAYLOADS = (
     MAIN_RULESET_PAYLOAD,
     RELEASE_TAG_CREATION_PAYLOAD,
     RELEASE_TAG_IMMUTABILITY_PAYLOAD,
+    STABLE_RELEASE_FREEZE_PAYLOAD,
 )
 
 
