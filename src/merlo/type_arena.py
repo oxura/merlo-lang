@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 import re
+from types import MappingProxyType
 from typing import Any, Iterable, Mapping
 
 from merlo.type_parser import (
@@ -51,6 +52,10 @@ class TypeArenaSchemaError(TypeArenaError):
 
 class UnresolvedTypeError(TypeArenaError):
     """An unresolved ``?`` type crossed a boundary that requires closed types."""
+
+
+class FrozenTypeArenaMutation(TypeArenaError):
+    """Interning was attempted after the type arena was frozen."""
 
 
 def _mapping(
@@ -200,6 +205,19 @@ class TypeArena:
     def __init__(self, *, allow_unresolved: bool = False) -> None:
         self.allow_unresolved = bool(allow_unresolved)
         self._nodes: dict[TypeId, TypeRef] = {}
+        self._frozen_snapshot: FrozenTypeArena | None = None
+
+    def _assert_mutable(self) -> None:
+        if self._frozen_snapshot is not None:
+            raise FrozenTypeArenaMutation("TypeArena is frozen")
+
+    def freeze(self) -> FrozenTypeArena:
+        if self._frozen_snapshot is None:
+            self._frozen_snapshot = FrozenTypeArena(
+                self._nodes,
+                allow_unresolved=self.allow_unresolved,
+            )
+        return self._frozen_snapshot
 
     def __len__(self) -> int:
         return len(self._nodes)
@@ -216,6 +234,7 @@ class TypeArena:
         return hashlib.sha256(self.to_json().encode("utf-8")).hexdigest()
 
     def intern_text(self, type_name: str) -> TypeId:
+        self._assert_mutable()
         try:
             expression = validate_type_expr(parse_type(type_name))
         except GenericTypeSyntaxError as exc:
@@ -223,9 +242,11 @@ class TypeArena:
         return self.intern_expr(expression)
 
     def intern_many(self, type_names: Iterable[str]) -> tuple[TypeId, ...]:
+        self._assert_mutable()
         return tuple(self.intern_text(type_name) for type_name in type_names)
 
     def intern_expr(self, expression: TypeExpr) -> TypeId:
+        self._assert_mutable()
         if not isinstance(expression, TypeExpr):
             raise TypeArenaError("intern_expr requires TypeExpr")
         try:
@@ -250,6 +271,7 @@ class TypeArena:
         In particular, invalid arity, unknown generic constructors, unresolved
         policy, and missing arguments are all checked before ``_nodes`` changes.
         """
+        self._assert_mutable()
         if not isinstance(constructor, str):
             raise TypeArenaError("type constructor must be text")
         normalized = _normalize_constructor(constructor)
@@ -411,14 +433,183 @@ class TypeArena:
         return arena
 
 
+class FrozenTypeArena:
+    """Immutable post-build snapshot of a ``TypeArena``."""
+
+    __slots__ = ("allow_unresolved", "_nodes", "_sealed")
+
+    def __init__(
+        self,
+        nodes: Mapping[TypeId, TypeRef],
+        *,
+        allow_unresolved: bool = False,
+    ) -> None:
+        object.__setattr__(self, "allow_unresolved", bool(allow_unresolved))
+        object.__setattr__(self, "_nodes", MappingProxyType(dict(nodes)))
+        object.__setattr__(self, "_sealed", True)
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if getattr(self, "_sealed", False):
+            raise FrozenTypeArenaMutation("FrozenTypeArena is immutable")
+        object.__setattr__(self, name, value)
+
+    def __len__(self) -> int:
+        return len(self._nodes)
+
+    def __contains__(self, type_id: object) -> bool:
+        return isinstance(type_id, TypeId) and type_id in self._nodes
+
+    def _reject_mutation(self) -> None:
+        raise FrozenTypeArenaMutation("FrozenTypeArena cannot intern types")
+
+    def intern_text(self, type_name: str) -> TypeId:
+        self._reject_mutation()
+
+    def intern_many(self, type_names: Iterable[str]) -> tuple[TypeId, ...]:
+        self._reject_mutation()
+
+    def intern_expr(self, expression: TypeExpr) -> TypeId:
+        self._reject_mutation()
+
+    def intern_node(
+        self,
+        constructor: str,
+        arguments: Iterable[TypeId] = (),
+    ) -> TypeId:
+        self._reject_mutation()
+
+
+    @property
+    def ids(self) -> tuple[TypeId, ...]:
+        return tuple(sorted(self._nodes))
+
+    @property
+    def digest(self) -> str:
+        return hashlib.sha256(self.to_json().encode("utf-8")).hexdigest()
+
+    def resolve(self, type_id: TypeId) -> TypeRef:
+        if not isinstance(type_id, TypeId):
+            raise TypeArenaError("resolve requires TypeId")
+        try:
+            return self._nodes[type_id]
+        except KeyError as exc:
+            raise UnknownTypeIdError(f"unknown TypeId: {type_id.value}") from exc
+    def lookup_node(self, type_id: TypeId) -> TypeRef:
+        """Return an already interned node without permitting construction."""
+        return self.resolve(type_id)
+
+    def identity(self, reference: TypeRef) -> TypeId:
+        """Return an identity only when its exact node is already interned."""
+        if not isinstance(reference, TypeRef):
+            raise TypeArenaError("identity requires TypeRef")
+        type_id = _identity(reference)
+        if self._nodes.get(type_id) != reference:
+            raise UnknownTypeIdError(f"unknown TypeId: {type_id.value}")
+        return type_id
+
+    def canonical(self, type_id: TypeId) -> str:
+        reference = self.resolve(type_id)
+        if not reference.arguments:
+            return reference.constructor
+        return (
+            f"{reference.constructor}["
+            + ",".join(self.canonical(argument) for argument in reference.arguments)
+            + "]"
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "contract": TYPE_ARENA_CONTRACT,
+            "schema_version": TYPE_ARENA_SCHEMA_VERSION,
+            "allow_unresolved": self.allow_unresolved,
+            "entries": [
+                {
+                    "id": type_id.to_dict(),
+                    "type": self._nodes[type_id].to_dict(),
+                }
+                for type_id in self.ids
+            ],
+        }
+
+    def to_json(self) -> str:
+        return _canonical_json(self.to_dict()) + "\n"
+
+
+class TypeContext:
+    """Immutable compiler-local authority for types and nominal declarations."""
+
+    __slots__ = ("arena", "_declarations", "_type_ids", "_sealed")
+
+    def __init__(
+        self,
+        arena: FrozenTypeArena,
+        declarations: Mapping[TypeId, object] | None = None,
+    ) -> None:
+        if not isinstance(arena, FrozenTypeArena):
+            raise TypeArenaError("TypeContext requires a FrozenTypeArena")
+        declaration_map = dict(declarations or {})
+        if any(
+            not isinstance(type_id, TypeId) or type_id not in arena
+            for type_id in declaration_map
+        ):
+            raise UnknownTypeIdError("TypeContext declaration identity is absent")
+        type_ids = {arena.canonical(type_id): type_id for type_id in arena.ids}
+        object.__setattr__(self, "arena", arena)
+        object.__setattr__(self, "_declarations", MappingProxyType(declaration_map))
+        object.__setattr__(self, "_type_ids", MappingProxyType(type_ids))
+        object.__setattr__(self, "_sealed", True)
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if getattr(self, "_sealed", False):
+            raise FrozenTypeArenaMutation("TypeContext is immutable")
+        object.__setattr__(self, name, value)
+
+    @property
+    def declarations(self) -> Mapping[TypeId, object]:
+        return self._declarations
+
+    def resolve(self, type_id: TypeId) -> TypeRef:
+        return self.arena.resolve(type_id)
+
+    def type_id(self, spelling: str) -> TypeId:
+        """Resolve one exact canonical spelling from the frozen arena."""
+        if not isinstance(spelling, str):
+            raise TypeArenaError("type_id requires canonical text")
+        try:
+            return self._type_ids[spelling]
+        except KeyError as exc:
+            raise UnknownTypeIdError(
+                f"unknown canonical type spelling: {spelling}"
+            ) from exc
+
+    def canonical(self, type_id: TypeId) -> str:
+        return self.render(type_id)
+
+    def declaration(self, type_id: TypeId) -> object:
+        if not isinstance(type_id, TypeId):
+            raise TypeArenaError("declaration requires TypeId")
+        try:
+            return self._declarations[type_id]
+        except KeyError as exc:
+            raise UnknownTypeIdError(
+                f"unknown declaration TypeId: {type_id.value}"
+            ) from exc
+
+    def render(self, type_id: TypeId) -> str:
+        return self.arena.canonical(type_id)
+
+
 __all__ = [
     "TYPE_ARENA_CONTRACT",
     "TYPE_ARENA_SCHEMA_VERSION",
     "TYPE_ID_CONTRACT",
     "TYPE_REF_CONTRACT",
+    "FrozenTypeArena",
+    "FrozenTypeArenaMutation",
     "TypeArena",
     "TypeArenaError",
     "TypeArenaSchemaError",
+    "TypeContext",
     "TypeId",
     "TypeRef",
     "UnknownTypeIdError",

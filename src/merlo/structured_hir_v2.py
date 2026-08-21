@@ -26,7 +26,13 @@ from merlo.canonical_ast import (
     CanonicalProgram,
 )
 from merlo.type_parser import TypeExpr, generic_parts, parse_type, validate_type_expr
-from merlo.type_arena import TypeArena, TypeArenaError, TypeId
+from merlo.type_arena import (
+    FrozenTypeArena,
+    TypeArena,
+    TypeArenaError,
+    TypeContext,
+    TypeId,
+)
 from merlo.intrinsics import (
     CONTRACT_GRAPH,
     contextual_result_type,
@@ -635,7 +641,7 @@ class StructuredHIRProgram:
     entry_function: str
     native_syntax_json: str
     ffi_program: FFIProgram
-    type_arena: TypeArena
+    type_context: TypeContext
     type_arena_digest: str
     schema_version: int = STRUCTURED_HIR_SCHEMA_VERSION
     contract: str = STRUCTURED_HIR_CONTRACT
@@ -648,9 +654,11 @@ class StructuredHIRProgram:
             raise ValueError("Structured HIR schema version drift")
         if self.contract != STRUCTURED_HIR_CONTRACT:
             raise ValueError("Structured HIR contract drift")
-        if not isinstance(self.type_arena, TypeArena) or self.type_arena.allow_unresolved:
+        if not isinstance(self.type_context, TypeContext):
+            raise ValueError("Structured HIR requires a TypeContext")
+        if self.type_context.arena.allow_unresolved:
             raise ValueError("Structured HIR requires a closed TypeArena")
-        if self.type_arena_digest != self.type_arena.digest:
+        if self.type_arena_digest != self.type_context.arena.digest:
             raise ValueError("Structured HIR type arena digest mismatch")
 
         def check_type(spelling: str | None, type_id: TypeId | None, label: str) -> None:
@@ -661,18 +669,23 @@ class StructuredHIRProgram:
             if not isinstance(type_id, TypeId):
                 raise ValueError(f"{label} identity must be TypeId")
             try:
-                canonical = self.type_arena.canonical(type_id)
+                canonical = self.type_context.render(type_id)
             except TypeArenaError as exc:
                 raise ValueError(f"unknown {label} identity") from exc
             if canonical != spelling:
                 raise ValueError(f"{label} identity does not match spelling")
-
         for declaration in self.types:
             check_type(declaration.name, declaration.type_id, "type name")
             for item in declaration.fields:
                 check_type(item.type_name, item.type_id, "field type")
             for item in declaration.variants:
                 check_type(item.payload_type, item.payload_type_id, "variant payload")
+            try:
+                context_declaration = self.type_context.declaration(declaration.type_id)
+            except TypeArenaError as exc:
+                raise ValueError("unknown type declaration identity") from exc
+            if context_declaration != declaration:
+                raise ValueError("TypeContext declaration mismatch")
         for owner in (*self.functions, *self.flows, *self.machines):
             for parameter in owner.parameters:
                 check_type(parameter.type_name, parameter.type_id, "parameter type")
@@ -769,7 +782,7 @@ class StructuredHIRProgram:
         return ast.module_from_json(self.native_syntax_json)
 
     def to_dict(self) -> dict[str, Any]:
-        if self.type_arena.digest != self.type_arena_digest:
+        if self.type_context.arena.digest != self.type_arena_digest:
             raise ValueError("Structured HIR type arena digest mismatch")
         return {
             "schema_version": self.schema_version,
@@ -778,10 +791,10 @@ class StructuredHIRProgram:
             "source": self.source,
             "source_sha256": self.source_sha256,
             "entry_function": self.entry_function,
-            "type_arena": self.type_arena.to_dict(),
+            "type_arena": self.type_context.arena.to_dict(),
             "type_arena_digest": self.type_arena_digest,
             "native_syntax": json.loads(self.native_syntax_json),
-            "ffi": _ffi_hir_dict(self.ffi_program, self.type_arena),
+            "ffi": _ffi_hir_dict(self.ffi_program, self.type_context.arena),
             "types": [item.to_dict() for item in self.types],
             "functions": [item.to_dict() for item in self.functions],
             "flows": [item.to_dict() for item in self.flows],
@@ -840,14 +853,15 @@ class StructuredHIRProgram:
         if raw["invariants"] != invariants:
             raise ValueError("Structured HIR invariants drift")
         try:
-            arena = TypeArena.from_dict(raw["type_arena"])
+            restored_arena = TypeArena.from_dict(raw["type_arena"])
         except TypeArenaError as exc:
             raise ValueError("invalid Structured HIR type arena") from exc
-        if arena.allow_unresolved:
+        if restored_arena.allow_unresolved:
             raise ValueError("Structured HIR type arena must be closed")
         arena_digest = _artifact_text(raw["type_arena_digest"], "type arena digest")
-        if arena.digest != arena_digest:
+        if restored_arena.digest != arena_digest:
             raise ValueError("Structured HIR type arena digest mismatch")
+        arena = restored_arena.freeze()
 
         ffi = _artifact_keys(
             raw["ffi"],
@@ -908,16 +922,25 @@ class StructuredHIRProgram:
         native = _artifact_keys(raw["native_syntax"], {"schema_version", "contract", "module"}, "native syntax artifact")
         native_module = ast.module_from_dict(native)
         native_json = ast.module_to_json(native_module)
+        types = tuple(
+            _type_decl_from_dict(item, arena)
+            for item in _artifact_list(raw["types"], "HIR types")
+        )
+        functions = tuple(
+            _function_from_dict(item, arena)
+            for item in _artifact_list(raw["functions"], "HIR functions")
+        )
+        context = TypeContext(arena, {item.type_id: item for item in types})
         program = cls(
             _artifact_text(raw["source"], "Structured HIR source"),
             _artifact_text(raw["path"], "Structured HIR path"),
             _artifact_text(raw["source_sha256"], "Structured HIR source digest"),
-            tuple(_type_decl_from_dict(item, arena) for item in _artifact_list(raw["types"], "HIR types")),
-            tuple(_function_from_dict(item, arena) for item in _artifact_list(raw["functions"], "HIR functions")),
+            types,
+            functions,
             _artifact_text(raw["entry_function"], "HIR entry function"),
             native_json,
             ffi_program,
-            arena,
+            context,
             arena_digest,
             flows=tuple(_flow_from_dict(item, arena) for item in _artifact_list(raw["flows"], "HIR flows")),
             machines=tuple(_machine_from_dict(item, arena) for item in _artifact_list(raw["machines"], "HIR machines")),
@@ -3286,6 +3309,11 @@ def compile_structured_hir(
     )
     functions = tuple(builder.function(item) for item in function_nodes.values())
     _normalize_native_context_metadata(module, path)
+    frozen_arena = type_arena.freeze()
+    type_context = TypeContext(
+        frozen_arena,
+        {item.type_id: item for item in types.values()},
+    )
     return StructuredHIRProgram(
         source=source,
         path=path,
@@ -3295,8 +3323,8 @@ def compile_structured_hir(
         entry_function=entry_function,
         native_syntax_json=ast.module_to_json(module),
         ffi_program=ffi_program,
-        type_arena=type_arena,
-        type_arena_digest=type_arena.digest,
+        type_context=type_context,
+        type_arena_digest=frozen_arena.digest,
         native_module=module,
     )
 
@@ -3394,6 +3422,11 @@ def compile_canonical_hir(
         if hasattr(node, "_merlo_binding_kind"):
             delattr(node, "_merlo_binding_kind")
     _normalize_native_context_metadata(module, path)
+    frozen_arena = type_arena.freeze()
+    type_context = TypeContext(
+        frozen_arena,
+        {item.type_id: item for item in types.values()},
+    )
     return StructuredHIRProgram(
         source=source,
         path=path,
@@ -3403,8 +3436,8 @@ def compile_canonical_hir(
         entry_function=entry_function,
         native_syntax_json=ast.module_to_json(module),
         ffi_program=ffi_program,
-        type_arena=type_arena,
-        type_arena_digest=type_arena.digest,
+        type_context=type_context,
+        type_arena_digest=frozen_arena.digest,
         native_module=module,
         flows=flows,
         machines=machines,
@@ -3433,7 +3466,9 @@ __all__ = [
     "StructuredHIRProgram",
     "STRUCTURED_HIR_CONTRACT",
     "STRUCTURED_HIR_SCHEMA_VERSION",
+    "FrozenTypeArena",
     "TypeArena",
+    "TypeContext",
     "TypeId",
     "TypeArenaError",
     "compile_structured_hir",

@@ -18,7 +18,7 @@ from merlo.structured_hir_v2 import (
 )
 from merlo.surface_elaborator import elaborate_surface
 from merlo.surface_parser import parse_surface
-from merlo.type_arena import TypeArena
+from merlo.type_arena import FrozenTypeArenaMutation, TypeArena, TypeExpr
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -177,12 +177,28 @@ def test_hir_v10_json_roundtrip_is_canonical_and_type_arena_is_closed() -> None:
 
     assert original.contract == "merlo.structured-typed-hir.v10"
     assert original.schema_version == 10
-    assert original.type_arena.allow_unresolved is False
-    assert original.type_arena_digest == original.type_arena.digest
+    assert original.type_context.arena.allow_unresolved is False
+    assert original.type_arena_digest == original.type_context.arena.digest
     assert restored.to_json() == original.to_json()
     assert restored.digest == original.digest
-    assert restored.type_arena.to_json() == original.type_arena.to_json()
+    assert restored.type_context.arena.to_json() == original.type_context.arena.to_json()
     _assert_hir_typed_positions(original)
+
+
+def test_hir_owns_frozen_context_and_type_declarations() -> None:
+    program = _hir()
+    assert not hasattr(program, "type_arena")
+    declaration = program.types[0]
+    assert program.type_context.declaration(declaration.type_id) is declaration
+    assert program.type_context.render(declaration.type_id) == declaration.name
+    for operation in (
+        lambda: program.type_context.arena.intern_text("Bool"),
+        lambda: program.type_context.arena.intern_many(("Bool",)),
+        lambda: program.type_context.arena.intern_expr(TypeExpr("Bool")),
+        lambda: program.type_context.arena.intern_node("Bool"),
+    ):
+        with pytest.raises(FrozenTypeArenaMutation):
+            operation()
 
 
 def test_hir_json_digest_and_reproduction_are_stable_in_a_fresh_process() -> None:
@@ -282,7 +298,7 @@ def test_hir_type_ids_cover_local_contract_flow_and_machine_positions() -> None:
         {
             "name": "value",
             "type": "Text",
-            "type_id": flow_machine.type_arena.intern_text("Text").to_dict(),
+            "type_id": flow_machine.type_context.type_id("Text").to_dict(),
         }
     ]
 
@@ -315,7 +331,7 @@ def test_hir_ffi_pointer_aliases_roundtrip_with_canonical_type_ids() -> None:
 
     payload = _typed_payload(program)
     parameters = payload["ffi"]["extern_functions"][0]["parameters"]
-    expected_id = program.type_arena.intern_text("RawPointer[Int32]").to_dict()
+    expected_id = program.type_context.type_id("RawPointer[Int32]").to_dict()
     assert [item["type_id"] for item in parameters] == [expected_id] * 4
     assert [item["type"] for item in parameters] == list(expected_spellings)
     assert StructuredHIRProgram.from_json(program.to_json()).to_json() == program.to_json()
@@ -509,9 +525,7 @@ def test_hir_reader_rejects_missing_type_id_at_every_typed_position(
             item = extern
         elif position == "ffi_error":
             extern["error_type"] = "Int32"
-            extern["error_type_id"] = program.type_arena.intern_text(
-                "Int32"
-            ).to_dict()
+            extern["error_type_id"] = program.type_context.type_id("Int32").to_dict()
             item = extern
         else:
             item = payload["ffi"]["repr_c_records"][0]["fields"][0]

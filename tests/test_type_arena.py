@@ -9,9 +9,11 @@ from merlo.type_arena import (
     TYPE_ARENA_CONTRACT,
     TYPE_ARENA_SCHEMA_VERSION,
     TYPE_REF_CONTRACT,
+    FrozenTypeArenaMutation,
     TypeArena,
     TypeArenaError,
     TypeArenaSchemaError,
+    TypeContext,
     TypeExpr,
     TypeId,
     TypeRef,
@@ -116,6 +118,42 @@ def test_duplicate_interning_is_idempotent() -> None:
     assert first == second
     assert len(arena) == node_count
 
+
+
+def test_freeze_rejects_every_mutation_entrypoint() -> None:
+    arena = TypeArena()
+    text = arena.intern_text("Text")
+    frozen = arena.freeze()
+
+    assert frozen.resolve(text).constructor == "Text"
+    assert arena.freeze() is frozen
+    for operation in (
+        lambda: arena.intern_text("Bool"),
+        lambda: arena.intern_many(("Bool",)),
+        lambda: arena.intern_expr(TypeExpr("Bool")),
+        lambda: arena.intern_node("Bool"),
+    ):
+        with pytest.raises(FrozenTypeArenaMutation):
+            operation()
+
+
+def test_type_context_uses_immutable_type_id_declarations() -> None:
+    arena = TypeArena()
+    type_id = arena.intern_text("Vec[Text]")
+    frozen = arena.freeze()
+    declaration = object()
+    context = TypeContext(frozen, {type_id: declaration})
+
+    assert context.resolve(type_id) == frozen.resolve(type_id)
+    assert context.declaration(type_id) is declaration
+    assert context.render(type_id) == "Vec[Text]"
+    assert context.type_id("Vec[Text]") == type_id
+    with pytest.raises(UnknownTypeIdError):
+        context.type_id("Vec[ Int ]")
+    with pytest.raises(UnknownTypeIdError):
+        context.declaration(TypeId("f" * 64))
+    with pytest.raises(FrozenTypeArenaMutation):
+        context.arena = frozen
 
 def test_arena_serialization_is_insertion_order_independent() -> None:
     left = TypeArena()
