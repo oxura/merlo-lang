@@ -141,9 +141,10 @@ now consume `TypeId` from the same mutable-then-frozen `TypeContext`; retained
 spelling remains diagnostic or an out-of-scope backend projection only.
 ContractGraph binds explicit variables, concrete identities, applied
 constructors, and const arguments, then matches and instantiates through
-`TypeRef` without reparsing actual types. Issue #85 covers
-representation/layout identity and issue #86 covers later executable-IR scope;
-both remain open.
+`TypeRef` without reparsing actual types. Issue #85 covers RIR descriptors and
+executable MIR TypeId migration; issue #86 covers user-defined generic
+declaration/package provenance; issue #72 covers native-syntax removal and
+executable-MIR backend authority. These remain separate boundaries.
 
 ## Initial scope
 
@@ -167,7 +168,7 @@ The migration proceeds in narrow commits:
 2. Keep machine state labels in their separate deterministic identity domain;
 3. Migrate ownership, Place lookup, borrow provenance, and ContractGraph
    consumers and remove duplicate parsing (issue #84 scope, now landed).
-4. Migrate representation IR descriptors and later physical layout identity
-   (issue #85 scope).
-5. Make C11 and future LLVM/GPU backends consume structural identities only
-   after those boundaries are explicitly reviewed.
+4. Migrate RIR descriptors and executable MIR identities (issue #85 scope).
+5. Add user-defined generic declaration/package provenance (issue #86 scope).
+6. Remove native syntax and make the executable-MIR backend authoritative
+   (issue #72 scope).

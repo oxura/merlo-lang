@@ -202,9 +202,10 @@ This migration makes ownership, `Place` lookup, and borrow provenance
 TypeId-authoritative through the shared compiler-local `TypeContext`.
 Retained spellings remain diagnostic projections only. It does not claim an
 RIR, MIR, LLVM, GPU, or backend TypeId cutover: RIR remains v5 and MIR remains
-v2, with generated-C semantics preserved. Issue #84 is the authority
-migration recorded here; issues #85 and #86 remain the separately tracked
-representation/layout and later executable-IR scope.
+v2, with generated-C semantics preserved. Issue #84 is the authority migration
+recorded here. Issue #85 covers RIR descriptors and executable MIR TypeId
+migration; issue #86 covers user-defined generic declaration/package provenance;
+issue #72 covers native-syntax removal and executable-MIR backend authority.
 
 The HIR builder and representation backend share Merlo-owned structured
 syntax nodes emitted directly from the typed Surface tree. The node

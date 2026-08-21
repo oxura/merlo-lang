@@ -4,8 +4,9 @@
 > HIR v12, `merlo.borrow-summary.v4`, and SemanticWorld v19. Ownership, `Place`
 > lookup, borrow provenance, ContractGraph, semantic HIR attributes, and bound
 > FFI metadata are now TypeId-authoritative. Machine-state IDs remain a separate
-> identity domain. Issues #85 and #86 remain open for representation/layout and
-> executable-IR scope.
+identity domain. Issue #85 covers RIR descriptors and executable MIR TypeId
+migration; issue #86 covers user-defined generic declaration/package provenance;
+issue #72 covers native-syntax removal and executable-MIR backend authority.
 
 Alpha.3 intentionally changes the filesystem and verification models. The
 compiler reports language `0.3`, frontend `8`, canonical `6`, HIR `10`,
@@ -52,8 +53,10 @@ is authoritative for semantic validation.
 
 This completes the issue #84 HIR, ownership, borrow, ContractGraph, and FFI
 authority cutover. It does not claim an RIR, MIR, LLVM, GPU, or backend TypeId
-cutover and does not change generated-C semantics. Issues #85 and #86 remain
-open for representation/layout and executable-IR scope.
+cutover and does not change generated-C semantics. Issue #85 covers RIR
+descriptors and executable MIR TypeId migration; issue #86 covers user-defined
+generic declaration/package provenance; issue #72 covers native-syntax removal
+and executable-MIR backend authority.
 
 ## Regenerating generated lockfiles
 

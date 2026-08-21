@@ -17,7 +17,10 @@
   preserves cached prototypes without serialization-time reparsing, and
   validates pointer/pointee identity against policy metadata. This completes
   issue #84 while RIR v5, MIR v2, backend, and generated-C semantics remain
-  unchanged; issues #85 and #86 remain separate.
+  unchanged. Issue #85 covers RIR descriptors and executable MIR TypeId
+  migration; issue #86 covers user-defined generic declaration/package
+  provenance; issue #72 covers native-syntax removal and executable-MIR backend
+  authority.
 - Structured HIR continues to store one closed `TypeArena` snapshot and
   `type_arena_digest`; retained spellings remain diagnostic only.
 - Replaces ContractGraph's regex and generic-spelling matcher with structural
@@ -29,9 +32,10 @@
   results.
 - Replaces `merlo.borrow-summary.v3` with the strict v4 contract: semantic
   relations use `TypeId` for borrow provenance and revisions, while retained
-  canonical spellings and bounded witnesses remain diagnostic-only. Issues
-  #85 (representation/layout identity) and #86 (later executable-IR scope)
-  remain open.
+  canonical spellings and bounded witnesses remain diagnostic-only. Issue #85
+  covers RIR descriptors and executable MIR TypeId migration; issue #86 covers
+  user-defined generic declaration/package provenance; issue #72 covers
+  native-syntax removal and executable-MIR backend authority.
 - Resolves complete root and transitive package constraints with deterministic
   backtracking, validates malformed semver terms strictly, and revalidates online
   locks against the current registry while preserving verified offline replay.
