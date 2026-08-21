@@ -8,5 +8,5 @@ def run(n):
         p=(i,(i*3+1)&MASK); checksum=(checksum+(p[0]^p[1]))&MASK
     return checksum
 result=run(int(sys.argv[1]))
-print(f"BENCH_ALLOCATIONS=0",file=sys.stderr)
+print("BENCH_ALLOCATIONS=0",file=sys.stderr)
 print(result)

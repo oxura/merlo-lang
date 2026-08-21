@@ -10,5 +10,5 @@ def run(n):
         checksum=(checksum+sum(x*x for x in v if (x*x)%2==0))&MASK
     return checksum
 result=run(int(sys.argv[1]))
-print(f"BENCH_ALLOCATIONS=0",file=sys.stderr)
+print("BENCH_ALLOCATIONS=0",file=sys.stderr)
 print(result)

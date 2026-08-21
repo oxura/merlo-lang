@@ -5,5 +5,5 @@ def make_values(i):
 def run(n):
     return 42
 result=run(int(sys.argv[1]))
-print(f"BENCH_ALLOCATIONS=0",file=sys.stderr)
+print("BENCH_ALLOCATIONS=0",file=sys.stderr)
 print(result)

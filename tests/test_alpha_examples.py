@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import re
 import shutil
@@ -156,6 +158,27 @@ def test_project_compile_reuses_the_validated_module_graph(
         item.obligation_id
         for item in compilation.obligations.obligations
     }
+
+
+def test_capacity_ledger_generated_c_matches_provenance_sidecar() -> None:
+    """Intentional backend changes update hash and baseline with PR rationale."""
+    sidecar = ROOT / "tests" / "fixtures" / "c_backend" / "capacity-ledger.json"
+    evidence = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert set(evidence) == {"fixture", "baseline_commit", "generated_c_sha256"}
+    assert evidence["fixture"] == "examples/capacity-ledger"
+    assert evidence["baseline_commit"] == (
+        "723776f6748bead81429696e3f1662926e3cea15"
+    )
+    compilation = compile_project(
+        ROOT / evidence["fixture"],
+        emit_native=False,
+        require_interface_lock=False,
+    )
+    assert compilation.generated.source_sha256 == evidence["generated_c_sha256"]
+    generated_c_sha256 = hashlib.sha256(
+        compilation.generated_c.encode("utf-8")
+    ).hexdigest()
+    assert generated_c_sha256 == evidence["generated_c_sha256"]
 
 
 @pytest.mark.parametrize("name", EXAMPLE_NAMES)

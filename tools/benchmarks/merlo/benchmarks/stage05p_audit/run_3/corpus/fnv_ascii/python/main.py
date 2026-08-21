@@ -8,5 +8,5 @@ def run(n):
     for i in range(n): checksum=((checksum^p[i%13])*1099511628211)&MASK
     return checksum
 result=run(int(sys.argv[1]))
-print(f"BENCH_ALLOCATIONS=0",file=sys.stderr)
+print("BENCH_ALLOCATIONS=0",file=sys.stderr)
 print(result)
