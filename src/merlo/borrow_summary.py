@@ -16,13 +16,12 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from merlo import native_syntax as ast
-from merlo.type_parser import generic_parts
-from merlo.type_arena import TypeContextBuilder
+from merlo.type_arena import TypeId
 from merlo.type_properties import TypeAuthority, TypeProperties, TypePropertyResolver
 
 
-BORROW_SUMMARY_SCHEMA_VERSION = 3
-BORROW_SUMMARY_CONTRACT = "merlo.borrow-summary.v3"
+BORROW_SUMMARY_SCHEMA_VERSION = 4
+BORROW_SUMMARY_CONTRACT = "merlo.borrow-summary.v4"
 BORROW_SUMMARY_STATUSES = frozenset({"known", "opaque"})
 BORROW_SUMMARY_KINDS = frozenset({"direct", "contained"})
 BORROW_SUMMARY_CYCLE_MARKER = "<cycle>"
@@ -152,10 +151,11 @@ class BorrowRelation:
 
     source_parameter_index: int
     source_path: BorrowPlacePath
-    borrow_type: str
+    borrow_type_id: TypeId
     result_path: BorrowPlacePath
     kind: str
     ownership: str
+    borrow_type: str = field(compare=False)
 
     def __post_init__(self) -> None:
         if type(self.source_parameter_index) is not int or self.source_parameter_index < 0:
@@ -164,10 +164,12 @@ class BorrowRelation:
             raise ValueError("borrow relation source path must not be empty")
         if self.source_path.steps[0] != BorrowPlaceStep.parameter(self.source_parameter_index):
             raise ValueError("borrow relation source path must start at its parameter")
+        if not isinstance(self.borrow_type_id, TypeId):
+            raise ValueError("borrow relation type identity must be TypeId")
         if not isinstance(self.result_path, BorrowPlacePath):
             raise ValueError("borrow relation result path must be structural")
         if not isinstance(self.borrow_type, str) or not self.borrow_type:
-            raise ValueError("borrow relation type must not be empty")
+            raise ValueError("borrow relation diagnostic type must be non-empty text")
         if self.kind not in BORROW_SUMMARY_KINDS:
             raise ValueError(f"invalid borrow summary kind: {self.kind}")
         if self.ownership not in OWNERSHIP_VOCABULARY:
@@ -177,7 +179,7 @@ class BorrowRelation:
         return (
             self.source_parameter_index,
             self.source_path,
-            self.borrow_type,
+            self.borrow_type_id,
             self.result_path,
             self.kind,
             self.ownership,
@@ -187,6 +189,7 @@ class BorrowRelation:
         return {
             "source_parameter_index": self.source_parameter_index,
             "source_path": self.source_path.to_dict(),
+            "borrow_type_id": self.borrow_type_id.value,
             "borrow_type": self.borrow_type,
             "result_path": self.result_path.to_dict(),
             "kind": self.kind,
@@ -196,19 +199,31 @@ class BorrowRelation:
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "BorrowRelation":
         expected = {
-            "source_parameter_index", "source_path", "borrow_type",
+            "source_parameter_index", "source_path", "borrow_type_id", "borrow_type",
             "result_path", "kind", "ownership",
         }
         if not isinstance(value, Mapping) or set(value) != expected:
             raise ValueError("invalid borrow relation")
+        borrow_type_id = TypeId(value["borrow_type_id"])
         return cls(
             value["source_parameter_index"],
             BorrowPlacePath.from_dict(value["source_path"]),
-            value["borrow_type"],
+            borrow_type_id,
             BorrowPlacePath.from_dict(value["result_path"]),
             value["kind"],
             value["ownership"],
+            value["borrow_type"],
         )
+
+    def semantic_dict(self) -> dict[str, Any]:
+        return {
+            "source_parameter_index": self.source_parameter_index,
+            "source_path": self.source_path.to_dict(),
+            "borrow_type_id": self.borrow_type_id.value,
+            "result_path": self.result_path.to_dict(),
+            "kind": self.kind,
+            "ownership": self.ownership,
+        }
 
 
 @dataclass(frozen=True, order=True)
@@ -306,7 +321,7 @@ class BorrowSummary:
             "contract": self.contract,
             "status": self.status,
             "reason": self.reason,
-            "relations": [item.to_dict() for item in self.relations],
+            "relations": [item.semantic_dict() for item in self.relations],
         }
 
     @classmethod
@@ -330,10 +345,11 @@ class BorrowSummary:
 class _Origin:
     source_parameter_index: int
     source_path: BorrowPlacePath
-    borrow_type: str
+    borrow_type_id: TypeId
     result_path: BorrowPlacePath
     kind: str
     ownership: str
+    borrow_type: str = field(default="", compare=False)
     pending_recursive_tail: str | None = field(default=None, compare=False)
     witness_path: tuple[str, ...] = field(default=(), compare=False)
     witness_known: bool = field(default=False, compare=False)
@@ -342,7 +358,7 @@ class _Origin:
         return (
             self.source_parameter_index,
             self.source_path,
-            self.borrow_type,
+            self.borrow_type_id,
             self.result_path,
             self.kind,
             self.ownership,
@@ -354,16 +370,17 @@ class _Origin:
         return BorrowRelation(
             self.source_parameter_index,
             self.source_path,
-            self.borrow_type,
+            self.borrow_type_id,
             self.result_path,
             self.kind,
             self.ownership,
+            self.borrow_type,
         )
 
 
 @dataclass
 class _Flow:
-    env: dict[str, str]
+    env: dict[str, TypeId]
     origins: dict[str, tuple[_Origin, ...]]
     unresolved: list[str]
     parameters: dict[str, int]
@@ -377,20 +394,6 @@ class _Flow:
         )
 
 
-def _annotation_type(node: ast.AST | None) -> str:
-    if node is None:
-        return "Unit"
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute):
-        owner = _annotation_type(node.value)
-        return f"{owner}.{node.attr}"
-    if isinstance(node, ast.Constant) and isinstance(node.value, int):
-        return str(node.value)
-    if isinstance(node, ast.Subscript):
-        parts = node.slice.elts if isinstance(node.slice, ast.Tuple) else (node.slice,)
-        return f"{_annotation_type(node.value)}[{','.join(_annotation_type(item) for item in parts)}]"
-    return "Unit"
 
 
 def _root_name(node: ast.AST | None) -> str | None:
@@ -452,10 +455,11 @@ def _append(origin: _Origin, *steps: BorrowPlaceStep) -> _Origin:
     return _Origin(
         origin.source_parameter_index,
         origin.source_path,
-        origin.borrow_type,
+        origin.borrow_type_id,
         result_path,
         origin.kind,
         origin.ownership,
+        origin.borrow_type,
         pending,
         origin.witness_path,
         origin.witness_known,
@@ -504,12 +508,12 @@ class _SummaryComputer:
     def __init__(
         self,
         functions: Mapping[str, ast.FunctionDef],
-        declarations: Mapping[str, object],
         type_context: TypeAuthority,
+        typed_ast: Any,
     ) -> None:
         self.functions = dict(functions)
-        self.declarations = dict(declarations)
         self.type_context = type_context
+        self.typed_ast = typed_ast
         self.resolver = TypePropertyResolver(type_context)
         self._summaries: dict[str, BorrowSummary] = {
             name: BorrowSummary() for name in sorted(self.functions)
@@ -625,118 +629,46 @@ class _SummaryComputer:
             return None
         return self._scc_ids[component]
 
-    def _properties(self, type_name: str | None):
-        if type_name is None:
+    def _properties(self, type_id: TypeId | None):
+        if type_id is None:
             return TypeProperties(True, False, False)
-        type_id = (
-            self.type_context.intern_text(type_name)
-            if isinstance(self.type_context, TypeContextBuilder)
-            else self.type_context.type_id(type_name)
-        )
         return self.resolver.resolve(type_id)
 
-    def _contains(self, type_name: str | None) -> bool:
-        return self._properties(type_name).contains_borrow
+    def _contains(self, type_id: TypeId | None) -> bool:
+        return self._properties(type_id).contains_borrow
 
-    def _borrow_types(self, type_name: str | None) -> tuple[str, ...]:
-        return tuple(
-            self.type_context.render(item)
-            for item in self._properties(type_name).borrow_types
-        )
+    def _borrow_types(self, type_id: TypeId | None) -> tuple[TypeId, ...]:
+        return self._properties(type_id).borrow_types
 
-    def _owner(self, type_name: str | None) -> bool:
-        return self._properties(type_name).needs_drop
+    def _owner(self, type_id: TypeId | None) -> bool:
+        return self._properties(type_id).needs_drop
 
-    def _call_type(self, node: ast.Call, flow: _Flow, expected: str | None = None) -> str | None:
-        if isinstance(node.func, ast.Name):
-            if node.func.id in self.functions:
-                return _annotation_type(self.functions[node.func.id].returns)
-            if node.func.id in {"Some", "None", "Ok", "Err"}:
-                return expected
-            if node.func.id in {"Text", "Bytes", "TextBuilder", "Path"}:
-                return node.func.id
-            if node.func.id in {"drop"}:
-                return "Unit"
-        if isinstance(node.func, ast.Attribute):
-            receiver = self._expr_type(node.func.value, flow)
-            method = node.func.attr
-            # Keep this table deliberately narrow and deterministic.  The
-            # ownership checker remains the authority for full method typing.
-            if receiver in {"Text", "Bytes"} and method in {"view", "as_view", "slice_bytes"}:
-                return "TextView" if receiver == "Text" else "BytesView"
-            if method == "view":
-                vec = generic_parts(receiver or "", "Vec", arity=1)
-                if vec is not None:
-                    return expected or f"Slice[{vec[0]}]"
-            if receiver in {"TextView", "BytesView"} and method in {"slice", "view"}:
-                return receiver
-            if method == "new" and receiver in {"Vec", "Map", "Box"}:
-                return expected
-            if receiver and method in {"get", "unwrap", "unwrap_err"}:
-                parts = generic_parts(receiver, "Vec", arity=1) or generic_parts(receiver, "Box", arity=1)
-                if parts is not None:
-                    return parts[0]
-                option = generic_parts(receiver, "Option", arity=1)
-                if option is not None and method == "unwrap":
-                    return option[0]
-                result = generic_parts(receiver, "Result", arity=2)
-                if result is not None:
-                    return result[0] if method == "unwrap" else result[1]
-            if receiver and method == "view":
-                return receiver
-        return expected
-
-    def _expr_type(self, node: ast.AST | None, flow: _Flow, expected: str | None = None) -> str | None:
+    def _expr_type(self, node: ast.AST | None, flow: _Flow, expected: TypeId | None = None) -> TypeId | None:
         if node is None:
-            return None
-        if isinstance(node, ast.Name):
-            return flow.env.get(node.id)
-        if isinstance(node, ast.Constant):
-            if isinstance(node.value, bool):
-                return "Bool"
-            if isinstance(node.value, int):
-                return "UInt64"
-            if isinstance(node.value, float):
-                return "Float64"
-            if isinstance(node.value, str):
-                return "Text"
-            return "Unit"
-        if isinstance(node, ast.Attribute):
-            owner = self._expr_type(node.value, flow)
-            declaration = self.declarations.get(owner) if owner else None
-            if declaration is not None and getattr(declaration, "kind", "") == "record":
-                for declaration_field in getattr(declaration, "fields", ()):
-                    if declaration_field.name == node.attr:
-                        return declaration_field.type_name
-            return None
-        if isinstance(node, ast.Subscript):
-            owner = self._expr_type(node.value, flow)
-            parts = generic_parts(owner, "Vec", arity=1) if owner else None
-            return parts[0] if parts is not None else expected
-        if isinstance(node, ast.Call):
-            return self._call_type(node, flow, expected)
-        return expected
+            return expected
+        return self.typed_ast.expression_type_id(node)
 
     def _formal_origins(self, function: ast.FunctionDef, flow: _Flow) -> None:
         witness_known = self._phase == "witness"
         for index, argument in enumerate(function.args.args):
-            type_name = _annotation_type(argument.annotation)
-            flow.env[argument.arg] = type_name
+            type_id = self.typed_ast.function_parameter_type_id(function, index)
+            flow.env[argument.arg] = type_id
             flow.parameters[argument.arg] = index
-            properties = self._properties(type_name)
+            properties = self._properties(type_id)
             if not properties.contains_borrow:
                 continue
-            kind = "direct" if type_name in {"TextView", "BytesView", "FileLines"} or type_name.startswith("Borrow[") or type_name.startswith("Slice[") else "contained"
+            kind = "direct" if properties.layout == "view" else "contained"
             ownership = "contained_borrow" if kind == "contained" else "borrow"
             flow.origins[argument.arg] = _unique(
                 [
                     _Origin(
                         index,
                         BorrowPlacePath.parameter(index),
-                        self.type_context.render(borrow_type),
+                        borrow_type,
                         BorrowPlacePath(),
                         kind,
                         ownership,
+                        self.type_context.render(borrow_type),
                         witness_known=witness_known,
                     )
                     for borrow_type in properties.borrow_types
@@ -748,24 +680,15 @@ class _SummaryComputer:
         flow: _Flow | None = None,
     ) -> tuple[BorrowPlaceStep, ...]:
         if isinstance(node, ast.Attribute):
-            return (
-                *self._source_steps(node.value, flow),
-                BorrowPlaceStep.field(node.attr),
-            )
+            return (*self._source_steps(node.value, flow), BorrowPlaceStep.field(node.attr))
         if isinstance(node, ast.Subscript):
-            return (
-                *self._source_steps(node.value, flow),
-                BorrowPlaceStep.element(),
-            )
+            return (*self._source_steps(node.value, flow), BorrowPlaceStep.element())
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
             receiver = self._source_steps(node.func.value, flow)
-            receiver_type = (
-                self._expr_type(node.func.value, flow)
-                if flow is not None
-                else None
-            )
+            receiver_type = self._expr_type(node.func.value, flow) if flow is not None else None
             if node.func.attr in {"get", "get_mut", "byte"}:
-                if generic_parts(receiver_type or "", "Box", arity=1) is not None:
+                receiver_ref = self.type_context.resolve(receiver_type) if receiver_type else None
+                if receiver_ref is not None and receiver_ref.constructor == "Box":
                     return (*receiver, BorrowPlaceStep.dereference())
                 return (*receiver, BorrowPlaceStep.element())
             if node.func.attr in {"unwrap", "unwrap_err"}:
@@ -784,28 +707,20 @@ class _SummaryComputer:
         parameter_index = flow.parameters.get(root, -1)
         if parameter_index < 0:
             return None
-        type_name = self._expr_type(node, flow)
-        properties = self._properties(type_name)
-        direct = not properties.contains_borrow or type_name in {
-            "TextView",
-            "BytesView",
-            "FileLines",
-        } or (
-            type_name is not None
-            and type_name.startswith(("Borrow[", "Slice["))
-        )
-        borrow_type = (
-            self.type_context.render(properties.borrow_types[0])
-            if properties.borrow_types
-            else ""
-        )
+        type_id = self._expr_type(node, flow)
+        properties = self._properties(type_id)
+        direct = not properties.contains_borrow or properties.layout == "view"
+        borrow_type_id = properties.borrow_types[0] if properties.borrow_types else type_id
+        if borrow_type_id is None:
+            return None
         return _Origin(
             parameter_index,
             BorrowPlacePath.parameter(parameter_index).append(*self._source_steps(node, flow)),
-            borrow_type,
+            borrow_type_id,
             BorrowPlacePath(),
             "direct" if direct else "contained",
             "borrow" if direct else "contained_borrow",
+            self.type_context.render(borrow_type_id),
             witness_known=self._phase == "witness",
         )
 
@@ -815,8 +730,8 @@ class _SummaryComputer:
             tracked = flow.origins.get(argument.id)
             if tracked:
                 return tracked
-            type_name = flow.env.get(argument.id)
-            if self._owner(type_name) and not self._contains(type_name):
+            type_id = flow.env.get(argument.id)
+            if self._owner(type_id) and not self._contains(type_id) and type_id is not None:
                 parameter_index = flow.parameters.get(argument.id, -1)
                 source_path = (
                     BorrowPlacePath.parameter(parameter_index)
@@ -827,10 +742,11 @@ class _SummaryComputer:
                     _Origin(
                         parameter_index,
                         source_path,
-                        "",
+                        type_id,
                         BorrowPlacePath(),
                         "direct",
                         "borrow",
+                        self.type_context.render(type_id),
                         witness_known=self._phase == "witness",
                     ),
                 )
@@ -838,10 +754,9 @@ class _SummaryComputer:
         stable_root = _stable_borrow_root(argument)
         if stable_root is not None and stable_root in flow.env:
             return self._expr_origins(argument, flow)
-        # A borrow expression over a temporary owner has no stable place.
         return ()
 
-    def _call_origins(self, node: ast.Call, flow: _Flow, result_type: str | None) -> tuple[_Origin, ...]:
+    def _call_origins(self, node: ast.Call, flow: _Flow, result_type: TypeId | None) -> tuple[_Origin, ...]:
         if not isinstance(node.func, ast.Name) or node.func.id not in self.functions:
             return ()
         callee_name = node.func.id
@@ -879,10 +794,11 @@ class _SummaryComputer:
                     _Origin(
                         origin.source_parameter_index,
                         source_path,
-                        relation.borrow_type,
+                        relation.borrow_type_id,
                         relation.result_path,
                         relation.kind,
                         relation.ownership,
+                        relation.borrow_type,
                         recursive_scc or origin.pending_recursive_tail,
                         (
                             _witness_step(
@@ -900,7 +816,7 @@ class _SummaryComputer:
             flow.unresolved.append(f"unmapped:{callee_name}")
         return _unique(result)
 
-    def _expr_origins(self, node: ast.AST | None, flow: _Flow, expected: str | None = None) -> tuple[_Origin, ...]:
+    def _expr_origins(self, node: ast.AST | None, flow: _Flow, expected: TypeId | None = None) -> tuple[_Origin, ...]:
         if node is None:
             return ()
         if isinstance(node, ast.Name):
@@ -916,110 +832,64 @@ class _SummaryComputer:
             origin = self._parameter_origin(node, flow)
             return (origin,) if origin is not None else ()
         if isinstance(node, ast.Call):
-            result_type = self._call_type(node, flow, expected)
+            result_type = self._expr_type(node, flow, expected)
             direct_name = _qualified_name(node.func)
             if direct_name in {"Some", "Ok", "Err", "Box.new"}:
-                step = (
-                    BorrowPlaceStep.dereference()
-                    if direct_name == "Box.new"
-                    else BorrowPlaceStep.variant_payload(direct_name)
-                )
-                collected: list[_Origin] = []
-                for argument in node.args:
-                    collected.extend(_append(item, step) for item in self._expr_origins(argument, flow))
-                return _unique(collected)
+                step = BorrowPlaceStep.dereference() if direct_name == "Box.new" else BorrowPlaceStep.variant_payload(direct_name)
+                return _unique([_append(item, step) for argument in node.args for item in self._expr_origins(argument, flow)])
             if isinstance(node.func, ast.Name) and node.func.id in self.functions:
                 return self._call_origins(node, flow, result_type)
             if isinstance(node.func, ast.Attribute):
-                receiver = self._expr_type(node.func.value, flow)
-                method = node.func.attr
                 receiver_origins = self._expr_origins(node.func.value, flow)
-                if receiver in {"Text", "Bytes"} and method in {"view", "as_view", "slice_bytes"}:
+                if receiver_origins:
+                    return _unique(
+                        [
+                            _append(item, _method_step(node.func.attr))
+                            for item in receiver_origins
+                        ]
+                    )
+                result_props = self._properties(result_type)
+                borrow_ids = result_props.borrow_types
+                if borrow_ids:
                     source = self._parameter_origin(node.func.value, flow)
-                    borrow_type = "TextView" if receiver == "Text" else "BytesView"
                     if source is not None:
                         return (
                             _Origin(
                                 source.source_parameter_index,
                                 source.source_path,
-                                borrow_type,
+                                borrow_ids[0],
                                 BorrowPlacePath(),
-                                "direct",
-                                "borrow",
+                                "direct" if result_props.layout == "view" else "contained",
+                                "borrow" if result_props.layout == "view" else "contained_borrow",
+                                self.type_context.render(borrow_ids[0]),
                                 witness_known=self._phase == "witness",
                             ),
                         )
-                    if receiver_origins:
-                        return tuple(
-                            _Origin(
-                                item.source_parameter_index,
-                                item.source_path,
-                                borrow_type,
-                                BorrowPlacePath(),
-                                "direct",
-                                "borrow",
-                                witness_known=self._phase == "witness",
-                            )
-                            for item in receiver_origins
-                        )
-                if method == "view":
-                    vec = generic_parts(receiver or "", "Vec", arity=1)
-                    source = self._parameter_origin(node.func.value, flow)
-                    borrow_type = f"Slice[{vec[0]}]" if vec is not None else ""
-                    if vec is not None and source is not None:
-                        return (
-                            _Origin(
-                                source.source_parameter_index,
-                                source.source_path,
-                                borrow_type,
-                                BorrowPlacePath(),
-                                "direct",
-                                "borrow",
-                                witness_known=self._phase == "witness",
-                            ),
-                        )
-                    if vec is not None and receiver_origins:
-                        return tuple(
-                            _Origin(
-                                item.source_parameter_index,
-                                item.source_path,
-                                borrow_type,
-                                BorrowPlacePath(),
-                                "direct",
-                                "borrow",
-                                witness_known=self._phase == "witness",
-                            )
-                            for item in receiver_origins
-                        )
-                if receiver_origins:
-                    return _unique([_append(item, _method_step(method)) for item in receiver_origins])
-                collected: list[_Origin] = []
-                for argument in node.args:
-                    collected.extend(_append(item, _method_step(method)) for item in self._expr_origins(argument, flow))
-                return _unique(collected)
-            collected = []
-            for argument in node.args:
-                collected.extend(self._expr_origins(argument, flow))
-            return _unique(collected)
+                return _unique([
+                    _append(item, _method_step(node.func.attr))
+                    for argument in node.args
+                    for item in self._expr_origins(argument, flow)
+                ])
+            return _unique([item for argument in node.args for item in self._expr_origins(argument, flow)])
         return ()
 
-    def _assign(self, target: ast.AST, value: ast.AST | None, flow: _Flow, expected: str | None = None) -> None:
+    def _assign(self, target: ast.AST, value: ast.AST | None, flow: _Flow, expected: TypeId | None = None) -> None:
         if not isinstance(target, ast.Name):
             return
-        type_name = expected or self._expr_type(value, flow)
-        if type_name:
-            flow.env[target.id] = type_name
-        origins = self._expr_origins(value, flow, type_name)
+        type_id = expected or self._expr_type(value, flow)
+        if type_id is not None:
+            flow.env[target.id] = type_id
+        origins = self._expr_origins(value, flow, type_id)
         if origins:
             flow.origins[target.id] = origins
         else:
             flow.origins.pop(target.id, None)
 
-    def _walk_statements(self, statements: list[ast.stmt], flow: _Flow) -> list[tuple[ast.AST | None, tuple[_Origin, ...], str | None]]:
-        returns: list[tuple[ast.AST | None, tuple[_Origin, ...], str | None]] = []
+    def _walk_statements(self, statements: list[ast.stmt], flow: _Flow) -> list[tuple[ast.AST | None, tuple[_Origin, ...], TypeId | None]]:
+        returns: list[tuple[ast.AST | None, tuple[_Origin, ...], TypeId | None]] = []
         for node in statements:
             if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-                self._assign(node.target, node.value, flow, _annotation_type(node.annotation))
+                self._assign(node.target, node.value, flow, self.typed_ast.annotation_type_id(node.annotation))
             elif isinstance(node, ast.Assign):
                 for target in node.targets:
                     self._assign(target, node.value, flow)
@@ -1028,14 +898,14 @@ class _SummaryComputer:
                 if isinstance(call.func, ast.Attribute) and call.func.attr == "push":
                     root = _root_name(call.func.value)
                     receiver_type = self._expr_type(call.func.value, flow)
-                    element = generic_parts(receiver_type, "Vec", arity=1) if receiver_type else None
-                    if root and element is not None and call.args:
+                    receiver_ref = self.type_context.resolve(receiver_type) if receiver_type else None
+                    if root and receiver_ref is not None and receiver_ref.constructor == "Vec" and call.args:
                         existing = list(flow.origins.get(root, ()))
-                        existing.extend(_append(item, BorrowPlaceStep.element()) for item in self._expr_origins(call.args[0], flow, element[0]))
+                        existing.extend(_append(item, BorrowPlaceStep.element()) for item in self._expr_origins(call.args[0], flow))
                         flow.origins[root] = _unique(existing)
                 self._expr_origins(call, flow)
             elif isinstance(node, ast.Return):
-                result_type = _annotation_type(self._current.returns) if self._current is not None else None
+                result_type = self.typed_ast.function_return_type_id(self._current) if self._current is not None else None
                 returns.append((node.value, self._expr_origins(node.value, flow, result_type), result_type))
             elif isinstance(node, ast.If):
                 left = flow.copy()
@@ -1081,7 +951,7 @@ class _SummaryComputer:
         self._formal_origins(function, flow)
         returns = self._walk_statements(function.body, flow)
         entries: list[BorrowSummaryEntry] = []
-        result_type = _annotation_type(function.returns)
+        result_type = self.typed_ast.function_return_type_id(function)
         if not self._contains(result_type):
             return BorrowSummary()
         for _node, origins, _ in returns:
@@ -1092,26 +962,17 @@ class _SummaryComputer:
                     continue
                 if witness_only and not origin.witness_known:
                     continue
-                if not (
-                    result_type in {"TextView", "BytesView", "FileLines"}
-                    or result_type.startswith(("Borrow[", "Slice["))
-                ):
+                if self._properties(result_type).layout != "view":
                     relation = BorrowRelation(
                         relation.source_parameter_index,
                         relation.source_path,
-                        relation.borrow_type,
+                        relation.borrow_type_id,
                         relation.result_path,
                         "contained",
-                        "owned_contained_borrow"
-                        if self._owner(result_type)
-                        else "contained_borrow",
+                        "owned_contained_borrow" if self._owner(result_type) else "contained_borrow",
+                        relation.borrow_type,
                     )
-                entries.append(
-                    BorrowSummaryEntry(
-                        relation,
-                        origin.witness_path if origin.witness_known else (),
-                    )
-                )
+                entries.append(BorrowSummaryEntry(relation, origin.witness_path if origin.witness_known else ()))
         if final and flow.unresolved:
             return BorrowSummary((), "opaque", ";".join(sorted(set(flow.unresolved))))
         if final and not entries:
@@ -1122,7 +983,7 @@ class _SummaryComputer:
         return {
             name: (
                 BorrowSummary((), "opaque", reason)
-                if self._contains(_annotation_type(function.returns))
+                if self._contains(self.typed_ast.function_return_type_id(function))
                 else BorrowSummary()
             )
             for name, function in sorted(self.functions.items())
@@ -1217,12 +1078,12 @@ class _SummaryComputer:
 
 def compute_borrow_summaries(
     functions: Mapping[str, ast.FunctionDef],
-    declarations: Mapping[str, object],
     type_context: TypeAuthority,
+    typed_ast: Any,
 ) -> dict[str, BorrowSummary]:
     """Compute canonical summaries for all local functions."""
 
-    return _SummaryComputer(functions, declarations, type_context).compute()
+    return _SummaryComputer(functions, type_context, typed_ast).compute()
 
 
 __all__ = [

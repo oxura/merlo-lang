@@ -1,4 +1,4 @@
-"""Structured Typed HIR v10 for Merlo's general representation milestone.
+"""Structured Typed HIR v11 for Merlo's general representation milestone.
 
 The HIR is deliberately a tree. Control-flow graphs, allocation primitives, drop
 flags, and pointer arithmetic belong to lower layers.
@@ -10,10 +10,11 @@ import hashlib
 import json
 import re
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Iterable
 from merlo import native_syntax as ast
+from merlo.typed_ast import TypedAst
 from merlo.collection_protocol import (
     COLLECTION_OPERATIONS,
     collection_result_type,
@@ -48,13 +49,11 @@ from merlo.borrow_summary import (
 from merlo.ownership import (
     _OwnershipChecker,
     _assigned_parameter_names,
-    _is_borrowed,
     _stable_id,
 )
 
-
-STRUCTURED_HIR_SCHEMA_VERSION = 10
-STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v10"
+STRUCTURED_HIR_SCHEMA_VERSION = 11
+STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v11"
 _SCALAR_TYPES = frozenset(
     {
         "Bool",
@@ -728,13 +727,19 @@ class StructuredHIRProgram:
         if len(function_names) != len(set(function_names)):
             raise ValueError("duplicate Structured HIR function")
         for function in self.functions:
-            if any(
-                entry.relation.source_parameter_index >= len(function.parameters)
-                for entry in function.borrow_summary.entries
-            ):
-                raise ValueError(
-                    f"borrow summary parameter index out of range: {function.name}"
-                )
+            for entry in function.borrow_summary.entries:
+                if entry.relation.source_parameter_index >= len(function.parameters):
+                    raise ValueError(
+                        f"borrow summary parameter index out of range: {function.name}"
+                    )
+                try:
+                    rendered_borrow_type = self.type_context.render(
+                        entry.relation.borrow_type_id
+                    )
+                except TypeArenaError as exc:
+                    raise ValueError("unknown borrow relation type identity") from exc
+                if rendered_borrow_type != entry.relation.borrow_type:
+                    raise ValueError("borrow relation type identity does not match spelling")
         if self.entry_function not in set(function_names) and not (self.flows or self.machines):
             raise ValueError("missing Structured HIR entry function")
         node_ids = [
@@ -1321,6 +1326,7 @@ class _HIRBuilder:
         borrow_summaries: dict[str, BorrowSummary] | None = None,
         type_arena: TypeArena | None = None,
         type_cache: dict[str, tuple[str, TypeId]] | None = None,
+        typed_ast: TypedAst | None = None,
     ) -> None:
         self.path = path
         self.source = source
@@ -1346,14 +1352,48 @@ class _HIRBuilder:
         self.current_function = ""
         self.ordinal = 0
         self.type_properties = TypePropertyResolver(self.type_arena)
+        self.typed_ast = typed_ast or TypedAst()
+        self.function_effects = self._compute_function_effect_hints()
+        self.unresolved_names: set[str] = set()
+
 
     def _intern_type(self, type_name: str | None) -> tuple[str, TypeId] | None:
-        return _intern_cached_type(
+        typed = _intern_cached_type(
             self.type_arena,
             self._type_cache,
             type_name,
             self.path,
         )
+        if typed is None:
+            return None
+        reference = self.type_arena.resolve(typed[1])
+        variants = (
+            (("Some", reference.arguments[0]),)
+            if reference.constructor == "Option" and len(reference.arguments) == 1
+            else (
+                ("Ok", reference.arguments[0]),
+                ("Err", reference.arguments[1]),
+            )
+            if reference.constructor == "Result" and len(reference.arguments) == 2
+            else ()
+        )
+        for variant, payload_type_id in variants:
+            self.typed_ast.record_variant_projection_symbol_id(
+                typed[1],
+                variant,
+                _stable_id(
+                    "shirs",
+                    "structural-variant",
+                    typed[1].value,
+                    variant,
+                ),
+            )
+            self.typed_ast.record_variant_projection(
+                typed[1],
+                variant,
+                payload_type_id,
+            )
+        return typed
 
     def _type_id(self, type_name: str | None) -> TypeId | None:
         item = self._intern_type(type_name)
@@ -1382,6 +1422,13 @@ class _HIRBuilder:
             self.type_arena.type_id(canonical)
         ).contains_borrow
 
+    def _is_borrowed(self, type_name: str | None) -> bool:
+        type_id = self._type_id(type_name)
+        return (
+            type_id is not None
+            and self.type_properties.resolve(type_id).layout == "view"
+        )
+
     def _owned_ownership(self, type_name: str | None) -> str:
         if self._owner(type_name):
             return (
@@ -1389,12 +1436,12 @@ class _HIRBuilder:
                 if self._contains_borrow(type_name)
                 else "owned"
             )
-        return "borrow" if _is_borrowed(type_name) else "value"
+        return "borrow" if self._is_borrowed(type_name) else "value"
 
     def _use_ownership(self, type_name: str | None) -> str:
-        if self._contains_borrow(type_name) and not _is_borrowed(type_name):
+        if self._contains_borrow(type_name) and not self._is_borrowed(type_name):
             return "contained_borrow"
-        if self._owner(type_name) or _is_borrowed(type_name):
+        if self._owner(type_name) or self._is_borrowed(type_name):
             return "borrow"
         return "value"
 
@@ -1459,6 +1506,8 @@ class _HIRBuilder:
         typed = self._intern_type(type_name)
         canonical_type = typed[0] if typed is not None else None
         type_id = typed[1] if typed is not None else None
+        if type_id is not None:
+            self.typed_ast.record_expression(node, type_id)
         revision = _stable_id(
             "rev",
             kind,
@@ -1496,6 +1545,13 @@ class _HIRBuilder:
         *,
         expected: str | None = None,
     ) -> HIRNode:
+        if expected is not None:
+            expected_typed = self._intern_type(expected)
+            if expected_typed is None:
+                raise StructuredHIRCompileError(
+                    f"{self.path}: missing expected TypeId for expression"
+                )
+            self.typed_ast.record_expected(node, expected_typed[1])
         if isinstance(node, ast.Hole):
             if expected is not None and expected != node.expected_type:
                 raise StructuredHIRCompileError(
@@ -1576,7 +1632,14 @@ class _HIRBuilder:
             )
         if isinstance(node, ast.Attribute):
             owner = self.expression(node.value)
-            type_name = self._attribute_type(owner.type_name, node.attr)
+            enum_owner = (
+                node.value.id
+                if isinstance(node.value, ast.Name)
+                and node.value.id in self.types
+                and self.types[node.value.id].kind == "enum"
+                else None
+            )
+            type_name = enum_owner or self._attribute_type(owner.type_name, node.attr)
             return self._new_node(
                 node,
                 "FieldAccess",
@@ -1618,6 +1681,33 @@ class _HIRBuilder:
                 )
             else:
                 argument_expected: list[str | None] = [None] * len(node.args)
+                argument_signature = intrinsic_signature(
+                    _ast_qualified_name(node.func)
+                )
+                if (
+                    argument_signature is not None
+                    and argument_signature.arity == len(node.args)
+                ):
+                    for index, parameter_type in enumerate(
+                        argument_signature.parameters
+                    ):
+                        argument_expected[index] = parameter_type
+                if isinstance(node.func, ast.Attribute):
+                    receiver_name = _ast_qualified_name(node.func.value)
+                    receiver_type = self.local_types.get(receiver_name)
+                    method_contract = CONTRACT_GRAPH.method(
+                        receiver_type or "",
+                        node.func.attr,
+                    )
+                    if (
+                        method_contract is not None
+                        and method_contract.accepts_arity(len(node.args))
+                    ):
+                        for index, parameter_type in enumerate(
+                            method_contract.parameters_for(len(node.args))
+                        ):
+                            argument_expected[index] = parameter_type
+
                 # A generic constructor's result annotation is the source of
                 # truth for its payload type.  Passing that context into the
                 # child expression keeps nested owner/view constructors
@@ -1631,6 +1721,26 @@ class _HIRBuilder:
                         if parts is not None and argument_expected:
                             argument_expected[0] = parts[0]
                 elif isinstance(node.func, ast.Name):
+                    if node.func.id in self.functions:
+                        for index, parameter in enumerate(
+                            self.functions[node.func.id].args.args[: len(node.args)]
+                        ):
+                            argument_expected[index] = _type_name(
+                                parameter.annotation
+                            )
+                    if node.func.id in self.extern_functions:
+                        for index, parameter in enumerate(
+                            self.extern_functions[node.func.id].parameters[: len(node.args)]
+                        ):
+                            argument_expected[index] = parameter.type_name
+                    if (
+                        node.func.id in self.types
+                        and self.types[node.func.id].kind == "record"
+                    ):
+                        for index, member in enumerate(
+                            self.types[node.func.id].fields[: len(node.args)]
+                        ):
+                            argument_expected[index] = member.type_name
                     if node.func.id == "Some":
                         parts = generic_parts(expected or "", "Option", arity=1)
                         if parts is not None and argument_expected:
@@ -2061,7 +2171,7 @@ class _HIRBuilder:
                     "owned"
                     if self._owner(type_name)
                     else "borrow"
-                    if _is_borrowed(type_name)
+                    if self._is_borrowed(type_name)
                     else "value"
                 )
                 call_attributes["move_arguments"] = tuple(
@@ -2113,7 +2223,11 @@ class _HIRBuilder:
                 )
                 and name != "Path"
             ):
-                raise StructuredHIRCompileError(f"UnresolvedName: {name}")
+                if expected is None:
+                    raise StructuredHIRCompileError(f"UnresolvedName: {name}")
+                kind = "UnresolvedCall"
+                type_name = expected
+                self.unresolved_names.add(name)
         if isinstance(node.func, ast.Attribute):
             receiver_text = _ast_qualified_name(node.func.value)
             receiver_type = self.local_types.get(receiver_text)
@@ -2149,6 +2263,16 @@ class _HIRBuilder:
                 receiver_type = self.expression(
                     node.func.value
                 ).type_name
+            if receiver_type is not None:
+                typed_receiver = self._intern_type(receiver_type)
+                if typed_receiver is None:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: missing receiver type"
+                    )
+                self.typed_ast.record_expression(
+                    node.func.value,
+                    typed_receiver[1],
+                )
             method_signature = CONTRACT_GRAPH.method(
                 receiver_type or "",
                 method,
@@ -2475,8 +2599,8 @@ class _HIRBuilder:
                 key_type, value_type = map_types
                 if not method_signature.accepts_arity(len(arguments)):
                     raise StructuredHIRCompileError(
-                        f"{self.path}:{node.lineno}: unsupported Map operation "
-                        f"{method}/{len(arguments)}"
+                        f"{self.path}:{node.lineno}: ArityMismatch: "
+                        f"{receiver_type}.{method}/{len(arguments)}"
                     )
                 if method == "increment" and value_type != "UInt64":
                     raise StructuredHIRCompileError(
@@ -2527,7 +2651,9 @@ class _HIRBuilder:
             elif method == "tag":
                 kind = "EnumTag"
                 type_name = "UInt64"
-        if self._contains_borrow(type_name) and not _is_borrowed(type_name):
+        if type_name is None and expected is not None:
+            type_name = expected
+        if self._contains_borrow(type_name) and not self._is_borrowed(type_name):
             ownership = (
                 "owned_contained_borrow"
                 if ownership == "owned" or self._owner(type_name)
@@ -2544,51 +2670,78 @@ class _HIRBuilder:
             children=operation_children,
         )
 
+    def _compute_function_effect_hints(self) -> dict[str, frozenset[str]]:
+        effects_by_function: dict[str, set[str]] = {}
+        callers: dict[str, set[str]] = {
+            name: set() for name in self.functions
+        }
+        for function_name, function in self.functions.items():
+            effects: set[str] = set()
+            for node in ast.walk(function):
+                if not isinstance(node, ast.Call):
+                    continue
+                name = _ast_qualified_name(node.func)
+                if (
+                    ".push" in name
+                    or name in {"Vec.new", "Map.new"}
+                    or name.endswith(".insert")
+                    or name.endswith(".increment")
+                ):
+                    effects.update(("allocate", "may_fail"))
+                receiver, separator, method = name.partition(".")
+                static_signature = (
+                    CONTRACT_GRAPH.static_method(receiver, method)
+                    if separator
+                    else None
+                )
+                if static_signature is not None:
+                    effects.update(static_signature.effects)
+                signature = intrinsic_signature(name)
+                if signature is not None:
+                    effects.add(signature.effect)
+                    if signature.result_type.startswith("Result["):
+                        effects.add("may_fail")
+                elif isinstance(node.func, ast.Name) and node.func.id in self.functions:
+                    callers[node.func.id].add(function_name)
+                if name == "set_error":
+                    effects.add("typed_error")
+            effects_by_function[function_name] = effects
+
+        pending = [
+            name for name, effects in effects_by_function.items() if effects
+        ]
+        while pending:
+            callee = pending.pop()
+            for caller in callers[callee]:
+                inherited = effects_by_function[callee] - effects_by_function[caller]
+                if inherited:
+                    effects_by_function[caller].update(inherited)
+                    pending.append(caller)
+        return {
+            name: frozenset(effects)
+            for name, effects in effects_by_function.items()
+        }
+
     def _function_effect_hint(
         self,
         function: ast.FunctionDef,
         visiting: frozenset[str] = frozenset(),
     ) -> set[str]:
-        if function.name in visiting:
-            return set()
-        visiting = visiting | {function.name}
-        effects: set[str] = set()
-        for node in ast.walk(function):
-            if not isinstance(node, ast.Call):
-                continue
-            name = _ast_qualified_name(node.func)
-            if (
-                ".push" in name
-                or name in {"Vec.new", "Map.new"}
-                or name.endswith(".insert")
-                or name.endswith(".increment")
-            ):
-                effects.update(("allocate", "may_fail"))
-            receiver, separator, method = name.partition(".")
-            static_signature = (
-                CONTRACT_GRAPH.static_method(receiver, method)
-                if separator
-                else None
-            )
-            if static_signature is not None:
-                effects.update(static_signature.effects)
-            signature = intrinsic_signature(name)
-            if signature is not None:
-                effects.add(signature.effect)
-                if signature.result_type.startswith("Result["):
-                    effects.add("may_fail")
-            elif isinstance(node.func, ast.Name) and node.func.id in self.functions:
-                effects.update(
-                    self._function_effect_hint(self.functions[node.func.id], visiting)
-                )
-            if name == "set_error":
-                effects.add("typed_error")
-        return effects
+        del visiting
+        return set(self.function_effects[function.name])
 
     def statement(self, node: ast.stmt, *, scope_suffix: str = "body") -> HIRNode:
         scope_id = self._scope(scope_suffix)
         if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            type_name = _type_name(node.annotation)
+            typed_annotation = self._intern_type(_type_name(node.annotation))
+            if typed_annotation is None:
+                raise StructuredHIRCompileError(
+                    f"{self.path}:{node.lineno}: missing binding TypeId"
+                )
+            type_name, type_id = typed_annotation
+            self.typed_ast.record_annotation(node.annotation, type_id)
+            self.typed_ast.record_binding(node.target, type_id)
+            self.typed_ast.record_binding(node, type_id)
             self.local_types[node.target.id] = type_name
             value = (
                 self.expression(node.value, expected=type_name)
@@ -2619,8 +2772,58 @@ class _HIRBuilder:
             )
         if isinstance(node, ast.Assign):
             target = node.targets[0]
-            value = self.expression(node.value)
+            target_type = (
+                self.local_types.get(target.id)
+                if isinstance(target, ast.Name)
+                else None
+            )
+            if isinstance(target, ast.Attribute):
+                receiver_type = self.local_types.get(
+                    _ast_qualified_name(target.value)
+                )
+                target_type = self._attribute_type(
+                    receiver_type,
+                    target.attr,
+                )
+                receiver_type_id = self._type_id(receiver_type)
+                if receiver_type_id is not None:
+                    self.typed_ast.record_expression(
+                        target.value,
+                        receiver_type_id,
+                    )
+                target_type_id = self._type_id(target_type)
+                if target_type_id is not None:
+                    self.typed_ast.record_expression(
+                        target,
+                        target_type_id,
+                    )
+            if isinstance(target, ast.Subscript):
+                receiver_type = self.local_types.get(
+                    _ast_qualified_name(target.value)
+                )
+                shape = collection_shape(receiver_type)
+                target_type = (
+                    shape.element_type
+                    if shape is not None
+                    else None
+                )
+                receiver_type_id = self._type_id(receiver_type)
+                if receiver_type_id is not None:
+                    self.typed_ast.record_expression(
+                        target.value,
+                        receiver_type_id,
+                    )
+                target_type_id = self._type_id(target_type)
+                if target_type_id is not None:
+                    self.typed_ast.record_expression(
+                        target,
+                        target_type_id,
+                    )
+            value = self.expression(node.value, expected=target_type)
             kind = "SetField" if isinstance(target, ast.Attribute) else "Assign"
+            if isinstance(target, ast.Name) and value.type_id is not None:
+                self.typed_ast.record_binding(target, value.type_id)
+                self.typed_ast.record_binding(node, value.type_id)
             return self._new_node(
                 node,
                 kind,
@@ -2672,7 +2875,7 @@ class _HIRBuilder:
             return_type = child.type_name if child else "Unit"
             ownership = (
                 self._owned_ownership(return_type)
-                if self._owner(return_type) or _is_borrowed(return_type)
+                if self._owner(return_type) or self._is_borrowed(return_type)
                 else child.ownership if child else "value"
             )
             return self._new_node(
@@ -2729,6 +2932,9 @@ class _HIRBuilder:
                 if iterable.type_name == "FileLines"
                 else "Inferred"
             )
+            target_type = self._intern_type(self.local_types[node.target.id])
+            if target_type is not None:
+                self.typed_ast.record_binding(node.target, target_type[1])
             body = tuple(self.statement(item, scope_suffix=f"for@{node.lineno}") for item in node.body)
             loop_body = self._new_node(node, "LoopBody", children=body, scope_id=self._scope(f"for@{node.lineno}"))
             return self._new_node(
@@ -2786,6 +2992,11 @@ class _HIRBuilder:
             for name in bindings
         }
         self.local_types.update(bindings)
+        for pattern_node in ast.walk(case.pattern):
+            if isinstance(pattern_node, ast.MatchAs) and pattern_node.name in bindings:
+                typed_binding = self._intern_type(bindings[pattern_node.name])
+                if typed_binding is not None:
+                    self.typed_ast.record_binding(pattern_node, typed_binding[1])
         body = tuple(
             self.statement(item, scope_suffix=f"match@{owner.lineno}.case{index}")
             for item in case.body
@@ -2870,11 +3081,14 @@ class _HIRBuilder:
             and isinstance(item.value, ast.Name)
         }
         parameters = []
-        for argument in node.args.args:
+        for argument_index, argument in enumerate(node.args.args):
             type_name = _type_name(argument.annotation)
             typed = self._intern_type(type_name)
             assert typed is not None
             type_name, type_id = typed
+            self.typed_ast.record_annotation(argument.annotation, type_id)
+            self.typed_ast.record_function_parameter(node, argument, type_id)
+            self.typed_ast.record_function_parameter(node, argument_index, type_id)
             source = _span(self.path, argument)
             owns_value = self._owner(type_name)
             ownership = (
@@ -2883,9 +3097,9 @@ class _HIRBuilder:
                 else "borrow_mut"
                 if argument.arg in assigned
                 else "contained_borrow"
-                if self._contains_borrow(type_name) and not _is_borrowed(type_name)
+                if self._contains_borrow(type_name) and not self._is_borrowed(type_name)
                 else "borrow"
-                if owns_value or _is_borrowed(type_name)
+                if owns_value or self._is_borrowed(type_name)
                 else "value"
             )
             symbol_id = _stable_id("shirs", self.path, node.name, "parameter", argument.arg)
@@ -2914,7 +3128,10 @@ class _HIRBuilder:
         typed_return = self._intern_type(_type_name(node.returns))
         assert typed_return is not None
         return_type, return_type_id = typed_return
+        if node.returns is not None:
+            self.typed_ast.record_annotation(node.returns, return_type_id)
         self.local_types["result"] = return_type
+        self.typed_ast.record_function_return(node, return_type_id)
         try:
             ensures = tuple(
                 self._contract(
@@ -2964,8 +3181,10 @@ def _parse_type_declarations(
     kinds: dict[str, str],
     type_arena: TypeArena,
     type_cache: dict[str, tuple[str, TypeId]],
+    typed_ast: TypedAst | None = None,
 ) -> dict[str, HIRTypeDecl]:
     result: dict[str, HIRTypeDecl] = {}
+    typed_ast = typed_ast or TypedAst()
     def intern(type_name: str | None) -> tuple[str, TypeId] | None:
         return _intern_cached_type(type_arena, type_cache, type_name, path)
     for node in (item for item in module.body if isinstance(item, ast.ClassDef)):
@@ -3013,8 +3232,11 @@ def _parse_type_declarations(
                 typed = intern(_type_name(statement.annotation))
                 assert typed is not None
                 type_name, type_id = typed
+                typed_ast.record_annotation(statement.annotation, type_id)
+                typed_ast.record_field_projection(nominal_type_id, name, type_id)
                 item_source = _span(path, statement)
                 symbol = _stable_id("shirs", path, node.name, "field", name)
+                typed_ast.record_field_projection_symbol_id(nominal_type_id, name, symbol)
                 fields.append(
                     HIRField(
                         name=name,
@@ -3035,10 +3257,13 @@ def _parse_type_declarations(
                     typed = intern(_type_name(statement.annotation))
                     assert typed is not None
                     payload, payload_id = typed
+                    typed_ast.record_annotation(statement.annotation, payload_id)
+                    typed_ast.record_variant_projection(nominal_type_id, name, payload_id)
                 else:
                     raise StructuredHIRCompileError(f"{path}:{statement.lineno}: invalid enum variant")
                 item_source = _span(path, statement)
                 symbol = _stable_id("shirs", path, node.name, "variant", name)
+                typed_ast.record_variant_projection_symbol_id(nominal_type_id, name, symbol)
                 variants.append(
                     HIRVariant(
                         name=name,
@@ -3312,6 +3537,20 @@ def _preintern_analysis_types(
                     path,
                 )
 
+def _finalize_hir_function(function: HIRFunction, summary: BorrowSummary) -> HIRFunction:
+    revision_id = _stable_id(
+        "rev",
+        function.name,
+        [(item.name, item.type_id.value, item.ownership) for item in function.parameters],
+        function.return_type_id.value,
+        function.effects,
+        [item.revision_id for item in function.body],
+        [item.condition.revision_id for item in function.requirements],
+        [item.condition.revision_id for item in function.ensures],
+        summary.semantic_dict(),
+    )
+    return replace(function, borrow_summary=summary, revision_id=revision_id)
+
 
 def compile_structured_hir(
     source: str,
@@ -3321,6 +3560,7 @@ def compile_structured_hir(
 ) -> StructuredHIRProgram:
     type_arena = TypeContextBuilder(allow_unresolved=False)
     type_cache: dict[str, tuple[str, TypeId]] = {}
+    typed_ast = TypedAst()
     if not source.strip():
         raise StructuredHIRCompileError("empty Structured HIR source")
     try:
@@ -3340,6 +3580,7 @@ def compile_structured_hir(
         preprocessed.declaration_kinds,
         type_arena,
         type_cache,
+        typed_ast,
     )
     function_nodes = {
         item.name: item for item in module.body if isinstance(item, ast.FunctionDef)
@@ -3356,24 +3597,6 @@ def compile_structured_hir(
     _preintern_analysis_types(function_nodes, type_arena, type_cache, path)
     for item in types.values():
         type_arena.register_declaration(_type_declaration_projection(item))
-    borrow_summaries = compute_borrow_summaries(
-        function_nodes,
-        types,
-        type_arena,
-    )
-    _OwnershipChecker(
-        path,
-        types,
-        function_nodes,
-        borrow_summaries,
-        preprocessed.binding_kinds,
-        type_context=type_arena,
-        compile_error=StructuredHIRCompileError,
-        type_name=_type_name,
-        stable_id=_stable_id,
-        is_borrowed=_is_borrowed,
-        qualified_name=_ast_qualified_name,
-    ).check()
     builder = _HIRBuilder(
         path,
         source,
@@ -3381,11 +3604,36 @@ def compile_structured_hir(
         types,
         function_nodes,
         ffi_program,
-        borrow_summaries,
+        {},
         type_arena=type_arena,
         type_cache=type_cache,
+        typed_ast=typed_ast,
     )
-    functions = tuple(builder.function(item) for item in function_nodes.values())
+    provisional_functions = tuple(builder.function(item) for item in function_nodes.values())
+    borrow_summaries = compute_borrow_summaries(
+        function_nodes,
+        type_arena,
+        typed_ast=typed_ast,
+    )
+    _OwnershipChecker(
+        path,
+        function_nodes,
+        borrow_summaries,
+        preprocessed.binding_kinds,
+        type_context=type_arena,
+        compile_error=StructuredHIRCompileError,
+        stable_id=_stable_id,
+        qualified_name=_ast_qualified_name,
+        typed_ast=typed_ast,
+    ).check()
+    if builder.unresolved_names:
+        raise StructuredHIRCompileError(
+            f"UnresolvedName: {min(builder.unresolved_names)}"
+        )
+    functions = tuple(
+        _finalize_hir_function(function, borrow_summaries.get(function.name, BorrowSummary()))
+        for function in provisional_functions
+    )
     _normalize_native_context_metadata(module, path)
     type_context = type_arena.freeze()
     frozen_arena = type_context.arena
@@ -3425,6 +3673,7 @@ def compile_canonical_hir(
     else:
         type_arena = TypeContextBuilder(allow_unresolved=False)
     type_cache: dict[str, tuple[str, TypeId]] = {}
+    typed_ast = TypedAst()
     path = program.source_path or next(
         (
             function.span.path
@@ -3455,6 +3704,7 @@ def compile_canonical_hir(
         preprocessed.declaration_kinds,
         type_arena,
         type_cache,
+        typed_ast,
     )
     function_nodes = {
         item.name: item
@@ -3478,36 +3728,43 @@ def compile_canonical_hir(
     _preintern_analysis_types(function_nodes, type_arena, type_cache, path)
     for item in types.values():
         type_arena.register_declaration(_type_declaration_projection(item))
-    borrow_summaries = compute_borrow_summaries(
-        function_nodes,
-        types,
-        type_arena,
-    )
-    _OwnershipChecker(
-        path,
-        types,
-        function_nodes,
-        borrow_summaries,
-        preprocessed.binding_kinds,
-        type_context=type_arena,
-        compile_error=StructuredHIRCompileError,
-        type_name=_type_name,
-        stable_id=_stable_id,
-        is_borrowed=_is_borrowed,
-        qualified_name=_ast_qualified_name,
-    ).check()
     builder = _HIRBuilder(
         path,
         source,
         preprocessed,
         types,
         function_nodes,
-        borrow_summaries=borrow_summaries,
+        borrow_summaries={},
         type_arena=type_arena,
         type_cache=type_cache,
+        typed_ast=typed_ast,
     )
-    functions = tuple(
+    provisional_functions = tuple(
         builder.function(item) for item in function_nodes.values()
+    )
+    borrow_summaries = compute_borrow_summaries(
+        function_nodes,
+        type_arena,
+        typed_ast=typed_ast,
+    )
+    _OwnershipChecker(
+        path,
+        function_nodes,
+        borrow_summaries,
+        preprocessed.binding_kinds,
+        type_context=type_arena,
+        compile_error=StructuredHIRCompileError,
+        stable_id=_stable_id,
+        qualified_name=_ast_qualified_name,
+        typed_ast=typed_ast,
+    ).check()
+    if builder.unresolved_names:
+        raise StructuredHIRCompileError(
+            f"UnresolvedName: {min(builder.unresolved_names)}"
+        )
+    functions = tuple(
+        _finalize_hir_function(function, borrow_summaries.get(function.name, BorrowSummary()))
+        for function in provisional_functions
     )
     for node in ast.walk(module):
         if hasattr(node, "_merlo_binding_kind"):
@@ -3558,6 +3815,7 @@ __all__ = [
     "TypeArena",
     "TypeContext",
     "TypeId",
+    "TypedAst",
     "TypeArenaError",
     "compile_structured_hir",
     "compile_canonical_hir",

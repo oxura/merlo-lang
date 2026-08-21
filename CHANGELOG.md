@@ -3,21 +3,24 @@
 ## Unreleased
 
 - Continues the `0.1.0-alpha.3-dev` compatibility line with language contract
-  `0.3`, frontend `8`, canonical `6`, HIR `10`, Obligation IR `1`, RIR `5`,
-  MIR `2`, runtime ABI `2`, and SemanticWorld `17`. Earlier lockfiles must be
-  regenerated with the alpha.3 compiler; see the migration guide.
-  `merlo.structured-typed-hir.v9` artifacts are rejected by the v10 reader.
+  `0.3`, frontend `8`, canonical `6`, HIR `11`, Obligation IR `1`, RIR `5`,
+  MIR `2`, runtime ABI `2`, and SemanticWorld `18`. Earlier lockfiles must be
+  regenerated with the current compiler; see the migration guide.
+  `merlo.structured-typed-hir.v10` artifacts are rejected by the v11 reader.
   The supported regeneration operation is
   `python -c 'from merlo.project import resolve_dependencies; resolve_dependencies("PROJECT")'`
   once per project root; there is no `merlo lock` command.
-- Structured HIR now stores one closed `TypeArena` snapshot and
+- Structured HIR continues to store one closed `TypeArena` snapshot and
   `type_arena_digest`, with validated `TypeId` beside retained diagnostic
-  spelling at every HIR-visible type position. Exact serialized pairs are
-  `type`/`type_id`, `payload_type`/`payload_type_id`, and
-  `return_type`/`return_type_id`; aliases are canonicalized and qualified
-  nominal names remain distinct. This is an HIR serialization/validation
-  boundary only and does not claim ownership, ContractGraph, RIR, MIR, or
-  backend migration; issues #84 and #85 remain open.
+  spelling at every HIR-visible type position. Issue #84 now carries this
+  TypeId authority through ownership, `Place` lookup, and borrow provenance;
+  retained spellings are diagnostic only. RIR v5, MIR v2, backend, and
+  generated-C semantics remain unchanged.
+- Replaces `merlo.borrow-summary.v3` with the strict v4 contract: semantic
+  relations use `TypeId` for borrow provenance and revisions, while retained
+  canonical spellings and bounded witnesses remain diagnostic-only. Issues
+  #85 (representation/layout identity) and #86 (later executable-IR scope)
+  remain open.
 - Resolves complete root and transitive package constraints with deterministic
   backtracking, validates malformed semver terms strictly, and revalidates online
   locks against the current registry while preserving verified offline replay.

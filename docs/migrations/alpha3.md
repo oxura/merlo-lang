@@ -1,4 +1,11 @@
 # Migrating from alpha.2 to alpha.3
+> **Superseded current-contract note (issue #84, HIR v11):** This migration
+> records the alpha.3 HIR v10 and BorrowSummary v3 transition as historical
+> evidence. The current compiler uses HIR v11, `merlo.borrow-summary.v4`, and
+> SemanticWorld v18; ownership, `Place` lookup, and borrow provenance are now
+> TypeId-authoritative. Issues #85 and #86 remain open for representation/layout
+> and later executable-IR scope. The historical migration text below is not
+> rewritten.
 
 Alpha.3 intentionally changes the filesystem and verification models. The
 compiler reports language `0.3`, frontend `8`, canonical `6`, HIR `10`,

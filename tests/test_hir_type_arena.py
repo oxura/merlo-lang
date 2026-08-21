@@ -10,6 +10,7 @@ from typing import Any
 
 import pytest
 
+from merlo import native_syntax as ast
 from merlo.structured_hir_v2 import (
     STRUCTURED_HIR_CONTRACT,
     StructuredHIRProgram,
@@ -18,7 +19,13 @@ from merlo.structured_hir_v2 import (
 )
 from merlo.surface_elaborator import elaborate_surface
 from merlo.surface_parser import parse_surface
-from merlo.type_arena import FrozenTypeArenaMutation, TypeArena, TypeExpr
+from merlo.typed_ast import TypedAst, TypedAstError
+from merlo.type_arena import (
+    FrozenTypeArenaMutation,
+    TypeArena,
+    TypeContextBuilder,
+    TypeExpr,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -92,7 +99,7 @@ def _hir(source: str = HIR_SOURCE) -> StructuredHIRProgram:
 def _typed_payload(program: StructuredHIRProgram) -> dict[str, Any]:
     payload = program.to_dict()
     assert payload["contract"] == STRUCTURED_HIR_CONTRACT
-    assert payload["schema_version"] == 10
+    assert payload["schema_version"] == 11
     assert "type_arena" in payload
     assert payload["type_arena_digest"] == program.type_arena_digest
     return payload
@@ -171,12 +178,12 @@ def _walk_nodes(node: dict[str, Any]):
         yield from _walk_nodes(child)
 
 
-def test_hir_v10_json_roundtrip_is_canonical_and_type_arena_is_closed() -> None:
+def test_hir_v11_json_roundtrip_is_canonical_and_type_arena_is_closed() -> None:
     original = _hir()
     restored = StructuredHIRProgram.from_json(original.to_json())
 
-    assert original.contract == "merlo.structured-typed-hir.v10"
-    assert original.schema_version == 10
+    assert original.contract == "merlo.structured-typed-hir.v11"
+    assert original.schema_version == 11
     assert original.type_context.arena.allow_unresolved is False
     assert original.type_arena_digest == original.type_context.arena.digest
     assert restored.to_json() == original.to_json()
@@ -598,3 +605,31 @@ def test_hir_reader_rejects_unresolved_arena_and_hir_v9() -> None:
     legacy["contract"] = "merlo.structured-typed-hir.v9"
     with pytest.raises(ValueError):
         StructuredHIRProgram.from_dict(legacy)
+
+
+def test_typed_ast_is_identity_keyed_strict_and_conflict_checked() -> None:
+    builder = TypeContextBuilder()
+    text = builder.intern_text("Text")
+    bytes_type = builder.intern_text("Bytes")
+    option = builder.intern_text("Option[Text]")
+    first = ast.parse("value = source").body[0].value
+    second = ast.parse("value = source").body[0].value
+    typed = TypedAst()
+
+    assert typed.record_expression(first, text) == text
+    assert typed.expression_type_id(first) == text
+    with pytest.raises(TypedAstError, match="missing expression TypeId"):
+        typed.expression_type_id(second)
+    with pytest.raises(TypedAstError, match="expression must be TypeId"):
+        typed.record_expression(second, "Text")
+    with pytest.raises(TypedAstError, match="conflicting expression TypeId"):
+        typed.record_expression(first, bytes_type)
+
+    typed.record_variant_projection(option, "Some", text)
+    typed.record_variant_projection_symbol_id(option, "Some", "variant-some")
+    assert typed.variant_projection_type_id(option, "Some") == text
+    assert typed.variant_projection_symbol_id(option, "Some") == "variant-some"
+    with pytest.raises(TypedAstError, match="conflicting variant projection TypeId"):
+        typed.record_variant_projection(option, "Some", bytes_type)
+    with pytest.raises(TypedAstError, match="missing variant projection symbol"):
+        typed.variant_projection_symbol_id(option, "None")

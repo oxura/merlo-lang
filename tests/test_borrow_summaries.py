@@ -177,7 +177,14 @@ def test_summary_hir_roundtrip_rir_and_cross_process() -> None:
     restored = StructuredHIRProgram.from_json(hir.to_json())
     assert restored.digest == hir.digest
     tampered = json.loads(hir.to_json())
-    tampered["functions"][0]["borrow_summary"]["entries"][0]["relation"]["borrow_type"] = "BytesView"
+    relation = tampered["functions"][0]["borrow_summary"]["entries"][0]["relation"]
+    relation["borrow_type"] = "BytesView"
+    with pytest.raises(
+        ValueError,
+        match="borrow relation type identity does not match spelling",
+    ):
+        StructuredHIRProgram.from_dict(tampered)
+    relation["borrow_type_id"] = hir.type_context.type_id("BytesView").value
     assert StructuredHIRProgram.from_dict(tampered).digest != hir.digest
     rir = lower_structured_hir_to_rir(restored)
     assert rir.function("borrow_text").borrow_summary == restored.function("borrow_text").borrow_summary
@@ -214,7 +221,7 @@ def test_semantic_world_exposes_function_borrow_summary(tmp_path: Path) -> None:
     world = SemanticWorld.build(source, require_interface_lock=False)
     symbol = world.inspect("app.main.borrow_text")["symbol"]
     summary = symbol["borrow_summary"]
-    assert summary["schema_version"] == 3
+    assert summary["schema_version"] == 4
     assert summary["entries"][0]["relation"]["source_parameter_index"] == 0
     assert world.data["borrow_summaries"]
 
@@ -236,7 +243,7 @@ def test_direct_recursion_has_one_semantic_relation_and_bounded_witness() -> Non
     assert summary.entries[0].relation.semantic_key() == (
         0,
         BorrowPlacePath.parameter(0),
-        "TextView",
+        hir.type_context.type_id("TextView"),
         BorrowPlacePath(),
         "direct",
         "borrow",

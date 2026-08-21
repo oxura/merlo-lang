@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     )
 
 WORLD_SCHEMA_VERSION = VERSIONS.semantic_world
-WORLD_CONTRACT = "merlo.semantic-world.v17"
+WORLD_CONTRACT = "merlo.semantic-world.v18"
 
 
 class WorldError(ValueError):
