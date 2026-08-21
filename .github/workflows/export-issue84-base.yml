@@ -1,0 +1,27 @@
+name: Export issue84 base
+
+on:
+  push:
+    branches:
+      - automation/export-issue84-base
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create repository bundle
+        run: git bundle create merlo-lang.bundle --all
+      - name: Upload repository bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: merlo-lang-issue84-base
+          path: merlo-lang.bundle
+          if-no-files-found: error
+          retention-days: 1
