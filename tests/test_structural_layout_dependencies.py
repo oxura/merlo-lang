@@ -154,15 +154,13 @@ def test_layout_parse_failures_are_rejected_before_descriptor_build() -> None:
     field = hir.types[0].fields[0]
     malformed_type = replace(field, type_name="Option[UInt64")
     malformed_decl = replace(hir.types[0], fields=(malformed_type,))
-    malformed_hir = replace(hir, types=(malformed_decl,))
-
-    validation = validate_recursive_layouts(malformed_hir.types)
+    validation = validate_recursive_layouts((malformed_decl,))
     assert validation.accepted is False
     assert validation.minimal_cycle_path == ()
     assert validation.diagnostic is not None
     assert validation.diagnostic.startswith("MalformedLayoutType: Option[UInt64")
-    with pytest.raises(RepresentationCompileError, match="MalformedLayoutType"):
-        build_type_descriptors(malformed_hir)
+    with pytest.raises(ValueError, match="field type identity does not match spelling"):
+        replace(hir, types=(malformed_decl,))
 
 
 def test_qualified_nominal_names_remain_distinct_layout_dependencies() -> None:

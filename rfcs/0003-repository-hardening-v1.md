@@ -104,6 +104,11 @@ moved, not redesigned. Production construction supplies the same error, type-nam
 stable-ID, borrowed-type, and qualified-name callbacks. Existing internal call
 sites cut over in one change; no parallel ownership authority remains.
 
+Historical note: this RFC's v9 statement records its accepted RFC 0003 merge
+state. RFC 0004 and issue #83 later supersede that statement only for HIR
+serialization: `merlo.structured-typed-hir.v10` is now authoritative. The
+ownership move described above remains unchanged.
+
 The C backend keeps its seven public exports. `GeneralCEmitter` gains one runtime
 emission mixin with no overlapping methods. Emission section order and all moved C
 string literals remain unchanged. New modules are covered by the existing
