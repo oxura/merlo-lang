@@ -3,9 +3,21 @@
 ## Unreleased
 
 - Continues the `0.1.0-alpha.3-dev` compatibility line with language contract
-  `0.3`, frontend `8`, canonical `6`, HIR `9`, Obligation IR `1`, RIR `4`,
+  `0.3`, frontend `8`, canonical `6`, HIR `10`, Obligation IR `1`, RIR `5`,
   MIR `2`, runtime ABI `2`, and SemanticWorld `17`. Earlier lockfiles must be
-  regenerated; see the migration guide.
+  regenerated with the alpha.3 compiler; see the migration guide.
+  `merlo.structured-typed-hir.v9` artifacts are rejected by the v10 reader.
+  The supported regeneration operation is
+  `python -c 'from merlo.project import resolve_dependencies; resolve_dependencies("PROJECT")'`
+  once per project root; there is no `merlo lock` command.
+- Structured HIR now stores one closed `TypeArena` snapshot and
+  `type_arena_digest`, with validated `TypeId` beside retained diagnostic
+  spelling at every HIR-visible type position. Exact serialized pairs are
+  `type`/`type_id`, `payload_type`/`payload_type_id`, and
+  `return_type`/`return_type_id`; aliases are canonicalized and qualified
+  nominal names remain distinct. This is an HIR serialization/validation
+  boundary only and does not claim ownership, ContractGraph, RIR, MIR, or
+  backend migration; issues #84 and #85 remain open.
 - Resolves complete root and transitive package constraints with deterministic
   backtracking, validates malformed semver terms strictly, and revalidates online
   locks against the current registry while preserving verified offline replay.
@@ -20,10 +32,12 @@
   while excluding `refs/tags/v*-alpha.*`; the existing alpha creation and
   immutability path is unchanged. The checked-in payload and authenticated API
   readback establish the live enforcement state.
-- Adds a versioned content-addressed Type Arena boundary, canonicalizes
-  `Int`/`UInt`/`Float` ownership queries through their 64-bit scalar forms, and
-  rejects malformed structural generic arities and unknown generic constructors
-  earlier without changing valid source grammar or HIR/RIR/MIR artifact schemas.
+- Adds a versioned content-addressed Type Arena boundary and makes it the
+  single closed arena authority for structured HIR v10. `Int`/`UInt`/`Float`
+  ownership queries continue to canonicalize through their 64-bit scalar forms;
+  malformed structural generic arities and unknown generic constructors are
+  rejected earlier. Ownership, RIR, MIR, backend, and generated-C semantics
+  remain unchanged; later consumer/layout work is tracked by issues #84/#85.
 - Replaces the stale roadmap with a checked maturity matrix and explicit Deep
   Core, Native Scale, heterogeneous-compute, product-proof, general-purpose,
   and self-host gates. Adds the normative Memory Model v1 safe-subset contract

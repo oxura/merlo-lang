@@ -1,13 +1,77 @@
 # Migrating from alpha.2 to alpha.3
 
 Alpha.3 intentionally changes the filesystem and verification models. The
-compiler reports language `0.3`, frontend `8`, canonical `6`, HIR `9`,
+compiler reports language `0.3`, frontend `8`, canonical `6`, HIR `10`,
 Obligation IR `1`, range analysis `1`, bounded symbolic execution `1`, optional
 SMT `1`, property evidence `1`, verification metrics `1`, ChangeIR `1`,
 semantic capsule `1`, semantic impact `1`, patch evidence `1`, preservation
-report `1`, change transaction `1`, RIR `4`, MIR `2`, runtime ABI `2`, and
-SemanticWorld `17`; earlier lockfiles must be regenerated with the alpha.3
-compiler.
+report `1`, change transaction `1`, RIR `5`, MIR `2`, runtime ABI `2`, and
+SemanticWorld `17`. Earlier lockfiles must be regenerated with the alpha.3
+compiler; the old HIR v9 artifact is not readable by the HIR v10 reader.
+
+## Structured HIR v10 and TypeArena
+
+Structured HIR is now serialized as the strict
+`merlo.structured-typed-hir.v10` contract (schema `10`). Every HIR-visible
+type position carries retained canonical diagnostic spelling together with a
+validated `TypeId`, or carries neither. The exact JSON pairs are
+`type`/`type_id`, `payload_type`/`payload_type_id`, and
+`return_type`/`return_type_id`. This includes declaration types, parameters,
+returns, record fields, enum payloads, flow results, local `Let`/`Var`/`Assign`
+nodes, and contract-condition result types. `HIRTypeDecl` also carries its
+nominal `type_id` beside `symbol_id` and `revision_id`; machine state fields
+are `{name,type,type_id}`. HIR-only FFI JSON annotates extern parameters,
+`return_type`/`return_type_id`, `error_type`/`error_type_id`, and `repr(C)`
+fields with `type_name`/`type_id`, while the underlying FFIProgram contract
+remains unchanged.
+
+In memory IDs are `TypeId` values and JSON uses `TypeId.to_dict()`; a raw
+spelling or unvalidated string is not an alternate representation.
+
+Each `StructuredHIRProgram` owns one completed local `TypeArena` snapshot and
+`type_arena_digest`. The snapshot is closed (`allow_unresolved=false`) and is
+the sole interning authority for declarations, functions, nodes, contracts,
+flows, machines, and HIR-only FFI annotations. The reader validates outer
+exact keys/contract/schema/invariants, restores the closed arena and checks
+its digest, validates HIR-only FFI IDs, restores native and typed records,
+then checks source digest, uniqueness, cross-record identities, and canonical
+roundtrip invariants. Each `TypeId` must exist in the arena and
+`arena.canonical(type_id)` must equal the retained canonical HIR spelling. The
+reader never reparses spelling and has no post-load fallback parser. HIR v9
+is rejected rather than upgraded through a compatibility shim.
+
+Aliases are normalized before interning (`Int`/`UInt`/`Float` map to
+`Int64`/`UInt64`/`Float64`); qualified names such as `app.Int` remain
+distinct. A nominal `TypeId` is stable by nominal name even when declaration
+semantics change and its `RevisionId` changes. `TypeId` identifies a type,
+`SymbolId` a declaration, `RevisionId` a declaration revision, and a future
+`LayoutId` (if introduced) a physical layout; these identities are not
+interchangeable. Retained spelling remains for diagnostics, while `TypeId`
+is authoritative for semantic validation.
+
+This is an HIR schema/serialization migration only. It does not claim an
+ownership, ContractGraph, RIR, MIR, LLVM, GPU, or backend cutover, and it does
+not change ownership or generated-C semantics. Issues #84 and #85 remain open
+for later consumer migration and layout scope.
+
+## Regenerating generated lockfiles
+
+There is no dedicated `merlo lock` CLI command. The supported resolver API is
+the public `resolve_dependencies` operation:
+
+```console
+python -c 'from merlo.project import resolve_dependencies; resolve_dependencies("PROJECT")'
+```
+
+Run that command once per project root containing `merlo.toml` (for example,
+`examples/access-log`), after installing the alpha.3 compiler. It rewrites
+that root's canonical `merlo.lock`; repeat for nested package roots such as
+`examples/packages/vendor/greeting` when regenerating the complete example
+corpus. Do not hand-edit compatibility fields. The checked-in 22 lockfiles
+(20 top-level example roots, the nested
+`examples/packages/vendor/greeting`, and `selfhost`) have been regenerated to
+`compatibility.hir: 10`. Any downstream lockfile with `compatibility.hir: 9`
+must run the supported resolver command above.
 
 SemanticWorld now includes the canonical constant-range analysis payload.
 Compiler results expose the same payload and merge its checked-arithmetic and

@@ -153,6 +153,12 @@ not silently interpreting `TypeId` as a spelling.
 - Diagnostic source spelling remains alongside structural identity during the
   staged migration; issue #83 owns the first serialized field and reader contract.
 
+Historical implementation note: PR #81 introduced `TypeArena` without
+replacing textual HIR fields. Issue #83 completed that follow-up in compiler
+schema 10; `merlo.structured-typed-hir.v10` is now the authoritative HIR
+serialization boundary, while issues #84 and #85 remain open for later
+consumer and layout scope.
+
 ## Acceptance record
 
 The repository owner accepted the v1 identity envelope, alias normalization,
@@ -162,7 +168,12 @@ after the RFC 0003 prerequisite merged and all review findings were resolved.
 Issue #88 records the review boundary; issues #83-#86 are explicitly future
 migrations or v2 work and do not broaden this v1 contract.
 
-Acceptance is not an independent human approval and does not claim that the arena
-has replaced textual HIR/RIR/MIR fields. PR #81 merged the exact reviewed Type
+Historical status note: the acceptance record above describes the RFC 0004
+boundary at acceptance time. Issue #83 has since completed the HIR boundary in
+compiler schema 10; `merlo.structured-typed-hir.v10` is authoritative for HIR
+serialization, while #84 and #85 remain open for later consumers and layout.
+
+At RFC0004 acceptance, this was not an independent human approval and did not
+claim that the arena had replaced textual HIR/RIR/MIR fields. PR #81 merged the exact reviewed Type
 Arena behavior to `main` as `e2c31b57b32be5befd5d25a213b13102d2d671c7`
 after production, pyflakes, native, and repository policy gates passed.
