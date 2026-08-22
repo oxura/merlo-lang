@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import json
 import subprocess
 
@@ -23,11 +25,16 @@ from merlo.native_c_backend import compile_c_source
 from merlo.representation_ir import (
     BoxDesc,
     EnumDesc,
+    LayoutId,
     RecordDesc,
+    RepresentationProgram,
     ScalarDesc,
+    TargetSpec,
     VecDesc,
+    layout_id_for_descriptor,
     lower_structured_hir_to_rir,
     validate_recursive_layouts,
+    verify_representation_program,
 )
 from merlo.representation_mir import (
     evaluate_general_mir,
@@ -145,6 +152,88 @@ def test_representation_ir_describes_layout_ownership_and_drop(layers):
     assert not {item.op for item in operations} & FORBIDDEN_DOMAIN_OPS
     assert all(item.revision_id and item.source.path.endswith("general_json.mlo") for item in operations)
     assert all(item.ownership_provenance for item in operations)
+
+
+def test_layout_ids_are_physical_target_bound_and_tamper_evident(layers):
+    _hir, representation, _mir, _optimized = layers
+    json_descriptor = representation.descriptor("Json")
+    uint_descriptor = representation.descriptor("UInt64")
+    int_descriptor = representation.descriptor("Int64")
+
+    assert uint_descriptor.type_id != int_descriptor.type_id
+    assert uint_descriptor.layout_id == int_descriptor.layout_id
+    assert layout_id_for_descriptor(json_descriptor) == json_descriptor.layout_id
+
+    wasm = TargetSpec(
+        "wasm32-unknown-unknown",
+        "little",
+        32,
+        "global",
+        "native",
+    )
+    gpu_shared = replace(TargetSpec(), address_space="gpu_shared")
+    assert layout_id_for_descriptor(json_descriptor, wasm) != json_descriptor.layout_id
+    assert (
+        layout_id_for_descriptor(json_descriptor, gpu_shared)
+        != json_descriptor.layout_id
+    )
+    restored = RepresentationProgram.from_json(representation.to_json())
+    assert restored.to_json() == representation.to_json()
+    assert restored.target_spec == representation.target_spec
+    assert restored.target_spec_digest == representation.target_spec_digest
+
+    diagnostic_only = replace(
+        json_descriptor,
+        name="JsonDiagnosticAlias",
+        source_type_identity="JsonDiagnosticAlias",
+        variants=tuple(
+            (
+                name,
+                "DiagnosticPayload" if payload is not None else None,
+                tag,
+            )
+            for name, payload, tag in json_descriptor.variants
+        ),
+    )
+    assert layout_id_for_descriptor(diagnostic_only) == json_descriptor.layout_id
+
+    record = representation.descriptor("JsonField")
+    shifted_fields = tuple(
+        (name, type_name, offset + (1 if index == 0 else 0))
+        for index, (name, type_name, offset) in enumerate(record.fields)
+    )
+    assert layout_id_for_descriptor(replace(record, fields=shifted_fields)) != record.layout_id
+
+    tampered_variants = tuple(
+        (
+            name,
+            LayoutId("0" * 64) if payload_layout is not None else None,
+            tag,
+        )
+        for name, payload_layout, tag in json_descriptor.variant_layout_ids
+    )
+    with pytest.raises(ValueError, match="LayoutId"):
+        verify_representation_program(
+            replace(
+                representation,
+                descriptors=tuple(
+                    replace(
+                        descriptor,
+                        variant_layout_ids=(
+                            tampered_variants
+                            if descriptor.name == "Json"
+                            else descriptor.variant_layout_ids
+                        ),
+                    )
+                    for descriptor in representation.descriptors
+                ),
+            )
+        )
+
+    with pytest.raises(ValueError, match="unknown target"):
+        TargetSpec("unknown-target", "little", 64)
+    with pytest.raises(ValueError, match="address space"):
+        replace(TargetSpec(), address_space="unknown")
 
 
 def test_layout_validation_rejects_inline_cycles_and_allows_owning_indirection():
