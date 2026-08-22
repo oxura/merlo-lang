@@ -342,6 +342,33 @@ def test_hir_type_ids_cover_local_contract_flow_and_machine_positions() -> None:
     )
 
 
+def test_flow_and_machine_revisions_use_canonical_type_ids() -> None:
+    canonical_source = (
+        FLOW_MACHINE_SOURCE.replace("input: Text", "input: Int64")
+        .replace("id: UInt64", "id: Int64")
+    )
+    aliased_source = canonical_source.replace("input: Int64", "input: Int").replace(
+        "id: Int64", "id: Int"
+    )
+    canonical = elaborate_surface(
+        parse_surface(canonical_source, path="revision-type-alias.mlo")
+    ).canonical
+    aliased = elaborate_surface(
+        parse_surface(aliased_source, path="revision-type-alias.mlo")
+    ).canonical
+
+    first = compile_canonical_hir(canonical)
+    second = compile_canonical_hir(aliased)
+
+    assert first.flows[0].parameters == second.flows[0].parameters
+    assert first.flows[0].revision_id == second.flows[0].revision_id
+    assert first.machines[0].parameters == second.machines[0].parameters
+    assert first.machines[0].revision_id == second.machines[0].revision_id
+    assert (
+        first.machines[0].transitions[0].revision_id
+        == second.machines[0].transitions[0].revision_id
+    )
+
 def test_hir_transition_requires_nonempty_source_identity_pairs() -> None:
     program = compile_canonical_hir(
         elaborate_surface(

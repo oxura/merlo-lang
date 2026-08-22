@@ -22,6 +22,7 @@ from merlo.collection_protocol import (
 )
 from merlo.ffi import FFICompileError, FFIProgram, validate_ffi
 from merlo.canonical_ast import (
+    CanonicalBinding,
     CanonicalFlowStep,
     CanonicalParallel,
     CanonicalProgram,
@@ -3537,11 +3538,78 @@ def _canonical_flow_machine_hir(
             type_name,
             "canonical",
         )
+    def typed_statement(statement: object) -> object:
+        if isinstance(statement, CanonicalBinding):
+            typed = intern(statement.type_name)
+            assert typed is not None
+            return (
+                "binding",
+                statement.name,
+                typed[1].value,
+                statement.mutable,
+                statement.expression,
+                _canonical_span(statement.span).to_dict(),
+                statement.synthetic_reason,
+            )
+        return statement.to_payload()
+
+    def typed_flow_item(item: object) -> object:
+        if isinstance(item, CanonicalFlowStep):
+            typed = intern(item.type_name)
+            assert typed is not None
+            return (
+                "step",
+                item.node_id,
+                item.name,
+                item.value,
+                typed[1].value,
+                tuple(policy.to_payload() for policy in item.policies),
+                _canonical_span(item.span).to_dict(),
+            )
+        if isinstance(item, CanonicalParallel):
+            return (
+                "parallel",
+                item.node_id,
+                tuple(typed_flow_item(branch) for branch in item.branches),
+                _canonical_span(item.span).to_dict(),
+            )
+        return typed_statement(item)
+
+    def typed_transition(transition: object) -> object:
+        return (
+            transition.node_id,
+            transition.name,
+            transition.sources,
+            transition.target,
+            transition.effects,
+            tuple(typed_statement(item) for item in transition.body),
+            _canonical_span(transition.span).to_dict(),
+        )
+
 
     flows: list[HIRFlow] = []
     for flow in program.flows:
         symbol = _stable_id("shirs", flow.span.path, "flow", flow.name)
-        revision = _stable_id("rev", flow.to_payload())
+        typed_parameters = tuple(
+            (name, intern(raw_type)[1].value)
+            for name, raw_type in flow.parameters
+        )
+        typed_return = intern(flow.return_type)
+        assert typed_return is not None
+        typed_body = tuple(typed_flow_item(item) for item in flow.body)
+        revision = _stable_id(
+            "rev",
+            "flow",
+            flow.name,
+            typed_parameters,
+            typed_return[1].value,
+            flow.durable,
+            flow.effects,
+            flow.capabilities,
+            typed_body,
+            _canonical_span(flow.span).to_dict(),
+            flow.exported,
+        )
         scope = _stable_id("scope", flow.span.path, flow.name, "flow")
         body: list[HIRNode] = []
 
@@ -3629,14 +3697,40 @@ def _canonical_flow_machine_hir(
             state.name: _stable_id("state", symbol, state.name)
             for state in machine.states
         }
+        typed_parameters = tuple(
+            (name, intern(raw_type)[1].value)
+            for name, raw_type in machine.parameters
+        )
+        typed_states = tuple(
+            (
+                state.name,
+                tuple(
+                    (name, intern(raw_type)[1].value)
+                    for name, raw_type in state.fields
+                ),
+                _canonical_span(state.span).to_dict(),
+            )
+            for state in machine.states
+        )
+        typed_transitions = tuple(
+            typed_transition(transition) for transition in machine.transitions
+        )
         if machine.initial is not None and machine.initial not in state_ids:
             raise StructuredHIRCompileError(
                 f"{machine.span.path}: unknown initial machine state {machine.initial}"
             )
         revision = _stable_id(
             "rev",
-            machine.to_payload(),
+            "machine",
+            machine.name,
+            typed_parameters,
+            typed_states,
+            machine.initial,
+            machine.invariant,
+            typed_transitions,
             tuple(sorted(state_ids.items())),
+            _canonical_span(machine.span).to_dict(),
+            machine.exported,
         )
         scope = _stable_id("scope", machine.span.path, machine.name, "machine")
         transitions = []
@@ -3659,7 +3753,8 @@ def _canonical_flow_machine_hir(
                     symbol_id=None,
                     revision_id=_stable_id(
                         "rev",
-                        transition.to_payload(),
+                        "transition",
+                        typed_transition(transition),
                         tuple(state_ids[item] for item in transition.sources),
                         state_ids[transition.target],
                     ),
