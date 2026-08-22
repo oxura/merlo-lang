@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import copy
 import hashlib
 import json
@@ -216,6 +217,12 @@ def test_hir_owns_frozen_context_and_type_declarations() -> None:
     ):
         with pytest.raises(FrozenTypeArenaMutation):
             operation()
+
+def test_independent_hir_compilations_do_not_share_native_context_state() -> None:
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        programs = tuple(pool.map(lambda _: _hir(), range(4)))
+
+    assert {program.to_json() for program in programs} == {_hir().to_json()}
 
 def test_hir_json_digest_and_reproduction_are_stable_in_a_fresh_process() -> None:
     warmup_source = (

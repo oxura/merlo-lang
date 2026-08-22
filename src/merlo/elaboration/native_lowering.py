@@ -125,8 +125,17 @@ class _SurfaceNativeBuilder:
 
         return build(parsed)
 
-    def _name(self, name: str, span, *, ctx: ast.expr_context = ast.Load()) -> ast.Name:
-        return self._loc(ast.Name(id=name, ctx=ctx), span)
+    def _name(
+        self,
+        name: str,
+        span,
+        *,
+        ctx: ast.expr_context | None = None,
+    ) -> ast.Name:
+        return self._loc(
+            ast.Name(id=name, ctx=ast.Load() if ctx is None else ctx),
+            span,
+        )
 
     def _expr(self, expression: SurfaceExpression) -> ast.expr:
         if isinstance(expression, SurfaceHole):
