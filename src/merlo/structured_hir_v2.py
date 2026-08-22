@@ -1500,24 +1500,24 @@ class _HIRBuilder:
             else ()
         )
         if reference.constructor == "MapEntry" and len(reference.arguments) == 2:
-            for field, field_type_id in zip(
+            for field_name, field_type_id in zip(
                 ("key", "value"),
                 reference.arguments,
                 strict=True,
             ):
                 self.typed_ast.record_field_projection(
                     typed[1],
-                    field,
+                    field_name,
                     field_type_id,
                 )
                 self.typed_ast.record_field_projection_symbol_id(
                     typed[1],
-                    field,
+                    field_name,
                     _stable_id(
                         "shirs",
                         "structural-field",
                         typed[1].value,
-                        field,
+                        field_name,
                     ),
                 )
         for variant, payload_type_id in variants:
