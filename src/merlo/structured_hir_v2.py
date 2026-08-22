@@ -1179,6 +1179,11 @@ def _map_types(type_name: str | None) -> tuple[str, str] | None:
     parts = generic_parts(type_name, "Map", arity=2)
     return parts if parts is not None else None  # type: ignore[return-value]
 
+def _map_entry_types(type_name: str | None) -> tuple[str, str] | None:
+    parts = generic_parts(type_name, "MapEntry", arity=2)
+    return parts if parts is not None else None  # type: ignore[return-value]
+
+
 
 def _sum_variants(type_name: str | None) -> dict[str, str | None] | None:
     option = generic_parts(type_name, "Option", arity=1)
@@ -1494,6 +1499,27 @@ class _HIRBuilder:
             if reference.constructor == "Result" and len(reference.arguments) == 2
             else ()
         )
+        if reference.constructor == "MapEntry" and len(reference.arguments) == 2:
+            for field, field_type_id in zip(
+                ("key", "value"),
+                reference.arguments,
+                strict=True,
+            ):
+                self.typed_ast.record_field_projection(
+                    typed[1],
+                    field,
+                    field_type_id,
+                )
+                self.typed_ast.record_field_projection_symbol_id(
+                    typed[1],
+                    field,
+                    _stable_id(
+                        "shirs",
+                        "structural-field",
+                        typed[1].value,
+                        field,
+                    ),
+                )
         for variant, payload_type_id in variants:
             self.typed_ast.record_variant_projection_symbol_id(
                 typed[1],
@@ -2228,7 +2254,11 @@ class _HIRBuilder:
                 for member in declaration.fields:
                     if member.name == field_name:
                         return member.type_name
+        map_entry = _map_entry_types(owner)
+        if map_entry is not None:
+            return {"key": map_entry[0], "value": map_entry[1]}.get(field_name)
         return None
+
 
     def _result_parts(self, type_name: str) -> tuple[str, str] | None:
         parts = generic_parts(type_name, "Result", arity=2)
@@ -3153,12 +3183,22 @@ class _HIRBuilder:
         if isinstance(node, ast.For) and isinstance(node.target, ast.Name):
             iterable = self.expression(node.iter)
             shape = collection_shape(iterable.type_name)
+            borrowed_parts = generic_parts(iterable.type_name, "Borrow", arity=1)
+            borrowed_type = borrowed_parts[0] if borrowed_parts is not None else None
+            borrowed_shape = collection_shape(borrowed_type)
+            borrowed_map = _map_types(borrowed_type)
             self.local_types[node.target.id] = (
                 shape.element_type
                 if shape is not None
-                else "TextView"
-                if iterable.type_name == "FileLines"
-                else "Inferred"
+                else borrowed_shape.element_type
+                if borrowed_shape is not None
+                else (
+                    f"MapEntry[{borrowed_map[0]},{borrowed_map[1]}]"
+                    if borrowed_map is not None
+                    else "TextView"
+                    if iterable.type_name == "FileLines"
+                    else "Inferred"
+                )
             )
             target_type = self._intern_type(self.local_types[node.target.id])
             if target_type is not None:

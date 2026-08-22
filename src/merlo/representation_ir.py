@@ -387,6 +387,11 @@ def _map_types(type_name: str) -> tuple[str, str] | None:
     parts = generic_parts(type_name, "Map", arity=2)
     return parts if parts is not None else None  # type: ignore[return-value]
 
+def _map_entry_types(type_name: str) -> tuple[str, str] | None:
+    parts = generic_parts(type_name, "MapEntry", arity=2)
+    return parts if parts is not None else None  # type: ignore[return-value]
+
+
 
 def _array_parts(type_name: str) -> tuple[str, int] | None:
     parts = generic_parts(type_name, "Array", arity=2)
@@ -900,6 +905,32 @@ class _DescriptorBuilder:
             )
             self.descriptors[type_name] = descriptor
             return descriptor
+        map_entry_types = _map_entry_types(type_name)
+        if map_entry_types is not None:
+            key_type, value_type = map_entry_types
+            key = self.get(key_type)
+            value = self.get(value_type)
+            descriptor = BorrowDesc(
+                type_name,
+                "borrow",
+                16,
+                8,
+                "aggregate",
+                "trivial",
+                "copy",
+                "trivial",
+                (),
+                (key_type, value_type),
+                _stable_id(
+                    "type",
+                    "map_entry",
+                    key.source_type_identity,
+                    value.source_type_identity,
+                ),
+            )
+            self.descriptors[type_name] = descriptor
+            return descriptor
+
         generic = _generic(type_name)
         if generic is not None:
             base = generic.name
