@@ -13,6 +13,7 @@ from merlo.representation_mir import (
     GeneralPerformanceMIR,
 )
 from merlo.structured_hir_v2 import SourceSpan
+from merlo.type_arena import TypeContextBuilder
 
 from merlo.parallel_ir import (
     ParallelIR,
@@ -180,7 +181,6 @@ def test_effects_cycles_and_tampering_reject() -> None:
     ):
         ParallelIR.from_dict(payload)
 
-
 def test_mir_lowering_proves_or_falls_back() -> None:
     span = SourceSpan(
         "<parallel-test>",
@@ -189,6 +189,9 @@ def test_mir_lowering_proves_or_falls_back() -> None:
         1,
         2,
     )
+    builder = TypeContextBuilder()
+    uint64_id = builder.intern_text("UInt64")
+    type_arena = builder.freeze().arena
 
     def instruction(
         identifier: str,
@@ -218,6 +221,9 @@ def test_mir_lowering_proves_or_falls_back() -> None:
                 ("vector", True),
                 ("lanes", 4),
             ),
+            type_id=uint64_id,
+            operand_type_ids=(uint64_id,),
+            result_type_id=uint64_id,
         )
 
     def mir(
@@ -246,6 +252,7 @@ def test_mir_lowering_proves_or_falls_back() -> None:
                 ),
             ),
             span,
+            return_type_id=uint64_id,
         )
         return GeneralPerformanceMIR(
             _DIGEST,
@@ -255,6 +262,8 @@ def test_mir_lowering_proves_or_falls_back() -> None:
             "5" * 64,
             "main",
             (function,),
+            type_arena=type_arena,
+            type_arena_digest=type_arena.digest,
         )
 
     pure = lower_performance_mir(

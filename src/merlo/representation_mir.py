@@ -1,4 +1,4 @@
-"""CFG Performance MIR for Structured HIR v2 / Representation IR v1."""
+"""CFG Performance MIR for Structured HIR v2 / Representation IR v6."""
 
 from __future__ import annotations
 
@@ -11,14 +11,101 @@ from merlo.collection_protocol import (
     FUSIBLE_COLLECTION_ELEMENTS,
     collection_shape,
 )
-from merlo.representation_ir import RIROperation, RIRFunction, RepresentationProgram
+from merlo.representation_ir import (
+    DEFAULT_TARGET_SPEC,
+    DropPlanId,
+    LayoutId,
+    RepresentationProgram,
+    RIROperation,
+    RIRFunction,
+    TargetSpec,
+    TYPE_ARENA_CONTRACT,
+    verify_representation_program,
+)
 from merlo.representation_runtime import EvaluationResult, evaluate_structured_hir
 from merlo.structured_hir_v2 import SourceSpan, StructuredHIRProgram
+from merlo.type_arena import (
+    FrozenTypeArena,
+    TypeArena,
+    TypeArenaError,
+    TypeContext,
+    TypeId,
+)
 
 
-GENERAL_MIR_SCHEMA_VERSION = 2
-GENERAL_MIR_CONTRACT = "merlo.performance-mir.general-representation.v2"
-_DOMAIN_OPS = {"json_parse", "json_tokenize", "json_token_checksum", "json_decode", "json_build_ast"}
+
+class MIRVerificationError(ValueError):
+    """Fail-closed executable MIR verification failure."""
+
+GENERAL_MIR_SCHEMA_VERSION = 3
+GENERAL_MIR_CONTRACT = "merlo.performance-mir.general-representation.v3"
+_DOMAIN_OPS = {
+    "json_parse",
+    "json_tokenize",
+    "json_token_checksum",
+    "json_decode",
+    "json_build_ast",
+}
+def _json_payload(value: object) -> Any:
+    if isinstance(value, (TypeId, LayoutId, DropPlanId)):
+        return value.to_dict()
+    if isinstance(value, (tuple, list)):
+        return [_json_payload(item) for item in value]
+    if isinstance(value, dict):
+        return {
+            str(key): _json_payload(value[key])
+            for key in sorted(value)
+        }
+    return value
+
+
+def _type_id_from_dict(value: object, label: str) -> TypeId:
+    try:
+        return TypeId.from_dict(value)
+    except TypeArenaError as exc:
+        raise ValueError(f"invalid MIR {label} TypeId") from exc
+
+
+def _optional_type_id_from_dict(value: object, label: str) -> TypeId | None:
+    return None if value is None else _type_id_from_dict(value, label)
+
+def _drop_plan_id_from_dict(value: object, label: str) -> DropPlanId:
+    try:
+        return DropPlanId.from_dict(value)
+    except ValueError as exc:
+        raise ValueError(f"invalid MIR {label} DropPlanId") from exc
+
+
+def _source_from_dict(value: object) -> SourceSpan:
+    if not isinstance(value, dict) or set(value) != {
+        "path", "line", "column", "end_line", "end_column"
+    }:
+        raise ValueError("invalid MIR source span")
+    return SourceSpan(
+        value["path"],
+        value["line"],
+        value["column"],
+        value["end_line"],
+        value["end_column"],
+    )
+
+
+def _hydrate(value: object) -> Any:
+    if isinstance(value, dict):
+        if (
+            set(value) == {"contract", "value"}
+            and value["contract"] == "merlo.drop-plan.v1"
+        ):
+            return _drop_plan_id_from_dict(value, "attribute")
+        if (
+            set(value) == {"contract", "value"}
+            and value["contract"] == "merlo.type-id.v1"
+        ):
+            return _type_id_from_dict(value, "attribute")
+        return {key: _hydrate(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return tuple(_hydrate(item) for item in value)
+    return value
 
 
 @dataclass(frozen=True)
@@ -34,6 +121,25 @@ class GeneralMIRInstruction:
     ownership_provenance: str
     effects: tuple[str, ...]
     attributes: tuple[tuple[str, Any], ...] = ()
+    type_id: TypeId | None = None
+    operand_type_ids: tuple[TypeId, ...] = ()
+    result_type_id: TypeId | None = None
+    place_type_ids: tuple[tuple[str, TypeId], ...] = ()
+
+    def __post_init__(self) -> None:
+        for label, value in (
+            ("type_id", self.type_id),
+            ("result_type_id", self.result_type_id),
+        ):
+            if value is not None and not isinstance(value, TypeId):
+                raise ValueError(f"MIR instruction {label} must be TypeId")
+        if any(not isinstance(item, TypeId) for item in self.operand_type_ids):
+            raise ValueError("MIR operand identities must be TypeId")
+        if any(
+            not isinstance(name, str) or not isinstance(type_id, TypeId)
+            for name, type_id in self.place_type_ids
+        ):
+            raise ValueError("MIR place identities must be named TypeIds")
 
     @property
     def attribute_map(self) -> dict[str, Any]:
@@ -44,15 +150,76 @@ class GeneralMIRInstruction:
             "id": self.id,
             "op": self.op,
             "type": self.type_name,
+            "type_id": self.type_id.to_dict() if self.type_id else None,
             "operands": list(self.operands),
+            "operand_type_ids": [item.to_dict() for item in self.operand_type_ids],
             "result": self.result,
+            "result_type_id": (
+                self.result_type_id.to_dict()
+                if self.result_type_id
+                else None
+            ),
+            "place_type_ids": [
+                {"name": name, "type_id": type_id.to_dict()}
+                for name, type_id in self.place_type_ids
+            ],
             "source": self.source.to_dict(),
             "symbol_id": self.symbol_id,
             "revision_id": self.revision_id,
             "ownership_provenance": self.ownership_provenance,
             "effects": list(self.effects),
-            "attributes": dict(self.attributes),
+            "attributes": _json_payload(dict(self.attributes)),
         }
+    @classmethod
+    def from_dict(cls, value: object) -> "GeneralMIRInstruction":
+        expected = {
+            "id",
+            "op",
+            "type",
+            "type_id",
+            "operands",
+            "operand_type_ids",
+            "result",
+            "result_type_id",
+            "place_type_ids",
+            "source",
+            "symbol_id",
+            "revision_id",
+            "ownership_provenance",
+            "effects",
+            "attributes",
+        }
+        if not isinstance(value, dict) or set(value) != expected:
+            raise ValueError("MIR instruction schema mismatch")
+        attributes = value["attributes"]
+        if not isinstance(attributes, dict):
+            raise ValueError("MIR instruction attributes must be an object")
+        return cls(
+            value["id"],
+            value["op"],
+            value["type"],
+            tuple(value["operands"]),
+            value["result"],
+            _source_from_dict(value["source"]),
+            value["symbol_id"],
+            value["revision_id"],
+            value["ownership_provenance"],
+            tuple(value["effects"]),
+            tuple((key, _hydrate(item)) for key, item in attributes.items()),
+            _optional_type_id_from_dict(value["type_id"], "instruction"),
+            tuple(
+                _type_id_from_dict(item, "operand")
+                for item in value["operand_type_ids"]
+            ),
+            _optional_type_id_from_dict(value["result_type_id"], "result"),
+            tuple(
+                (
+                    item["name"],
+                    _type_id_from_dict(item["type_id"], "place"),
+                )
+                for item in value["place_type_ids"]
+            ),
+        )
 
 
 @dataclass(frozen=True)
@@ -70,6 +237,21 @@ class GeneralMIRTerminator:
             "cases": [list(item) for item in self.cases],
         }
 
+    @classmethod
+    def from_dict(cls, value: object) -> "GeneralMIRTerminator":
+        if not isinstance(value, dict) or set(value) != {
+            "kind",
+            "targets",
+            "value",
+            "cases",
+        }:
+            raise ValueError("MIR terminator schema mismatch")
+        return cls(
+            value["kind"],
+            tuple(value["targets"]),
+            value["value"],
+            tuple(tuple(item) for item in value["cases"]),
+        )
 
 @dataclass(frozen=True)
 class GeneralMIRBlock:
@@ -83,6 +265,22 @@ class GeneralMIRBlock:
             "instructions": [item.to_dict() for item in self.instructions],
             "terminator": self.terminator.to_dict(),
         }
+    @classmethod
+    def from_dict(cls, value: object) -> "GeneralMIRBlock":
+        if not isinstance(value, dict) or set(value) != {
+            "id",
+            "instructions",
+            "terminator",
+        }:
+            raise ValueError("MIR block schema mismatch")
+        return cls(
+            value["id"],
+            tuple(
+                GeneralMIRInstruction.from_dict(item)
+                for item in value["instructions"]
+            ),
+            GeneralMIRTerminator.from_dict(value["terminator"]),
+        )
 
 
 @dataclass(frozen=True)
@@ -95,6 +293,8 @@ class GeneralMIRFunction:
     effects: tuple[str, ...]
     blocks: tuple[GeneralMIRBlock, ...]
     source: SourceSpan
+    parameter_type_ids: tuple[TypeId, ...] = ()
+    return_type_id: TypeId | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -102,14 +302,58 @@ class GeneralMIRFunction:
             "symbol_id": self.symbol_id,
             "revision_id": self.revision_id,
             "parameters": [
-                {"name": name, "type": type_name, "ownership": ownership}
-                for name, type_name, ownership in self.parameters
+                {
+                    "name": name,
+                    "type": type_name,
+                    "type_id": self.parameter_type_ids[index].to_dict(),
+                    "ownership": ownership,
+                }
+                for index, (name, type_name, ownership) in enumerate(self.parameters)
             ],
             "return_type": self.return_type,
+            "return_type_id": (
+                self.return_type_id.to_dict()
+                if self.return_type_id
+                else None
+            ),
             "effects": list(self.effects),
             "source": self.source.to_dict(),
             "blocks": [item.to_dict() for item in self.blocks],
         }
+    @classmethod
+    def from_dict(cls, value: object) -> "GeneralMIRFunction":
+        if not isinstance(value, dict) or set(value) != {
+            "name",
+            "symbol_id",
+            "revision_id",
+            "parameters",
+            "return_type",
+            "return_type_id",
+            "effects",
+            "source",
+            "blocks",
+        }:
+            raise ValueError("MIR function schema mismatch")
+        parameters = tuple(
+            (item["name"], item["type"], item["ownership"])
+            for item in value["parameters"]
+        )
+        parameter_type_ids = tuple(
+            _type_id_from_dict(item["type_id"], "parameter")
+            for item in value["parameters"]
+        )
+        return cls(
+            value["name"],
+            value["symbol_id"],
+            value["revision_id"],
+            parameters,
+            value["return_type"],
+            tuple(value["effects"]),
+            tuple(GeneralMIRBlock.from_dict(item) for item in value["blocks"]),
+            _source_from_dict(value["source"]),
+            parameter_type_ids,
+            _type_id_from_dict(value["return_type_id"], "return"),
+        )
 
 
 @dataclass(frozen=True)
@@ -127,10 +371,42 @@ class GeneralPerformanceMIR:
     surface_source: str = field(default="", repr=False, compare=False)
     schema_version: int = GENERAL_MIR_SCHEMA_VERSION
     contract: str = GENERAL_MIR_CONTRACT
+    type_arena: FrozenTypeArena | None = None
+    type_arena_digest: str = ""
+    descriptor_layouts: tuple[tuple[TypeId, LayoutId], ...] = ()
+    type_arena_contract: str = TYPE_ARENA_CONTRACT
+    predecessor_digest: str = ""
+    target_spec: TargetSpec = DEFAULT_TARGET_SPEC
+    target_spec_digest: str = ""
+    drop_plan_bindings: tuple[tuple[TypeId, DropPlanId], ...] = ()
 
     def __post_init__(self) -> None:
         if self.schema_version != GENERAL_MIR_SCHEMA_VERSION:
             raise ValueError("General Performance MIR schema drift")
+        if self.contract != GENERAL_MIR_CONTRACT:
+            raise ValueError("General Performance MIR contract drift")
+        if self.type_arena_contract != TYPE_ARENA_CONTRACT:
+            raise ValueError("General Performance MIR TypeArena contract drift")
+        if not isinstance(self.type_arena, FrozenTypeArena):
+            raise ValueError("General Performance MIR requires a frozen TypeArena")
+        if self.type_arena.allow_unresolved:
+            raise ValueError("General Performance MIR requires a closed TypeArena")
+        if self.type_arena.digest != self.type_arena_digest:
+            raise ValueError("General Performance MIR TypeArena digest mismatch")
+        if self.predecessor_digest == "":
+            object.__setattr__(
+                self,
+                "predecessor_digest",
+                self.representation_ir_digest,
+            )
+        if self.predecessor_digest != self.representation_ir_digest:
+            raise ValueError("General Performance MIR predecessor digest mismatch")
+        if not isinstance(self.target_spec, TargetSpec):
+            raise ValueError("General Performance MIR requires a target spec")
+        if self.target_spec_digest == "":
+            object.__setattr__(self, "target_spec_digest", self.target_spec.digest)
+        if self.target_spec_digest != self.target_spec.digest:
+            raise ValueError("General Performance MIR target specification digest mismatch")
         if self.entry_function not in {item.name for item in self.functions}:
             raise ValueError("General Performance MIR entry function missing")
         instructions = [
@@ -147,10 +423,15 @@ class GeneralPerformanceMIR:
             raise ValueError(
                 "type-directed drop glue missing from General Performance MIR"
             )
+        verify_general_mir(self)
 
     @property
     def instruction_count(self) -> int:
-        return sum(len(block.instructions) for function in self.functions for block in function.blocks)
+        return sum(
+            len(block.instructions)
+            for function in self.functions
+            for block in function.blocks
+        )
 
     @property
     def digest(self) -> str:
@@ -163,9 +444,26 @@ class GeneralPerformanceMIR:
             "source_sha256": self.source_sha256,
             "source_hir_digest": self.source_hir_digest,
             "representation_ir_digest": self.representation_ir_digest,
+            "predecessor_digest": self.predecessor_digest,
             "descriptors_digest": self.descriptors_digest,
             "drop_plans_digest": self.drop_plans_digest,
             "entry_function": self.entry_function,
+            "type_arena_contract": self.type_arena_contract,
+            "type_arena": self.type_arena.to_dict(),
+            "type_arena_digest": self.type_arena_digest,
+            "target_spec": self.target_spec.to_dict(),
+            "target_spec_digest": self.target_spec_digest,
+            "descriptor_layouts": [
+                {"type_id": type_id.to_dict(), "layout_id": layout_id.to_dict()}
+                for type_id, layout_id in self.descriptor_layouts
+            ],
+            "drop_plan_bindings": [
+                {
+                    "type_id": type_id.to_dict(),
+                    "drop_plan_id": drop_plan_id.to_dict(),
+                }
+                for type_id, drop_plan_id in self.drop_plan_bindings
+            ],
             "optimized": self.optimized,
             "optimization_passes": list(self.optimization_passes),
             "instruction_count": self.instruction_count,
@@ -182,12 +480,133 @@ class GeneralPerformanceMIR:
                 "calls_explicit": True,
                 "domain_intrinsics_absent": True,
                 "representation_ir_predecessor_required": True,
+                "opaque_type_ids": True,
+                "optimizer_verifier_boundary": True,
+                "target_specific_layouts": True,
+                "predecessor_digest_required": True,
             },
         }
 
     def to_json(self) -> str:
-        return json.dumps(self.to_dict(), ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        return json.dumps(
+            self.to_dict(),
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+    @classmethod
+    def from_dict(cls, value: object) -> "GeneralPerformanceMIR":
+        expected = {
+            "schema_version",
+            "contract",
+            "source_sha256",
+            "source_hir_digest",
+            "representation_ir_digest",
+            "predecessor_digest",
+            "descriptors_digest",
+            "drop_plans_digest",
+            "entry_function",
+            "type_arena_contract",
+            "type_arena",
+            "type_arena_digest",
+            "target_spec",
+            "target_spec_digest",
+            "descriptor_layouts",
+            "optimized",
+            "optimization_passes",
+            "instruction_count",
+            "functions",
+            "requires_drop_glue",
+            "drop_plan_bindings",
+            "invariants",
+        }
+        if not isinstance(value, dict) or set(value) != expected:
+            raise ValueError("MIR schema mismatch")
+        invariants = {
+            "cfg_basic_blocks": True,
+            "allocation_operations_explicit": True,
+            "loads_stores_explicit": True,
+            "enum_tags_explicit": True,
+            "moves_explicit": True,
+            "drops_explicit": True,
+            "bounds_checks_explicit": True,
+            "calls_explicit": True,
+            "domain_intrinsics_absent": True,
+            "representation_ir_predecessor_required": True,
+            "opaque_type_ids": True,
+            "optimizer_verifier_boundary": True,
+            "target_specific_layouts": True,
+            "predecessor_digest_required": True,
+        }
+        if value["schema_version"] != GENERAL_MIR_SCHEMA_VERSION:
+            raise ValueError("MIR schema version drift")
+        if value["contract"] != GENERAL_MIR_CONTRACT:
+            raise ValueError("MIR contract drift")
+        if value["invariants"] != invariants:
+            raise ValueError("MIR invariants drift")
+        try:
+            arena = TypeArena.from_dict(value["type_arena"]).freeze()
+        except TypeArenaError as exc:
+            raise ValueError("invalid MIR TypeArena") from exc
+        if arena.digest != value["type_arena_digest"]:
+            raise ValueError("MIR TypeArena digest mismatch")
+        if value["type_arena_contract"] != TYPE_ARENA_CONTRACT:
+            raise ValueError("MIR TypeArena contract drift")
+        target_spec = TargetSpec.from_dict(value["target_spec"])
+        if value["target_spec_digest"] != target_spec.digest:
+            raise ValueError("MIR target specification digest mismatch")
+        result = cls(
+            value["source_sha256"],
+            value["source_hir_digest"],
+            value["representation_ir_digest"],
+            value["descriptors_digest"],
+            value["drop_plans_digest"],
+            value["entry_function"],
+            tuple(
+                GeneralMIRFunction.from_dict(item)
+                for item in value["functions"]
+            ),
+            value["optimized"],
+            tuple(value["optimization_passes"]),
+            value["requires_drop_glue"],
+            type_arena=arena,
+            type_arena_digest=value["type_arena_digest"],
+            descriptor_layouts=tuple(
+                (
+                    _type_id_from_dict(item["type_id"], "descriptor layout"),
+                    LayoutId.from_dict(item["layout_id"]),
+                )
+                for item in value["descriptor_layouts"]
+            ),
+            drop_plan_bindings=tuple(
+                (
+                    _type_id_from_dict(item["type_id"], "drop plan binding"),
+                    _drop_plan_id_from_dict(
+                        item["drop_plan_id"],
+                        "drop plan binding",
+                    ),
+                )
+                for item in value["drop_plan_bindings"]
+            ),
+            type_arena_contract=value["type_arena_contract"],
+            predecessor_digest=value["predecessor_digest"],
+            target_spec=target_spec,
+            target_spec_digest=value["target_spec_digest"],
+        )
+        if result.to_dict() != value:
+            raise ValueError("non-canonical MIR artifact")
+        return result
 
+    @classmethod
+    def from_json(cls, value: str) -> "GeneralPerformanceMIR":
+        try:
+            raw = json.loads(value)
+        except (TypeError, json.JSONDecodeError) as exc:
+            raise ValueError("invalid MIR JSON") from exc
+        result = cls.from_dict(raw)
+        if result.to_json() != value:
+            raise ValueError("non-canonical MIR JSON")
+        return result
 
 @dataclass
 class _MutableBlock:
@@ -197,17 +616,30 @@ class _MutableBlock:
 
 
 class _CFGBuilder:
-    def __init__(self, function: RIRFunction) -> None:
+    def __init__(
+        self,
+        function: RIRFunction,
+        authority: TypeContext,
+        drop_plan_ids: dict[TypeId, DropPlanId] | None = None,
+    ) -> None:
         self.function = function
+        self.authority = authority
+        self.drop_plan_ids = drop_plan_ids or {}
         self.blocks: list[_MutableBlock] = []
         self.block_ordinal = 0
         self.instruction_ordinal = 0
         self.value_ordinal = 0
-        self.owned_locals: dict[str, str] = {
-            name: type_name
-            for name, type_name, ownership in function.parameters
+        self.owned_locals: dict[str, TypeId] = {
+            name: type_id
+            for (name, _type_name, ownership), type_id in zip(
+                function.parameters,
+                function.parameter_type_ids,
+                strict=True,
+            )
             if ownership == "owned"
         }
+        self.value_types: dict[str, TypeId] = {}
+
     def new_block(self, label: str) -> _MutableBlock:
         self.block_ordinal += 1
         block = _MutableBlock(f"bb{self.block_ordinal}_{label}")
@@ -224,27 +656,70 @@ class _CFGBuilder:
         result: bool = True,
         attributes: dict[str, Any] | None = None,
         type_name: str | None = None,
+        type_id: TypeId | None = None,
     ) -> str | None:
         self.instruction_ordinal += 1
-        value = None
-        if result and (type_name or operation.type_name) not in {None, "Unit"}:
+        identity = type_id if type_id is not None else operation.type_id
+        rendered = (
+            self.authority.render(identity)
+            if identity is not None
+            else type_name if type_name is not None else operation.type_name
+        )
+        if identity is None and rendered is not None:
+            raise ValueError(f"MIR instruction {op} missing TypeId")
+        operand_type_ids = tuple(
+            self.value_types.get(value)
+            or self.owned_locals.get(value)
+            for value in operands
+        )
+        if any(item is None for item in operand_type_ids):
+            raise ValueError(f"MIR instruction {op} has an untyped operand")
+        typed_operands = tuple(item for item in operand_type_ids if item is not None)
+        result_value = None
+        result_type_id = None
+        if (
+            result
+            and identity is not None
+            and self.authority.render(identity) != "Unit"
+        ):
             self.value_ordinal += 1
-            value = f"v{self.value_ordinal}"
+            result_value = f"v{self.value_ordinal}"
+            self.value_types[result_value] = identity
+            result_type_id = identity
+        place_type_ids = tuple(
+            (value, self.owned_locals[value])
+            for value in operands
+            if value in self.owned_locals
+        )
         instruction = GeneralMIRInstruction(
-            f"i{self.instruction_ordinal}",
+            _stable_id(
+                "mir-instruction",
+                self.function.symbol_id,
+                self.instruction_ordinal,
+            ),
             op,
-            type_name if type_name is not None else operation.type_name,
+            rendered,
             operands,
-            value,
+            result_value,
             operation.source,
             operation.symbol_id,
-            _stable_id("rev", "mir", operation.revision_id, op, self.instruction_ordinal),
+            _stable_id(
+                "rev",
+                "mir",
+                operation.revision_id,
+                op,
+                self.instruction_ordinal,
+            ),
             operation.ownership_provenance,
             operation.effects,
             tuple(sorted((attributes or operation.attribute_map).items())),
+            identity,
+            typed_operands,
+            result_type_id,
+            place_type_ids,
         )
         block.instructions.append(instruction)
-        return value
+        return result_value
 
     def lower_expression(self, operation: RIROperation, block: _MutableBlock) -> str | None:
         operands = tuple(
@@ -369,11 +844,20 @@ class _CFGBuilder:
             return operands[-1] if operands else None
         if operation.op == "drop_value":
             self._forget_owned(operation)
-        value = self.instruction(block, op, operation, operands=operands, result=op not in {"store_field", "store_local"})
-        if operation.op in {"bind_value", "bind_mutable"} and operation.ownership_provenance == "unique_owner":
+        value = self.instruction(
+            block,
+            op,
+            operation,
+            operands=operands,
+            result=op not in {"store_field", "store_local"},
+        )
+        if (
+            operation.op in {"bind_value", "bind_mutable"}
+            and operation.ownership_provenance == "unique_owner"
+        ):
             name = str(operation.attribute_map.get("name", value or ""))
-            if operation.type_name:
-                self.owned_locals[name] = operation.type_name
+            if operation.type_id is not None:
+                self.owned_locals[name] = operation.type_id
         return value
 
     def _forget_owned(self, operation: RIROperation) -> None:
@@ -387,15 +871,25 @@ class _CFGBuilder:
                     self.owned_locals.pop(name, None)
 
     def insert_drops(self, block: _MutableBlock, operation: RIROperation) -> None:
-        for name, type_name in reversed(tuple(self.owned_locals.items())):
+        for name, type_id in reversed(tuple(self.owned_locals.items())):
+            drop_plan_id = self.drop_plan_ids.get(type_id)
+            if drop_plan_id is None:
+                raise ValueError(f"missing drop plan for {self.authority.render(type_id)}")
             self.instruction(
                 block,
                 "drop_value",
                 operation,
                 operands=(name,),
                 result=False,
-                attributes={"local": name, "type": type_name, "automatic": True, "path_sensitive": True},
-                type_name=type_name,
+                attributes={
+                    "local": name,
+                    "type": self.authority.render(type_id),
+                    "type_id": type_id,
+                    "drop_plan_id": drop_plan_id,
+                    "automatic": True,
+                    "path_sensitive": True,
+                },
+                type_id=type_id,
             )
 
     def lower_sequence(self, operations: tuple[RIROperation, ...], block: _MutableBlock) -> _MutableBlock:
@@ -433,8 +927,9 @@ class _CFGBuilder:
                     operation.revision_id,
                     "shared_borrow",
                     ("may_fail", "borrow"),
-                    {"target": operation.attribute_map.get("target", "")},
+                    (("target", operation.attribute_map.get("target", "")),),
                     (operation.children[0],),
+                    self.authority.type_id("TextView"),
                 )
                 line_value = self.lower_expression(line_operation, condition_block)
                 condition_block.terminator = GeneralMIRTerminator("branch", (body_block.id, exit_block.id), line_value)
@@ -477,7 +972,6 @@ class _CFGBuilder:
                 continue
             self.lower_expression(operation, current)
         return current
-
     def build(self) -> GeneralMIRFunction:
         entry = self.new_block("entry")
         final = self.lower_sequence(self.function.operations, entry)
@@ -486,18 +980,29 @@ class _CFGBuilder:
                 self.insert_drops(final, self.function.operations[-1])
             final.terminator = GeneralMIRTerminator("return")
         blocks = tuple(
-            GeneralMIRBlock(block.id, tuple(block.instructions), block.terminator or GeneralMIRTerminator("unreachable"))
+            GeneralMIRBlock(
+                block.id,
+                tuple(block.instructions),
+                block.terminator or GeneralMIRTerminator("unreachable"),
+            )
             for block in self.blocks
         )
         return GeneralMIRFunction(
             self.function.name,
             self.function.symbol_id,
-            _stable_id("rev", "mir-function", self.function.revision_id, [item.to_dict() for item in blocks]),
+            _stable_id(
+                "rev",
+                "mir-function",
+                self.function.revision_id,
+                [item.to_dict() for item in blocks],
+            ),
             self.function.parameters,
             self.function.return_type,
             self.function.effects,
             blocks,
             self.function.source,
+            self.function.parameter_type_ids,
+            self.function.return_type_id,
         )
 
 
@@ -510,16 +1015,36 @@ def lower_rir_to_performance_mir(
     hir: StructuredHIRProgram,
     representation: RepresentationProgram,
 ) -> GeneralPerformanceMIR:
+    verify_representation_program(representation)
     if representation.source_hir_digest != hir.digest:
-        raise ValueError("Representation IR does not descend from supplied Structured HIR")
+        raise ValueError(
+            "Representation IR does not descend from supplied Structured HIR"
+        )
     descriptors_digest = hashlib.sha256(
-        json.dumps([item.to_dict() for item in representation.descriptors], sort_keys=True, separators=(",", ":")).encode()
+        json.dumps(
+            [item.to_dict() for item in representation.descriptors],
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
     ).hexdigest()
     drops_digest = hashlib.sha256(
-        json.dumps([item.to_dict() for item in representation.drop_plans], sort_keys=True, separators=(",", ":")).encode()
+        json.dumps(
+            [item.to_dict() for item in representation.drop_plans],
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
     ).hexdigest()
+    authority = hir.type_context
+    drop_plan_bindings = tuple(
+        (plan.type_id, plan.drop_plan_id)
+        for plan in representation.drop_plans
+        if plan.type_id is not None and plan.drop_plan_id is not None
+    )
+    drop_plan_ids = dict(drop_plan_bindings)
+    if len(drop_plan_ids) != len(drop_plan_bindings):
+        raise ValueError("duplicate RIR drop plan TypeId")
     functions = tuple(
-        _CFGBuilder(function).build()
+        _CFGBuilder(function, authority, drop_plan_ids).build()
         for function in representation.functions
     )
     requires_drop_glue = any(
@@ -527,6 +1052,11 @@ def lower_rir_to_performance_mir(
         for function in functions
         for block in function.blocks
         for instruction in block.instructions
+    )
+    descriptor_layouts = tuple(
+        (descriptor.type_id, descriptor.layout_id)
+        for descriptor in representation.descriptors
+        if descriptor.type_id is not None and descriptor.layout_id is not None
     )
     return GeneralPerformanceMIR(
         hir.source_sha256,
@@ -537,13 +1067,254 @@ def lower_rir_to_performance_mir(
         representation.entry_function,
         functions,
         requires_drop_glue=requires_drop_glue,
+        drop_plan_bindings=drop_plan_bindings,
         surface_source=hir.source,
+        type_arena=representation.type_arena,
+        type_arena_digest=representation.type_arena_digest,
+        descriptor_layouts=descriptor_layouts,
+        type_arena_contract=representation.type_arena_contract,
+        predecessor_digest=representation.digest,
+        target_spec=representation.target_spec,
+        target_spec_digest=representation.target_spec_digest,
     )
+def _verify_general_mir(
+    mir: GeneralPerformanceMIR,
+    representation: RepresentationProgram | None = None,
+) -> None:
+    """Validate executable MIR identities, CFG shape, and predecessor binding."""
+
+    if not isinstance(mir, GeneralPerformanceMIR):
+        raise TypeError("expected GeneralPerformanceMIR")
+    arena = mir.type_arena
+    if not isinstance(arena, FrozenTypeArena):
+        raise ValueError("MIR requires a frozen TypeArena")
+    if arena.digest != mir.type_arena_digest:
+        raise ValueError("MIR TypeArena digest mismatch")
+    if mir.type_arena_contract != TYPE_ARENA_CONTRACT:
+        raise ValueError("MIR TypeArena contract drift")
+    if mir.predecessor_digest != mir.representation_ir_digest:
+        raise ValueError("MIR predecessor digest mismatch")
+    if mir.target_spec_digest != mir.target_spec.digest:
+        raise ValueError("MIR target specification digest mismatch")
+
+    layout_map: dict[TypeId, LayoutId] = {}
+    for type_id, layout_id in mir.descriptor_layouts:
+        if not isinstance(type_id, TypeId) or type_id not in arena:
+            raise ValueError("MIR descriptor layout has unknown TypeId")
+        if not isinstance(layout_id, LayoutId):
+            raise ValueError("MIR descriptor layout has invalid LayoutId")
+        if type_id in layout_map:
+            raise ValueError("duplicate MIR descriptor layout identity")
+        layout_map[type_id] = layout_id
+    drop_plan_map: dict[TypeId, DropPlanId] = {}
+    for type_id, drop_plan_id in mir.drop_plan_bindings:
+        if not isinstance(type_id, TypeId) or type_id not in arena:
+            raise ValueError("MIR drop binding has unknown TypeId")
+        if not isinstance(drop_plan_id, DropPlanId):
+            raise ValueError("MIR drop binding has invalid DropPlanId")
+        if type_id in drop_plan_map:
+            raise ValueError("duplicate MIR drop plan identity")
+        drop_plan_map[type_id] = drop_plan_id
+    if representation is not None:
+        verify_representation_program(representation)
+        if representation.digest != mir.representation_ir_digest:
+            raise ValueError("MIR/RIR predecessor digest mismatch")
+        if representation.type_arena_digest != mir.type_arena_digest:
+            raise ValueError("MIR/HIR TypeArena digest mismatch")
+        if representation.type_arena_contract != mir.type_arena_contract:
+            raise ValueError("MIR/RIR TypeArena contract mismatch")
+        if representation.target_spec_digest != mir.target_spec_digest:
+            raise ValueError("MIR/RIR target specification mismatch")
+        expected_layouts = {
+            descriptor.type_id: descriptor.layout_id
+            for descriptor in representation.descriptors
+            if descriptor.type_id is not None and descriptor.layout_id is not None
+        }
+        if layout_map != expected_layouts:
+            raise ValueError("MIR descriptor layout binding mismatch")
+        expected_drop_plans = {
+            plan.type_id: plan.drop_plan_id
+            for plan in representation.drop_plans
+            if plan.type_id is not None and plan.drop_plan_id is not None
+        }
+        if drop_plan_map != expected_drop_plans:
+            raise ValueError("MIR drop plan binding mismatch")
+
+    def require_id(value: TypeId | None, label: str) -> TypeId:
+        if not isinstance(value, TypeId) or value not in arena:
+            raise ValueError(f"{label} must be a known TypeId")
+        return value
+
+    def verify_attributes(value: object, label: str) -> None:
+        if isinstance(value, TypeId):
+            require_id(value, label)
+        elif isinstance(value, DropPlanId):
+            if value not in drop_plan_map.values():
+                raise ValueError(f"{label} references unknown DropPlanId")
+        elif isinstance(value, LayoutId):
+            if value not in layout_map.values():
+                raise ValueError(f"{label} references unknown LayoutId")
+        elif isinstance(value, (tuple, list)):
+            for index, item in enumerate(value):
+                verify_attributes(item, f"{label}[{index}]")
+        elif isinstance(value, dict):
+            for key, item in value.items():
+                verify_attributes(item, f"{label}.{key}")
+
+    instruction_ids: set[str] = set()
+    for function in mir.functions:
+        if len(function.parameter_type_ids) != len(function.parameters):
+            raise ValueError(f"MIR function {function.name} parameter identities mismatch")
+        defined_values: dict[str, TypeId] = {}
+        for (name, type_name, _ownership), type_id in zip(
+            function.parameters,
+            function.parameter_type_ids,
+            strict=True,
+        ):
+            if name in defined_values:
+                raise ValueError(f"MIR function {function.name} duplicate parameter")
+            identity = require_id(type_id, f"MIR function {function.name} parameter")
+            if arena.canonical(identity) != type_name:
+                raise ValueError(f"MIR function {function.name} parameter TypeId mismatch")
+            defined_values[name] = identity
+        return_id = require_id(
+            function.return_type_id,
+            f"MIR function {function.name} return",
+        )
+        if arena.canonical(return_id) != function.return_type:
+            raise ValueError(f"MIR function {function.name} return TypeId mismatch")
+        block_ids = {block.id for block in function.blocks}
+        if len(block_ids) != len(function.blocks):
+            raise ValueError(f"MIR function {function.name} duplicate block")
+        if not block_ids:
+            raise ValueError(f"MIR function {function.name} has no blocks")
+
+        # First collect all definitions. This permits a value produced in a
+        # predecessor block to be consumed by a later join block.
+        for block in function.blocks:
+            if not isinstance(block.terminator, GeneralMIRTerminator):
+                raise ValueError(f"MIR block {block.id} has no terminator")
+            for instruction in block.instructions:
+                if instruction.id in instruction_ids:
+                    raise ValueError("duplicate MIR instruction identity")
+                instruction_ids.add(instruction.id)
+                for name, place_type_id in instruction.place_type_ids:
+                    identity = require_id(
+                        place_type_id,
+                        f"MIR instruction {instruction.id} place",
+                    )
+                    if name in defined_values and defined_values[name] != identity:
+                        raise ValueError(
+                            f"MIR instruction {instruction.id} place TypeId mismatch"
+                        )
+                    defined_values.setdefault(name, identity)
+                if instruction.result is not None:
+                    if instruction.result in defined_values:
+                        raise ValueError(
+                            f"duplicate MIR ValueId {instruction.result}"
+                        )
+                    result_type_id = require_id(
+                        instruction.result_type_id,
+                        f"MIR instruction {instruction.id} result",
+                    )
+                    if instruction.type_id != result_type_id:
+                        raise ValueError(
+                            f"MIR instruction {instruction.id} result/type mismatch"
+                        )
+                    defined_values[instruction.result] = result_type_id
+
+        for block in function.blocks:
+            terminator = block.terminator
+            for target in terminator.targets:
+                if target not in block_ids:
+                    raise ValueError(f"MIR block {block.id} has missing target")
+            for _pattern, target in terminator.cases:
+                if target not in block_ids:
+                    raise ValueError(f"MIR block {block.id} has missing case target")
+            if terminator.value is not None and terminator.value not in defined_values:
+                raise ValueError(
+                    f"MIR terminator in {block.id} references missing ValueId"
+                )
+            for instruction in block.instructions:
+                if instruction.type_name is None:
+                    if instruction.type_id is not None:
+                        raise ValueError("untyped MIR instruction carries a TypeId")
+                else:
+                    type_id = require_id(
+                        instruction.type_id,
+                        f"MIR instruction {instruction.id}",
+                    )
+                    if arena.canonical(type_id) != instruction.type_name:
+                        raise ValueError(
+                            f"MIR instruction {instruction.id} TypeId mismatch"
+                        )
+                if len(instruction.operand_type_ids) != len(instruction.operands):
+                    raise ValueError(
+                        f"MIR instruction {instruction.id} operand identities mismatch"
+                    )
+                for operand, operand_type_id in zip(
+                    instruction.operands,
+                    instruction.operand_type_ids,
+                    strict=True,
+                ):
+                    require_id(
+                        operand_type_id,
+                        f"MIR instruction {instruction.id} operand",
+                    )
+                    if operand in defined_values and defined_values[operand] != operand_type_id:
+                        raise ValueError(
+                            f"MIR instruction {instruction.id} operand TypeId mismatch"
+                        )
+                for name, place_type_id in instruction.place_type_ids:
+                    if name not in instruction.operands:
+                        raise ValueError(
+                            f"MIR instruction {instruction.id} place is not an operand"
+                        )
+                    if defined_values[name] != place_type_id:
+                        raise ValueError(
+                            f"MIR instruction {instruction.id} place TypeId mismatch"
+                        )
+                attributes = dict(instruction.attributes)
+                verify_attributes(
+                    attributes,
+                    f"MIR instruction {instruction.id} attributes",
+                )
+                if instruction.op == "drop_value":
+                    expected_drop_id = drop_plan_map.get(instruction.type_id)
+                    if expected_drop_id is None:
+                        raise ValueError(
+                            f"MIR instruction {instruction.id} has no drop plan"
+                        )
+                    if attributes.get("drop_plan_id") != expected_drop_id:
+                        raise ValueError(
+                            f"MIR instruction {instruction.id} drop plan mismatch"
+                        )
+                argument_type_ids = attributes.get("argument_type_ids")
+                if argument_type_ids is not None:
+                    if tuple(argument_type_ids) != instruction.operand_type_ids:
+                        raise ValueError(
+                            f"MIR instruction {instruction.id} call signature mismatch"
+                        )
+
+
+def verify_general_mir(
+    mir: GeneralPerformanceMIR,
+    representation: RepresentationProgram | None = None,
+) -> None:
+    """Fail-closed verifier for every executable MIR construction boundary."""
+    try:
+        _verify_general_mir(mir, representation)
+    except MIRVerificationError:
+        raise
+    except Exception as exc:
+        raise MIRVerificationError(str(exc)) from exc
+
 
 
 def _fuse_collection_pipelines(
     mir: GeneralPerformanceMIR,
 ) -> GeneralPerformanceMIR:
+    authority = TypeContext(mir.type_arena)
     functions: list[GeneralMIRFunction] = []
     for function in mir.functions:
         blocks: list[GeneralMIRBlock] = []
@@ -600,13 +1371,14 @@ def _fuse_collection_pipelines(
                 ):
                     continue
                 if any(
-                    str(item.attribute_map.get("element_type", ""))
+                    not isinstance(item.attribute_map.get("element_type_id"), TypeId)
+                    or authority.render(item.attribute_map["element_type_id"])
                     not in FUSIBLE_COLLECTION_ELEMENTS
                     for item in stages
                 ):
                     continue
                 map_results = (
-                    collection_shape(item.type_name)
+                    collection_shape(item.type_id, authority)
                     for item, operation in zip(
                         stages,
                         operations,
@@ -616,7 +1388,7 @@ def _fuse_collection_pipelines(
                 )
                 if any(
                     result is None
-                    or result.element_type
+                    or authority.render(result.element_type_id)
                     not in FUSIBLE_COLLECTION_ELEMENTS
                     for result in map_results
                 ):
@@ -641,6 +1413,10 @@ def _fuse_collection_pipelines(
                     outer,
                     op="fused_collection_pipeline",
                     operands=(base, *callbacks),
+                    operand_type_ids=(
+                        stages[0].operand_type_ids[0:1]
+                        + tuple(item.operand_type_ids[1] for item in stages)
+                    ),
                     attributes=tuple(sorted(attributes.items())),
                 )
                 removed.update(item.id for item in stages[:-1])
@@ -655,6 +1431,7 @@ def _fuse_collection_pipelines(
 
 
 def optimize_general_mir(mir: GeneralPerformanceMIR) -> GeneralPerformanceMIR:
+    verify_general_mir(mir)
     fused = _fuse_collection_pipelines(mir)
     functions = []
     for function in fused.functions:
@@ -662,7 +1439,11 @@ def optimize_general_mir(mir: GeneralPerformanceMIR) -> GeneralPerformanceMIR:
         for block in function.blocks:
             instructions = []
             for instruction in block.instructions:
-                if instruction.op == "expression" and not instruction.effects and instruction.result is None:
+                if (
+                    instruction.op == "expression"
+                    and not instruction.effects
+                    and instruction.result is None
+                ):
                     continue
                 instructions.append(instruction)
             blocks.append(replace(block, instructions=tuple(instructions)))
@@ -682,16 +1463,21 @@ def optimize_general_mir(mir: GeneralPerformanceMIR) -> GeneralPerformanceMIR:
     )
     before_drops = sum(
         instruction.op == "drop_value"
-        for function in mir.functions for block in function.blocks for instruction in block.instructions
+        for function in mir.functions
+        for block in function.blocks
+        for instruction in block.instructions
     )
     after_drops = sum(
         instruction.op == "drop_value"
-        for function in optimized.functions for block in function.blocks for instruction in block.instructions
+        for function in optimized.functions
+        for block in function.blocks
+        for instruction in block.instructions
     )
     if before_drops != after_drops or (
         mir.requires_drop_glue and before_drops == 0
     ):
         raise ValueError("optimizer removed generated drop glue")
+    verify_general_mir(optimized)
     return optimized
 
 
@@ -700,6 +1486,7 @@ def evaluate_representation_ir(
     representation: RepresentationProgram,
     payload: bytes,
 ) -> EvaluationResult:
+    verify_representation_program(representation)
     if representation.source_hir_digest != hir.digest:
         raise ValueError("Representation evaluator predecessor mismatch")
     return evaluate_structured_hir(hir, representation, payload)
@@ -711,6 +1498,7 @@ def evaluate_general_mir(
     mir: GeneralPerformanceMIR,
     payload: bytes,
 ) -> EvaluationResult:
+    verify_general_mir(mir, representation)
     if mir.representation_ir_digest != representation.digest:
         raise ValueError("MIR evaluator predecessor mismatch")
     if not any(
@@ -733,4 +1521,5 @@ __all__ = [
     "evaluate_representation_ir",
     "lower_rir_to_performance_mir",
     "optimize_general_mir",
+    "verify_general_mir",
 ]

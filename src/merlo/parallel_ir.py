@@ -14,8 +14,9 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any, Mapping
 
+from merlo.representation_ir import DropPlanId, LayoutId
 from merlo.representation_mir import GeneralPerformanceMIR, GeneralMIRInstruction
-
+from merlo.type_arena import TypeId
 PARALLEL_IR_SCHEMA_VERSION = 1
 PARALLEL_IR_CONTRACT = "merlo.parallel-ir.v1"
 _SCHEMA_KEYS = {"schema_version", "contract", "predecessor_digest", "operations", "digest"}
@@ -37,8 +38,12 @@ def _error(code: str, detail: str = "") -> ValueError:
 
 
 def _canonical(value: Any) -> Any:
+    if isinstance(value, (TypeId, LayoutId, DropPlanId)):
+        return value.to_dict()
     if value is None or isinstance(value, (str, bool, int, float)):
-        if isinstance(value, float) and (value != value or value in {float("inf"), float("-inf")}):
+        if isinstance(value, float) and (
+            value != value or value in {float("inf"), float("-inf")}
+        ):
             raise _error("ParallelIRInvalidValue", "non-finite float")
         return value
     if isinstance(value, Mapping):
