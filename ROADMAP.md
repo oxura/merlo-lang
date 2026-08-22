@@ -19,7 +19,7 @@ Status labels:
 | --- | --- | --- |
 | Language contract `0.3` | Production | Alpha compatibility may still change before release. |
 | Frontend contract `8` | Production | Lossless CST anchors declarations, statements, and statement expressions; the transitional line parser still owns remaining grammar. |
-| Canonical contract `6`, HIR contract `10` | Production | Typed lowering is Merlo-owned; HIR JSON is the strict `merlo.structured-typed-hir.v10` contract with one closed TypeArena snapshot, digest, and validated `TypeId` beside retained diagnostic spelling. The digest-bound AST-shaped native-syntax artifact remains a backend adapter. Function-level BorrowRelation semantics are digest-bound; diagnostic witnesses are not. This does not claim ownership, ContractGraph, RIR, MIR, or backend TypeId migration; issues #84 and #85 remain open. |
+| `Canonical contract 6`, HIR contract `12` | Production | Typed lowering is Merlo-owned; HIR JSON is the strict `merlo.structured-typed-hir.v12` contract with one closed TypeArena snapshot, digest, validated TypeIds, and separate deterministic machine-state identities. Transition nodes carry no type. Ownership, Place lookup, borrow provenance, and structural ContractGraph schemes use that TypeId authority under issue #84; RIR v5, MIR v2, and backend semantics are unchanged. Issue #85 covers RIR descriptors and executable MIR TypeId migration; issue #86 covers user-defined generic declaration/package provenance; issue #72 covers native-syntax removal and executable-MIR backend authority. |
 | C11 native backend, runtime ABI `2` | Production | Linux x86-64 through Clang or GCC. |
 | Ownership, moves, borrows, recursive drop | Production | Safe subset is checked and [Memory Model v1](spec/memory-model.md) is normative for that subset. |
 | Capturing closures | Production | Checked immutable scalar and owned captures only. |
@@ -37,8 +37,8 @@ Status labels:
 | macOS, Windows, Linux ARM64 | Absent | Linux x86-64 is the only supported target. |
 
 The published prerelease remains `0.1.0-alpha.2`. Main is the
-`0.1.0-alpha.3-dev` line with language `0.3`, frontend `8`, canonical `6`, HIR `10`,
-RIR `5`, MIR `2`, runtime ABI `2`, and SemanticWorld `17`.
+`0.1.0-alpha.3-dev` line with language `0.3`, frontend `8`, canonical `6`, HIR `12`,
+RIR `5`, MIR `2`, runtime ABI `2`, and SemanticWorld `19`.
 
 ## Milestone 1: Alpha.3 Deep Core Gate
 

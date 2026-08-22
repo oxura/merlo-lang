@@ -9,11 +9,16 @@ from merlo.type_arena import (
     TYPE_ARENA_CONTRACT,
     TYPE_ARENA_SCHEMA_VERSION,
     TYPE_REF_CONTRACT,
+    FrozenTypeArena,
+    FrozenTypeArenaMutation,
     TypeArena,
+    TypeContextBuilder,
     TypeArenaError,
     TypeArenaSchemaError,
+    TypeDeclaration,
     TypeExpr,
     TypeId,
+    TypeMember,
     TypeRef,
     UnknownTypeIdError,
     UnresolvedTypeError,
@@ -116,6 +121,74 @@ def test_duplicate_interning_is_idempotent() -> None:
     assert first == second
     assert len(arena) == node_count
 
+
+
+def test_freeze_rejects_every_mutation_entrypoint() -> None:
+    arena = TypeArena()
+    text = arena.intern_text("Text")
+    frozen = arena.freeze()
+
+    assert frozen.resolve(text).constructor == "Text"
+    assert arena.freeze() is frozen
+    for operation in (
+        lambda: arena.intern_text("Bool"),
+        lambda: arena.intern_many(("Bool",)),
+        lambda: arena.intern_expr(TypeExpr("Bool")),
+        lambda: arena.intern_node("Bool"),
+    ):
+        with pytest.raises(FrozenTypeArenaMutation):
+            operation()
+def test_type_context_uses_immutable_type_id_declarations() -> None:
+    builder = TypeContextBuilder()
+    type_id = builder.intern_text("Vec[Text]")
+    text = builder.intern_text("Text")
+    builder.register_declaration(
+        TypeDeclaration(
+            type_id,
+            "record",
+            fields=(TypeMember("value", text),),
+        )
+    )
+    context = builder.freeze()
+
+    declaration = context.declaration(type_id)
+    assert context.resolve(type_id) == context.arena.resolve(type_id)
+    assert declaration.type_id == type_id
+    assert declaration.fields == (TypeMember("value", text),)
+    assert context.render(type_id) == "Vec[Text]"
+    assert context.type_id("Vec[Text]") == type_id
+    with pytest.raises(UnknownTypeIdError):
+        context.type_id("Vec[ Int ]")
+    with pytest.raises(UnknownTypeIdError):
+        context.declaration(TypeId("f" * 64))
+    with pytest.raises(TypeError):
+        context.declarations[type_id] = declaration
+    with pytest.raises(FrozenTypeArenaMutation):
+        context.arena = context.arena
+    with pytest.raises(FrozenTypeArenaMutation):
+        builder.intern_text("Bool")
+    for target, attribute in (
+        (context, "_declarations"),
+        (context, "_type_ids"),
+        (context.arena, "_nodes"),
+        (context.arena, "allow_unresolved"),
+    ):
+        with pytest.raises(FrozenTypeArenaMutation):
+            delattr(target, attribute)
+    with pytest.raises(AttributeError):
+        declaration.kind = "enum"
+
+
+def test_frozen_type_arena_rejects_forged_identity_and_child_closure() -> None:
+    arena = TypeArena()
+    text = arena.intern_text("Text")
+    root = arena.intern_text("Vec[Text]")
+
+    with pytest.raises(TypeArenaSchemaError, match="TypeId/content mismatch"):
+        FrozenTypeArena({TypeId("f" * 64): arena.resolve(text)})
+
+    with pytest.raises(UnknownTypeIdError, match="unknown argument"):
+        FrozenTypeArena({root: arena.resolve(root)})
 
 def test_arena_serialization_is_insertion_order_independent() -> None:
     left = TypeArena()
@@ -341,3 +414,11 @@ def test_json_is_canonical_and_terminated() -> None:
         sort_keys=True,
         separators=(",", ":"),
     ) + "\n" == encoded
+
+
+def test_type_context_builder_rejects_orphan_arena_ids() -> None:
+    builder = TypeContextBuilder()
+    builder.intern_text("Text")
+    builder.arena.intern_text("Bool")
+    with pytest.raises(TypeArenaError, match="orphan TypeIds"):
+        builder.freeze()

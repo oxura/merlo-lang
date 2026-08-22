@@ -66,6 +66,16 @@ def _user_main(operation: str, tail: str = "    return 0\n") -> str:
             "    return moved.len()\n",
         ),
         (
+            "Box owner containing borrow",
+            "fn main(input: BytesView) -> UInt64:\n"
+            "    let text: Text = Text.from_bytes(input, 0, input.len())\n"
+            "    let values: Vec[TextView] = Vec.new()\n"
+            "    values.push(text.as_view())\n"
+            "    let boxed: Box[Vec[TextView]] = Box.new(values)\n"
+            "    let moved: Vec[TextView] = boxed.get()\n"
+            "    return moved.len()\n",
+        ),
+        (
             "owner array element",
             "fn main(input: BytesView) -> UInt64:\n"
             "    let values: Array[Text,1] = [Text.from_bytes(input, 0, input.len())]\n"
@@ -215,6 +225,15 @@ def test_c_backend_rejects_projected_owner_move_defense_in_depth() -> None:
             "fn main(input: BytesView) -> UInt64:\n"
             "    let text: Text = Text.from_bytes(input, 0, input.len())\n"
             "    let boxed: Box[Text] = Box.new(text)\n"
+            "    drop(boxed.get())\n"
+            "    return 0\n"
+        ),
+        (
+            "fn main(input: BytesView) -> UInt64:\n"
+            "    let text: Text = Text.from_bytes(input, 0, input.len())\n"
+            "    let values: Vec[TextView] = Vec.new()\n"
+            "    values.push(text.as_view())\n"
+            "    let boxed: Box[Vec[TextView]] = Box.new(values)\n"
             "    drop(boxed.get())\n"
             "    return 0\n"
         ),

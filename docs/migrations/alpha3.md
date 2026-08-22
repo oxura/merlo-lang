@@ -1,4 +1,12 @@
 # Migrating from alpha.2 to alpha.3
+> **Current-contract note (issue #84, HIR v12):** Alpha.3 originally shipped
+> the HIR v10 transition described below. The current development compiler uses
+> HIR v12, `merlo.borrow-summary.v4`, and SemanticWorld v19. Ownership, `Place`
+> lookup, borrow provenance, ContractGraph, semantic HIR attributes, and bound
+> FFI metadata are now TypeId-authoritative. Machine-state IDs remain a separate
+identity domain. Issue #85 covers RIR descriptors and executable MIR TypeId
+migration; issue #86 covers user-defined generic declaration/package provenance;
+issue #72 covers native-syntax removal and executable-MIR backend authority.
 
 Alpha.3 intentionally changes the filesystem and verification models. The
 compiler reports language `0.3`, frontend `8`, canonical `6`, HIR `10`,
@@ -9,21 +17,15 @@ report `1`, change transaction `1`, RIR `5`, MIR `2`, runtime ABI `2`, and
 SemanticWorld `17`. Earlier lockfiles must be regenerated with the alpha.3
 compiler; the old HIR v9 artifact is not readable by the HIR v10 reader.
 
-## Structured HIR v10 and TypeArena
+## Structured HIR v12 and TypeArena
 
 Structured HIR is now serialized as the strict
-`merlo.structured-typed-hir.v10` contract (schema `10`). Every HIR-visible
+`merlo.structured-typed-hir.v12` contract (schema `12`). Every HIR-visible
 type position carries retained canonical diagnostic spelling together with a
-validated `TypeId`, or carries neither. The exact JSON pairs are
-`type`/`type_id`, `payload_type`/`payload_type_id`, and
-`return_type`/`return_type_id`. This includes declaration types, parameters,
-returns, record fields, enum payloads, flow results, local `Let`/`Var`/`Assign`
-nodes, and contract-condition result types. `HIRTypeDecl` also carries its
-nominal `type_id` beside `symbol_id` and `revision_id`; machine state fields
-are `{name,type,type_id}`. HIR-only FFI JSON annotates extern parameters,
-`return_type`/`return_type_id`, `error_type`/`error_type_id`, and `repr(C)`
-fields with `type_name`/`type_id`, while the underlying FFIProgram contract
-remains unchanged.
+validated `TypeId`, or carries neither. Semantic type attributes carry paired
+IDs as well. Machine state labels use deterministic state IDs outside the
+TypeArena; Transition nodes have no type identity and all source/target IDs
+must belong to the machine.
 
 In memory IDs are `TypeId` values and JSON uses `TypeId.to_dict()`; a raw
 spelling or unvalidated string is not an alternate representation.
@@ -31,14 +33,14 @@ spelling or unvalidated string is not an alternate representation.
 Each `StructuredHIRProgram` owns one completed local `TypeArena` snapshot and
 `type_arena_digest`. The snapshot is closed (`allow_unresolved=false`) and is
 the sole interning authority for declarations, functions, nodes, contracts,
-flows, machines, and HIR-only FFI annotations. The reader validates outer
-exact keys/contract/schema/invariants, restores the closed arena and checks
-its digest, validates HIR-only FFI IDs, restores native and typed records,
-then checks source digest, uniqueness, cross-record identities, and canonical
-roundtrip invariants. Each `TypeId` must exist in the arena and
+flows, machines, and bound FFI identities. The reader validates outer exact
+keys/contract/schema/invariants, restores the closed arena and checks its
+digest, restores the typed FFI model directly, restores native and typed
+records, then checks source digest, uniqueness, cross-record identities, and
+canonical roundtrip invariants. Each `TypeId` must exist in the arena and
 `arena.canonical(type_id)` must equal the retained canonical HIR spelling. The
-reader never reparses spelling and has no post-load fallback parser. HIR v9
-is rejected rather than upgraded through a compatibility shim.
+reader never reparses spelling and has no post-load fallback parser. HIR v11
+artifacts are rejected rather than upgraded through a compatibility shim.
 
 Aliases are normalized before interning (`Int`/`UInt`/`Float` map to
 `Int64`/`UInt64`/`Float64`); qualified names such as `app.Int` remain
@@ -49,10 +51,12 @@ semantics change and its `RevisionId` changes. `TypeId` identifies a type,
 interchangeable. Retained spelling remains for diagnostics, while `TypeId`
 is authoritative for semantic validation.
 
-This is an HIR schema/serialization migration only. It does not claim an
-ownership, ContractGraph, RIR, MIR, LLVM, GPU, or backend cutover, and it does
-not change ownership or generated-C semantics. Issues #84 and #85 remain open
-for later consumer migration and layout scope.
+This completes the issue #84 HIR, ownership, borrow, ContractGraph, and FFI
+authority cutover. It does not claim an RIR, MIR, LLVM, GPU, or backend TypeId
+cutover and does not change generated-C semantics. Issue #85 covers RIR
+descriptors and executable MIR TypeId migration; issue #86 covers user-defined
+generic declaration/package provenance; issue #72 covers native-syntax removal
+and executable-MIR backend authority.
 
 ## Regenerating generated lockfiles
 
@@ -70,8 +74,9 @@ that root's canonical `merlo.lock`; repeat for nested package roots such as
 corpus. Do not hand-edit compatibility fields. The checked-in 22 lockfiles
 (20 top-level example roots, the nested
 `examples/packages/vendor/greeting`, and `selfhost`) have been regenerated to
-`compatibility.hir: 10`. Any downstream lockfile with `compatibility.hir: 9`
-must run the supported resolver command above.
+`compatibility.hir: 12` and `compatibility.semantic_world: 19`. Downstream
+lockfiles with older compatibility values must run the supported resolver
+command above.
 
 SemanticWorld now includes the canonical constant-range analysis payload.
 Compiler results expose the same payload and merge its checked-arithmetic and

@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 import pytest
 
-from merlo.collection_protocol import collection_shape
+from merlo.collection_protocol import collection_result_type, collection_shape
 from merlo.native_c_backend import compile_c_source
 from merlo.representation_c_backend import emit_general_c
 from merlo.representation_ir import lower_structured_hir_to_rir
@@ -13,6 +13,7 @@ from merlo.representation_mir import (
     optimize_general_mir,
 )
 from merlo.structured_hir_v2 import compile_canonical_hir
+from merlo.type_arena import TypeContextBuilder, TypeId
 from merlo.surface_elaborator import (
     SurfaceElaborationError,
     elaborate_surface,
@@ -347,3 +348,17 @@ def test_iterable_constraint_uses_the_general_collection_protocol() -> None:
         "Text",
         "Array[UInt64,2]",
     }
+
+
+def test_collection_protocol_exposes_structural_type_ids() -> None:
+    builder = TypeContextBuilder()
+    collection_id = builder.intern_text("Borrow[Vec[Text]]")
+    shape = collection_shape(collection_id, builder)
+    assert shape is not None
+    assert isinstance(shape.type_id, TypeId)
+    assert isinstance(shape.element_type_id, TypeId)
+    assert builder.render(shape.type_id) == "Borrow[Vec[Text]]"
+    assert builder.render(shape.element_type_id) == "Text"
+    result_id = collection_result_type("map", shape.element_type_id, builder)
+    assert isinstance(result_id, TypeId)
+    assert builder.render(result_id) == "Vec[Text]"

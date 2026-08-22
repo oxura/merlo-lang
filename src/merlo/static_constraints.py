@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from merlo.surface_ast import SurfaceEnum, SurfaceRecord
 from merlo.collection_protocol import collection_shape
 from merlo.type_parser import TypeExpr, parse_type
+from merlo.type_arena import TypeArenaError, TypeContextBuilder
 
 SUPPORTED_CONSTRAINTS = frozenset(
     {"Comparable", "Hashable", "Iterable", "Display", "Encode"}
@@ -39,9 +40,10 @@ def _all_arguments(
     records: Mapping[str, SurfaceRecord],
     enums: Mapping[str, SurfaceEnum],
     visiting: frozenset[tuple[str, str]],
+    authority: TypeContextBuilder | None,
 ) -> bool:
     return all(
-        _satisfies(constraint, item, records, enums, visiting)
+        _satisfies(constraint, item, records, enums, visiting, authority)
         for item in expression.args
     )
 
@@ -52,6 +54,7 @@ def _satisfies(
     records: Mapping[str, SurfaceRecord],
     enums: Mapping[str, SurfaceEnum],
     visiting: frozenset[tuple[str, str]],
+    authority: TypeContextBuilder | None,
 ) -> bool:
     key = (constraint, expression.canonical)
     if key in visiting:
@@ -65,13 +68,21 @@ def _satisfies(
             (_NUMERIC - {"Float32", "Float64"}) | _TEXTUAL | {"Bool"}
         )
     if constraint == "Iterable":
-        return collection_shape(expression.canonical) is not None
+        try:
+            type_id = authority.intern_expr(expression) if authority is not None else None
+        except TypeArenaError:
+            return False
+        return (
+            collection_shape(type_id, authority) is not None
+            if authority is not None and type_id is not None
+            else collection_shape(expression.canonical) is not None
+        )
     if constraint == "Display":
         if not expression.args and expression.name in _SCALAR | {"Unit"}:
             return True
         if expression.name in {"Option", "Result", "Vec", "Array"}:
             return _all_arguments(
-                constraint, expression, records, enums, nested_visiting
+                constraint, expression, records, enums, nested_visiting, authority
             )
         return False
     if constraint != "Encode":
@@ -80,7 +91,7 @@ def _satisfies(
         return True
     if expression.name in {"Option", "Result", "Vec", "Array", "Map", "Box"}:
         return _all_arguments(
-            constraint, expression, records, enums, nested_visiting
+            constraint, expression, records, enums, nested_visiting, authority
         )
     record = records.get(expression.name)
     if record is not None and not expression.args:
@@ -91,6 +102,7 @@ def _satisfies(
                 records,
                 enums,
                 nested_visiting,
+                authority,
             )
             for field in record.fields
         )
@@ -104,6 +116,7 @@ def _satisfies(
                 records,
                 enums,
                 nested_visiting,
+                authority,
             )
             for variant in enum.variants
         )
@@ -116,6 +129,7 @@ def satisfies_constraint(
     *,
     records: Mapping[str, SurfaceRecord] | None = None,
     enums: Mapping[str, SurfaceEnum] | None = None,
+    type_context: TypeContextBuilder | None = None,
 ) -> bool:
     """Return whether a concrete type has the named built-in constraint instance."""
 
@@ -127,6 +141,7 @@ def satisfies_constraint(
         records or {},
         enums or {},
         frozenset(),
+        type_context,
     )
 
 

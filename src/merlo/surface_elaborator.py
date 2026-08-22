@@ -1,6 +1,5 @@
 from __future__ import annotations
 import hashlib
-import re
 
 from dataclasses import replace
 from typing import Iterable
@@ -89,8 +88,16 @@ from merlo.surface_ast import (
 )
 from merlo.type_parser import generic_parts
 from merlo.type_properties import TypePropertyResolver
+from merlo.type_arena import (
+    TypeArenaError,
+    TypeContextBuilder,
+    TypeDeclaration,
+    TypeId,
+    TypeMember,
+)
 from merlo.intrinsics import (
     CONTRACT_GRAPH,
+    TypeConstructorId,
     INSTANCE_METHOD_NAMES,
     contextual_result_type,
 )
@@ -118,11 +125,16 @@ def _generic_parts(type_name: str, constructor: str) -> tuple[str, ...] | None:
     return generic_parts(type_name, constructor)
 
 class _Elaborator:
-    def __init__(self, program: SurfaceProgram) -> None:
+    def __init__(
+        self,
+        program: SurfaceProgram,
+        type_context: TypeContextBuilder,
+    ) -> None:
         self._active_binding: str | None = None
         self._active_contract_result: _Function | None = None
         self.program = program
-        self.types = _Types()
+        self.type_context = type_context
+        self.types = _Types(type_context)
         self.records = {
             declaration.name: declaration
             for declaration in program.declarations
@@ -133,7 +145,59 @@ class _Elaborator:
             for declaration in program.declarations
             if isinstance(declaration, SurfaceEnum)
         }
-        self.type_properties = TypePropertyResolver({**self.records, **self.enums})
+        for declaration in program.declarations:
+            if isinstance(declaration, SurfaceRecord):
+                self.type_context.intern_text(declaration.name)
+                for field in declaration.fields:
+                    self.type_context.intern_text(field.type_name)
+            elif isinstance(declaration, SurfaceEnum):
+                self.type_context.intern_text(declaration.name)
+                for variant in declaration.variants:
+                    if variant.type_name is not None:
+                        self.type_context.intern_text(variant.type_name)
+            elif isinstance(declaration, SurfaceFunction):
+                for parameter in declaration.parameters:
+                    if parameter.type_name is not None:
+                        self.type_context.intern_text(parameter.type_name)
+                if declaration.return_type is not None:
+                    self.type_context.intern_text(declaration.return_type)
+        for declaration in program.declarations:
+            if isinstance(declaration, SurfaceRecord):
+                nominal_id = self.type_context.intern_text(declaration.name)
+                self.type_context.register_declaration(
+                    TypeDeclaration(
+                        nominal_id,
+                        "record",
+                        fields=tuple(
+                            TypeMember(
+                                item.name,
+                                self.type_context.intern_text(item.type_name),
+                            )
+                            for item in declaration.fields
+                        ),
+                    )
+                )
+            elif isinstance(declaration, SurfaceEnum):
+                nominal_id = self.type_context.intern_text(declaration.name)
+                self.type_context.register_declaration(
+                    TypeDeclaration(
+                        nominal_id,
+                        "enum",
+                        variants=tuple(
+                            TypeMember(
+                                item.name,
+                                (
+                                    self.type_context.intern_text(item.type_name)
+                                    if item.type_name is not None
+                                    else None
+                                ),
+                            )
+                            for item in declaration.variants
+                        ),
+                    )
+                )
+        self.contract_graph = CONTRACT_GRAPH.prepare(self.type_context)
+        self.type_properties = TypePropertyResolver(self.type_context)
         invariant_function_names = {
             f"__merlo_invariant_{record.name}_{index}"
             for record in self.records.values()
@@ -801,11 +865,18 @@ class _Elaborator:
                 name: {field.name: field.type_name for field in record.fields}
                 for name, record in self.records.items()
             }
-            map_entry_parts = (
-                _generic_parts(receiver_type, "MapEntry")
-                if receiver_type
-                else None
-            )
+            map_entry_parts = None
+            if receiver_type is not None:
+                try:
+                    receiver_id = self.type_context.intern_text(receiver_type)
+                    receiver_ref = self.type_context.resolve(receiver_id)
+                    if receiver_ref.constructor == "MapEntry" and len(receiver_ref.arguments) == 2:
+                        map_entry_parts = tuple(
+                            self.type_context.render(item)
+                            for item in receiver_ref.arguments
+                        )
+                except TypeArenaError:
+                    map_entry_parts = None
             candidates = [
                 (name, fields[expression.field])
                 for name, fields in field_tables.items()
@@ -917,6 +988,9 @@ class _Elaborator:
             )
         return term
 
+    def _contract_static_receiver(self, receiver: str) -> TypeConstructorId:
+        return TypeConstructorId(receiver)
+
     def _contract_method_call(
         self,
         expression: SurfaceCall,
@@ -940,7 +1014,17 @@ class _Elaborator:
             return None
         receiver = self._expression(receiver_expression, function)
         receiver_type = self.types.concrete.get(self.types.find(receiver))
-        signature = CONTRACT_GRAPH.method(receiver_type or "", method)
+        if receiver_type is None:
+            return None
+        signature = self.contract_graph.method(
+            self.type_context.intern_text(receiver_type),
+            method,
+            (
+                self.type_context.intern_text(expected)
+                if expected is not None
+                else None
+            ),
+        )
         if signature is None or signature.static:
             return None
         if not signature.accepts_arity(len(expression.arguments)):
@@ -967,7 +1051,10 @@ class _Elaborator:
             return None
         receiver = receiver_expression.name
         method = expression.callee.field
-        signature = CONTRACT_GRAPH.static_method(receiver, method)
+        signature = self.contract_graph.static_method(
+            self._contract_static_receiver(receiver),
+            method,
+        )
         if signature is None:
             return None
         if not signature.accepts_arity(len(expression.arguments)):
@@ -976,15 +1063,21 @@ class _Elaborator:
             )
         argument_terms: list[str] = []
         argument_types: list[str | None] = []
-        for argument, parameter_type in zip(
+        parameter_type_ids = self.contract_graph.static_parameter_type_ids(
+            self._contract_static_receiver(receiver),
+            method,
+            len(expression.arguments),
+        )
+        assert parameter_type_ids is not None
+        for argument, parameter_type_id in zip(
             expression.arguments,
-            signature.parameters_for(len(expression.arguments)),
+            parameter_type_ids,
             strict=True,
         ):
             argument_expected = (
-                None
-                if re.search(r"\b[A-Z]\b", parameter_type)
-                else parameter_type
+                self.type_context.render(parameter_type_id)
+                if parameter_type_id is not None
+                else None
             )
             argument_term = self._expression(
                 argument.value,
@@ -996,11 +1089,20 @@ class _Elaborator:
                 self.types.concrete.get(self.types.find(argument_term))
             )
         try:
-            resolved = CONTRACT_GRAPH.resolve_static_method(
-                receiver,
+            resolved = self.contract_graph.resolve_static_method(
+                self._contract_static_receiver(receiver),
                 method,
-                tuple(argument_types),
-                expected,
+                tuple(
+                    self.type_context.intern_text(item)
+                    if item is not None
+                    else None
+                    for item in argument_types
+                ),
+                (
+                    self.type_context.intern_text(expected)
+                    if expected is not None
+                    else None
+                ),
             )
         except ValueError as exc:
             raise SurfaceElaborationError(
@@ -1056,17 +1158,24 @@ class _Elaborator:
                 self.types.typed(receiver_type),
                 context=f"collection {operation} receiver",
             )
-        shape = collection_shape(receiver_type)
+        try:
+            receiver_type_id = self.type_context.intern_text(receiver_type)
+        except TypeArenaError as error:
+            raise SurfaceElaborationError(
+                f"CollectionReceiverRequired: {receiver_type}"
+            ) from error
+        shape = collection_shape(receiver_type_id, self.type_context)
         if shape is None:
             raise SurfaceElaborationError(
                 f"CollectionReceiverRequired: {receiver_type}"
             )
-        element_type = shape.element_type
+        element_type_id = shape.element_type_id
+        element_type = self.type_context.render(element_type_id)
         callable_expected = "Bool" if operation in {"where", "count"} else None
         callable_parameter = "__item"
         if isinstance(argument, SurfaceName) and argument.name in self.functions:
             target = self.functions[argument.name]
-            if not self.type_properties.resolve(element_type).is_copy:
+            if not self.type_properties.resolve(element_type_id).is_copy:
                 raise SurfaceElaborationError(
                     "OwnedCollectionCallableRequiresImplicitExpression: "
                     f"{argument.name}"
@@ -1123,9 +1232,14 @@ class _Elaborator:
         result_element = (
             callable_return if operation == "map" else element_type
         )
-        term = self.types.typed(
-            collection_result_type(operation, result_element)
+        result_element_id = self.type_context.intern_text(result_element)
+        result_type_id = collection_result_type(
+            operation,
+            result_element_id,
+            self.type_context,
         )
+        assert isinstance(result_type_id, TypeId)
+        term = self.types.typed(self.type_context.render(result_type_id))
         if expected:
             self.types.unify(
                 term,
@@ -1173,9 +1287,14 @@ class _Elaborator:
                 self._lookup(function, node.name),
                 name=f"{function.source.name}.closure_capture.{node.name}",
             )
-            properties = self.type_properties.resolve(type_name)
+            properties = self.type_properties.resolve(
+                self.type_context.type_id(type_name)
+            )
             if properties.contains_borrow and not properties.needs_drop:
-                contained = ",".join(properties.borrow_types) or type_name
+                contained = ",".join(
+                    self.type_context.render(item)
+                    for item in properties.borrow_types
+                ) or type_name
                 raise SurfaceElaborationError(
                     f"BorrowedClosureCaptureEscapes: {node.name}; "
                     f"container={type_name}; contained_borrow={contained}; "
@@ -1919,7 +2038,19 @@ class _Elaborator:
                     receiver_type = self.types.concrete.get(
                         self.types.find(receiver)
                     )
-                    signature = CONTRACT_GRAPH.method(receiver_type or "", method)
+                    signature = (
+                        self.contract_graph.method(
+                            self.type_context.intern_text(receiver_type),
+                            method,
+                            (
+                                self.type_context.intern_text(expected)
+                                if expected is not None
+                                else None
+                            ),
+                        )
+                        if receiver_type is not None
+                        else None
+                    )
                     if signature is None:
                         raise SurfaceElaborationError(
                             f"UnknownCall: {receiver_type or 'unresolved'}.{method}"
@@ -1974,19 +2105,31 @@ class _Elaborator:
             self._expression(expression.index, function, "UInt64")
             owner = self._expression(expression.receiver, function)
             owner_type = self.types.concrete.get(self.types.find(owner))
-            shape = collection_shape(owner_type)
+            try:
+                owner_id = self.type_context.intern_text(owner_type) if owner_type is not None else None
+            except TypeArenaError:
+                owner_id = None
+            shape = collection_shape(owner_id, self.type_context) if owner_id is not None else None
             if shape is None:
                 raise SurfaceElaborationError("IndexRequiresCollection")
-            term = self.types.typed(shape.element_type)
+            term = self.types.typed(self.type_context.render(shape.element_type_id))
         elif isinstance(expression, SurfaceList):
             element = self.types.variable(f"list:{expression.span.start_line}:{expression.span.start_column}")
             for item in expression.items:
                 self.types.unify(element, self._expression(item, function), context="list element")
-            expected_shape = collection_shape(expected)
+            try:
+                expected_id = self.type_context.intern_text(expected) if expected is not None else None
+            except TypeArenaError:
+                expected_id = None
+            expected_shape = (
+                collection_shape(expected_id, self.type_context)
+                if expected_id is not None
+                else None
+            )
             if expected_shape is not None:
                 self.types.unify(
                     element,
-                    self.types.typed(expected_shape.element_type),
+                    self.types.typed(self.type_context.render(expected_shape.element_type_id)),
                     context="list expected type",
                 )
                 term = self.types.typed(expected)
@@ -2305,29 +2448,37 @@ class _Elaborator:
             elif isinstance(statement, SurfaceFor):
                 iterable = self._expression(statement.iterable, function)
                 iterable_type = self.types.concrete.get(self.types.find(iterable))
-                shape = collection_shape(iterable_type)
-                borrowed_parts = _generic_parts(iterable_type, "Borrow")
-                borrowed_type = (
-                    borrowed_parts[0]
-                    if borrowed_parts and len(borrowed_parts) == 1
+                try:
+                    iterable_id = self.type_context.intern_text(iterable_type) if iterable_type is not None else None
+                except TypeArenaError:
+                    iterable_id = None
+                iterable_ref = self.type_context.resolve(iterable_id) if iterable_id is not None else None
+                shape = collection_shape(iterable_id, self.type_context) if iterable_id is not None else None
+                borrowed_type_id = (
+                    iterable_ref.arguments[0]
+                    if iterable_ref is not None
+                    and iterable_ref.constructor == "Borrow"
+                    and len(iterable_ref.arguments) == 1
                     else None
                 )
-                borrowed_shape = collection_shape(borrowed_type)
+                borrowed_ref = self.type_context.resolve(borrowed_type_id) if borrowed_type_id is not None else None
+                borrowed_shape = collection_shape(borrowed_type_id, self.type_context) if borrowed_type_id is not None else None
                 borrowed_map_parts = (
-                    _generic_parts(borrowed_type, "Map")
-                    if borrowed_type
+                    borrowed_ref.arguments
+                    if borrowed_ref is not None
+                    and borrowed_ref.constructor == "Map"
+                    and len(borrowed_ref.arguments) == 2
                     else None
                 )
                 if shape is not None:
-                    item_type = shape.element_type
+                    item_type = self.type_context.render(shape.element_type_id)
                 elif borrowed_shape is not None:
-                    item_type = borrowed_shape.element_type
+                    item_type = self.type_context.render(borrowed_shape.element_type_id)
                 elif borrowed_map_parts is not None:
-                    item_type = (
-                        f"MapEntry[{borrowed_map_parts[0]},"
-                        f"{borrowed_map_parts[1]}]"
+                    item_type = self.type_context.render(
+                        self.type_context.intern_node("MapEntry", borrowed_map_parts)
                     )
-                elif iterable_type == "FileLines":
+                elif iterable_ref is not None and iterable_ref.constructor == "FileLines":
                     item_type = "TextView"
                 else:
                     raise SurfaceElaborationError(
@@ -2953,7 +3104,7 @@ class _Elaborator:
                         (
                             "owned"
                             if self.type_properties.resolve(
-                                type_name
+                                self.type_context.type_id(type_name)
                             ).needs_drop
                             else "copy"
                         ),
@@ -2987,7 +3138,7 @@ class _Elaborator:
                             (
                                 "owned"
                                 if self.type_properties.resolve(
-                                    type_name
+                                    self.type_context.type_id(type_name)
                                 ).needs_drop
                                 else "copy"
                             ),
@@ -3077,6 +3228,7 @@ class _Elaborator:
         canonical = replace(
             canonical,
             surface_program=self.program,
+            type_context_builder=self.type_context,
             projection_source=self.program.source or None,
             source_path=self.program.span.path,
             source_sha256=hashlib.sha256(
@@ -3164,10 +3316,15 @@ def _emit_implicit_expression(expression: SurfaceExpression) -> str:
     raise SurfaceElaborationError(
         f"CannotEmitImplicitExpression: {type(expression).__name__}"
     )
-def elaborate_surface(program: SurfaceProgram) -> SurfaceElaboration:
+def elaborate_surface(
+    program: SurfaceProgram,
+    *,
+    type_context_builder: TypeContextBuilder | None = None,
+) -> SurfaceElaboration:
     from merlo.monomorphization import monomorphize_surface
 
-    return _Elaborator(monomorphize_surface(program)).result()
+    builder = type_context_builder or TypeContextBuilder(allow_unresolved=False)
+    return _Elaborator(monomorphize_surface(program), builder).result()
 
 
 __all__ = [

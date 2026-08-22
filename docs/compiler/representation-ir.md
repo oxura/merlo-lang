@@ -22,9 +22,12 @@ copy/move/drop classes, dependencies, contained-borrow/resource properties,
 the exact contained borrow/resource leaf types, and `source_type_identity`.
 Operations retain type, source span, symbol/revision identity, ownership
 provenance, effects, attributes, and children. Each function also carries the
-digest-bound `merlo.borrow-summary.v3` relation and diagnostic witness contract
+digest-bound `merlo.borrow-summary.v4` relation and diagnostic witness contract
 lowered from HIR, so downstream inspection retains interprocedural direct and
-contained-borrow origins without making witnesses semantic.
+contained-borrow origins without making witnesses semantic. Borrow relations
+are TypeId-authoritative in HIR and ownership/borrow analysis; this RIR v5
+artifact preserves its existing representation contract and generated-C
+semantics.
 The RIR digest canonicalizes those diagnostic witness arrays to empty values;
 changing only a witness therefore preserves both predecessor and RIR hashes.
 

@@ -9,12 +9,10 @@ Result[Option[Box[app.model.User]],app.Error]
 Array[UInt64,8]
 ```
 
-Several compiler stages still carry those values as strings. That was useful
-during the research prototype, but it is not a suitable long-term contract
-for ownership, layout, MIR, LLVM, parallel lowering, or semantic tooling.
-`merlo.type-arena.v1` is the existing authority for the first structured HIR
-type-identity migration. It does not itself authorize a whole-compiler
-ownership, RIR, MIR, or backend cutover.
+Several compiler stages historically carried those values as strings. The
+TypeArena/TypeContext boundary is now the semantic authority for structured HIR,
+ownership, Place lookup, and borrow provenance. It does not itself authorize an
+RIR, MIR, or backend representation-identity cutover.
 
 ## Boundary and lifecycle
 
@@ -28,12 +26,13 @@ structural TypeRef graph
 TypeId
 ```
 
-The HIR builder creates one local arena per `StructuredHIRProgram`. It uses
-that arena, and its cached interning operations, for declarations,
+The HIR builder creates one local mutable `TypeContextBuilder` per compilation.
+It uses that builder, and its cached interning operations, for declarations,
 parameters, fields, variants, functions, nodes, contracts, flows, machines,
-machine state fields, and the HIR-only FFI JSON projection. The arena is
-completed before the program is serialized and no process-global arena is
-consulted. A closed compiler artifact never reopens the arena or reparses a
+machine state fields, and the HIR-only FFI JSON projection. The builder remains
+open while HIR construction and the ownership/borrow analyses consume the same
+context; it is frozen exactly once when the final `StructuredHIRProgram` is
+assembled. A closed compiler artifact never reopens the arena or reparses a
 retained spelling after load.
 
 After a stage adopts the arena, semantic identity should use `TypeId`. Human
@@ -97,12 +96,12 @@ Standalone `TypeRef.from_dict` canonicalizes aliases. Arena snapshots are
 stricter: `TypeArena.from_dict` rejects a serialized alias before identity
 validation, so snapshots have one canonical byte representation.
 
-HIR v10 stores the snapshot plus `type_arena_digest` in
+HIR v12 stores the snapshot plus `type_arena_digest` in
 `StructuredHIRProgram`. The snapshot is closed (`allow_unresolved=false`).
-When reading HIR, the outer object’s exact keys, contract, schema version,
-and envelope invariants are checked first; HIR v9 is strictly rejected. The
-arena is then restored, its closedness is required, and the digest is
-recomputed and compared. HIR-only FFI annotations are validated next, then
+The reader checks the outer contract, schema version, and envelope invariants
+first; HIR v11 is strictly rejected. The arena is then restored, its
+closedness is required, and the digest is recomputed and compared. HIR-only
+FFI annotations are validated next, then
 native syntax and typed HIR records are restored. Each present `TypeId` must
 exist in the arena, and its canonical spelling must equal the retained
 canonical HIR spelling. Finally, `StructuredHIRProgram` validates source
@@ -114,51 +113,62 @@ Unresolved `?` types are rejected by default. A frontend-only arena may opt
 in explicitly with `allow_unresolved=True`; closed compiler artifacts must
 not.
 
-## HIR migration surface
+## HIR and consumer migration surface
 
-HIR v10 carries `TypeId` beside retained spelling at every HIR-visible type
-position. The serialized pairs are exact: `type` + `type_id`,
+HIR v12 carries `TypeId` beside retained spelling at every HIR-visible type
+position. Semantic attribute spellings (closures, holes, result/error,
+intrinsics, casts, foreign calls, collection operations, and map
+specializations) carry paired identities; machine state identities remain
+outside the arena. The serialized pairs are exact: `type` + `type_id`,
 `payload_type` + `payload_type_id`, and `return_type` + `return_type_id`.
 This includes declaration types, parameters, returns, record fields, enum
-payloads, flow results, local `Let`/`Var`/`Assign` nodes, and contract
-condition result types. `HIRTypeDecl` has its nominal `type_id` beside
-`symbol_id` and `revision_id`. `HIRMachineStateField` is
-`{name,type,type_id}`. HIR-only FFI JSON annotates extern parameters,
-extern return/error fields, and `repr(C)` fields with `type_name`/`type_id`;
-the underlying FFI classes and contract remain unchanged.
+payloads, flow results, local `Let`/`Var`/`Assign` nodes, and contract-condition
+result types. `HIRTypeDecl` has its nominal `type_id` beside `symbol_id` and
+`revision_id`. `HIRMachineStateField` is `{name,type,type_id}`. The bound
+in-memory FFI model stores IDs for extern parameters, extern return/error
+types, `repr(C)` fields, and raw-pointer pointees. HIR JSON writes those stored
+IDs directly and records the bound lifecycle explicitly, including
+identity-empty FFI programs and empty `repr(C)` records. Cached C prototypes
+are serialization data, not a spelling-reparse path. Access, ownership,
+destructor, mutability, and nullability remain separate pointer policy fields
+and are cross-checked against the parameter's structural pointer TypeId.
 
 Aliases are already canonicalized before HIR stores them, so readers compare
-the arena's canonical spelling with retained canonical HIR spelling rather
-than reparsing source syntax. Qualified nominal names remain qualified and
-distinct. Downstream consumers continue reading retained spelling in this
-migration; issues #84 and #85 cover later consumer/layout scope and remain
-open.
+the arena's canonical spelling with retained canonical HIR spelling rather than
+reparsing source syntax. Qualified nominal names remain qualified and distinct.
+Ownership, Place lookup, borrow provenance, and ContractGraph scheme resolution
+now consume `TypeId` from the same mutable-then-frozen `TypeContext`; retained
+spelling remains diagnostic or an out-of-scope backend projection only.
+ContractGraph binds explicit variables, concrete identities, applied
+constructors, and const arguments, then matches and instantiates through
+`TypeRef` without reparsing actual types. Issue #85 covers RIR descriptors and
+executable MIR TypeId migration; issue #86 covers user-defined generic
+declaration/package provenance; issue #72 covers native-syntax removal and
+executable-MIR backend authority. These remain separate boundaries.
 
 ## Initial scope
 
-Type Arena v1 is a foundation, not a whole-compiler cutover. This migration:
+Type Arena v1 is a foundation with a complete HIR/ownership/borrow authority
+boundary, not a whole-compiler cutover. This migration:
 
 - keeps `TypeId`, `TypeRef`, and `TypeArena` as the single arena authority;
-- gives structured HIR schema 10 one closed arena snapshot and digest;
-- provides strict JSON roundtrip, closed-snapshot validation, and tamper
-  detection;
+- gives structured HIR schema 12 one closed arena snapshot and digest;
 - centralizes structural constructor arity validation;
 - makes `TypePropertyResolver` the first resolver-local production consumer;
 - consistently classifies `Int`, `UInt`, and `Float` aliases by their
   canonical scalar types instead of treating them as unknown owner types;
 - rejects malformed generic arities and unknown generic constructors earlier;
-- preserves existing ownership, ContractGraph, RIR, MIR, backend, and
-  generated-C semantics rather than claiming their migration.
+- preserves existing RIR, MIR, backend, and generated-C semantics while
+  ownership, Place lookup, borrow provenance, and ContractGraph use TypeId
+  authority.
 
-The migration proceeds in narrow PRs:
+The migration proceeds in narrow commits:
 
-1. Add `TypeId` beside existing HIR positions (the HIR v10 migration).
-2. Migrate ownership and ContractGraph consumers, then remove duplicate
-   parsing (issue #84 scope).
-3. Migrate representation IR descriptors and later physical layout identity
-   (issue #85 scope).
-4. Migrate executable MIR only under a separately reviewed contract.
-5. Make C11 and future LLVM/GPU backends consume structural identities only
-   after those boundaries are explicitly reviewed.
-
-No backend should grow a second type parser during this migration.
+1. Add `TypeId` beside existing HIR positions (the HIR v12 migration).
+2. Keep machine state labels in their separate deterministic identity domain;
+3. Migrate ownership, Place lookup, borrow provenance, and ContractGraph
+   consumers and remove duplicate parsing (issue #84 scope, now landed).
+4. Migrate RIR descriptors and executable MIR identities (issue #85 scope).
+5. Add user-defined generic declaration/package provenance (issue #86 scope).
+6. Remove native syntax and make the executable-MIR backend authoritative
+   (issue #72 scope).

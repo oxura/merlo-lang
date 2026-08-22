@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from merlo.surface_ast import SourceSpan, SurfaceProgram
+from merlo.type_arena import TypeContextBuilder
 
 
 def _span_payload(span: SourceSpan) -> dict[str, Any]:
@@ -451,6 +452,7 @@ class CanonicalProgram:
     projection_source: str | None = field(default=None, repr=False, compare=False)
     source_path: str | None = field(default=None, repr=False, compare=False)
     source_sha256: str | None = field(default=None, repr=False, compare=False)
+    type_context_builder: TypeContextBuilder | None = field(default=None, repr=False, compare=False)
 
     def to_payload(self) -> dict[str, Any]:
         return {

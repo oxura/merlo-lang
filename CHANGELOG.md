@@ -3,21 +3,39 @@
 ## Unreleased
 
 - Continues the `0.1.0-alpha.3-dev` compatibility line with language contract
-  `0.3`, frontend `8`, canonical `6`, HIR `10`, Obligation IR `1`, RIR `5`,
-  MIR `2`, runtime ABI `2`, and SemanticWorld `17`. Earlier lockfiles must be
-  regenerated with the alpha.3 compiler; see the migration guide.
-  `merlo.structured-typed-hir.v9` artifacts are rejected by the v10 reader.
+  `0.3`, frontend `8`, canonical `6`, HIR `12`, Obligation IR `1`, RIR `5`,
+  MIR `2`, runtime ABI `2`, and SemanticWorld `19`. Earlier lockfiles must be
+  regenerated with the current compiler; see the migration guide.
+  `merlo.structured-typed-hir.v11` artifacts are rejected by the v12 reader.
   The supported regeneration operation is
   `python -c 'from merlo.project import resolve_dependencies; resolve_dependencies("PROJECT")'`
   once per project root; there is no `merlo lock` command.
-- Structured HIR now stores one closed `TypeArena` snapshot and
-  `type_arena_digest`, with validated `TypeId` beside retained diagnostic
-  spelling at every HIR-visible type position. Exact serialized pairs are
-  `type`/`type_id`, `payload_type`/`payload_type_id`, and
-  `return_type`/`return_type_id`; aliases are canonicalized and qualified
-  nominal names remain distinct. This is an HIR serialization/validation
-  boundary only and does not claim ownership, ContractGraph, RIR, MIR, or
-  backend migration; issues #84 and #85 remain open.
+- HIR v12 gives machine states deterministic non-TypeArena identities; initial
+  and transition source/target IDs are membership-validated, and Transition
+  nodes carry no type. Semantic HIR attributes and bound FFI metadata carry
+  direct paired TypeIds. FFI JSON records its bound lifecycle explicitly,
+  preserves cached prototypes without serialization-time reparsing, and
+  validates pointer/pointee identity against policy metadata. This completes
+  issue #84 while RIR v5, MIR v2, backend, and generated-C semantics remain
+  unchanged. Issue #85 covers RIR descriptors and executable MIR TypeId
+  migration; issue #86 covers user-defined generic declaration/package
+  provenance; issue #72 covers native-syntax removal and executable-MIR backend
+  authority.
+- Structured HIR continues to store one closed `TypeArena` snapshot and
+  `type_arena_digest`; retained spellings remain diagnostic only.
+- Replaces ContractGraph's regex and generic-spelling matcher with structural
+  `TypeScheme` nodes (`TypeVarId`, concrete `TypeId`, applied constructors, and
+  const arguments). Surface elaboration, structured HIR, and ownership share a
+  `BoundContractGraph` over the compilation's existing `TypeContext`; matching
+  and result instantiation traverse validated `TypeRef` nodes while preserving
+  optional arity, ownership, effects, ABI metadata, and contextual numeric
+  results.
+- Replaces `merlo.borrow-summary.v3` with the strict v4 contract: semantic
+  relations use `TypeId` for borrow provenance and revisions, while retained
+  canonical spellings and bounded witnesses remain diagnostic-only. Issue #85
+  covers RIR descriptors and executable MIR TypeId migration; issue #86 covers
+  user-defined generic declaration/package provenance; issue #72 covers
+  native-syntax removal and executable-MIR backend authority.
 - Resolves complete root and transitive package constraints with deterministic
   backtracking, validates malformed semver terms strictly, and revalidates online
   locks against the current registry while preserving verified offline replay.

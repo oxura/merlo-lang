@@ -387,6 +387,11 @@ def _map_types(type_name: str) -> tuple[str, str] | None:
     parts = generic_parts(type_name, "Map", arity=2)
     return parts if parts is not None else None  # type: ignore[return-value]
 
+def _map_entry_types(type_name: str) -> tuple[str, str] | None:
+    parts = generic_parts(type_name, "MapEntry", arity=2)
+    return parts if parts is not None else None  # type: ignore[return-value]
+
+
 
 def _array_parts(type_name: str) -> tuple[str, int] | None:
     parts = generic_parts(type_name, "Array", arity=2)
@@ -673,7 +678,7 @@ class _DescriptorBuilder:
     def __init__(self, hir: StructuredHIRProgram) -> None:
         self.hir = hir
         self.declarations = {item.name: item for item in hir.types}
-        self.type_properties = TypePropertyResolver(self.declarations)
+        self.type_properties = TypePropertyResolver(hir.type_context)
         self.nominal_names = frozenset(self.declarations)
         self.descriptors: dict[str, TypeDescriptor] = {}
         for name, (size, alignment) in _SCALARS.items():
@@ -746,15 +751,23 @@ class _DescriptorBuilder:
         for type_name in sorted(referenced):
             self.get(type_name)
         for name, descriptor in tuple(self.descriptors.items()):
-            properties = self.type_properties.resolve(name)
+            properties = self.type_properties.resolve(
+                self.hir.type_context.type_id(name)
+            )
             self.descriptors[name] = replace(
                 descriptor,
                 contains_borrow=properties.contains_borrow,
                 contains_resource=(
                     properties.is_resource or properties.contains_resource
                 ),
-                contained_borrow_types=properties.borrow_types,
-                contained_resource_types=properties.resource_types,
+                contained_borrow_types=tuple(
+                    self.hir.type_context.render(item)
+                    for item in properties.borrow_types
+                ),
+                contained_resource_types=tuple(
+                    self.hir.type_context.render(item)
+                    for item in properties.resource_types
+                ),
             )
         return tuple(sorted(self.descriptors.values(), key=lambda item: item.name))
 
@@ -892,6 +905,32 @@ class _DescriptorBuilder:
             )
             self.descriptors[type_name] = descriptor
             return descriptor
+        map_entry_types = _map_entry_types(type_name)
+        if map_entry_types is not None:
+            key_type, value_type = map_entry_types
+            key = self.get(key_type)
+            value = self.get(value_type)
+            descriptor = BorrowDesc(
+                type_name,
+                "borrow",
+                16,
+                8,
+                "aggregate",
+                "trivial",
+                "copy",
+                "trivial",
+                (),
+                (key_type, value_type),
+                _stable_id(
+                    "type",
+                    "map_entry",
+                    key.source_type_identity,
+                    value.source_type_identity,
+                ),
+            )
+            self.descriptors[type_name] = descriptor
+            return descriptor
+
         generic = _generic(type_name)
         if generic is not None:
             base = generic.name
@@ -1275,6 +1314,27 @@ _HIR_TO_RIR = {
 }
 
 
+_HIR_TYPE_ID_ATTRIBUTES = frozenset(
+    {
+        "expected_type_id",
+        "result_type_id",
+        "error_type_id",
+        "numeric_type_id",
+        "target_type_id",
+        "source_collection_type_id",
+        "element_type_id",
+        "map_specialization_id",
+        "parameter_type_id",
+        "return_type_id",
+        "callable_parameter_type_id",
+        "callable_return_type_id",
+        "source_type_id",
+        "parameter_type_ids",
+        "capture_type_ids",
+    }
+)
+
+
 def _lower_operation(node: HIRNode) -> RIROperation:
     op = _HIR_TO_RIR.get(node.kind)
     if op is None:
@@ -1329,7 +1389,11 @@ def _lower_operation(node: HIRNode) -> RIROperation:
         revision,
         provenance,
         node.effects,
-        node.attributes,
+        tuple(
+            (key, value)
+            for key, value in node.attributes
+            if key not in _HIR_TYPE_ID_ATTRIBUTES
+        ),
         tuple(_lower_operation(item) for item in node.children),
     )
 

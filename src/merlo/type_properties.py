@@ -1,16 +1,23 @@
 """Canonical semantic properties for Merlo types.
 
-Compiler stages ask this resolver about behavior instead of recognizing type
-spellings independently. Declarations are intentionally accepted by shape so
-the resolver can be used before HIR has been constructed.
+Type properties are resolved from the compiler-local immutable ``TypeContext``.
+The resolver never parses or interns: source-boundary code must validate and
+intern spellings before asking for properties by ``TypeId``.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Iterable, Protocol
 
-from merlo.type_arena import TypeArena, TypeArenaError
+from merlo.type_arena import TypeArenaError, TypeId
+
+
+class TypeAuthority(Protocol):
+    """Read-only type operations shared by builders and frozen contexts."""
+
+    def resolve(self, type_id: TypeId) -> object: ...
+    def declaration(self, type_id: TypeId) -> object: ...
+    def render(self, type_id: TypeId) -> str: ...
+    def type_id(self, spelling: str) -> TypeId: ...
 
 
 @dataclass(frozen=True)
@@ -22,10 +29,19 @@ class TypeProperties:
     is_resource: bool = False
     contains_resource: bool = False
     layout: str = "value"
-    borrow_types: tuple[str, ...] = ()
-    resource_types: tuple[str, ...] = ()
+    borrow_types: tuple[TypeId, ...] = ()
+    resource_types: tuple[TypeId, ...] = ()
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self, context: TypeAuthority | None = None) -> dict[str, object]:
+        """Return the legacy diagnostic payload, rendering IDs through context.
+
+        The in-memory properties remain TypeId-only.  Callers serializing the
+        legacy property payload provide the owning context to retain canonical
+        spellings without introducing a parser at this layer.
+        """
+        if context is None and (self.borrow_types or self.resource_types):
+            raise TypeArenaError("TypeProperties.to_dict requires TypeAuthority for contained types")
+        render = context.render if context is not None else str
         return {
             "is_copy": self.is_copy,
             "is_move": self.is_move,
@@ -34,8 +50,8 @@ class TypeProperties:
             "is_resource": self.is_resource,
             "contains_resource": self.contains_resource,
             "layout": self.layout,
-            "borrow_types": list(self.borrow_types),
-            "resource_types": list(self.resource_types),
+            "borrow_types": [render(item) for item in self.borrow_types],
+            "resource_types": [render(item) for item in self.resource_types],
         }
 
 
@@ -50,171 +66,199 @@ _SCALARS = frozenset(
 )
 _OWNERS = frozenset({"Text", "Bytes", "TextBuilder", "Json", "Path"})
 _RESOURCES = frozenset({"FileReader", "FileWriter"})
-_BORROWS = frozenset({"TextView", "BytesView", "FileLines"})
+_BORROWS = frozenset({"TextView", "BytesView", "FileLines", "MapEntry"})
+
+
+def _unique_ids(
+    context: TypeAuthority,
+    values: Iterable[TypeId],
+) -> tuple[TypeId, ...]:
+    return tuple(sorted(set(values), key=context.render))
+
+
+def _member_type_id(member: object) -> TypeId | None:
+    """Read a declaration projection member without accepting spellings."""
+    if isinstance(member, TypeId):
+        return member
+    value = getattr(member, "type_id", None)
+    if value is not None and not isinstance(value, TypeId):
+        raise TypeArenaError("declaration member type_id must be TypeId")
+    return value
 
 
 class TypePropertyResolver:
-    def __init__(self, declarations: Mapping[str, object] | None = None) -> None:
-        self.declarations = declarations or {}
-        self._cache: dict[str, TypeProperties] = {}
-        # This is deliberately resolver-local rather than a process-wide arena:
-        # property analysis remains isolated while all structural validation is
-        # delegated to the same authority used by TypeArena serialization.
-        self._type_arena = TypeArena()
+    """Resolve ownership properties through one read-only type authority."""
 
-    def _canonical_type(self, type_name: str) -> str:
-        try:
-            type_id = self._type_arena.intern_text(type_name)
-        except TypeArenaError:
-            # Preserve the resolver's conservative fallback for malformed or
-            # unsupported names while valid structural names use one parser.
-            return type_name
-        return self._type_arena.canonical(type_id)
+    def __init__(self, context: TypeAuthority) -> None:
+        required = ("resolve", "declaration", "render")
+        if any(not callable(getattr(context, name, None)) for name in required):
+            raise TypeArenaError("TypePropertyResolver requires TypeAuthority")
+        self.context = context
+        self._cache: dict[TypeId, TypeProperties] = {}
 
-    def _generic_parts(
+    def resolve(self, type_id: TypeId) -> TypeProperties:
+        """Resolve one validated type identity."""
+        return self._resolve(type_id, frozenset())
+
+    def _resolve(
         self,
-        type_name: str,
-        constructor: str,
-        *,
-        arity: int | None = None,
-    ) -> tuple[str, ...] | None:
-        try:
-            type_id = self._type_arena.intern_text(type_name)
-            reference = self._type_arena.resolve(type_id)
-        except TypeArenaError:
-            return None
-        if reference.constructor != constructor or not reference.arguments:
-            return None
-        if arity is not None and len(reference.arguments) != arity:
-            return None
-        return tuple(self._type_arena.canonical(argument) for argument in reference.arguments)
-
-    def resolve(
-        self,
-        type_name: str | None,
-        seen: frozenset[str] = frozenset(),
+        type_id: TypeId,
+        seen: frozenset[TypeId],
     ) -> TypeProperties:
-        if not type_name:
-            return _COPY
-        type_name = self._canonical_type(type_name)
-        cached = self._cache.get(type_name)
-        if cached is not None and type_name not in seen:
-            return cached
-        if type_name in _SCALARS or type_name.startswith("fn("):
-            return _COPY
-        if type_name in _OWNERS:
+        if not isinstance(type_id, TypeId):
+            raise TypeArenaError("TypePropertyResolver.resolve requires TypeId")
+        # Exact lookup is intentionally the first operation: malformed or
+        # foreign identities cannot receive a conservative fallback.
+        reference = self.context.resolve(type_id)
+        if type_id in seen:
             return _OWNER
-        if type_name in _RESOURCES:
-            return TypeProperties(
+        cached = self._cache.get(type_id)
+        if cached is not None and type_id not in seen:
+            return cached
+        constructor = reference.constructor
+        if constructor in _SCALARS or constructor == "Fn" and not reference.arguments:
+            result = _COPY
+        elif constructor in _OWNERS:
+            result = _OWNER
+        elif constructor in _RESOURCES:
+            result = TypeProperties(
                 False,
                 True,
                 True,
                 is_resource=True,
                 contains_resource=True,
                 layout="resource",
-                resource_types=(type_name,),
+                resource_types=(type_id,),
             )
-        if type_name in _BORROWS:
-            return TypeProperties(
+        elif constructor in _BORROWS:
+            result = TypeProperties(
                 True,
                 False,
                 False,
                 contains_borrow=True,
                 layout="view",
-                borrow_types=(type_name,),
+                borrow_types=(type_id,),
             )
-        for constructor in ("Slice", "Borrow"):
-            if self._generic_parts(type_name, constructor) is not None:
-                return TypeProperties(
+        else:
+            next_seen = seen | {type_id}
+            children = tuple(reference.arguments)
+            if constructor in {"Slice", "Borrow"}:
+                # A view is copyable, but retain nested contained properties
+                # so recursive generic graphs cannot hide resources.
+                nested = tuple(self._resolve(child, next_seen) for child in children)
+                result = TypeProperties(
                     True,
                     False,
                     False,
                     contains_borrow=True,
+                    contains_resource=any(
+                        item.is_resource or item.contains_resource for item in nested
+                    ),
                     layout="view",
-                    borrow_types=(type_name,),
+                    borrow_types=_unique_ids(
+                        self.context,
+                        (
+                            type_id,
+                            *(borrow for item in nested for borrow in item.borrow_types),
+                        ),
+                    ),
+                    resource_types=_unique_ids(
+                        self.context,
+                        (
+                            resource
+                            for item in nested
+                            for resource in item.resource_types
+                        ),
+                    ),
                 )
-        if self._generic_parts(type_name, "Fn") is not None:
-            return TypeProperties(
-                False,
-                True,
-                True,
-                layout="closure",
-            )
-
-        if type_name in seen:
-            # Recursive nominal types require indirection in Merlo. Treat the
-            # cycle as move-only while the outer descriptor owns the drop.
-            return _OWNER
-        next_seen = seen | {type_name}
-
-        array = self._generic_parts(type_name, "Array", arity=2)
-        if array is not None:
-            result = self._aggregate((array[0],), next_seen, layout="array")
-            self._cache[type_name] = result
-            return result
-        for constructor, layout in (
-            ("Option", "enum"),
-            ("Result", "enum"),
-        ):
-            parts = self._generic_parts(type_name, constructor)
-            if parts is not None:
-                result = self._aggregate(parts, next_seen, layout=layout)
-                self._cache[type_name] = result
-                return result
-        for constructor in ("Vec", "Box", "Future", "Shared"):
-            parts = self._generic_parts(type_name, constructor, arity=1)
-            if parts is not None:
+            elif constructor == "Fn":
+                nested = tuple(self._resolve(child, next_seen) for child in children)
+                result = TypeProperties(
+                    False,
+                    True,
+                    True,
+                    contains_borrow=any(item.contains_borrow for item in nested),
+                    contains_resource=any(
+                        item.is_resource or item.contains_resource for item in nested
+                    ),
+                    layout="closure",
+                    borrow_types=_unique_ids(
+                        self.context,
+                        (
+                            borrow
+                            for item in nested
+                            for borrow in item.borrow_types
+                        ),
+                    ),
+                    resource_types=_unique_ids(
+                        self.context,
+                        (
+                            resource
+                            for item in nested
+                            for resource in item.resource_types
+                        ),
+                    ),
+                )
+            elif constructor == "Array" and len(children) == 2:
+                result = self._aggregate((children[0],), next_seen, layout="array")
+            elif constructor in {"Option", "Result"} and children:
+                result = self._aggregate(children, next_seen, layout="enum")
+            elif constructor in {"Vec", "Box", "Future", "Shared"} and len(children) == 1:
                 result = self._owning_generic(
-                    parts,
+                    children,
                     next_seen,
                     layout=constructor.casefold(),
                     is_resource=constructor == "Future",
-                    resource_name=type_name if constructor == "Future" else None,
+                    resource_id=type_id if constructor == "Future" else None,
                 )
-                self._cache[type_name] = result
-                return result
-        map_parts = self._generic_parts(type_name, "Map", arity=2)
-        if map_parts is not None:
-            result = self._owning_generic(
-                map_parts,
-                next_seen,
-                layout="map",
-            )
-            self._cache[type_name] = result
-            return result
-
-        declaration = self.declarations.get(type_name)
-        if declaration is not None:
-            kind = getattr(
-                declaration,
-                "kind",
-                "enum" if hasattr(declaration, "variants") else "record",
-            )
-            if kind == "record":
-                children = tuple(
-                    field.type_name for field in getattr(declaration, "fields", ())
-                )
+            elif constructor == "Map" and len(children) == 2:
+                result = self._owning_generic(children, next_seen, layout="map")
             else:
-                children = tuple(
-                    variant.payload_type for variant in getattr(declaration, "variants", ())
-                    if variant.payload_type is not None
-                )
-            result = self._aggregate(children, next_seen, layout=kind)
-            self._cache[type_name] = result
-            return result
-
-        # Unknown nominal types are conservatively move-only. This fails safe
-        # for ownership without teaching every compiler layer their spellings.
-        return _OWNER
+                try:
+                    declaration = self.context.declaration(type_id)
+                except TypeArenaError:
+                    declaration = None
+                if declaration is None:
+                    result = _OWNER
+                else:
+                    kind = getattr(
+                        declaration,
+                        "kind",
+                        "enum" if hasattr(declaration, "variants") else "record",
+                    )
+                    if kind == "record":
+                        members = getattr(declaration, "fields", ())
+                        declaration_children = tuple(
+                            member_id
+                            for member in members
+                            for member_id in (_member_type_id(member),)
+                            if member_id is not None
+                        )
+                    else:
+                        variants = getattr(declaration, "variants", ())
+                        declaration_children = tuple(
+                            member_id
+                            for variant in variants
+                            for member_id in (_member_type_id(variant),)
+                            if member_id is not None
+                        )
+                    result = self._aggregate(
+                        declaration_children,
+                        next_seen,
+                        layout=kind,
+                    )
+        if not seen:
+            self._cache[type_id] = result
+        return result
 
     def _aggregate(
         self,
-        children: tuple[str, ...],
-        seen: frozenset[str],
+        children: tuple[TypeId, ...],
+        seen: frozenset[TypeId],
         *,
         layout: str,
     ) -> TypeProperties:
-        properties = tuple(self.resolve(child, seen) for child in children)
+        properties = tuple(self._resolve(child, seen) for child in children)
         needs_drop = any(item.needs_drop for item in properties)
         contains_borrow = any(item.contains_borrow for item in properties)
         contains_resource = any(
@@ -227,32 +271,39 @@ class TypePropertyResolver:
             contains_borrow=contains_borrow,
             contains_resource=contains_resource,
             layout=layout,
-            borrow_types=tuple(sorted({
-                borrow for item in properties for borrow in item.borrow_types
-            })),
-            resource_types=tuple(sorted({
-                resource for item in properties for resource in item.resource_types
-            })),
+            borrow_types=_unique_ids(
+                self.context,
+                (
+                    borrow
+                    for item in properties
+                    for borrow in item.borrow_types
+                ),
+            ),
+            resource_types=_unique_ids(
+                self.context,
+                (
+                    resource
+                    for item in properties
+                    for resource in item.resource_types
+                ),
+            ),
         )
 
     def _owning_generic(
         self,
-        children: tuple[str, ...],
-        seen: frozenset[str],
+        children: tuple[TypeId, ...],
+        seen: frozenset[TypeId],
         *,
         layout: str,
         is_resource: bool = False,
-        resource_name: str | None = None,
+        resource_id: TypeId | None = None,
     ) -> TypeProperties:
-        properties = tuple(self.resolve(child, seen) for child in children)
-        borrow_types = tuple(sorted({
-            borrow for item in properties for borrow in item.borrow_types
-        }))
+        properties = tuple(self._resolve(child, seen) for child in children)
         resource_types = {
             resource for item in properties for resource in item.resource_types
         }
-        if resource_name is not None:
-            resource_types.add(resource_name)
+        if resource_id is not None:
+            resource_types.add(resource_id)
         return TypeProperties(
             is_copy=False,
             is_move=True,
@@ -263,12 +314,16 @@ class TypePropertyResolver:
                 item.is_resource or item.contains_resource for item in properties
             ),
             layout=layout,
-            borrow_types=borrow_types,
-            resource_types=tuple(sorted(resource_types)),
+            borrow_types=_unique_ids(
+                self.context,
+                (
+                    borrow
+                    for item in properties
+                    for borrow in item.borrow_types
+                ),
+            ),
+            resource_types=_unique_ids(self.context, resource_types),
         )
 
 
-DEFAULT_TYPE_PROPERTIES = TypePropertyResolver()
-
-
-__all__ = ["DEFAULT_TYPE_PROPERTIES", "TypeProperties", "TypePropertyResolver"]
+__all__ = ["TypeAuthority", "TypeProperties", "TypePropertyResolver"]

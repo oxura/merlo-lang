@@ -24,6 +24,7 @@ from merlo.ffi import pointer_type
 from merlo.representation_ir import RepresentationProgram
 from merlo.intrinsics import (
     CONTRACT_GRAPH,
+    TypeConstructorId,
     INTRINSIC_SIGNATURES,
     format_intrinsic_arity,
     intrinsic_signature,
@@ -35,6 +36,7 @@ from merlo.structured_hir_v2 import (
 )
 from merlo.version import VERSIONS
 from merlo.type_parser import generic_parts
+from merlo.type_arena import TypeArenaError, TypeId
 from merlo.representation_c_types import (
     _array_parts,
     _callback_parts,
@@ -95,6 +97,7 @@ class GeneralCEmitter(RuntimeEmissionMixin):
         if mir.representation_ir_digest != representation.digest:
             raise RepresentationCBackendError("MIR/RIR predecessor mismatch")
         self.hir = hir
+        self.contract_graph = CONTRACT_GRAPH.bind(hir.type_context)
         self.representation = representation
         self.mir = mir
         self.descriptors = {item.name: item for item in representation.descriptors}
@@ -978,6 +981,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 "    return result;",
                 "}",
                 f"static void merlo_{suffix}_insert({ctype} *map, const MerloText *key, {value_ctype} value) {{",
+                '    if (map->active_views != 0) merlo_ownership_trap("MapMutationDuringView");',
                 f"    uint64_t hash = merlo_{suffix}_fnv1a64(key);",
                 "    bool found = false;",
                 f"    uint64_t slot = merlo_{suffix}_linear_probe(map, key, hash, &found);",
@@ -1009,6 +1013,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 *(
                     [
                         f"static uint64_t merlo_{suffix}_increment({ctype} *map, const MerloText *key, uint64_t amount) {{",
+                        '    if (map->active_views != 0) merlo_ownership_trap("MapMutationDuringView");',
                         f"    uint64_t hash = merlo_{suffix}_fnv1a64(key);",
                         "    bool found = false;",
                         f"    uint64_t slot = merlo_{suffix}_linear_probe(map, key, hash, &found);",
@@ -1841,7 +1846,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 ]
             )
             return lines
-        direct_shape = collection_shape(self._expression_type(node.iter))
+        direct_shape = self._collection_shape_for_name(self._expression_type(node.iter))
         if (
             isinstance(node.target, ast.Name)
             and direct_shape is not None
@@ -1865,16 +1870,16 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 if direct_shape.fixed_length is not None
                 else f"({receiver})->length"
             )
-            self.env_types[target] = direct_shape.element_type
-            element = self.descriptors[direct_shape.element_type]
+            self.env_types[target] = self._collection_element_name(direct_shape)
+            element = self.descriptors[self._collection_element_name(direct_shape)]
             pointer = _is_owner(element)
             if pointer:
                 self.pointer_values.add(target)
             declaration = (
-                f"{_c_name(direct_shape.element_type)} *{target} = "
+                f"{_c_name(self._collection_element_name(direct_shape))} *{target} = "
                 f"&({receiver})->data[{index}];"
                 if pointer
-                else f"{_c_name(direct_shape.element_type)} {target} = "
+                else f"{_c_name(self._collection_element_name(direct_shape))} {target} = "
                 f"({receiver})->data[{index}];"
             )
             lines = [
@@ -2605,7 +2610,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     f"(({index}) < ({length}) ? ({access}) : "
                     f"(merlo_bounds_trap({index}, {length}), ({access})))"
                 )
-            shape = collection_shape(owner_type)
+            shape = self._collection_shape_for_name(owner_type)
             if shape is not None and shape.kind in {
                 "vec",
                 "bytes",
@@ -2770,6 +2775,30 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             )
         return self._expression(node, expected=return_type)
 
+    def _type_id_for_name(self, type_name: str | None):
+        if type_name is None or not hasattr(self, "hir"):
+            return None
+        try:
+            return self.hir.type_context.type_id(type_name)
+        except TypeArenaError:
+            return None
+
+    def _collection_shape_for_name(self, type_name: str | None):
+        type_id = self._type_id_for_name(type_name)
+        return (
+            collection_shape(type_id, self.hir.type_context)
+            if type_id is not None
+            else None
+        )
+
+    def _static_contract_receiver(self, receiver: str) -> TypeConstructorId | None:
+        if not receiver.isidentifier():
+            return None
+        return TypeConstructorId(receiver)
+
+    def _collection_element_name(self, shape) -> str:
+        return self.hir.type_context.render(shape.element_type_id)
+
     def _collection_pipeline(
         self,
         node: ast.Call,
@@ -2805,10 +2834,10 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
         operations = tuple(stage[1] for stage in stages)
         if "count" in operations[:-1]:
             return None
-        shape = collection_shape(self._expression_type(current))
+        shape = self._collection_shape_for_name(self._expression_type(current))
         if shape is None:
             return None
-        element_type = shape.element_type
+        element_type = self._collection_element_name(shape)
         for _call, operation, metadata in stages:
             (
                 _callable_id,
@@ -2859,14 +2888,22 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             else f"({source})->length"
         )
         final_operation = stages[-1][1]
-        result_element = shape.element_type
+        result_element = self._collection_element_name(shape)
         for _call, operation, metadata in stages:
             if operation == "map":
                 result_element = metadata[3]
-        result_type = collection_result_type(
+        result_element_id = self._type_id_for_name(result_element)
+        if result_element_id is None:
+            raise RepresentationCBackendError(
+                f"unknown collection result element type: {result_element}"
+            )
+        result_type_id = collection_result_type(
             final_operation,
-            result_element,
+            result_element_id,
+            self.hir.type_context,
         )
+        assert isinstance(result_type_id, TypeId)
+        result_type = self.hir.type_context.render(result_type_id)
         pad = self._pad()
         lines: list[str] = []
         if final_operation == "count":
@@ -2893,7 +2930,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             [
                 f"{pad}for (uint64_t {index} = UINT64_C(0); "
                 f"{index} < {length}; ++{index}) {{",
-                f"{pad}    {_c_name(shape.element_type)} "
+                f"{pad}    {_c_name(self._collection_element_name(shape))} "
                 f"{source_value} = ({source})->data[{index}];",
             ]
         )
@@ -3003,7 +3040,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 "typed collection callable metadata required"
             )
         _callable_id, parameter, parameter_type, return_type, _text = metadata
-        if parameter_type != shape.element_type:
+        if parameter_type != self._collection_element_name(shape):
             raise RepresentationCBackendError(
                 "collection callable element type mismatch"
             )
@@ -3021,7 +3058,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
         pad = self._pad()
         lines: list[str] = []
         result_element = (
-            return_type if operation == "map" else shape.element_type
+            return_type if operation == "map" else self._collection_element_name(shape)
         )
         result_type = collection_result_type(operation, result_element)
         if operation == "count":
@@ -3047,11 +3084,11 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             f"{index} < {length}; ++{index}) {{"
         )
         lines.append(
-            f"{pad}    {_c_name(shape.element_type)} {parameter} = "
+            f"{pad}    {_c_name(self._collection_element_name(shape))} {parameter} = "
             f"{data}[{index}];"
         )
         previous_type = self.env_types.get(parameter)
-        self.env_types[parameter] = shape.element_type
+        self.env_types[parameter] = self._collection_element_name(shape)
         try:
             explicit_function = (
                 isinstance(node.args[0], ast.Name)
@@ -3068,10 +3105,10 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 )
             elif operation == "where":
                 value = parameter
-                descriptor = self.descriptors[shape.element_type]
+                descriptor = self.descriptors[self._collection_element_name(shape)]
                 if _is_owner(descriptor):
                     value = (
-                        f"merlo_clone_{_identifier(shape.element_type)}"
+                        f"merlo_clone_{_identifier(self._collection_element_name(shape))}"
                         f"(&{parameter})"
                     )
                 lines.extend(
@@ -3300,7 +3337,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             receiver_text = ast.unparse(node.func.value)
             method = node.func.attr
             receiver_type = self._expression_type(node.func.value)
-            shape = collection_shape(receiver_type)
+            shape = self._collection_shape_for_name(receiver_type)
             if (
                 method in COLLECTION_OPERATIONS
                 and shape is not None
@@ -3496,11 +3533,20 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     )
                 ]
                 return f"merlo_make_{_identifier(receiver_text)}_{method}({', '.join(arguments)})"
-            static_contract = CONTRACT_GRAPH.resolve_static_method(
-                receiver_text,
-                method,
-                tuple(self._expression_type(argument) for argument in node.args),
-                expected,
+            static_receiver = self._static_contract_receiver(receiver_text)
+            contract_graph = getattr(self, "contract_graph", None)
+            static_contract = (
+                contract_graph.resolve_static_method(
+                    static_receiver,
+                    method,
+                    tuple(
+                        self._type_id_for_name(self._expression_type(argument))
+                        for argument in node.args
+                    ),
+                    self._type_id_for_name(expected),
+                )
+                if contract_graph is not None and static_receiver is not None
+                else None
             )
             static_lowering = (
                 static_contract.representation_lowering
@@ -3549,9 +3595,12 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             ):
                 return f"{static_contract.abi_lowering}()"
             receiver_type = self._expression_type(node.func.value)
-            method_contract = CONTRACT_GRAPH.method(
-                receiver_type or "",
-                method,
+            receiver_type_id = self._type_id_for_name(receiver_type)
+            contract_graph = getattr(self, "contract_graph", None)
+            method_contract = (
+                contract_graph.method(receiver_type_id, method)
+                if contract_graph is not None and receiver_type_id is not None
+                else None
             )
             representation_lowering = (
                 method_contract.representation_lowering
@@ -3985,8 +4034,8 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             return None
         if isinstance(node, ast.Subscript):
             owner_type = self._expression_type(node.value)
-            shape = collection_shape(owner_type)
-            return shape.element_type if shape is not None else None
+            shape = self._collection_shape_for_name(owner_type)
+            return self._collection_element_name(shape) if shape is not None else None
         if isinstance(node, ast.Call):
             if isinstance(node.func, ast.Name):
                 if node.func.id == "__merlo_try__" and len(node.args) == 1:
@@ -4014,24 +4063,39 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 if receiver_text in self.descriptors and self.descriptors[receiver_text].kind == "enum":
                     return receiver_text
                 receiver_type = self._expression_type(node.func.value)
-                static_contract = CONTRACT_GRAPH.resolve_static_method(
-                    receiver_text,
-                    method,
-                    tuple(
-                        self._expression_type(argument)
-                        for argument in node.args
-                    ),
+                contract_graph = getattr(self, "contract_graph", None)
+                static_receiver = self._static_contract_receiver(receiver_text)
+                static_contract = (
+                    contract_graph.resolve_static_method(
+                        static_receiver,
+                        method,
+                        tuple(
+                            self._type_id_for_name(self._expression_type(argument))
+                            for argument in node.args
+                        ),
+                    )
+                    if contract_graph is not None and static_receiver is not None
+                    else None
                 )
                 if static_contract is not None:
                     return static_contract.result_type
-                method_contract = CONTRACT_GRAPH.method(
-                    receiver_type or "",
-                    method,
+                receiver_type_id = self._type_id_for_name(receiver_type)
+                method_contract = (
+                    contract_graph.method(receiver_type_id, method)
+                    if contract_graph is not None and receiver_type_id is not None
+                    else None
                 )
                 if method_contract is not None:
                     return method_contract.result_for(None)
+                if method == "get":
+                    generic = _generic(receiver_type or "")
+                    if generic is not None and generic[0] in {"Box", "Vec"}:
+                        return generic[1]
+                    map_types = _map_types(receiver_type or "")
+                    if map_types is not None:
+                        return map_types[1]
                 if method in COLLECTION_OPERATIONS:
-                    shape = collection_shape(receiver_type)
+                    shape = self._collection_shape_for_name(receiver_type)
                     metadata = (
                         getattr(node.args[0], "_merlo_implicit_callable", None)
                         if len(node.args) == 1
@@ -4041,12 +4105,18 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                         result_element = (
                             metadata[3]
                             if method == "map"
-                            else shape.element_type
+                            else self._collection_element_name(shape)
                         )
-                        return collection_result_type(
+                        result_element_id = self._type_id_for_name(result_element)
+                        if result_element_id is None:
+                            return None
+                        result_type_id = collection_result_type(
                             method,
-                            result_element,
+                            result_element_id,
+                            self.hir.type_context,
                         )
+                        assert isinstance(result_type_id, TypeId)
+                        return self.hir.type_context.render(result_type_id)
                 signature = intrinsic_signature(f"{receiver_text}.{method}")
                 if signature is not None:
                     result_parts = self._result_parts(signature.result_type)
@@ -4092,9 +4162,12 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             return f"&{self._borrowed_text_literal(node.value)}"
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
             receiver_type = self._expression_type(node.func.value)
-            contract = CONTRACT_GRAPH.method(
-                receiver_type or "",
-                node.func.attr,
+            receiver_type_id = self._type_id_for_name(receiver_type)
+            contract_graph = getattr(self, "contract_graph", None)
+            contract = (
+                contract_graph.method(receiver_type_id, node.func.attr)
+                if contract_graph is not None and receiver_type_id is not None
+                else None
             )
             if contract is not None and contract.representation_lowering in {
                 "option_unwrap_clone",
@@ -4576,7 +4649,10 @@ __MERLO_CAPS__
             signature = intrinsic_signature(entry[0])
             receiver, separator, method = entry[0].partition(".")
             method_signature = (
-                CONTRACT_GRAPH.static_method(receiver, method)
+                self.contract_graph.static_method(
+                    self._static_contract_receiver(receiver),
+                    method,
+                )
                 if separator
                 else None
             )

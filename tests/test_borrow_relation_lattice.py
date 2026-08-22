@@ -4,7 +4,6 @@ import json
 
 import pytest
 
-from merlo import native_syntax as ast
 from merlo.borrow_summary import (
     BORROW_SUMMARY_CYCLE_MARKER,
     BorrowPlacePath,
@@ -13,8 +12,8 @@ from merlo.borrow_summary import (
     BorrowSummary,
     BorrowSummaryEntry,
     _SummaryComputer,
-    compute_borrow_summaries,
 )
+from merlo.type_arena import TypeContextBuilder
 from merlo.representation_ir import lower_structured_hir_to_rir
 from merlo.semantic_world import _world_digest
 from merlo.structured_hir_v2 import (
@@ -26,6 +25,12 @@ from merlo.structured_hir_v2 import (
 
 def _summary(source: str, name: str) -> BorrowSummary:
     return compile_structured_hir(source).function(name).borrow_summary
+
+
+def _summary_context():
+    builder = TypeContextBuilder()
+    builder.intern_many(("Text", "TextView", "BytesView", "UInt64"))
+    return builder.freeze()
 
 
 def test_borrow_place_path_and_relation_roundtrip() -> None:
@@ -42,10 +47,11 @@ def test_borrow_place_path_and_relation_roundtrip() -> None:
     relation = BorrowRelation(
         1,
         path,
-        "TextView",
+        _summary_context().type_id("TextView"),
         BorrowPlacePath((BorrowPlaceStep.element(),)),
         "contained",
         "owned_contained_borrow",
+        "TextView",
     )
     assert tuple(step.kind for step in path.steps) == (
         "Parameter",
@@ -163,17 +169,14 @@ def test_witness_only_improvement_requeues_mutual_recursion_caller() -> None:
 def test_late_shorter_witness_replaces_longer_and_requeues_callers(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    module = ast.parse(
-        "def left(text: Text, depth: UInt64) -> TextView:\n"
+    source = (
+        "fn left(text: Text, depth: UInt64) -> TextView:\n"
         "    if depth == 0:\n"
         "        return text.as_view()\n"
         "    return right(text, depth - 1)\n"
-        "def right(text: Text, depth: UInt64) -> TextView:\n"
+        "fn right(text: Text, depth: UInt64) -> TextView:\n"
         "    return left(text, depth)\n"
     )
-    functions = {
-        item.name: item for item in module.body if isinstance(item, ast.FunctionDef)
-    }
     original = _SummaryComputer._compute_one
     witness_calls = 0
 
@@ -194,7 +197,10 @@ def test_late_shorter_witness_replaces_longer_and_requeues_callers(
         return result
 
     monkeypatch.setattr(_SummaryComputer, "_compute_one", delayed_shorter)
-    summary = compute_borrow_summaries(functions)["right"]
+    summary = compile_structured_hir(
+        source,
+        entry_function="left",
+    ).function("right").borrow_summary
     assert witness_calls >= 2
     assert summary.entries[0].witness_path == ("left",)
 
@@ -259,15 +265,12 @@ def test_witness_change_does_not_change_hir_revision_or_digest() -> None:
 def test_semantic_fixed_point_fails_closed_on_nonmonotone_mutation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    module = ast.parse(
-        "def recursive_view(text: Text, depth: UInt64) -> TextView:\n"
+    source = (
+        "fn recursive_view(text: Text, depth: UInt64) -> TextView:\n"
         "    if depth == 0:\n"
         "        return text.as_view()\n"
         "    return recursive_view(text, depth - 1)\n"
     )
-    functions = {
-        item.name: item for item in module.body if isinstance(item, ast.FunctionDef)
-    }
     original = _SummaryComputer._compute_one
     semantic_calls = 0
 
@@ -287,31 +290,36 @@ def test_semantic_fixed_point_fails_closed_on_nonmonotone_mutation(
         return result
 
     monkeypatch.setattr(_SummaryComputer, "_compute_one", shrinking)
-    summary = compute_borrow_summaries(functions)["recursive_view"]
+    with pytest.raises(
+        StructuredHIRCompileError,
+        match="OpaqueBorrowSummary.*BorrowSummaryNonMonotone",
+    ):
+        compile_structured_hir(
+            source,
+            entry_function="recursive_view",
+        )
     assert semantic_calls == 2
-    assert summary.status == "opaque"
-    assert summary.reason == "BorrowSummaryNonMonotone"
 
 
 def test_five_thousand_function_chain_has_no_python_recursion() -> None:
     count = 5_000
     source = "".join(
         (
-            f"def f{index:04d}(text: Text) -> TextView:\n"
+            f"fn f{index:04d}(text: Text) -> TextView:\n"
             f"    return f{index + 1:04d}(text)\n"
         )
         if index + 1 < count
         else (
-            f"def f{index:04d}(text: Text) -> TextView:\n"
+            f"fn f{index:04d}(text: Text) -> TextView:\n"
             "    return text.as_view()\n"
         )
         for index in range(count)
     )
-    module = ast.parse(source)
-    functions = {
-        item.name: item for item in module.body if isinstance(item, ast.FunctionDef)
+    program = compile_structured_hir(source, entry_function="f0000")
+    summaries = {
+        function.name: function.borrow_summary
+        for function in program.functions
     }
-    summaries = compute_borrow_summaries(functions)
     assert len(summaries) == count
     assert summaries["f0000"].status == "known"
     assert len(summaries["f0000"].relations) == 1

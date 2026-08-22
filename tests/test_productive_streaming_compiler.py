@@ -80,6 +80,7 @@ def test_streaming_operations_survive_hir_rir_mir() -> None:
     assert file_open.attribute_map == {
         "callee": "fs.open_read",
         "error_type": "AppError",
+        "error_type_id": hir.type_context.type_id("AppError"),
         "host_operation": "open_read",
         "resource": "FileReader",
     }

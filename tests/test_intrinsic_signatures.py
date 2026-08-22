@@ -16,8 +16,19 @@ from merlo.intrinsics import (
     INTRINSIC_EFFECTS,
     INTRINSIC_SIGNATURES,
     INSTANCE_METHOD_SIGNATURES,
+    BuiltinContractGraph,
+    InstanceMethodSignature,
+    TypeConstructorId,
+    TypeSchemeApplied,
+    TypeSchemeConcrete,
     contextual_result_type,
     intrinsic_signature,
+)
+from merlo.type_arena import (
+    TypeArenaError,
+    TypeContextBuilder,
+    TypeId,
+    UnknownTypeIdError,
 )
 from merlo.structured_hir_v2 import (
     StructuredHIRCompileError,
@@ -72,6 +83,191 @@ def test_table_entries_are_immutable() -> None:
         intrinsic_signature("clock.now").result_type = "Text"  # type: ignore[misc]
     with pytest.raises(TypeError):
         INTRINSIC_SIGNATURES["clock.now"] = intrinsic_signature("clock.now")  # type: ignore[index]
+
+
+
+def test_custom_contract_graph_mappings_are_immutable() -> None:
+    graph = BuiltinContractGraph(
+        {},
+        {
+            ("Vec[T]", "get"): InstanceMethodSignature(
+                "Vec[T]",
+                "get",
+                (),
+                "T",
+                generic_variables=frozenset({"T"}),
+            )
+        },
+        {},
+        {},
+    )
+    with pytest.raises(TypeError):
+        graph.methods[("Vec[T]", "get")] = graph.methods[("Vec[T]", "get")]
+
+
+def test_contract_graph_unification_is_transactional_and_order_invariant() -> None:
+    repeated = BuiltinContractGraph(
+        {},
+        {
+            ("Result[T,T]", "same"): InstanceMethodSignature(
+                "Result[T,T]",
+                "same",
+                (),
+                "Text",
+                generic_variables=frozenset({"T"}),
+            )
+        },
+        {},
+        {},
+    )
+    repeated_builder = TypeContextBuilder()
+    repeated_actual = repeated_builder.intern_text("Result[Text,Int64]")
+    assert repeated.prepare(repeated_builder).method(repeated_actual, "same") is None
+
+    rows = [
+        (
+            ("Result[T,T]", "pick"),
+            InstanceMethodSignature(
+                "Result[T,T]",
+                "pick",
+                (),
+                "Text",
+                static=True,
+                generic_variables=frozenset({"T"}),
+            ),
+        ),
+        (
+            ("Result[Text,T]", "pick"),
+            InstanceMethodSignature(
+                "Result[Text,T]",
+                "pick",
+                (),
+                "Bytes",
+                static=True,
+                generic_variables=frozenset({"T"}),
+            ),
+        ),
+    ]
+    results = []
+    for ordered_rows in (rows, list(reversed(rows))):
+        builder = TypeContextBuilder()
+        actual = builder.intern_text("Result[Text,Int64]")
+        bound = BuiltinContractGraph({}, dict(ordered_rows), {}, {}).prepare(builder)
+        resolved = bound.resolve_static_method(actual, "pick", ())
+        assert resolved is not None
+        results.append((resolved.result_type, resolved.result_type_id))
+    assert results[0] == results[1] == (
+        "Bytes",
+        TypeContextBuilder().intern_text("Bytes"),
+    )
+
+def test_bound_contract_graph_matches_nested_type_ids_and_aliases() -> None:
+    builder = TypeContextBuilder()
+    nested = builder.intern_text("Vec[Option[Text]]")
+    alias = builder.intern_text("Vec[UInt]")
+    int64 = builder.intern_text("Int64")
+    bound = CONTRACT_GRAPH.prepare(builder)
+
+    nested_get = bound.method(nested, "get")
+    assert nested_get is not None
+    assert nested_get.result_type_id == builder.type_id("Option[Text]")
+    assert nested_get.result_type == "Option[Text]"
+    assert nested_get.result_ownership == "borrow"
+    assert nested_get.effects == ("bounds_check",)
+
+    alias_get = bound.method(alias, "get")
+    assert alias_get is not None
+    assert alias_get.result_type_id == builder.type_id("UInt64")
+    assert alias_get.result_type == "UInt64"
+
+    contextual_len = bound.method(
+        nested,
+        "len",
+        int64,
+    )
+    assert contextual_len is not None
+    assert contextual_len.result_type_id == int64
+    assert contextual_len.result_type == "Int64"
+    assert CONTRACT_GRAPH.bind(builder).method(nested, "get") == nested_get
+
+
+def test_bound_contract_graph_matches_const_arguments_structurally() -> None:
+    graph = BuiltinContractGraph(
+        {},
+        {
+            ("Array[T,4]", "len"): InstanceMethodSignature(
+                "Array[T,4]",
+                "len",
+                (),
+                "UInt64",
+                generic_variables=frozenset({"T"}),
+            )
+        },
+        {},
+        {},
+    )
+    builder = TypeContextBuilder()
+    expected = builder.intern_text("Array[Text,4]")
+    wrong_length = builder.intern_text("Array[Text,5]")
+    bound = graph.prepare(builder)
+
+    signature = bound.method(expected, "len")
+    assert signature is not None
+    assert signature.result_type_id == builder.type_id("UInt64")
+    assert bound.method(wrong_length, "len") is None
+
+
+def test_bound_static_contract_instantiates_validated_type_ids() -> None:
+    builder = TypeContextBuilder()
+    text = builder.intern_text("Text")
+    expected_map = builder.intern_text("Map[Text,Byte]")
+    bound = CONTRACT_GRAPH.prepare(builder)
+
+    box = bound.resolve_static_method(TypeConstructorId("Box"), "new", (text,))
+    assert box is not None
+    assert box.parameter_type_ids == (text,)
+    assert box.result_type_id == builder.type_id("Box[Text]")
+    assert box.parameter_ownership == ("consuming",)
+    with pytest.raises(ValueError, match="argument type mismatch"):
+        bound.resolve_static_method(TypeConstructorId("Box"), "new", (None,))
+
+    mapping = bound.resolve_static_method(
+        TypeConstructorId("Map"),
+        "new",
+        (),
+        expected_map,
+    )
+    assert mapping is not None
+    assert mapping.result_type_id == expected_map
+    assert mapping.result_type == "Map[Text,Byte]"
+
+
+def test_bound_contract_graph_rejects_unknown_and_malformed_identities() -> None:
+    builder = TypeContextBuilder()
+    builder.intern_text("Vec[Text]")
+    bound = CONTRACT_GRAPH.prepare(builder)
+    with pytest.raises(UnknownTypeIdError):
+        bound.method(TypeId("f" * 64), "get")
+
+    malformed = BuiltinContractGraph(
+        {},
+        {
+            ("Map[T]", "get"): InstanceMethodSignature(
+                "Map[T]",
+                "get",
+                (),
+                "T",
+            )
+        },
+        {},
+        {},
+    )
+    with pytest.raises(TypeArenaError):
+        malformed.prepare(TypeContextBuilder())
+    with pytest.raises(ValueError):
+        TypeSchemeConcrete("not-a-type-id")  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
+        TypeSchemeApplied("Vec", (object(),))  # type: ignore[arg-type]
 
 
 def test_contextual_result_preserves_error_row() -> None:

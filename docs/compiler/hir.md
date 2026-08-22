@@ -4,10 +4,9 @@
 
 Structured HIR is the typed semantic tree between canonical elaboration and
 physical representation. It preserves source and semantic identity while
-leaving layout and low-level control flow to later stages. The v10 change
-gives this artifact one closed type-identity authority; it does not move
-ownership checking, ContractGraph rules, RIR, MIR, or backend lowering into
-that authority.
+leaving layout and low-level control flow to later stages. The v12 change
+keeps the HIR and ownership/borrow analyses on one compiler-local TypeId
+authority; it does not migrate RIR, MIR, or backend representation identity.
 
 `compile_canonical_hir(program, entry_function="main")` in
 [`src/merlo/structured_hir_v2.py`](../../src/merlo/structured_hir_v2.py)
@@ -18,7 +17,7 @@ tree is rejected; serialized projections are not compiler input.
 ## Version and contents
 
 The function returns `StructuredHIRProgram`, contract
-`merlo.structured-typed-hir.v10`, schema version `10`. It contains source
+`merlo.structured-typed-hir.v12`, schema version `12`. It contains source
 text/digest, one complete `TypeArena` snapshot and its digest, `HIRTypeDecl`
 values with typed record invariants, `HIRField`/`HIRVariant` values,
 `HIRFunction` records, typed parameters, function contracts, contextual
@@ -26,15 +25,17 @@ values with typed record invariants, `HIRField`/`HIRVariant` values,
 also contains the complete canonical Merlo native-syntax tree used by the C
 adapter and validated typed FFI declarations.
 
-Each function carries a versioned `merlo.borrow-summary.v3` contract. Its
+Each function carries a versioned `merlo.borrow-summary.v4` contract. Its
 semantic `BorrowRelation` values bind direct or contained returned borrows to
-formal parameter indices, finite structural source/result places, borrow
-types, and ownership vocabulary. Relations contribute to the function
-revision and HIR semantic digest; serialized bounded `witness_path`
-diagnostics do not. Recursive SCCs use one canonical structural
-`RecursiveTail` and choose the shortest, lexicographically smallest
-diagnostic witness after convergence. `HIRNode.walk()` traverses contract
-conditions and executable nodes for source-map projection.
+formal parameter indices, finite structural source/result places, a
+TypeId-authoritative borrow type, and ownership vocabulary. The retained
+canonical `borrow_type` spelling is diagnostic only and is not a second
+identity authority. Relations contribute to the function revision and HIR
+semantic digest; serialized bounded `witness_path` diagnostics do not.
+Recursive SCCs use one canonical structural `RecursiveTail` and choose the
+shortest, lexicographically smallest diagnostic witness after convergence.
+`HIRNode.walk()` traverses contract conditions and executable nodes for
+source-map projection.
 
 ## Type identity in HIR
 
@@ -50,11 +51,17 @@ field pairs are exact:
 
 `HIRTypeDecl` additionally carries the nominal declaration's `type_id`
 alongside its existing declaration `symbol_id` and `revision_id`.
-`HIRMachineStateField` serializes exactly `{name, type, type_id}`. HIR-only
-FFI JSON annotates extern parameters with `type_id`, extern return/error
-fields with `return_type`/`return_type_id` and `error_type`/`error_type_id`,
-and `repr(C)` fields with `type_name`/`type_id`; these annotations do not
-change the underlying `FFIProgram` classes or FFI ownership contract.
+`HIRMachineState` records carry deterministic state IDs separate from the
+TypeArena. Initial and transition source/target labels are paired with those
+state IDs and validated against machine membership. A `Transition` node has no
+`type` or `type_id`; a state label is never a semantic type.
+
+Semantic type attributes are paired with direct `TypeId` values in memory and
+JSON: typed holes (`expected_type`), closures (parameter/return/capture
+types), result propagation (result/error), numeric intrinsics, scalar casts,
+foreign-call errors, implicit callables, collection source/element/callable
+types, and map specializations. Operation/effect/ownership/ABI strings remain
+policy projections.
 
 This covers formerly string-only positions in declarations, parameters,
 returns, flow results, machine state fields, record fields, enum payloads,
@@ -78,19 +85,22 @@ any of these identities.
 
 ## Arena lifecycle and validation
 
-The HIR builder creates one local `TypeArena` and uses it as the cached
-interning authority for declarations, functions, parameters, nodes,
-contracts, flows, machines, machine fields, and the HIR-only FFI projection.
-The completed arena is attached to `StructuredHIRProgram`; no process-global
-arena and no post-load fallback parser participate in the contract.
+The HIR builder creates one local mutable `TypeContextBuilder` and uses its
+cached interning operations for declarations, functions, parameters, nodes,
+contracts, flows, machines, machine state fields, and the HIR-only FFI
+projection. The same builder remains open while the HIR, borrow-summary, and
+ownership analyses run; it is frozen exactly once when the final
+`StructuredHIRProgram` is assembled. The completed immutable context is
+attached to that program; no process-global arena and no post-load fallback
+parser participate in the contract.
 
 Serialization stores the arena snapshot and `type_arena_digest` before the
 typed nodes. The snapshot is closed (`allow_unresolved=false`). Entries are
 canonical and deterministic; the digest covers the canonical snapshot. A
-A reader validates in this order:
+reader validates in this order:
 
 1. validate the outer object’s exact keys, contract, schema version, and
-   envelope invariants, rejecting HIR v9 rather than accepting it as a
+   envelope invariants, rejecting HIR v11 rather than accepting it as a
    compatibility path;
 2. restore the `TypeArena` snapshot, require a closed arena, recompute and
    compare `type_arena_digest`, and reject malformed, missing, cyclic, or
@@ -171,16 +181,13 @@ double-counting obligations proven by multiple engines. Static, exhaustive
 bounded, and SMT proofs count as closed; refutations take precedence over any
 conflicting proof. Counts, per-category/per-engine provenance, and an exact
 integer basis-points rate are serialized canonically.
-
-## Failure modes
-
 A missing retained Surface tree, unsupported expressions, invalid map
 specializations, duplicate declarations, a missing `main`, duplicate node
 IDs, forbidden low-level kinds, an open or tampered arena, a missing or
-mismatched `TypeId`, and schema drift raise `StructuredHIRCompileError` or
-`ValueError`. HIR v9 is not readable by the v10 reader. The coordinator
-surfaces construction failures as a production lowering diagnostic.
-
+mismatched `TypeId`, invalid machine state membership, and schema drift raise
+`StructuredHIRCompileError` or `ValueError`. HIR v11 is not readable by the
+v12 reader. The coordinator surfaces construction failures as a production
+lowering diagnostic.
 ## Trusted and experimental boundaries
 
 The canonical program identity, digest-bound native syntax and FFI artifacts,
@@ -191,12 +198,14 @@ tree and rejects a mismatching witness. HIR carries ownership and effect
 facts for later checking but is not itself a complete borrow proof or
 physical-layout specification.
 
-This schema migration does not claim an ownership, ContractGraph, RIR, MIR,
-LLVM, GPU, or backend TypeId cutover. Downstream consumers continue reading
-retained HIR spelling and preserve their existing ownership and generated-C
-semantics. Issues #84 and #85 remain explicit follow-up scope for later
-consumer migration and any additional type/layout authority; they are not
-implemented by HIR v10.
+This migration makes ownership, `Place` lookup, and borrow provenance
+TypeId-authoritative through the shared compiler-local `TypeContext`.
+Retained spellings remain diagnostic projections only. It does not claim an
+RIR, MIR, LLVM, GPU, or backend TypeId cutover: RIR remains v5 and MIR remains
+v2, with generated-C semantics preserved. Issue #84 is the authority migration
+recorded here. Issue #85 covers RIR descriptors and executable MIR TypeId
+migration; issue #86 covers user-defined generic declaration/package provenance;
+issue #72 covers native-syntax removal and executable-MIR backend authority.
 
 The HIR builder and representation backend share Merlo-owned structured
 syntax nodes emitted directly from the typed Surface tree. The node
