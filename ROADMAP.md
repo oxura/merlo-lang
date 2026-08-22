@@ -19,7 +19,7 @@ Status labels:
 | --- | --- | --- |
 | Language contract `0.3` | Production | Alpha compatibility may still change before release. |
 | Frontend contract `8` | Production | Lossless CST anchors declarations, statements, and statement expressions; the transitional line parser still owns remaining grammar. |
-| `Canonical contract 6`, HIR contract `12` | Production | Typed lowering is Merlo-owned; HIR JSON is the strict `merlo.structured-typed-hir.v12` contract with one closed TypeArena snapshot, digest, validated TypeIds, and separate deterministic machine-state identities. Transition nodes carry no type. Ownership, Place lookup, borrow provenance, and structural ContractGraph schemes use that TypeId authority under issue #84; RIR v5, MIR v2, and backend semantics are unchanged. Issue #85 covers RIR descriptors and executable MIR TypeId migration; issue #86 covers user-defined generic declaration/package provenance; issue #72 covers native-syntax removal and executable-MIR backend authority. |
+| `Canonical contract 6`, HIR contract `12`, RIR contract `6`, MIR contract `3` | Production | Typed lowering is Merlo-owned; HIR JSON is the strict `merlo.structured-typed-hir.v12` contract with one closed TypeArena snapshot, digest, validated TypeIds, and separate deterministic machine-state identities. Transition nodes carry no type. Ownership, Place lookup, borrow provenance, structural ContractGraph schemes, RIR descriptors/drop plans, and MIR operands/results/places use TypeId authority under issues #84 and #85; RIR descriptors bind physical layouts through LayoutId. Generated-C semantics are unchanged; older RIR v5 and MIR v2 artifacts are rejected. Issue #86 covers user-defined generic declaration/package provenance; issue #72 covers native-syntax removal and executable-MIR backend authority. |
 | C11 native backend, runtime ABI `2` | Production | Linux x86-64 through Clang or GCC. |
 | Ownership, moves, borrows, recursive drop | Production | Safe subset is checked and [Memory Model v1](spec/memory-model.md) is normative for that subset. |
 | Capturing closures | Production | Checked immutable scalar and owned captures only. |
@@ -38,7 +38,7 @@ Status labels:
 
 The published prerelease remains `0.1.0-alpha.2`. Main is the
 `0.1.0-alpha.3-dev` line with language `0.3`, frontend `8`, canonical `6`, HIR `12`,
-RIR `5`, MIR `2`, runtime ABI `2`, and SemanticWorld `19`.
+RIR `6`, MIR `3`, runtime ABI `2`, and SemanticWorld `19`.
 
 ## Milestone 1: Alpha.3 Deep Core Gate
 

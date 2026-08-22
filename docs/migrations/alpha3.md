@@ -1,21 +1,25 @@
 # Migrating from alpha.2 to alpha.3
-> **Current-contract note (issue #84, HIR v12):** Alpha.3 originally shipped
-> the HIR v10 transition described below. The current development compiler uses
-> HIR v12, `merlo.borrow-summary.v4`, and SemanticWorld v19. Ownership, `Place`
-> lookup, borrow provenance, ContractGraph, semantic HIR attributes, and bound
-> FFI metadata are now TypeId-authoritative. Machine-state IDs remain a separate
-identity domain. Issue #85 covers RIR descriptors and executable MIR TypeId
-migration; issue #86 covers user-defined generic declaration/package provenance;
-issue #72 covers native-syntax removal and executable-MIR backend authority.
+> **Current-contract note (issue #85, RIR v6 / MIR v3):** Alpha.3 originally
+> shipped the HIR v10 transition described below. The current development
+> compiler uses HIR v12, `merlo.borrow-summary.v4`, SemanticWorld v19,
+> `merlo.representation-ir.v6`, and
+> `merlo.performance-mir.general-representation.v3`. Ownership, `Place`
+> lookup, borrow provenance, ContractGraph, semantic HIR attributes, bound FFI
+> metadata, physical descriptors, and executable-MIR value identities are now
+> TypeId-authoritative; `LayoutId` is authoritative for physical layout.
+> Machine-state IDs remain a separate identity domain. Issue #86 covers
+> user-defined generic declaration/package provenance; issue #72 covers
+> native-syntax removal and executable-MIR backend authority.
 
 Alpha.3 intentionally changes the filesystem and verification models. The
-compiler reports language `0.3`, frontend `8`, canonical `6`, HIR `10`,
-Obligation IR `1`, range analysis `1`, bounded symbolic execution `1`, optional
-SMT `1`, property evidence `1`, verification metrics `1`, ChangeIR `1`,
-semantic capsule `1`, semantic impact `1`, patch evidence `1`, preservation
-report `1`, change transaction `1`, RIR `5`, MIR `2`, runtime ABI `2`, and
-SemanticWorld `17`. Earlier lockfiles must be regenerated with the alpha.3
-compiler; the old HIR v9 artifact is not readable by the HIR v10 reader.
+compiler reports language `0.3`, frontend `8`, canonical `6`, HIR `12`,
+Obligation IR `1`, range analysis `1`, bounded symbolic execution `1`,
+optional SMT `1`, property evidence `1`, verification metrics `1`, ChangeIR
+`1`, semantic capsule `1`, semantic impact `1`, patch evidence `1`,
+preservation report `1`, change transaction `1`, RIR `6`, MIR `3`, runtime ABI
+`2`, and SemanticWorld `19`. Earlier lockfiles must be regenerated with the
+alpha.3 compiler; HIR v11, RIR v5, and MIR v2 artifacts are not readable by
+the current readers.
 
 ## Structured HIR v12 and TypeArena
 
@@ -45,18 +49,22 @@ artifacts are rejected rather than upgraded through a compatibility shim.
 Aliases are normalized before interning (`Int`/`UInt`/`Float` map to
 `Int64`/`UInt64`/`Float64`); qualified names such as `app.Int` remain
 distinct. A nominal `TypeId` is stable by nominal name even when declaration
-semantics change and its `RevisionId` changes. `TypeId` identifies a type,
-`SymbolId` a declaration, `RevisionId` a declaration revision, and a future
-`LayoutId` (if introduced) a physical layout; these identities are not
-interchangeable. Retained spelling remains for diagnostics, while `TypeId`
-is authoritative for semantic validation.
+semantics change and its `RevisionId` changes. `SymbolId` identifies a
+declaration, `RevisionId` a declaration revision, `TypeId` identifies a
+semantic type, and `LayoutId` identifies a physical layout.
+These identities are not interchangeable. Retained spelling remains
+for diagnostics only; `TypeId` is authoritative for semantic validation and
+RIR/MIR value references, while `LayoutId` is authoritative for descriptor
+layout bindings.
 
-This completes the issue #84 HIR, ownership, borrow, ContractGraph, and FFI
-authority cutover. It does not claim an RIR, MIR, LLVM, GPU, or backend TypeId
-cutover and does not change generated-C semantics. Issue #85 covers RIR
-descriptors and executable MIR TypeId migration; issue #86 covers user-defined
-generic declaration/package provenance; issue #72 covers native-syntax removal
-and executable-MIR backend authority.
+Issue #85 completes the RIR/MIR boundary cutover. RIR v6 descriptors and drop
+plans carry `TypeId` plus `LayoutId` values and require the closed HIR arena.
+MIR v3 carries typed operands, results, and places, validates every referenced
+identity against its closed arena, and binds descriptor layouts to `LayoutId`.
+RIR v5 and MIR v2 artifacts are rejected rather than upgraded. Generated-C
+semantics remain unchanged. Issue #86 covers user-defined generic
+declaration/package provenance; issue #72 covers native-syntax removal and
+executable-MIR backend authority.
 
 ## Regenerating generated lockfiles
 
@@ -71,12 +79,11 @@ Run that command once per project root containing `merlo.toml` (for example,
 `examples/access-log`), after installing the alpha.3 compiler. It rewrites
 that root's canonical `merlo.lock`; repeat for nested package roots such as
 `examples/packages/vendor/greeting` when regenerating the complete example
-corpus. Do not hand-edit compatibility fields. The checked-in 22 lockfiles
-(20 top-level example roots, the nested
-`examples/packages/vendor/greeting`, and `selfhost`) have been regenerated to
-`compatibility.hir: 12` and `compatibility.semantic_world: 19`. Downstream
-lockfiles with older compatibility values must run the supported resolver
-command above.
+corpus. Do not hand-edit compatibility fields. The checked-in lockfiles have
+been regenerated to `compatibility.hir: 12`,
+`compatibility.rir: 6`, `compatibility.mir: 3`, and
+`compatibility.semantic_world: 19`. Downstream lockfiles with older
+compatibility values must run the supported resolver command above.
 
 SemanticWorld now includes the canonical constant-range analysis payload.
 Compiler results expose the same payload and merge its checked-arithmetic and
