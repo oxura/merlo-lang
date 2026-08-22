@@ -15,19 +15,19 @@ unrelated source text.
 ## Outputs
 
 The function returns `RepresentationProgram`, contract
-`merlo.representation-ir.v5`, schema version `5`. It contains `TypeDescriptor`
+`merlo.representation-ir.v6`, schema version `6`. It contains `TypeDescriptor`
 values, type-directed `DropPlan` values, and `RIRFunction` trees of
 `RIROperation` nodes. Descriptors record size, alignment, ABI class,
 copy/move/drop classes, dependencies, contained-borrow/resource properties,
-the exact contained borrow/resource leaf types, and `source_type_identity`.
-Operations retain type, source span, symbol/revision identity, ownership
-provenance, effects, attributes, and children. Each function also carries the
-digest-bound `merlo.borrow-summary.v4` relation and diagnostic witness contract
-lowered from HIR, so downstream inspection retains interprocedural direct and
-contained-borrow origins without making witnesses semantic. Borrow relations
-are TypeId-authoritative in HIR and ownership/borrow analysis; this RIR v5
-artifact preserves its existing representation contract and generated-C
-semantics.
+the exact contained borrow/resource leaf types, `TypeId` authority, and
+`LayoutId` physical-layout identity. Operations retain type and `TypeId`,
+source span, symbol/revision identity, ownership provenance, effects,
+attributes, and children. Each function also carries the digest-bound
+`merlo.borrow-summary.v4` relation and diagnostic witness contract lowered
+from HIR, so downstream inspection retains interprocedural direct and
+contained-borrow origins without making witnesses semantic. RIR v6 requires
+the closed predecessor `FrozenTypeArena`; retained spellings are diagnostic
+projections only.
 The RIR digest canonicalizes those diagnostic witness arrays to empty values;
 changing only a witness therefore preserves both predecessor and RIR hashes.
 
@@ -41,11 +41,10 @@ invariants preserve source identity and ownership provenance.
 
 ## Recursive layout dependency rules
 
-Recursive layout validation runs before descriptor construction. It parses every
-record field and enum payload with the shared `parse_type` tree, walks all
-nested type arguments, and records the nominal target plus the source path.
-`BorrowSummary` relations and their diagnostic witnesses are not inputs to this
-analysis.
+Recursive layout validation runs before descriptor construction. It traverses
+the closed HIR `TypeContext`/`TypeId` graph, walks every nested type argument,
+and records the nominal target plus the source path. `BorrowSummary` relations
+and their diagnostic witnesses are not inputs to this analysis.
 
 | Dependency path | Layout mode | Examples |
 | --- | --- | --- |

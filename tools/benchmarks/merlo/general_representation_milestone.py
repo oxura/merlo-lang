@@ -283,7 +283,7 @@ def _run_layout_corpus() -> dict[str, Any]:
     typed_diagnostics = Counter()
     for name, source in valid:
         hir = compile_structured_hir(source, path=f"layout/{name}.mlo")
-        validation = validate_recursive_layouts(hir.types)
+        validation = validate_recursive_layouts(hir.types, hir.type_context)
         try:
             build_type_descriptors(hir)
             descriptors_built = True
@@ -300,7 +300,7 @@ def _run_layout_corpus() -> dict[str, Any]:
             )
     for name, source in invalid:
         hir = compile_structured_hir(source, path=f"layout/{name}.mlo")
-        validation = validate_recursive_layouts(hir.types)
+        validation = validate_recursive_layouts(hir.types, hir.type_context)
         rejected_by_builder = False
         try:
             build_type_descriptors(hir)

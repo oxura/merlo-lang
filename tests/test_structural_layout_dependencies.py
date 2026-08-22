@@ -63,7 +63,7 @@ def test_nested_inline_recursion_is_rejected_before_descriptors(
     branch: str,
 ) -> None:
     hir = compile_structured_hir(declarations + _MAIN)
-    validation = validate_recursive_layouts(hir.types)
+    validation = validate_recursive_layouts(hir.types, hir.type_context)
     assert validation.accepted is False
     assert validation.minimal_cycle_path == cycle
     assert branch in (validation.diagnostic or "")
@@ -86,7 +86,7 @@ def test_nested_inline_recursion_is_rejected_before_descriptors(
 )
 def test_owning_indirection_recursion_is_accepted(declarations: str) -> None:
     hir = compile_structured_hir(declarations + _MAIN)
-    validation = validate_recursive_layouts(hir.types)
+    validation = validate_recursive_layouts(hir.types, hir.type_context)
     assert validation.accepted is True
     descriptors = build_type_descriptors(hir)
     declared = {item.name for item in hir.types}
@@ -149,16 +149,15 @@ def test_owner_map_operations_fail_during_hir_validation() -> None:
         compile_structured_hir(source, entry_function="update")
 
 
-def test_layout_parse_failures_are_rejected_before_descriptor_build() -> None:
+def test_layout_validator_uses_frozen_identity_not_diagnostic_spelling() -> None:
     hir = compile_structured_hir("record Outer:\n    value: UInt64\n" + _MAIN)
     field = hir.types[0].fields[0]
     malformed_type = replace(field, type_name="Option[UInt64")
     malformed_decl = replace(hir.types[0], fields=(malformed_type,))
-    validation = validate_recursive_layouts((malformed_decl,))
-    assert validation.accepted is False
+    validation = validate_recursive_layouts((malformed_decl,), hir.type_context)
+    assert validation.accepted is True
     assert validation.minimal_cycle_path == ()
-    assert validation.diagnostic is not None
-    assert validation.diagnostic.startswith("MalformedLayoutType: Option[UInt64")
+    assert validation.diagnostic is None
     with pytest.raises(ValueError, match="field type identity does not match spelling"):
         replace(hir, types=(malformed_decl,))
 
@@ -172,17 +171,16 @@ def test_qualified_nominal_names_remain_distinct_layout_dependencies() -> None:
         "    right: Merlo_right__Item\n"
         + _MAIN
     )
-    representation = lower_structured_hir_to_rir(compile_structured_hir(source))
+    hir = compile_structured_hir(source)
+    representation = lower_structured_hir_to_rir(hir)
     descriptors = {item.name: item for item in representation.descriptors}
 
-    assert descriptors["Pair"].inline_dependencies == (
-        "Merlo_left__Item",
-        "Merlo_right__Item",
-    )
-    assert (
-        descriptors["Merlo_left__Item"].source_type_identity
-        != descriptors["Merlo_right__Item"].source_type_identity
-    )
+    left = descriptors["Merlo_left__Item"]
+    right = descriptors["Merlo_right__Item"]
+    assert left.inline_dependencies == right.inline_dependencies == ()
+    assert left.type_id != right.type_id
+    assert left.layout_id == right.layout_id
+    assert left.source_type_identity != right.source_type_identity
 
 def test_shortest_lexicographic_structural_cycle_is_invariant() -> None:
     declarations = (
@@ -200,10 +198,10 @@ def test_shortest_lexicographic_structural_cycle_is_invariant() -> None:
         "InlineRecursiveLayout: A --field[zed]--> B "
         "--field[back]--> A; add Box or Vec indirection"
     )
-    results = [
-        validate_recursive_layouts(compile_structured_hir(source + _MAIN).types)
-        for source in (declarations, reordered, unrelated + declarations)
-    ]
+    results = []
+    for source in (declarations, reordered, unrelated + declarations):
+        hir = compile_structured_hir(source + _MAIN)
+        results.append(validate_recursive_layouts(hir.types, hir.type_context))
     assert all(item.minimal_cycle_path == ("A", "B", "A") for item in results)
     assert all(item.diagnostic == expected for item in results)
     graphs = [dict(item.inline_graph) for item in results]

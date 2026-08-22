@@ -3,11 +3,12 @@
 ## Unreleased
 
 - Continues the `0.1.0-alpha.3-dev` compatibility line with language contract
-  `0.3`, frontend `8`, canonical `6`, HIR `12`, Obligation IR `1`, RIR `5`,
-  MIR `2`, runtime ABI `2`, and SemanticWorld `19`. Earlier lockfiles must be
+  `0.3`, frontend `8`, canonical `6`, HIR `12`, Obligation IR `1`, RIR `6`,
+  MIR `3`, runtime ABI `2`, and SemanticWorld `19`. Earlier lockfiles must be
   regenerated with the current compiler; see the migration guide.
-  `merlo.structured-typed-hir.v11` artifacts are rejected by the v12 reader.
-  The supported regeneration operation is
+  `merlo.structured-typed-hir.v11` artifacts, RIR v5 artifacts, and MIR v2
+  artifacts are rejected by the current readers. The supported regeneration
+  operation is
   `python -c 'from merlo.project import resolve_dependencies; resolve_dependencies("PROJECT")'`
   once per project root; there is no `merlo lock` command.
 - HIR v12 gives machine states deterministic non-TypeArena identities; initial
@@ -15,12 +16,10 @@
   nodes carry no type. Semantic HIR attributes and bound FFI metadata carry
   direct paired TypeIds. FFI JSON records its bound lifecycle explicitly,
   preserves cached prototypes without serialization-time reparsing, and
-  validates pointer/pointee identity against policy metadata. This completes
-  issue #84 while RIR v5, MIR v2, backend, and generated-C semantics remain
-  unchanged. Issue #85 covers RIR descriptors and executable MIR TypeId
-  migration; issue #86 covers user-defined generic declaration/package
-  provenance; issue #72 covers native-syntax removal and executable-MIR backend
-  authority.
+  validates pointer/pointee identity against policy metadata. Issue #84 and
+  issue #85 are now complete for the HIR/RIR/MIR TypeId boundary; issue #86
+  covers user-defined generic declaration/package provenance; issue #72 covers
+  native-syntax removal and executable-MIR backend authority.
 - Structured HIR continues to store one closed `TypeArena` snapshot and
   `type_arena_digest`; retained spellings remain diagnostic only.
 - Replaces ContractGraph's regex and generic-spelling matcher with structural

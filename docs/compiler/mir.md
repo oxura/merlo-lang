@@ -16,21 +16,24 @@ value.
 ## Outputs
 
 The lowerer returns `GeneralPerformanceMIR`, contract
-`merlo.performance-mir.general-representation.v1`. It contains
-`GeneralMIRFunction` CFGs made of `GeneralMIRBlock` instructions and
-`GeneralMIRTerminator` values. Instructions carry operands/results, type,
-source span, symbol/revision IDs, ownership provenance, effects, and
-attributes. The coordinator records both `mir` and `optimized_mir` artifacts;
-the optimized value has its own digest and `optimized=True`.
+`merlo.performance-mir.general-representation.v3`, schema version `3`. It
+contains `GeneralMIRFunction` CFGs made of `GeneralMIRBlock` instructions and
+`GeneralMIRTerminator` values. Instructions carry operands/results/places,
+`TypeId`-typed value identities, source span, symbol/revision IDs, ownership
+provenance, effects, and attributes. The program also binds every descriptor
+`TypeId` to its `LayoutId` and requires the closed predecessor
+`FrozenTypeArena`. The coordinator records both `mir` and `optimized_mir`
+artifacts; the optimized value has its own digest and `optimized=True`.
 
 ## Invariants
 
 Blocks, branches, calls, loads/stores, allocation, enum tags, moves, drops, and
 bounds checks are explicit. Domain JSON operations are rejected; the entry
-function must exist and schema version remains `1`. When cleanup is required,
+function must exist and schema version remains `3`. When cleanup is required,
 at least one `drop_value` instruction is present. HIR, RIR, descriptor, and
 drop-plan predecessor digests are retained. Optimization preserves source
-identity, ownership provenance, effects, and predecessor lineage.
+identity, ownership provenance, effects, predecessor lineage, `TypeId` bindings,
+and descriptor `LayoutId` bindings.
 
 ## Failure modes
 

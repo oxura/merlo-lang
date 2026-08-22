@@ -128,8 +128,12 @@ def test_postfix_result_propagation_survives_hir_rir_mir_without_raw_question_ma
         "cleanup": "initialized_owned_locals",
         "err": "early_return",
         "error_type": "AppError",
+        "error_type_id": hir.type_context.type_id("AppError"),
         "ok": "unwrap_and_continue",
         "result_type": "Result[FileReader,AppError]",
+        "result_type_id": hir.type_context.type_id(
+            "Result[FileReader,AppError]"
+        ),
     }
 
 

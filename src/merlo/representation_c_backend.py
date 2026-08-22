@@ -35,7 +35,7 @@ from merlo.structured_hir_v2 import (
     StructuredHIRProgram,
 )
 from merlo.version import VERSIONS
-from merlo.type_parser import generic_parts
+from merlo.type_parser import generic_arguments, generic_parts
 from merlo.type_arena import TypeArenaError, TypeId
 from merlo.representation_c_types import (
     _array_parts,
@@ -101,6 +101,7 @@ class GeneralCEmitter(RuntimeEmissionMixin):
         self.representation = representation
         self.mir = mir
         self.descriptors = {item.name: item for item in representation.descriptors}
+        self._descriptor_aliases = self._build_descriptor_aliases()
         self.functions = {item.name: item for item in hir.functions}
         self.used_effects = frozenset(
             effect for function in hir.functions for effect in function.effects
@@ -143,6 +144,50 @@ class GeneralCEmitter(RuntimeEmissionMixin):
         self.current_ensures: tuple[ast.AST, ...] = ()
         self.contract_result_name: str | None = None
         self.indent = 0
+    def _descriptor_key(self, type_name: str) -> str:
+        descriptor = self.descriptors[type_name]
+        if descriptor.source_type_identity is not None:
+            return f"identity:{descriptor.source_type_identity}"
+        try:
+            arguments = generic_arguments(type_name)
+        except Exception:
+            return type_name
+        constructor = type_name.split("[", 1)[0]
+        return (
+            f"{constructor}["
+            + ",".join(self._descriptor_key_for_argument(item) for item in arguments)
+            + "]"
+        )
+
+    def _descriptor_key_for_argument(self, type_name: str) -> str:
+        descriptor = self.descriptors.get(type_name)
+        if descriptor is not None:
+            if descriptor.source_type_identity is not None:
+                return f"identity:{descriptor.source_type_identity}"
+            return self._descriptor_key(type_name)
+        try:
+            arguments = generic_arguments(type_name)
+        except Exception:
+            return type_name
+        constructor = type_name.split("[", 1)[0]
+        return (
+            f"{constructor}["
+            + ",".join(self._descriptor_key_for_argument(item) for item in arguments)
+            + "]"
+        )
+
+    def _build_descriptor_aliases(self) -> dict[str, str]:
+        primary_by_key: dict[str, str] = {}
+        aliases: dict[str, str] = {}
+        for descriptor in self.representation.descriptors:
+            key = self._descriptor_key(descriptor.name)
+            primary = primary_by_key.setdefault(key, descriptor.name)
+            aliases[descriptor.name] = primary
+        return aliases
+
+    def _is_descriptor_alias(self, type_name: str) -> bool:
+        return self._descriptor_aliases.get(type_name, type_name) != type_name
+
 
     def emit(self) -> GeneratedC:
         sections = [
@@ -560,10 +605,30 @@ static void merlo_ownership_trap(const char *message) {
     def _forward_declarations(self) -> str:
         lines = []
         for descriptor in self.representation.descriptors:
-            if descriptor.kind == "enum" and all(payload is None for _, payload, _ in descriptor.variants):
+            if self._is_descriptor_alias(descriptor.name):
+                continue
+            if descriptor.kind == "enum" and all(
+                payload is None for _, payload, _ in descriptor.variants
+            ):
                 lines.append(f"typedef uint32_t {_c_name(descriptor.name)};")
-            elif descriptor.kind in {"record", "enum"} and descriptor.name not in {"Text", "TextBuilder"}:
-                lines.append(f"typedef struct {_c_name(descriptor.name)} {_c_name(descriptor.name)};")
+            elif descriptor.kind in {"record", "enum"} and descriptor.name not in {
+                "Text",
+                "TextBuilder",
+            }:
+                lines.append(
+                    f"typedef struct {_c_name(descriptor.name)} "
+                    f"{_c_name(descriptor.name)};"
+                )
+        for descriptor in self.representation.descriptors:
+            primary = self._descriptor_aliases.get(descriptor.name, descriptor.name)
+            if (
+                primary != descriptor.name
+                and descriptor.kind in {"record", "enum"}
+                and descriptor.name not in {"Text", "TextBuilder"}
+            ):
+                lines.append(
+                    f"typedef {_c_name(primary)} {_c_name(descriptor.name)};"
+                )
         return "\n".join(lines)
 
     def _primitive_types(self) -> str:
@@ -713,6 +778,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             for item in self.representation.descriptors
             if item.kind in {"record", "enum"}
             and item.name != "TextBuilder"
+            and not self._is_descriptor_alias(item.name)
         }
         emitted: set[str] = set()
         while pending:
@@ -776,6 +842,29 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             if not progress:
                 raise RepresentationCBackendError(
                     f"inline C layout cycle: {sorted(pending)}"
+                )
+        for descriptor in self.representation.descriptors:
+            if not self._is_descriptor_alias(descriptor.name):
+                continue
+            primary = self._descriptor_aliases[descriptor.name]
+            if descriptor.kind != "enum":
+                continue
+            if all(payload is None for _, payload, _ in descriptor.variants):
+                for variant, _, _ in descriptor.variants:
+                    lines.append(
+                        f"static const {_c_name(descriptor.name)} "
+                        f"MERLO_{_identifier(descriptor.name)}_{variant} = "
+                        f"MERLO_{_identifier(primary)}_{variant};"
+                    )
+            else:
+                for variant, _, _ in descriptor.variants:
+                    lines.append(
+                        f"#define MERLO_{_identifier(descriptor.name)}_{variant}_TAG "
+                        f"MERLO_{_identifier(primary)}_{variant}_TAG"
+                    )
+                lines.append(
+                    f"#define MERLO_{_identifier(descriptor.name)}_MOVED_TAG "
+                    f"MERLO_{_identifier(primary)}_MOVED_TAG"
                 )
         return "\n".join(lines)
 
@@ -1216,7 +1305,17 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
         return lines
 
     def _canonical_nominal(self, type_name: str) -> str:
-        if type_name in self.descriptors:
+        descriptor = self.descriptors.get(type_name)
+        if descriptor is not None:
+            identity = descriptor.source_type_identity
+            if identity is not None:
+                aliases = [
+                    name
+                    for name, candidate in self.descriptors.items()
+                    if candidate.source_type_identity == identity
+                ]
+                if aliases:
+                    return min(aliases, key=lambda name: (len(name), name))
             return type_name
         matches = [
             name for name in self.descriptors

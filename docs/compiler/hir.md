@@ -198,13 +198,14 @@ tree and rejects a mismatching witness. HIR carries ownership and effect
 facts for later checking but is not itself a complete borrow proof or
 physical-layout specification.
 
-This migration makes ownership, `Place` lookup, and borrow provenance
-TypeId-authoritative through the shared compiler-local `TypeContext`.
-Retained spellings remain diagnostic projections only. It does not claim an
-RIR, MIR, LLVM, GPU, or backend TypeId cutover: RIR remains v5 and MIR remains
-v2, with generated-C semantics preserved. Issue #84 is the authority migration
-recorded here. Issue #85 covers RIR descriptors and executable MIR TypeId
-migration; issue #86 covers user-defined generic declaration/package provenance;
+This migration makes ownership, `Place` lookup, borrow provenance, and the
+physical representation boundary TypeId-authoritative through the shared
+compiler-local `TypeContext`. RIR v6 assigns `LayoutId` to every descriptor;
+MIR v3 carries typed operands/results/places and validates descriptor-layout
+bindings. Retained spellings remain diagnostic projections only. Generated-C
+semantics are preserved, but old RIR v5 and MIR v2 artifacts are rejected
+rather than upgraded through a compatibility shim. Issue #85 records this
+cutover; issue #86 covers user-defined generic declaration/package provenance;
 issue #72 covers native-syntax removal and executable-MIR backend authority.
 
 The HIR builder and representation backend share Merlo-owned structured

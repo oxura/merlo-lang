@@ -40,6 +40,8 @@ def test_repr_c_layout_and_fixed_width_validation() -> None:
     assert record.size == 8 and record.alignment == 4
     with pytest.raises(FFICompileError, match="FixedWidthABIRequired"):
         parse_ffi_declarations('extern "C" fn bad(value: Int) -> UInt64\n')
+    with pytest.raises(FFICompileError, match="FixedWidthABIRequired"):
+        parse_ffi_declarations('extern "C" fn bad(value: app.User) -> UInt64\n')
 
 
 def test_unsafe_operations_require_explicit_non_propagating_block() -> None:

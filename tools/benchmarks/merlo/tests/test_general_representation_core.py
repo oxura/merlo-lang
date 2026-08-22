@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import json
 import subprocess
 
@@ -23,11 +25,16 @@ from merlo.native_c_backend import compile_c_source
 from merlo.representation_ir import (
     BoxDesc,
     EnumDesc,
+    LayoutId,
     RecordDesc,
+    RepresentationProgram,
     ScalarDesc,
+    TargetSpec,
     VecDesc,
+    layout_id_for_descriptor,
     lower_structured_hir_to_rir,
     validate_recursive_layouts,
+    verify_representation_program,
 )
 from merlo.representation_mir import (
     evaluate_general_mir,
@@ -108,7 +115,7 @@ def test_structured_hir_is_typed_structural_and_source_mapped(layers):
 
 def test_representation_ir_describes_layout_ownership_and_drop(layers):
     hir, representation, _mir, _optimized = layers
-    assert representation.contract == "merlo.representation-ir.v5"
+    assert representation.contract == "merlo.representation-ir.v6"
     assert representation.source_hir_digest == hir.digest
     assert isinstance(representation.descriptor("UInt64"), ScalarDesc)
     assert isinstance(representation.descriptor("JsonField"), RecordDesc)
@@ -147,12 +154,111 @@ def test_representation_ir_describes_layout_ownership_and_drop(layers):
     assert all(item.ownership_provenance for item in operations)
 
 
+def test_layout_ids_are_physical_target_bound_and_tamper_evident(layers):
+    _hir, representation, _mir, _optimized = layers
+    json_descriptor = representation.descriptor("Json")
+    uint_descriptor = representation.descriptor("UInt64")
+    int_descriptor = representation.descriptor("Int64")
+
+    assert uint_descriptor.type_id != int_descriptor.type_id
+    assert uint_descriptor.layout_id == int_descriptor.layout_id
+    assert layout_id_for_descriptor(json_descriptor) == json_descriptor.layout_id
+
+    wasm = TargetSpec(
+        "wasm32-unknown-unknown",
+        "little",
+        32,
+        "global",
+        "native",
+    )
+    gpu_shared = replace(TargetSpec(), address_space="gpu_shared")
+    assert layout_id_for_descriptor(json_descriptor, wasm) != json_descriptor.layout_id
+    assert (
+        layout_id_for_descriptor(json_descriptor, gpu_shared)
+        != json_descriptor.layout_id
+    )
+    restored = RepresentationProgram.from_json(representation.to_json())
+    assert restored.to_json() == representation.to_json()
+    assert restored.target_spec == representation.target_spec
+    assert restored.target_spec_digest == representation.target_spec_digest
+
+    diagnostic_only = replace(
+        json_descriptor,
+        name="JsonDiagnosticAlias",
+        source_type_identity="JsonDiagnosticAlias",
+        variants=tuple(
+            (
+                name,
+                "DiagnosticPayload" if payload is not None else None,
+                tag,
+            )
+            for name, payload, tag in json_descriptor.variants
+        ),
+    )
+    assert layout_id_for_descriptor(diagnostic_only) == json_descriptor.layout_id
+
+    record = representation.descriptor("JsonField")
+    shifted_fields = tuple(
+        (name, type_name, offset + (1 if index == 0 else 0))
+        for index, (name, type_name, offset) in enumerate(record.fields)
+    )
+    assert layout_id_for_descriptor(replace(record, fields=shifted_fields)) != record.layout_id
+
+    tampered_variants = tuple(
+        (
+            name,
+            LayoutId("0" * 64) if payload_layout is not None else None,
+            tag,
+        )
+        for name, payload_layout, tag in json_descriptor.variant_layout_ids
+    )
+    with pytest.raises(ValueError, match="LayoutId"):
+        verify_representation_program(
+            replace(
+                representation,
+                descriptors=tuple(
+                    replace(
+                        descriptor,
+                        variant_layout_ids=(
+                            tampered_variants
+                            if descriptor.name == "Json"
+                            else descriptor.variant_layout_ids
+                        ),
+                    )
+                    for descriptor in representation.descriptors
+                ),
+            )
+        )
+
+    with pytest.raises(ValueError, match="unknown target"):
+        TargetSpec("unknown-target", "little", 64)
+    with pytest.raises(ValueError, match="address space"):
+        replace(TargetSpec(), address_space="unknown")
+
+def test_incompatible_descriptor_aliases_are_rejected_before_c(layers):
+    _hir, representation, _mir, _optimized = layers
+    scalar = representation.descriptor("UInt64")
+    incompatible = representation.descriptor("Int64")
+    tampered = replace(
+        incompatible,
+        source_type_identity=scalar.source_type_identity,
+        size=incompatible.size + 1,
+    )
+    descriptors = tuple(
+        tampered if descriptor.name == incompatible.name else descriptor
+        for descriptor in representation.descriptors
+    )
+
+    with pytest.raises(ValueError, match="IncompatibleDescriptorAlias"):
+        replace(representation, descriptors=descriptors)
+
+
 def test_layout_validation_rejects_inline_cycles_and_allows_owning_indirection():
     invalid = compile_structured_hir(
         "record Bad:\n    next: Bad\nfn main() -> Unit:\n    return\n",
         path="invalid-inline.mlo",
     )
-    rejected = validate_recursive_layouts(invalid.types)
+    rejected = validate_recursive_layouts(invalid.types, invalid.type_context)
     assert rejected.accepted is False
     assert rejected.minimal_cycle_path == ("Bad", "Bad")
     assert rejected.diagnostic == (
@@ -166,7 +272,7 @@ def test_layout_validation_rejects_inline_cycles_and_allows_owning_indirection()
         "fn main() -> Unit:\n    return\n",
         path="valid-indirection.mlo",
     )
-    accepted = validate_recursive_layouts(valid.types)
+    accepted = validate_recursive_layouts(valid.types, valid.type_context)
     assert accepted.accepted is True
     assert dict(accepted.inline_graph) == {"Node": (), "Tree": ()}
 
@@ -215,7 +321,7 @@ def test_invalid_input_returns_typed_offset_and_cleans_partial_ast(layers):
 
 def test_mir_is_cfg_with_explicit_memory_and_keeps_drop_glue(layers):
     hir, representation, mir, optimized = layers
-    assert mir.contract == "merlo.performance-mir.general-representation.v2"
+    assert mir.contract == "merlo.performance-mir.general-representation.v3"
     assert mir.source_hir_digest == hir.digest
     assert mir.representation_ir_digest == representation.digest
     assert optimized.optimized is True

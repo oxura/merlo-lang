@@ -32,7 +32,11 @@ def run_falsification_controls(
     checks: dict[str, dict[str, Any]] = {}
 
     inline_source = "record Bad:\n    next: Bad\nfn main() -> Unit:\n    return\n"
-    inline = validate_recursive_layouts(compile_structured_hir(inline_source, path="mutant/inline.mlo").types)
+    inline_hir = compile_structured_hir(
+        inline_source,
+        path="mutant/inline.mlo",
+    )
+    inline = validate_recursive_layouts(inline_hir.types, inline_hir.type_context)
     checks["inline_recursive_layout_allowed"] = {
         "detected": not inline.accepted and inline.minimal_cycle_path == ("Bad", "Bad"),
         "evidence": inline.to_dict(),
