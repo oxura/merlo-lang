@@ -235,13 +235,30 @@ def test_layout_ids_are_physical_target_bound_and_tamper_evident(layers):
     with pytest.raises(ValueError, match="address space"):
         replace(TargetSpec(), address_space="unknown")
 
+def test_incompatible_descriptor_aliases_are_rejected_before_c(layers):
+    _hir, representation, _mir, _optimized = layers
+    scalar = representation.descriptor("UInt64")
+    incompatible = representation.descriptor("Int64")
+    tampered = replace(
+        incompatible,
+        source_type_identity=scalar.source_type_identity,
+        size=incompatible.size + 1,
+    )
+    descriptors = tuple(
+        tampered if descriptor.name == incompatible.name else descriptor
+        for descriptor in representation.descriptors
+    )
+
+    with pytest.raises(ValueError, match="IncompatibleDescriptorAlias"):
+        replace(representation, descriptors=descriptors)
+
 
 def test_layout_validation_rejects_inline_cycles_and_allows_owning_indirection():
     invalid = compile_structured_hir(
         "record Bad:\n    next: Bad\nfn main() -> Unit:\n    return\n",
         path="invalid-inline.mlo",
     )
-    rejected = validate_recursive_layouts(invalid.types)
+    rejected = validate_recursive_layouts(invalid.types, invalid.type_context)
     assert rejected.accepted is False
     assert rejected.minimal_cycle_path == ("Bad", "Bad")
     assert rejected.diagnostic == (
@@ -255,7 +272,7 @@ def test_layout_validation_rejects_inline_cycles_and_allows_owning_indirection()
         "fn main() -> Unit:\n    return\n",
         path="valid-indirection.mlo",
     )
-    accepted = validate_recursive_layouts(valid.types)
+    accepted = validate_recursive_layouts(valid.types, valid.type_context)
     assert accepted.accepted is True
     assert dict(accepted.inline_graph) == {"Node": (), "Tree": ()}
 

@@ -19,7 +19,6 @@ from merlo.type_arena import (
     TypeArena,
     TypeArenaError,
     TypeContext,
-    TypeContextBuilder,
     TypeId,
     TypeRef,
 )
@@ -1261,6 +1260,30 @@ def _verify_representation_program(program: RepresentationProgram) -> None:
 
     descriptors = {item.name: item for item in program.descriptors}
     descriptor_ids: set[TypeId] = set()
+    def alias_payload(descriptor: TypeDescriptor) -> dict[str, Any]:
+        payload = descriptor.to_dict()
+        for key in ("descriptor", "name", "type_id", "layout_id"):
+            payload.pop(key, None)
+        return payload
+
+    aliases_by_identity: dict[str, list[TypeDescriptor]] = {}
+    for descriptor in program.descriptors:
+        aliases_by_identity.setdefault(
+            descriptor.source_type_identity,
+            [],
+        ).append(descriptor)
+    for source_identity, aliases in sorted(aliases_by_identity.items()):
+        if len(aliases) < 2:
+            continue
+        primary = aliases[0]
+        primary_payload = alias_payload(primary)
+        for alias in aliases[1:]:
+            if alias.layout_id != primary.layout_id or alias_payload(alias) != primary_payload:
+                raise ValueError(
+                    "IncompatibleDescriptorAlias: "
+                    f"{source_identity}: {primary.name} vs {alias.name}"
+                )
+
     for descriptor in program.descriptors:
         type_id = require_id(descriptor.type_id, f"descriptor {descriptor.name}")
         if arena.canonical(type_id) != descriptor.name:
@@ -1866,55 +1889,12 @@ def validate_recursive_layouts(
 ) -> LayoutValidation:
     declarations = {item.name: item for item in types}
     if authority is None:
-        # Preserve the legacy helper form for callers that retain only HIR
-        # declarations. Rebuilding from canonical spellings retains TypeIds.
-        builder = TypeContextBuilder()
-        try:
-            for declaration in declarations.values():
-                try:
-                    builder.intern_text(declaration.name)
-                except TypeArenaError as exc:
-                    return LayoutValidation(
-                        False,
-                        (),
-                        (),
-                        f"MalformedLayoutType: {declaration.name} at <root>: {exc}",
-                    )
-                for field in declaration.fields:
-                    try:
-                        builder.intern_text(field.type_name)
-                    except TypeArenaError as exc:
-                        return LayoutValidation(
-                            False,
-                            (),
-                            (),
-                            (
-                                f"MalformedLayoutType: {field.type_name} "
-                                f"at field[{field.name}]: {exc}"
-                            ),
-                        )
-                for variant in declaration.variants:
-                    if variant.payload_type is not None:
-                        try:
-                            builder.intern_text(variant.payload_type)
-                        except TypeArenaError as exc:
-                            return LayoutValidation(
-                                False,
-                                (),
-                                (),
-                                (
-                                    f"MalformedLayoutType: {variant.payload_type} "
-                                    f"at variant[{variant.name}]: {exc}"
-                                ),
-                            )
-            authority = builder.freeze()
-        except TypeArenaError as exc:
-            return LayoutValidation(
-                False,
-                (),
-                (),
-                f"LayoutTypeContextRequired: {exc}",
-            )
+        return LayoutValidation(
+            False,
+            (),
+            (),
+            "LayoutTypeContextRequired: pass the frozen HIR TypeContext",
+        )
     nominal_ids = frozenset(item.type_id for item in declarations.values())
     edge_graph: dict[str, set[_LayoutEdge]] = {
         name: set() for name in declarations

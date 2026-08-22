@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from merlo.frontend_model import ConciseApplicationError
+from merlo.surface_binding import internal_symbol
 from merlo.concise_services import (
     elaborate_concise_application,
     elaborate_concise_core,
@@ -535,6 +536,7 @@ def test_qualified_modules_keep_distinct_full_type_identities(tmp_path: Path) ->
     assert "must not rewrite this comment" in elaborated.canonical_source
     revisions = {item.name: item.revision_id for item in elaborated.interfaces if item.kind == "fn"}
     assert revisions["app_item"] != revisions["vendor_item"]
+
     first_revision = elaborated.interface_revision
     entry.write_text(
         entry.read_text(encoding="utf-8").replace(
@@ -546,6 +548,13 @@ def test_qualified_modules_keep_distinct_full_type_identities(tmp_path: Path) ->
     )
     second = elaborate_concise_application(entry, require_interface_lock=False)
     assert second.interface_revision != first_revision
+
+def test_module_symbol_mangling_is_collision_safe() -> None:
+    dotted = internal_symbol("app.left", "Item", "record")
+    underscored = internal_symbol("app_left", "Item", "record")
+    assert dotted != underscored
+    assert dotted.startswith("Merlo_app_left_")
+    assert underscored.startswith("Merlo_app_left_")
 
 
 def test_imported_main_is_not_the_cli_entry_and_metadata_is_source_facing(
