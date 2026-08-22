@@ -18,6 +18,7 @@ from merlo.intrinsics import (
     INSTANCE_METHOD_SIGNATURES,
     BuiltinContractGraph,
     InstanceMethodSignature,
+    TypeConstructorId,
     TypeSchemeApplied,
     TypeSchemeConcrete,
     contextual_result_type,
@@ -94,6 +95,7 @@ def test_custom_contract_graph_mappings_are_immutable() -> None:
                 "get",
                 (),
                 "T",
+                generic_variables=frozenset({"T"}),
             )
         },
         {},
@@ -112,6 +114,7 @@ def test_contract_graph_unification_is_transactional_and_order_invariant() -> No
                 "same",
                 (),
                 "Text",
+                generic_variables=frozenset({"T"}),
             )
         },
         {},
@@ -130,6 +133,7 @@ def test_contract_graph_unification_is_transactional_and_order_invariant() -> No
                 (),
                 "Text",
                 static=True,
+                generic_variables=frozenset({"T"}),
             ),
         ),
         (
@@ -140,6 +144,7 @@ def test_contract_graph_unification_is_transactional_and_order_invariant() -> No
                 (),
                 "Bytes",
                 static=True,
+                generic_variables=frozenset({"T"}),
             ),
         ),
     ]
@@ -195,6 +200,7 @@ def test_bound_contract_graph_matches_const_arguments_structurally() -> None:
                 "len",
                 (),
                 "UInt64",
+                generic_variables=frozenset({"T"}),
             )
         },
         {},
@@ -217,16 +223,16 @@ def test_bound_static_contract_instantiates_validated_type_ids() -> None:
     expected_map = builder.intern_text("Map[Text,Byte]")
     bound = CONTRACT_GRAPH.prepare(builder)
 
-    box = bound.resolve_static_method("Box", "new", (text,))
+    box = bound.resolve_static_method(TypeConstructorId("Box"), "new", (text,))
     assert box is not None
     assert box.parameter_type_ids == (text,)
     assert box.result_type_id == builder.type_id("Box[Text]")
     assert box.parameter_ownership == ("consuming",)
     with pytest.raises(ValueError, match="argument type mismatch"):
-        bound.resolve_static_method("Box", "new", (None,))
+        bound.resolve_static_method(TypeConstructorId("Box"), "new", (None,))
 
     mapping = bound.resolve_static_method(
-        "Map",
+        TypeConstructorId("Map"),
         "new",
         (),
         expected_map,

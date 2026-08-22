@@ -97,6 +97,7 @@ from merlo.type_arena import (
 )
 from merlo.intrinsics import (
     CONTRACT_GRAPH,
+    TypeConstructorId,
     INSTANCE_METHOD_NAMES,
     contextual_result_type,
 )
@@ -864,11 +865,18 @@ class _Elaborator:
                 name: {field.name: field.type_name for field in record.fields}
                 for name, record in self.records.items()
             }
-            map_entry_parts = (
-                _generic_parts(receiver_type, "MapEntry")
-                if receiver_type
-                else None
-            )
+            map_entry_parts = None
+            if receiver_type is not None:
+                try:
+                    receiver_id = self.type_context.intern_text(receiver_type)
+                    receiver_ref = self.type_context.resolve(receiver_id)
+                    if receiver_ref.constructor == "MapEntry" and len(receiver_ref.arguments) == 2:
+                        map_entry_parts = tuple(
+                            self.type_context.render(item)
+                            for item in receiver_ref.arguments
+                        )
+                except TypeArenaError:
+                    map_entry_parts = None
             candidates = [
                 (name, fields[expression.field])
                 for name, fields in field_tables.items()
@@ -980,11 +988,8 @@ class _Elaborator:
             )
         return term
 
-    def _contract_static_receiver(self, receiver: str) -> TypeId | str:
-        try:
-            return self.type_context.type_id(receiver)
-        except TypeArenaError:
-            return receiver
+    def _contract_static_receiver(self, receiver: str) -> TypeConstructorId:
+        return TypeConstructorId(receiver)
 
     def _contract_method_call(
         self,
@@ -1059,7 +1064,7 @@ class _Elaborator:
         argument_terms: list[str] = []
         argument_types: list[str | None] = []
         parameter_type_ids = self.contract_graph.static_parameter_type_ids(
-            receiver,
+            self._contract_static_receiver(receiver),
             method,
             len(expression.arguments),
         )
@@ -1153,19 +1158,24 @@ class _Elaborator:
                 self.types.typed(receiver_type),
                 context=f"collection {operation} receiver",
             )
-        shape = collection_shape(receiver_type)
+        try:
+            receiver_type_id = self.type_context.intern_text(receiver_type)
+        except TypeArenaError as error:
+            raise SurfaceElaborationError(
+                f"CollectionReceiverRequired: {receiver_type}"
+            ) from error
+        shape = collection_shape(receiver_type_id, self.type_context)
         if shape is None:
             raise SurfaceElaborationError(
                 f"CollectionReceiverRequired: {receiver_type}"
             )
-        element_type = shape.element_type
+        element_type_id = shape.element_type_id
+        element_type = self.type_context.render(element_type_id)
         callable_expected = "Bool" if operation in {"where", "count"} else None
         callable_parameter = "__item"
         if isinstance(argument, SurfaceName) and argument.name in self.functions:
             target = self.functions[argument.name]
-            if not self.type_properties.resolve(
-                self.type_context.type_id(element_type)
-            ).is_copy:
+            if not self.type_properties.resolve(element_type_id).is_copy:
                 raise SurfaceElaborationError(
                     "OwnedCollectionCallableRequiresImplicitExpression: "
                     f"{argument.name}"
@@ -1222,9 +1232,14 @@ class _Elaborator:
         result_element = (
             callable_return if operation == "map" else element_type
         )
-        term = self.types.typed(
-            collection_result_type(operation, result_element)
+        result_element_id = self.type_context.intern_text(result_element)
+        result_type_id = collection_result_type(
+            operation,
+            result_element_id,
+            self.type_context,
         )
+        assert isinstance(result_type_id, TypeId)
+        term = self.types.typed(self.type_context.render(result_type_id))
         if expected:
             self.types.unify(
                 term,
@@ -2090,19 +2105,31 @@ class _Elaborator:
             self._expression(expression.index, function, "UInt64")
             owner = self._expression(expression.receiver, function)
             owner_type = self.types.concrete.get(self.types.find(owner))
-            shape = collection_shape(owner_type)
+            try:
+                owner_id = self.type_context.intern_text(owner_type) if owner_type is not None else None
+            except TypeArenaError:
+                owner_id = None
+            shape = collection_shape(owner_id, self.type_context) if owner_id is not None else None
             if shape is None:
                 raise SurfaceElaborationError("IndexRequiresCollection")
-            term = self.types.typed(shape.element_type)
+            term = self.types.typed(self.type_context.render(shape.element_type_id))
         elif isinstance(expression, SurfaceList):
             element = self.types.variable(f"list:{expression.span.start_line}:{expression.span.start_column}")
             for item in expression.items:
                 self.types.unify(element, self._expression(item, function), context="list element")
-            expected_shape = collection_shape(expected)
+            try:
+                expected_id = self.type_context.intern_text(expected) if expected is not None else None
+            except TypeArenaError:
+                expected_id = None
+            expected_shape = (
+                collection_shape(expected_id, self.type_context)
+                if expected_id is not None
+                else None
+            )
             if expected_shape is not None:
                 self.types.unify(
                     element,
-                    self.types.typed(expected_shape.element_type),
+                    self.types.typed(self.type_context.render(expected_shape.element_type_id)),
                     context="list expected type",
                 )
                 term = self.types.typed(expected)
@@ -2421,29 +2448,37 @@ class _Elaborator:
             elif isinstance(statement, SurfaceFor):
                 iterable = self._expression(statement.iterable, function)
                 iterable_type = self.types.concrete.get(self.types.find(iterable))
-                shape = collection_shape(iterable_type)
-                borrowed_parts = _generic_parts(iterable_type, "Borrow")
-                borrowed_type = (
-                    borrowed_parts[0]
-                    if borrowed_parts and len(borrowed_parts) == 1
+                try:
+                    iterable_id = self.type_context.intern_text(iterable_type) if iterable_type is not None else None
+                except TypeArenaError:
+                    iterable_id = None
+                iterable_ref = self.type_context.resolve(iterable_id) if iterable_id is not None else None
+                shape = collection_shape(iterable_id, self.type_context) if iterable_id is not None else None
+                borrowed_type_id = (
+                    iterable_ref.arguments[0]
+                    if iterable_ref is not None
+                    and iterable_ref.constructor == "Borrow"
+                    and len(iterable_ref.arguments) == 1
                     else None
                 )
-                borrowed_shape = collection_shape(borrowed_type)
+                borrowed_ref = self.type_context.resolve(borrowed_type_id) if borrowed_type_id is not None else None
+                borrowed_shape = collection_shape(borrowed_type_id, self.type_context) if borrowed_type_id is not None else None
                 borrowed_map_parts = (
-                    _generic_parts(borrowed_type, "Map")
-                    if borrowed_type
+                    borrowed_ref.arguments
+                    if borrowed_ref is not None
+                    and borrowed_ref.constructor == "Map"
+                    and len(borrowed_ref.arguments) == 2
                     else None
                 )
                 if shape is not None:
-                    item_type = shape.element_type
+                    item_type = self.type_context.render(shape.element_type_id)
                 elif borrowed_shape is not None:
-                    item_type = borrowed_shape.element_type
+                    item_type = self.type_context.render(borrowed_shape.element_type_id)
                 elif borrowed_map_parts is not None:
-                    item_type = (
-                        f"MapEntry[{borrowed_map_parts[0]},"
-                        f"{borrowed_map_parts[1]}]"
+                    item_type = self.type_context.render(
+                        self.type_context.intern_node("MapEntry", borrowed_map_parts)
                     )
-                elif iterable_type == "FileLines":
+                elif iterable_ref is not None and iterable_ref.constructor == "FileLines":
                     item_type = "TextView"
                 else:
                     raise SurfaceElaborationError(

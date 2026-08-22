@@ -730,8 +730,31 @@ class TypeContextBuilder:
     def declarations(self) -> Mapping[TypeId, TypeDeclaration]:
         return MappingProxyType(dict(self._declarations))
 
+    def _validate_no_orphan_type_ids(self) -> None:
+        roots = set(self._type_ids.values()) | set(self._declarations)
+        for declaration in self._declarations.values():
+            roots.update(
+                member.type_id
+                for member in (*declaration.fields, *declaration.variants)
+                if member.type_id is not None
+            )
+        reachable: set[TypeId] = set()
+        pending = list(roots)
+        while pending:
+            type_id = pending.pop()
+            if type_id in reachable:
+                continue
+            reference = self.arena.resolve(type_id)
+            reachable.add(type_id)
+            pending.extend(reference.arguments)
+        orphaned = set(self.arena.ids) - reachable
+        if orphaned:
+            values = ", ".join(item.value for item in sorted(orphaned))
+            raise TypeArenaError(f"orphan TypeIds cannot be frozen: {values}")
+
     def freeze(self) -> TypeContext:
         if self._frozen_context is None:
+            self._validate_no_orphan_type_ids()
             self._frozen_context = TypeContext(
                 self.arena.freeze(),
                 self._declarations,

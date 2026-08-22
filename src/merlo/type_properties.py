@@ -66,7 +66,7 @@ _SCALARS = frozenset(
 )
 _OWNERS = frozenset({"Text", "Bytes", "TextBuilder", "Json", "Path"})
 _RESOURCES = frozenset({"FileReader", "FileWriter"})
-_BORROWS = frozenset({"TextView", "BytesView", "FileLines"})
+_BORROWS = frozenset({"TextView", "BytesView", "FileLines", "MapEntry"})
 
 
 def _unique_ids(

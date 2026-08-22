@@ -224,3 +224,16 @@ def test_frozen_context_queries_do_not_parse_or_intern(
     properties = resolver.resolve(values)
     assert properties.contains_borrow
     assert tuple(context.render(item) for item in properties.borrow_types) == ("TextView",)
+
+
+def test_map_entry_is_a_borrowed_view_not_an_implicit_copy() -> None:
+    builder, context = _frozen(("MapEntry[Text,Text]",))
+    properties = TypePropertyResolver(context).resolve(
+        builder.type_id("MapEntry[Text,Text]")
+    )
+    assert properties.contains_borrow
+    assert properties.is_move is False
+    assert properties.needs_drop is False
+    assert tuple(context.render(item) for item in properties.borrow_types) == (
+        "MapEntry[Text,Text]",
+    )

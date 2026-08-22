@@ -14,8 +14,8 @@ from merlo import native_syntax as ast
 from merlo.borrow_summary import BorrowSummary
 from merlo.collection_protocol import collection_shape
 from merlo.place import IndexClass, OverlapRelation, Place, PlaceRoot, PlaceStep, overlap_relation
-from merlo.intrinsics import BoundContractGraph, intrinsic_signature
-from merlo.type_arena import TypeArenaError, TypeId
+from merlo.intrinsics import BoundContractGraph, TypeConstructorId, intrinsic_signature
+from merlo.type_arena import TypeArenaError, TypeId, TypeRef
 from merlo.type_properties import (
     TypeAuthority,
     TypeProperties,
@@ -170,11 +170,11 @@ class _OwnershipChecker:
             else "<unknown>"
         )
 
-    def _static_type(self, type_name: str) -> TypeId | str:
+    def _static_type(self, type_name: str) -> TypeConstructorId | None:
         try:
-            return self.type_context.type_id(type_name)
-        except TypeArenaError:
-            return type_name
+            return TypeConstructorId(type_name)
+        except ValueError:
+            return None
 
 
     def _type_args(self, type_id: TypeId | None, constructor: str) -> tuple[TypeId, ...] | None:
@@ -184,6 +184,12 @@ class _OwnershipChecker:
         if reference.constructor != constructor:
             return None
         return reference.arguments
+
+    def _intern_node(self, constructor: str, arguments: tuple[TypeId, ...]) -> TypeId:
+        intern_node = getattr(self.type_context, "intern_node", None)
+        if intern_node is not None:
+            return intern_node(constructor, arguments)
+        return self.type_context.arena.identity(TypeRef(constructor, arguments))
     def _root_place(self, name: str) -> Place:
         is_parameter = name in self.parameters
         kind = "parameter" if is_parameter else "local"
@@ -230,11 +236,11 @@ class _OwnershipChecker:
                 result = result.project(PlaceStep.field(field_id))
                 current_type = self._field_type(current_type, field_name)
             elif step.kind == "Element":
-                shape = collection_shape(self.type_context.render(current_type) if current_type is not None else None)
+                shape = collection_shape(current_type, self.type_context)
                 if shape is None:
                     return None
                 result = result.project(PlaceStep.index(IndexClass.dynamic()))
-                current_type = self.type_context.type_id(shape.element_type)
+                current_type = shape.element_type_id
             elif step.kind == "VariantPayload":
                 variant_name = str(step.value)
                 if variant_name == "unwrap":
@@ -1208,12 +1214,18 @@ class _OwnershipChecker:
             )
             if method_signature is None and method:
                 static_receiver = self._qualified_name(raw_receiver)
-                static_signature = self.contract_graph.static_method(
-                    self._static_type(static_receiver),
-                    method,
+                static_type = (
+                    self._static_type(static_receiver)
+                    if static_receiver
+                    else None
                 )
-                if static_signature is not None:
-                    method_signature = static_signature
+                if static_type is not None:
+                    static_signature = self.contract_graph.static_method(
+                        static_type,
+                        method,
+                    )
+                    if static_signature is not None:
+                        method_signature = static_signature
             if method_signature is not None:
                 if not method_signature.accepts_arity(len(node.args)):
                     self._error(
@@ -1458,6 +1470,14 @@ class _OwnershipChecker:
             False,
             dict(state.borrow_places),
         )
+    @staticmethod
+    def _clear_iteration_borrow(state: _OwnershipState, name: str) -> None:
+        state.borrows.pop(name, None)
+        state.borrow_places.pop(name, None)
+        for path in (*state.break_paths, *state.backedge_paths):
+            path.borrows.pop(name, None)
+            path.borrow_places.pop(name, None)
+
     @staticmethod
     def _loop_tracked_borrow_names(
         before: _OwnershipState,
@@ -1900,28 +1920,50 @@ class _OwnershipChecker:
                 iterable_type = self._check_expr(node.iter, state)
                 before_loop = state.clone()
                 loop_state = before_loop.clone()
+                map_entry_type = None
                 if isinstance(node.target, ast.Name):
-                    iterable_name = (
-                        self.type_context.render(iterable_type)
-                        if iterable_type is not None
-                        else None
-                    )
-                    shape = collection_shape(iterable_name)
-                    target_type = (
-                        self.type_context.type_id(shape.element_type)
-                        if shape is not None
-                        else self.type_context.type_id("TextView")
-                        if iterable_name == "FileLines"
-                        else None
-                    )
-                    if target_type is not None:
-                        self.env[node.target.id] = target_type
-                    loop_state.places[node.target.id] = self._root_place(node.target.id)
                     iterable_ref = (
                         self.type_context.resolve(iterable_type)
                         if iterable_type is not None
                         else None
                     )
+                    shape = collection_shape(iterable_type, self.type_context)
+                    if iterable_ref is not None and iterable_ref.constructor == "Borrow":
+                        borrowed = self.type_context.resolve(iterable_ref.arguments[0]) if len(iterable_ref.arguments) == 1 else None
+                        if borrowed is not None and borrowed.constructor == "Map" and len(borrowed.arguments) == 2:
+                            map_entry_type = self._intern_node("MapEntry", borrowed.arguments)
+                    target_type = (
+                        map_entry_type
+                        if map_entry_type is not None
+                        else shape.element_type_id
+                        if shape is not None
+                        else self.type_context.type_id("TextView")
+                        if iterable_ref is not None
+                        and iterable_ref.constructor == "FileLines"
+                        else None
+                    )
+                    if target_type is not None:
+                        self.env[node.target.id] = target_type
+                    loop_state.places[node.target.id] = self._root_place(node.target.id)
+                    if map_entry_type is not None:
+                        provenances = self._borrow_provenances(
+                            node.iter,
+                            iterable_type,
+                            state,
+                        )
+                        if not provenances:
+                            self._error("MapEntryBorrowSourceUnknown", node.target.id)
+                        backing_places = {item.backing_place for item in provenances}
+                        backing_place = next(iter(backing_places)) if len(backing_places) == 1 else None
+                        self._register_borrows(
+                            loop_state,
+                            node.target.id,
+                            self._extend_provenance(
+                                provenances,
+                                f"for({node.target.id})",
+                            ),
+                            place=backing_place,
+                        )
                     if (
                         (iterable_ref is None or iterable_ref.constructor != "Borrow")
                         and target_type is not None
@@ -1929,6 +1971,8 @@ class _OwnershipChecker:
                     ):
                         loop_state.statuses[node.target.id] = "available"
                 body_state = self._check_statements(node.body, loop_state)
+                if map_entry_type is not None:
+                    self._clear_iteration_borrow(body_state, node.target.id)
                 assignment_names = (
                     self._loop_assignment_names(
                         node.body,

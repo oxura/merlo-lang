@@ -228,6 +228,8 @@ def test_native_map_collisions_growth_updates_iteration_and_borrows(tmp_path: Pa
     assert "UINT64_C(1099511628211)" in generated.source
     assert "hash & (map->capacity - 1)" in generated.source
     assert "required > map->capacity - map->capacity / 4" in generated.source
+    assert "MapMutationDuringView" in generated.source
+    assert "MapGrowthDuringView" in generated.source
     assert "const MerloText *key" in generated.source
     regenerated = emit_general_c(hir, representation, optimized)
     assert (generated.source_sha256, generated.source) == (
@@ -368,3 +370,28 @@ fn main(value: Any) -> UInt64:
 """
     with pytest.raises(StructuredHIRCompileError, match="DynamicAny"):
         compile_structured_hir(source, path="dynamic-any.mlo")
+
+
+def test_map_entry_field_owners_cannot_be_implicitly_moved() -> None:
+    source = """
+fn main(input: BytesView) -> UInt64:
+    let counts: Map[Text, UInt64] = Map.new()
+    for entry in counts.entries():
+        let copied: Text = entry.key
+        return copied.len()
+    return 0
+""".strip()
+    with pytest.raises(StructuredHIRCompileError, match="ProjectedOwnerMoveRequiresPartialMoveSupport"):
+        compile_structured_hir(source, path="map-entry-owner.mlo")
+
+
+def test_map_entry_mutation_is_rejected_while_entries_are_borrowed() -> None:
+    source = """
+fn main(input: BytesView) -> UInt64:
+    let counts: Map[Text, UInt64] = Map.new()
+    for entry in counts.entries():
+        counts.increment(entry.key)
+    return 0
+""".strip()
+    with pytest.raises(StructuredHIRCompileError, match="MutationDuringBorrow"):
+        compile_structured_hir(source, path="map-entry-mutation.mlo")

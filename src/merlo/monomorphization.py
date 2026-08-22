@@ -44,6 +44,7 @@ from merlo.surface_ast import (
     SurfaceWhile,
 )
 from merlo.type_parser import GenericTypeSyntaxError, TypeExpr, parse_type
+from merlo.type_arena import TypeArenaError, TypeContextBuilder
 
 
 def _parsed(type_name: str) -> TypeExpr:
@@ -114,14 +115,10 @@ def _bind_type(
     visit(pattern, actual)
 
 
-def _collection_element(type_name: str | None) -> str | None:
-    shape = collection_shape(type_name)
-    return shape.element_type if shape is not None else None
-
-
 class _Monomorphizer:
     def __init__(self, program: SurfaceProgram) -> None:
         self.program = program
+        self.type_context = TypeContextBuilder(allow_unresolved=False)
         self.interfaces = {
             item.name: item
             for item in program.declarations
@@ -163,6 +160,20 @@ class _Monomorphizer:
         self.instances: dict[tuple[str, tuple[str, ...]], str] = {}
         self.instance_returns: dict[str, str | None] = {}
         self.pending: deque[tuple[SurfaceFunction, dict[str, str], str]] = deque()
+
+    def _collection_element(self, type_name: str | None) -> str | None:
+        if type_name is None:
+            return None
+        try:
+            type_id = self.type_context.intern_text(type_name)
+        except TypeArenaError:
+            return None
+        shape = collection_shape(type_id, self.type_context)
+        return (
+            self.type_context.render(shape.element_type_id)
+            if shape is not None
+            else None
+        )
 
     def _prepare_implementations(
         self,
@@ -293,7 +304,7 @@ class _Monomorphizer:
                 return f"Vec[{item_types[0]}]"
             return None
         if isinstance(expression, SurfaceIndex):
-            return _collection_element(self._infer(expression.receiver, environment))
+            return self._collection_element(self._infer(expression.receiver, environment))
         if isinstance(expression, SurfaceUnary):
             if expression.operator == "not":
                 return "Bool"
@@ -401,6 +412,7 @@ class _Monomorphizer:
                         concrete,
                         records=self.records,
                         enums=self.enums,
+                        type_context=self.type_context,
                     )
                 )
                 if not satisfied:
@@ -635,7 +647,7 @@ class _Monomorphizer:
             elif isinstance(statement, SurfaceFor):
                 iterable = self._expression(statement.iterable, environment)
                 nested = dict(environment)
-                element = _collection_element(self._infer(iterable, environment))
+                element = self._collection_element(self._infer(iterable, environment))
                 if element is not None:
                     nested[statement.name] = element
                 output.append(

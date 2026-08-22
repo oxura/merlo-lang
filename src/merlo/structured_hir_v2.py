@@ -39,6 +39,7 @@ from merlo.type_arena import (
 from merlo.intrinsics import (
     CONTRACT_GRAPH,
     BoundContractGraph,
+    TypeConstructorId,
     contextual_result_type,
     format_intrinsic_arity,
     intrinsic_signature,
@@ -1557,15 +1558,20 @@ class _HIRBuilder:
             expected_type[1] if expected_type is not None else None,
         )
 
-    def _contract_static_receiver(self, receiver_type: str) -> TypeId | str:
+    def _contract_static_receiver(self, receiver_type: str) -> TypeConstructorId | None:
         try:
-            return self.type_arena.type_id(receiver_type)
-        except TypeArenaError:
-            return receiver_type
+            return TypeConstructorId(receiver_type)
+        except ValueError:
+            return None
 
     def _contract_static(self, receiver_type: str, name: str):
+        if not receiver_type:
+            return None
+        static_receiver = self._contract_static_receiver(receiver_type)
+        if static_receiver is None:
+            return None
         return self.contract_graph.static_method(
-            self._contract_static_receiver(receiver_type),
+            static_receiver,
             name,
         )
 
@@ -1576,13 +1582,18 @@ class _HIRBuilder:
         argument_types: tuple[str | None, ...],
         expected: str | None = None,
     ):
+        if not receiver_type:
+            return None
         argument_ids = []
         for item in argument_types:
             typed = self._intern_type(item) if item is not None else None
             argument_ids.append(typed[1] if typed is not None else None)
         expected_typed = self._intern_type(expected) if expected is not None else None
+        static_receiver = self._contract_static_receiver(receiver_type)
+        if static_receiver is None:
+            return None
         return self.contract_graph.resolve_static_method(
-            self._contract_static_receiver(receiver_type),
+            static_receiver,
             name,
             tuple(argument_ids),
             expected_typed[1] if expected_typed is not None else None,
@@ -2188,7 +2199,7 @@ class _HIRBuilder:
             )
         if isinstance(node, ast.Subscript):
             owner = self.expression(node.value)
-            shape = collection_shape(owner.type_name)
+            shape = collection_shape(owner.type_id, self.type_arena)
             if shape is None:
                 raise StructuredHIRCompileError(
                     f"{self.path}:{node.lineno}: IndexRequiresCollection"
@@ -2196,7 +2207,7 @@ class _HIRBuilder:
             return self._new_node(
                 node,
                 "Index",
-                type_name=shape.element_type,
+                type_name=self.type_arena.render(shape.element_type_id),
                 ownership="borrow",
                 effects=("bounds_check",),
                 children=(owner, self.expression(node.slice)),
@@ -2254,9 +2265,13 @@ class _HIRBuilder:
                 for member in declaration.fields:
                     if member.name == field_name:
                         return member.type_name
-        map_entry = _map_entry_types(owner)
-        if map_entry is not None:
-            return {"key": map_entry[0], "value": map_entry[1]}.get(field_name)
+        owner_id = self._type_id(owner)
+        if owner_id is not None:
+            reference = self.type_arena.resolve(owner_id)
+            if reference.constructor == "MapEntry" and len(reference.arguments) == 2:
+                field_index = {"key": 0, "value": 1}.get(field_name)
+                if field_index is not None:
+                    return self.type_arena.render(reference.arguments[field_index])
         return None
 
 
@@ -2556,7 +2571,7 @@ class _HIRBuilder:
             if method in COLLECTION_OPERATIONS:
                 receiver = self.expression(node.func.value)
                 receiver_type = receiver.type_name or receiver_type
-                shape = collection_shape(receiver_type)
+                shape = collection_shape(receiver.type_id, self.type_arena)
                 metadata = (
                     getattr(node.args[0], "_merlo_implicit_callable", None)
                     if len(node.args) == 1
@@ -2584,17 +2599,29 @@ class _HIRBuilder:
                     },
                 )
                 kind = "CollectionOperation"
-                result_element = (
-                    return_type if method == "map" else shape.element_type
+                result_element_id = (
+                    self._type_id(return_type)
+                    if method == "map"
+                    else shape.element_type_id
                 )
-                type_name = collection_result_type(method, result_element)
+                if result_element_id is None:
+                    raise StructuredHIRCompileError(
+                        f"{self.path}:{node.lineno}: collection result TypeId required"
+                    )
+                result_type_id = collection_result_type(
+                    method,
+                    result_element_id,
+                    self.type_arena,
+                )
+                assert isinstance(result_type_id, TypeId)
+                type_name = self.type_arena.render(result_type_id)
                 operation_children = (receiver, callback)
                 call_attributes.update(
                     {
                         "collection_operation": method,
                         "collection_kind": shape.kind,
                         "source_collection_type": receiver_type,
-                        "element_type": shape.element_type,
+                        "element_type": self.type_arena.render(shape.element_type_id),
                         "callable_parameter": parameter,
                         "callable_parameter_type": parameter_type,
                         "callable_return_type": return_type,
@@ -3059,9 +3086,10 @@ class _HIRBuilder:
                 receiver_type = self.local_types.get(
                     _ast_qualified_name(target.value)
                 )
-                shape = collection_shape(receiver_type)
+                receiver_type_id = self._type_id(receiver_type)
+                shape = collection_shape(receiver_type_id, self.type_arena)
                 target_type = (
-                    shape.element_type
+                    self.type_arena.render(shape.element_type_id)
                     if shape is not None
                     else None
                 )
@@ -3182,23 +3210,35 @@ class _HIRBuilder:
             return self._new_node(node, "While", children=(test, loop_body), scope_id=scope_id)
         if isinstance(node, ast.For) and isinstance(node.target, ast.Name):
             iterable = self.expression(node.iter)
-            shape = collection_shape(iterable.type_name)
-            borrowed_parts = generic_parts(iterable.type_name, "Borrow", arity=1)
-            borrowed_type = borrowed_parts[0] if borrowed_parts is not None else None
-            borrowed_shape = collection_shape(borrowed_type)
-            borrowed_map = _map_types(borrowed_type)
+            shape = collection_shape(iterable.type_id, self.type_arena)
+            iterable_ref = self.type_arena.resolve(iterable.type_id) if iterable.type_id is not None else None
+            borrowed_type_id = (
+                iterable_ref.arguments[0]
+                if iterable_ref is not None
+                and iterable_ref.constructor == "Borrow"
+                and len(iterable_ref.arguments) == 1
+                else None
+            )
+            borrowed_ref = self.type_arena.resolve(borrowed_type_id) if borrowed_type_id is not None else None
+            borrowed_map = (
+                borrowed_ref.arguments
+                if borrowed_ref is not None
+                and borrowed_ref.constructor == "Map"
+                and len(borrowed_ref.arguments) == 2
+                else None
+            )
+            if borrowed_map is not None:
+                target_type_id = self.type_arena.intern_node("MapEntry", borrowed_map)
+            elif shape is not None:
+                target_type_id = shape.element_type_id
+            elif iterable_ref is not None and iterable_ref.constructor == "FileLines":
+                target_type_id = self.type_arena.type_id("TextView")
+            else:
+                target_type_id = None
             self.local_types[node.target.id] = (
-                shape.element_type
-                if shape is not None
-                else borrowed_shape.element_type
-                if borrowed_shape is not None
-                else (
-                    f"MapEntry[{borrowed_map[0]},{borrowed_map[1]}]"
-                    if borrowed_map is not None
-                    else "TextView"
-                    if iterable.type_name == "FileLines"
-                    else "Inferred"
-                )
+                self.type_arena.render(target_type_id)
+                if target_type_id is not None
+                else "Inferred"
             )
             target_type = self._intern_type(self.local_types[node.target.id])
             if target_type is not None:

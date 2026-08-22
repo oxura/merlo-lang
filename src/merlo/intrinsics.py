@@ -25,6 +25,17 @@ from merlo.type_arena import (
 
 
 @dataclass(frozen=True, order=True)
+class TypeConstructorId:
+    """Identity of a bare static type constructor."""
+
+    value: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.value, str) or not self.value.isidentifier():
+            raise ValueError("TypeConstructorId must contain one constructor name")
+
+
+@dataclass(frozen=True, order=True)
 class TypeVarId:
     """Stable identity for one type variable in a structural scheme."""
 
@@ -140,8 +151,15 @@ class InstanceMethodSignature:
     fallback_result_type: str | None = None
     parameter_type_ids: tuple[TypeId, ...] = ()
     result_type_id: TypeId | None = None
+    generic_variables: frozenset[str] = frozenset()
 
     def __post_init__(self) -> None:
+        variables = frozenset(self.generic_variables)
+        if any(not isinstance(item, str) or not item for item in variables):
+            raise ValueError(
+                f"generic variables must be named explicitly for {self.receiver_type}.{self.name}"
+            )
+        object.__setattr__(self, "generic_variables", variables)
         if not self.parameter_ownership:
             object.__setattr__(
                 self,
@@ -258,8 +276,13 @@ class BuiltinFunctionSignature:
     result_type: str
     parameter_ownership: tuple[str, ...] = ()
     variadic: bool = False
+    generic_variables: frozenset[str] = frozenset()
 
     def __post_init__(self) -> None:
+        variables = frozenset(self.generic_variables)
+        if any(not isinstance(item, str) or not item for item in variables):
+            raise ValueError(f"generic variables must be named explicitly for {self.name}")
+        object.__setattr__(self, "generic_variables", variables)
         if not self.parameter_ownership:
             object.__setattr__(
                 self,
@@ -770,6 +793,40 @@ _INSTANCE_METHOD_ROWS = (
         operation_family="box",
     ),
 )
+_EXPLICIT_METHOD_VARIABLES = {
+    ("Vec", "new"): frozenset({"T"}),
+    ("Map", "new"): frozenset({"K", "V"}),
+    ("Box", "new"): frozenset({"T"}),
+    ("Option[T]", "is_none"): frozenset({"T"}),
+    ("Option[T]", "is_some"): frozenset({"T"}),
+    ("Option[T]", "unwrap"): frozenset({"T"}),
+    ("Result[T,E]", "is_ok"): frozenset({"T", "E"}),
+    ("Result[T,E]", "is_err"): frozenset({"T", "E"}),
+    ("Result[T,E]", "unwrap"): frozenset({"T", "E"}),
+    ("Result[T,E]", "unwrap_err"): frozenset({"T", "E"}),
+    ("Vec[T]", "clone"): frozenset({"T"}),
+    ("Vec[T]", "push"): frozenset({"T"}),
+    ("Vec[T]", "len"): frozenset({"T"}),
+    ("Vec[T]", "capacity"): frozenset({"T"}),
+    ("Vec[T]", "get"): frozenset({"T"}),
+    ("Vec[T]", "get_mut"): frozenset({"T"}),
+    ("Vec[T]", "view"): frozenset({"T"}),
+    ("Map[K,V]", "insert"): frozenset({"K", "V"}),
+    ("Map[K,V]", "get"): frozenset({"K", "V"}),
+    ("Map[K,UInt64]", "increment"): frozenset({"K"}),
+    ("Map[K,V]", "entries"): frozenset({"K", "V"}),
+    ("Box[T]", "get"): frozenset({"T"}),
+    ("Box[T]", "get_mut"): frozenset({"T"}),
+}
+_INSTANCE_METHOD_ROWS = tuple(
+    replace(
+        row,
+        generic_variables=_EXPLICIT_METHOD_VARIABLES.get(
+            (row.receiver_type, row.name), frozenset()
+        ),
+    )
+    for row in _INSTANCE_METHOD_ROWS
+)
 INSTANCE_METHOD_SIGNATURES: Mapping[
     tuple[str, str], InstanceMethodSignature
 ] = MappingProxyType(
@@ -809,6 +866,27 @@ _BUILTIN_FUNCTION_ROWS = (
     BuiltinFunctionSignature("Int64", ("Scalar",), "Int64"),
     BuiltinFunctionSignature("Float32", ("Scalar",), "Float32"),
     BuiltinFunctionSignature("Float64", ("Scalar",), "Float64"),
+)
+_EXPLICIT_FUNCTION_VARIABLES = {
+    "Ok": frozenset({"T", "E"}),
+    "Err": frozenset({"T", "E"}),
+    "Some": frozenset({"T"}),
+    "None": frozenset({"T"}),
+    "drop": frozenset({"T"}),
+    "move": frozenset({"T"}),
+    "map": frozenset({"T", "U"}),
+    "filter": frozenset({"T"}),
+    "fold": frozenset({"T", "U"}),
+    "len": frozenset({"T"}),
+    "release": frozenset({"T"}),
+    "__merlo_try__": frozenset({"T", "E"}),
+}
+_BUILTIN_FUNCTION_ROWS = tuple(
+    replace(
+        row,
+        generic_variables=_EXPLICIT_FUNCTION_VARIABLES.get(row.name, frozenset()),
+    )
+    for row in _BUILTIN_FUNCTION_ROWS
 )
 BUILTIN_FUNCTION_SIGNATURES: Mapping[str, BuiltinFunctionSignature] = MappingProxyType(
     {row.name: row for row in _BUILTIN_FUNCTION_ROWS}
@@ -854,22 +932,30 @@ _ABI_LOWERINGS: Mapping[str, str] = MappingProxyType(
 )
 
 
-def _scheme_from_expr(expression: TypeExpr, context: TypeContext | TypeContextBuilder) -> TypeSchemeNode:
+def _scheme_from_expr(
+    expression: TypeExpr,
+    context: TypeContext | TypeContextBuilder,
+    generic_variables: frozenset[str],
+) -> TypeSchemeNode:
     if not expression.args:
         if expression.name.isdigit():
             return TypeSchemeConst(int(expression.name))
-        if len(expression.name) == 1 and expression.name.isupper():
+        if expression.name in generic_variables:
             return TypeSchemeVar(TypeVarId(expression.name))
         return TypeSchemeConcrete(context.type_id(expression.name))
     return TypeSchemeApplied(
         expression.name,
-        tuple(_scheme_from_expr(argument, context) for argument in expression.args),
+        tuple(
+            _scheme_from_expr(argument, context, generic_variables)
+            for argument in expression.args
+        ),
     )
 
 
 def _scheme_from_spelling(
     spelling: str,
     context: TypeContext | TypeContextBuilder,
+    generic_variables: frozenset[str] = frozenset(),
 ) -> TypeSchemeNode:
     try:
         expression = validate_type_expr(parse_type(spelling))
@@ -879,19 +965,20 @@ def _scheme_from_spelling(
         if "[" not in spelling:
             return TypeSchemeApplied(spelling, ())
         raise TypeArenaError(f"invalid contract type scheme {spelling!r}") from exc
-    return _scheme_from_expr(expression, context)
+    return _scheme_from_expr(expression, context, generic_variables)
 
 def _preintern_scheme(
     expression: TypeExpr,
     context: TypeContextBuilder,
+    generic_variables: frozenset[str],
 ) -> bool:
     if not expression.args:
-        if len(expression.name) == 1 and expression.name.isupper():
+        if expression.name in generic_variables:
             return False
         context.intern_expr(expression)
         return True
     concrete = all(
-        _preintern_scheme(argument, context)
+        _preintern_scheme(argument, context, generic_variables)
         for argument in expression.args
     )
     if concrete:
@@ -1049,21 +1136,25 @@ class BoundContractGraph:
 
     def static_method(
         self,
-        receiver_type_id: TypeId | str,
+        receiver_type_id: TypeId | TypeConstructorId,
         name: str,
     ) -> InstanceMethodSignature | None:
-        if isinstance(receiver_type_id, str):
-            signature = self.definitions.methods.get((receiver_type_id, name))
+        if isinstance(receiver_type_id, TypeConstructorId):
+            signature = self.definitions.methods.get((receiver_type_id.value, name))
             return signature if signature is not None and signature.static else None
+        if not isinstance(receiver_type_id, TypeId):
+            raise TypeArenaError("static contract receiver requires TypeId or TypeConstructorId")
         signature = self.method(receiver_type_id, name)
         return signature if signature is not None and signature.static else None
     def static_parameter_type_ids(
         self,
-        receiver: str,
+        receiver: TypeConstructorId,
         name: str,
         arity: int,
     ) -> tuple[TypeId | None, ...] | None:
-        key = (receiver, name)
+        if not isinstance(receiver, TypeConstructorId):
+            raise TypeArenaError("static parameter lookup requires TypeConstructorId")
+        key = (receiver.value, name)
         signature = self.definitions.methods.get(key)
         if signature is None or not signature.static:
             return None
@@ -1077,15 +1168,19 @@ class BoundContractGraph:
 
     def resolve_static_method(
         self,
-        receiver_type_id: TypeId | str,
+        receiver_type_id: TypeId | TypeConstructorId,
         name: str,
         argument_type_ids: tuple[TypeId | None, ...],
         expected_type_id: TypeId | None = None,
     ) -> InstanceMethodSignature | None:
+        if not isinstance(receiver_type_id, (TypeId, TypeConstructorId)):
+            raise TypeArenaError(
+                "static contract receiver requires TypeId or TypeConstructorId"
+            )
         signature = self.static_method(receiver_type_id, name)
         receiver_text = (
-            receiver_type_id
-            if isinstance(receiver_type_id, str)
+            receiver_type_id.value
+            if isinstance(receiver_type_id, TypeConstructorId)
             else self.context.render(receiver_type_id)
         )
         if signature is None:
@@ -1105,15 +1200,16 @@ class BoundContractGraph:
             if candidate[1] != name or not self.definitions.methods[candidate].static:
                 continue
             candidate_substitutions: dict[TypeVarId, TypeId] = {}
-            if isinstance(receiver_type_id, str):
-                if candidate[0] != receiver_type_id:
+            if isinstance(receiver_type_id, TypeConstructorId):
+                if candidate[0] != receiver_type_id.value:
                     continue
-            elif not self._match(
-                candidate_schemes[0],
-                receiver_type_id,
-                candidate_substitutions,
-            ):
-                continue
+            else:
+                if not self._match(
+                    candidate_schemes[0],
+                    receiver_type_id,
+                    candidate_substitutions,
+                ):
+                    continue
             key = candidate
             substitutions = candidate_substitutions
             break
@@ -1212,12 +1308,27 @@ class BuiltinContractGraph:
             raise TypeArenaError(
                 "contract graph preparation requires TypeContextBuilder"
             )
-        for spelling in self.required_type_spellings():
-            try:
-                expression = validate_type_expr(parse_type(spelling))
-            except GenericTypeSyntaxError:
-                continue
-            _preintern_scheme(expression, context)
+        for signature in self.methods.values():
+            spellings = (
+                *signature.parameters,
+                signature.receiver_type,
+                signature.result_type,
+                *(
+                    (signature.fallback_result_type,)
+                    if signature.fallback_result_type is not None
+                    else ()
+                ),
+            )
+            for spelling in spellings:
+                try:
+                    expression = validate_type_expr(parse_type(spelling))
+                except GenericTypeSyntaxError:
+                    continue
+                _preintern_scheme(
+                    expression,
+                    context,
+                    signature.generic_variables,
+                )
         return self.bind(context)
 
 
@@ -1231,12 +1342,31 @@ class BuiltinContractGraph:
         fallback_schemes: dict[tuple[str, str], TypeSchemeNode | None] = {}
         for key, signature in self.methods.items():
             method_schemes[key] = (
-                _scheme_from_spelling(signature.receiver_type, context),
-                tuple(_scheme_from_spelling(item, context) for item in signature.parameters),
-                _scheme_from_spelling(signature.result_type, context),
+                _scheme_from_spelling(
+                    signature.receiver_type,
+                    context,
+                    signature.generic_variables,
+                ),
+                tuple(
+                    _scheme_from_spelling(
+                        item,
+                        context,
+                        signature.generic_variables,
+                    )
+                    for item in signature.parameters
+                ),
+                _scheme_from_spelling(
+                    signature.result_type,
+                    context,
+                    signature.generic_variables,
+                ),
             )
             fallback_schemes[key] = (
-                _scheme_from_spelling(signature.fallback_result_type, context)
+                _scheme_from_spelling(
+                    signature.fallback_result_type,
+                    context,
+                    signature.generic_variables,
+                )
                 if signature.fallback_result_type is not None
                 else None
             )
@@ -1270,11 +1400,10 @@ class BuiltinContractGraph:
 
     def static_method(self, receiver_type: str, name: str) -> InstanceMethodSignature | None:
         context = self._legacy_context((receiver_type,))
-        try:
-            receiver_id = context.type_id(receiver_type)
-        except TypeArenaError:
-            return self.bind(context).static_method(receiver_type, name)
-        return self.bind(context).static_method(receiver_id, name)
+        return self.bind(context).static_method(
+            TypeConstructorId(receiver_type),
+            name,
+        )
 
     def resolve_static_method(
         self,
@@ -1290,12 +1419,8 @@ class BuiltinContractGraph:
             for item in argument_types
         )
         expected_id = context.type_id(expected) if expected is not None else None
-        try:
-            receiver_id: TypeId | str = context.type_id(receiver_type)
-        except TypeArenaError:
-            receiver_id = receiver_type
         return self.bind(context).resolve_static_method(
-            receiver_id,
+            TypeConstructorId(receiver_type),
             name,
             argument_ids,
             expected_id,
@@ -1365,6 +1490,7 @@ __all__ = [
     "InstanceMethodSignature",
     "IntrinsicSignature",
     "TypeScheme",
+    "TypeConstructorId",
     "TypeSchemeApplied",
     "TypeSchemeConcrete",
     "TypeSchemeConst",

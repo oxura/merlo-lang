@@ -414,3 +414,11 @@ def test_json_is_canonical_and_terminated() -> None:
         sort_keys=True,
         separators=(",", ":"),
     ) + "\n" == encoded
+
+
+def test_type_context_builder_rejects_orphan_arena_ids() -> None:
+    builder = TypeContextBuilder()
+    builder.intern_text("Text")
+    builder.arena.intern_text("Bool")
+    with pytest.raises(TypeArenaError, match="orphan TypeIds"):
+        builder.freeze()
