@@ -5575,7 +5575,17 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     )
                     expression = (
                         name
-                        if parameter_pointer or instruction.result not in pointer_values
+                        if (
+                            parameter_pointer
+                            or (
+                                instruction.type_name is not None
+                                and (
+                                    pointer_type(instruction.type_name) is not None
+                                    or instruction.type_name.startswith("Borrow[")
+                                )
+                            )
+                            or instruction.result not in pointer_values
+                        )
                         else f"&{name}"
                     )
                     define(instruction, expression)
