@@ -371,10 +371,10 @@ def test_binder_and_elaborator_contract_views_are_derived() -> None:
     option_unwrap = CONTRACT_GRAPH.method("Option[Text]", "unwrap")
     assert option_unwrap is not None
     assert option_unwrap.result_type == "Text"
-    assert option_unwrap.result_ownership == "payload_clone"
+    assert option_unwrap.result_ownership == "payload_move"
     assert option_unwrap.receiver_ownership == "borrow"
-    assert option_unwrap.effects == ("allocate", "copy", "may_fail")
-    assert option_unwrap.representation_lowering == "option_unwrap_clone"
+    assert option_unwrap.effects == ("may_fail",)
+    assert option_unwrap.representation_lowering == "option_unwrap_move"
     result_unwrap_err = CONTRACT_GRAPH.method(
         "Result[UInt64,Text]",
         "unwrap_err",
@@ -382,7 +382,7 @@ def test_binder_and_elaborator_contract_views_are_derived() -> None:
     assert result_unwrap_err is not None
     assert result_unwrap_err.result_type == "Text"
     assert result_unwrap_err.representation_lowering == (
-        "result_unwrap_err_clone"
+        "result_unwrap_err_move"
     )
     vec_get = CONTRACT_GRAPH.method("Vec[Text]", "get")
     assert vec_get is not None
@@ -530,12 +530,12 @@ def test_generic_unwrap_contracts_derive_payload_ownership_and_effects() -> None
         for function in hir.functions
         for node in function.walk()
         if node.attribute_map.get("representation_lowering")
-        in {"option_unwrap_clone", "result_unwrap_clone"}
+        in {"option_unwrap_move", "result_unwrap_move"}
     }
     text = accessors["Option[Text].unwrap"]
     assert text.type_name == "Text"
     assert text.ownership == "owned"
-    assert set(text.effects) == {"allocate", "copy", "may_fail"}
+    assert text.effects == ("may_fail",)
     scalar = accessors["Result[UInt64,Text].unwrap"]
     assert scalar.type_name == "UInt64"
     assert scalar.ownership == "value"
@@ -756,7 +756,7 @@ def test_generic_predicates_lower_to_native_enum_tags(
     assert completed.stdout == "predicates-ok\n"
 
 
-def test_owning_unwrap_clones_payload_without_double_free(
+def test_owning_unwrap_moves_payload_without_double_free(
     tmp_path: Path,
 ) -> None:
     project = Project.create(
@@ -776,25 +776,22 @@ def test_owning_unwrap_clones_payload_without_double_free(
         '    return Ok("result")\n\n'
         "fn make_error() -> Result[UInt64,Problem]:\n"
         '    return Err(Problem.Message("error"))\n\n'
-        "fn take_twice() -> Text:\n"
+        "fn take() -> Text:\n"
         "    let option = make_option()\n"
         "    let first: Text = option.unwrap()\n"
-        "    let second: Text = option.unwrap()\n"
         "    let result = make_result()\n"
         "    let third: Text = result.unwrap()\n"
-        "    let fourth: Text = result.unwrap()\n"
         "    return first\n\n"
-        "fn take_error_twice() -> Text:\n"
+        "fn take_error() -> Text:\n"
         "    let result = make_error()\n"
         "    let first: Problem = result.unwrap_err()\n"
-        "    let second: Problem = result.unwrap_err()\n"
         "    match first:\n"
         "        case Problem.Message(text):\n"
         "            return text\n\n"
         "export task main(path: Path) -> Result[Text,AppError]:\n"
         "    uses console.write\n"
-        "    let value: Text = take_twice()\n"
-        "    let error: Text = take_error_twice()\n"
+        "    let value: Text = take()\n"
+        "    let error: Text = take_error()\n"
         "    console.write(value)\n"
         "    console.write(error)\n"
         '    return Ok("done")\n',
@@ -808,7 +805,7 @@ def test_owning_unwrap_clones_payload_without_double_free(
     )
     assert compilation.native is not None
     assert "option_unwrap_clone" not in compilation.generated.source
-    assert "merlo_clone_Text" in compilation.generated.source
+    assert "merlo_move_Text(&(" in compilation.generated.source
     completed = subprocess.run(
         [compilation.native.binary_path, str(project.root)],
         check=False,

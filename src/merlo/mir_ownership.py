@@ -13,8 +13,8 @@ from merlo.representation_ir import DropPlanId
 from merlo.type_arena import FrozenTypeArena, TypeArenaError, TypeId
 
 
-MIR_OWNERSHIP_SCHEMA_VERSION = 1
-MIR_OWNERSHIP_CONTRACT = "merlo.mir-ownership.v1"
+MIR_OWNERSHIP_SCHEMA_VERSION = 2
+MIR_OWNERSHIP_CONTRACT = "merlo.mir-ownership.v2"
 MIR_OWNERSHIP_OPERATIONS = frozenset(
     {
         "move_value",
@@ -60,6 +60,7 @@ _RESULT_OWNERSHIP = _BORROW_OWNERSHIP | frozenset(
         "copy",
         "owned",
         "payload_clone",
+        "payload_move",
         "trivial",
         "unowned",
         "value",
@@ -639,28 +640,130 @@ def _build_function(
                 continue
             place_types.setdefault(target, instruction.type_id)
 
+    def projected_place(value: str) -> str | None:
+        instruction = definitions.get(value)
+        if instruction is None:
+            return None
+        if instruction.op == "load_local":
+            name = instruction.attribute_map.get("name")
+            return name if isinstance(name, str) else None
+        if not instruction.operands:
+            return None
+        base = projected_place(instruction.operands[0])
+        if base is None:
+            return None
+        if instruction.op == "load_field":
+            field = instruction.attribute_map.get("field")
+            return (
+                f"{base}::field::{field}"
+                if isinstance(field, str)
+                else None
+            )
+        if instruction.op == "bounds_checked_index":
+            index_instruction = (
+                definitions.get(instruction.operands[1])
+                if len(instruction.operands) > 1
+                else None
+            )
+            index = (
+                index_instruction.attribute_map.get("value")
+                if index_instruction is not None
+                and index_instruction.op == "const"
+                else "dynamic"
+            )
+            return f"{base}::index::{index}"
+        if (
+            instruction.op == "call"
+            and str(
+                instruction.attribute_map.get(
+                    "representation_lowering",
+                    "",
+                )
+            ).endswith("_move")
+        ):
+            variant = (
+                "Err"
+                if "unwrap_err" in str(
+                    instruction.attribute_map.get(
+                        "representation_lowering",
+                        "",
+                    )
+                )
+                else "Ok"
+                if str(
+                    instruction.attribute_map.get(
+                        "representation_lowering",
+                        "",
+                    )
+                ).startswith("result_")
+                else "Some"
+            )
+            return f"{base}::variant::{variant}"
+        if instruction.op in {"box_get", "load_enum_payload"}:
+            return f"{base}::deref"
+        return None
+    def can_take(value: str) -> bool:
+        instruction = definitions.get(value)
+        if instruction is None or not _borrowed_provenance(instruction):
+            return True
+        place = projected_place(value)
+        if place is None:
+            return False
+        root = place.split("::", 1)[0]
+        return root not in place_parameter_ownership
+
     take_values: set[str] = set()
     for block in function.blocks:
         for instruction in block.instructions:
             if instruction.op == "move_value":
+                take_values.update(
+                    operand
+                    for operand in instruction.operands
+                    if can_take(operand)
+                )
+            if instruction.op == "drop_value":
                 take_values.update(instruction.operands)
+            if instruction.op in {"construct_record", "construct_enum"}:
+                take_values.update(
+                    operand
+                    for operand in instruction.operands
+                    if (
+                        operand in value_types
+                        and _kind_for_type(
+                            arena,
+                            type_kinds,
+                            value_types[operand],
+                        )
+                        is MIROwnershipKind.OWNED
+                        and can_take(operand)
+                    )
+                )
             if instruction.op == "store_local" and instruction.operands:
                 target = instruction.attribute_map.get(
                     "name", instruction.attribute_map.get("target")
                 )
                 target_type = place_types.get(target)
                 source = instruction.operands[0]
-                source_instruction = definitions.get(source)
                 if (
                     target_type is not None
                     and _kind_for_type(arena, type_kinds, target_type)
                     is MIROwnershipKind.OWNED
-                    and (
-                        source_instruction is None
-                        or not _borrowed_provenance(source_instruction)
-                    )
+                    and can_take(source)
                 ):
                     take_values.add(source)
+            if (
+                instruction.op == "store_field"
+                and instruction.operands
+                and instruction.type_id is not None
+                and _kind_for_type(
+                    arena,
+                    type_kinds,
+                    instruction.type_id,
+                )
+                is MIROwnershipKind.OWNED
+                and can_take(instruction.operands[0])
+            ):
+                take_values.add(instruction.operands[0])
         return_value = block.terminator.value
         if (
             block.terminator.kind == "return"
@@ -671,6 +774,7 @@ def _build_function(
                 return_type is not None
                 and _kind_for_type(arena, type_kinds, return_type)
                 is MIROwnershipKind.OWNED
+                and can_take(return_value)
             ):
                 take_values.add(return_value)
 
@@ -1761,9 +1865,78 @@ def _build_function(
                                 value=instruction.result,
                                 base=base,
                             )
+            elif (
+                instruction.result is not None
+                and instruction.result in take_values
+                and type_id is not None
+                and _kind_for_type(arena, type_kinds, type_id)
+                is MIROwnershipKind.OWNED
+                and (place := projected_place(instruction.result)) is not None
+                and "::" in place
+            ):
+                add(
+                    block.id,
+                    "load_take",
+                    "after",
+                    type_id,
+                    MIROwnershipKind.OWNED,
+                    instruction_id=instruction.id,
+                    value=instruction.result,
+                    place=place,
+                )
+            elif (
+                instruction.op == "store_field"
+                and instruction.operands
+                and type_id is not None
+            ):
+                target = attributes.get("target")
+                if not isinstance(target, str) or "." not in target:
+                    raise MIROwnershipVerificationError(
+                        "MIROwnershipMalformedOperation",
+                        instruction.id,
+                    )
+                place = target.replace(".", "::field::")
+                source = instruction.operands[0]
+                kind = _kind_for_type(arena, type_kinds, type_id)
+                if (
+                    kind is MIROwnershipKind.OWNED
+                    and value_kinds.get(source)
+                    is MIROwnershipKind.GUARANTEED
+                ):
+                    add(
+                        block.id,
+                        "copy_value",
+                        "before",
+                        type_id,
+                        MIROwnershipKind.OWNED,
+                        instruction_id=instruction.id,
+                        value=source,
+                        base=value_bases.get(source),
+                        target=f"clone::{place}",
+                    )
+                add(
+                    block.id,
+                    "store_assign",
+                    "after",
+                    type_id,
+                    kind,
+                    instruction_id=instruction.id,
+                    value=source,
+                    place=place,
+                    target=target,
+                )
             elif instruction.op == "drop_value" and type_id is not None:
-                place = attributes.get("local")
-                value = instruction.operands[0] if instruction.operands else None
+                automatic_place = (
+                    attributes.get("local")
+                    if attributes.get("automatic") is True
+                    else None
+                )
+                value = (
+                    instruction.operands[0]
+                    if instruction.operands
+                    and not isinstance(automatic_place, str)
+                    else None
+                )
                 add(
                     block.id,
                     "destroy_value",
@@ -1771,11 +1944,25 @@ def _build_function(
                     type_id,
                     MIROwnershipKind.OWNED,
                     instruction_id=instruction.id,
-                    value=(
-                        None if isinstance(place, str) else value
-                    ),
+                    value=value,
                     place=(
-                        place if isinstance(place, str) else None
+                        automatic_place
+                        if isinstance(automatic_place, str)
+                        else None
+                    ),
+                    target=(
+                        "automatic_uninitialized"
+                        if (
+                            isinstance(automatic_place, str)
+                            and automatic_place
+                            not in initialized_before.get(
+                                (block.id, instruction.id),
+                                frozenset(),
+                            )
+                        )
+                        else "automatic"
+                        if isinstance(automatic_place, str)
+                        else None
                     ),
                 )
             elif (
@@ -2313,6 +2500,8 @@ def _join_states(states: tuple[_State, ...], block_id: str) -> _State:
             places[name] = "dead"
         elif statuses == {"dead", "initialized"}:
             places[name] = "maybe_initialized"
+        elif statuses == {"absent", "uninitialized"}:
+            places[name] = "maybe_uninitialized"
         elif len(statuses) == 1:
             places[name] = statuses.pop()
         else:
@@ -2486,23 +2675,47 @@ def _verify_function(
                 places[operation.place] = "uninitialized"
             elif operation.op in {"store_init", "store_assign"}:
                 if operation.place is None:
-                    raise MIROwnershipVerificationError("MIROwnershipMalformedOperation", operation.id)
-                expected = "uninitialized" if operation.op == "store_init" else "initialized"
-                if places.get(operation.place) != expected:
-                    diagnostic = (
-                        "MIROwnershipDoubleConsume"
-                        if places.get(operation.place) in {"uninitialized", "dead"}
-                        else "MIROwnershipStorageStateMismatch"
+                    raise MIROwnershipVerificationError(
+                        "MIROwnershipMalformedOperation",
+                        operation.id,
                     )
-                    raise MIROwnershipVerificationError(diagnostic, operation.place)
-                require_no_live_borrow(operation.place)
-                if operation.kind is MIROwnershipKind.OWNED and operation.value is not None:
-                    source_kind = value_kinds.get(operation.value)
-                    if source_kind is MIROwnershipKind.GUARANTEED:
-                        clone = (
-                            operation.value,
+                projected = "::" in operation.place
+                if projected:
+                    root = operation.place.split("::", 1)[0]
+                    if places.get(root) != "initialized":
+                        raise MIROwnershipVerificationError(
+                            "MIROwnershipUseAfterConsume",
+                            root,
+                        )
+                    if places.get(operation.place) == "maybe_uninitialized":
+                        require_no_live_borrow(root)
+                    else:
+                        require_no_live_borrow(operation.place)
+                else:
+                    expected = (
+                        "uninitialized"
+                        if operation.op == "store_init"
+                        else "initialized"
+                    )
+                    if places.get(operation.place) != expected:
+                        diagnostic = (
+                            "MIROwnershipDoubleConsume"
+                            if places.get(operation.place)
+                            in {"uninitialized", "dead"}
+                            else "MIROwnershipStorageStateMismatch"
+                        )
+                        raise MIROwnershipVerificationError(
+                            diagnostic,
                             operation.place,
                         )
+                    require_no_live_borrow(operation.place)
+                if (
+                    operation.kind is MIROwnershipKind.OWNED
+                    and operation.value is not None
+                ):
+                    source_kind = value_kinds.get(operation.value)
+                    if source_kind is MIROwnershipKind.GUARANTEED:
+                        clone = (operation.value, operation.place)
                         if clone not in clones:
                             raise MIROwnershipVerificationError(
                                 "MIROwnershipUnownedToOwned",
@@ -2516,14 +2729,40 @@ def _verify_function(
                         )
                     else:
                         consume_value(operation.value)
-                places[operation.place] = "initialized"
+                if projected:
+                    places.pop(operation.place, None)
+                else:
+                    places[operation.place] = "initialized"
             elif operation.op == "load_take":
                 if operation.place is None or operation.value is None:
-                    raise MIROwnershipVerificationError("MIROwnershipMalformedOperation", operation.id)
-                if places.get(operation.place) != "initialized":
-                    raise MIROwnershipVerificationError("MIROwnershipDoubleConsume", operation.place)
-                require_no_live_borrow(operation.place)
-                places[operation.place] = "uninitialized"
+                    raise MIROwnershipVerificationError(
+                        "MIROwnershipMalformedOperation",
+                        operation.id,
+                    )
+                if "::" in operation.place:
+                    root = operation.place.split("::", 1)[0]
+                    if places.get(root) != "initialized":
+                        raise MIROwnershipVerificationError(
+                            "MIROwnershipUseAfterConsume",
+                            root,
+                        )
+                    if places.get(operation.place) in {
+                        "uninitialized",
+                        "maybe_uninitialized",
+                    }:
+                        raise MIROwnershipVerificationError(
+                            "MIROwnershipDoubleConsume",
+                            operation.place,
+                        )
+                    places[operation.place] = "uninitialized"
+                else:
+                    if places.get(operation.place) != "initialized":
+                        raise MIROwnershipVerificationError(
+                            "MIROwnershipDoubleConsume",
+                            operation.place,
+                        )
+                    require_no_live_borrow(operation.place)
+                    places[operation.place] = "uninitialized"
             elif operation.op == "load_copy":
                 if operation.place is None:
                     raise MIROwnershipVerificationError(
@@ -2542,7 +2781,10 @@ def _verify_function(
                         operation.place,
                     )
                 if operation.kind is MIROwnershipKind.OWNED:
-                    raise MIROwnershipVerificationError("MIROwnershipImplicitClone", operation.place)
+                    raise MIROwnershipVerificationError(
+                        "MIROwnershipImplicitClone",
+                        operation.place,
+                    )
                 if operation.kind is MIROwnershipKind.GUARANTEED:
                     place_borrow = borrows.get(f"place:{operation.place}")
                     if place_borrow is not None and place_borrow[0] != "live":
@@ -2607,8 +2849,18 @@ def _verify_function(
                         )
             elif operation.op == "destroy_value":
                 if operation.place is not None:
-                    if places.get(operation.place) != "initialized":
-                        raise MIROwnershipVerificationError("MIROwnershipDoubleConsume", operation.place)
+                    place_status = places.get(operation.place)
+                    if place_status != "initialized":
+                        if (
+                            operation.target == "automatic_uninitialized"
+                            and place_status
+                            in {"uninitialized", "maybe_uninitialized", "dead"}
+                        ):
+                            return
+                        raise MIROwnershipVerificationError(
+                            "MIROwnershipDoubleConsume",
+                            operation.place,
+                        )
                     require_no_live_borrow(operation.place)
                     places[operation.place] = "uninitialized"
                 elif operation.value is not None:

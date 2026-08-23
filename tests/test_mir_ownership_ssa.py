@@ -70,9 +70,9 @@ def _replace_block_operations(mir: GeneralPerformanceMIR, block_id: str, operati
 def test_mir_v4_carries_closed_ownership_ssa_v1_contract() -> None:
     _representation, mir = _lower()
 
-    assert GENERAL_MIR_SCHEMA_VERSION == 4
-    assert mir.schema_version == 4
-    assert mir.ownership.schema_version == MIR_OWNERSHIP_SCHEMA_VERSION == 1
+    assert GENERAL_MIR_SCHEMA_VERSION == 5
+    assert mir.schema_version == 5
+    assert mir.ownership.schema_version == MIR_OWNERSHIP_SCHEMA_VERSION == 2
     assert mir.ownership.contract == MIR_OWNERSHIP_CONTRACT
     assert {item.value for item in MIROwnershipKind} == {
         "Trivial",

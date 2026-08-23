@@ -2876,22 +2876,22 @@ class _HIRBuilder:
                 receiver = self.expression(node.func.value)
                 kind = "DirectCall"
                 type_name = method_signature.result_type
-                payload_clone = (
+                payload_result = (
                     method_signature.result_ownership
-                    == "payload_clone"
+                    in {"payload_clone", "payload_move"}
                 )
-                payload_owned = payload_clone and self._owner(type_name)
+                payload_owned = payload_result and self._owner(type_name)
                 ownership = (
                     "owned"
                     if payload_owned
                     else "value"
-                    if payload_clone
+                    if payload_result
                     else method_signature.result_ownership
                 )
                 effects.update(
                     effect
                     for effect in method_signature.effects
-                    if not payload_clone
+                    if method_signature.result_ownership != "payload_clone"
                     or payload_owned
                     or effect not in {"allocate", "copy"}
                 )

@@ -372,7 +372,7 @@ fn main(value: Any) -> UInt64:
         compile_structured_hir(source, path="dynamic-any.mlo")
 
 
-def test_map_entry_field_owners_cannot_be_implicitly_moved() -> None:
+def test_map_entry_field_owners_are_copied_from_borrowed_entries() -> None:
     source = """
 fn main(input: BytesView) -> UInt64:
     let counts: Map[Text, UInt64] = Map.new()
@@ -381,8 +381,7 @@ fn main(input: BytesView) -> UInt64:
         return copied.len()
     return 0
 """.strip()
-    with pytest.raises(StructuredHIRCompileError, match="ProjectedOwnerMoveRequiresPartialMoveSupport"):
-        compile_structured_hir(source, path="map-entry-owner.mlo")
+    compile_structured_hir(source, path="map-entry-owner.mlo")
 
 
 def test_map_entry_mutation_is_rejected_while_entries_are_borrowed() -> None:

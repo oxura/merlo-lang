@@ -67,6 +67,7 @@ class _OwnershipState:
     borrow_places: dict[str, Place] = field(default_factory=dict)
     break_paths: tuple["_OwnershipState", ...] = ()
     backedge_paths: tuple["_OwnershipState", ...] = ()
+    place_statuses: dict[Place, str] = field(default_factory=dict)
 
     def clone(self) -> "_OwnershipState":
         return _OwnershipState(
@@ -77,6 +78,7 @@ class _OwnershipState:
             dict(self.borrow_places),
             tuple(path.clone() for path in self.break_paths),
             tuple(path.clone() for path in self.backedge_paths),
+            dict(self.place_statuses),
         )
 
 
@@ -133,6 +135,7 @@ class _OwnershipChecker:
         self.type_properties = TypePropertyResolver(type_context)
         self.env: dict[str, TypeId] = {}
         self.parameters: set[str] = set()
+        self.owned_parameters: set[str] = set()
     def _error(self, name: str, variable: str | TypeId | None = None) -> None:
         detail = self._render_type(variable) if isinstance(variable, TypeId) else variable
         suffix = f": {detail}" if detail else ""
@@ -423,7 +426,6 @@ class _OwnershipChecker:
                 if candidate is not None:
                     return candidate
         return None
-
     def _contained_borrow_error(
         self,
         code: str,
@@ -884,15 +886,7 @@ class _OwnershipChecker:
             return node.func.value
         return node
 
-    def _check_name(self, name: str, state: _OwnershipState) -> None:
-        status = state.statuses.get(name)
-        if status == "ambiguous":
-            self._error("OwnershipAmbiguity", name)
-        if status == "moved":
-            self._error("UseAfterMove", name)
-        if status == "dropped":
-            self._error("UseAfterDrop", name)
-    def _consume_place(
+    def _check_place(
         self,
         place: Place,
         state: _OwnershipState,
@@ -901,7 +895,89 @@ class _OwnershipChecker:
         display: str | None = None,
     ) -> None:
         if name is not None:
-            self._check_name(name, state)
+            root_status = state.statuses.get(name)
+            if root_status == "ambiguous":
+                self._error("OwnershipAmbiguity", name)
+            if root_status == "moved":
+                self._error("UseAfterMove", name)
+            if root_status == "dropped":
+                self._error("UseAfterDrop", name)
+        target = display or name or str(place)
+        for moved_place, place_status in sorted(
+            state.place_statuses.items(),
+            key=lambda item: item[0].to_json(),
+        ):
+            relation = overlap_relation(moved_place, place)
+            if relation is OverlapRelation.DISJOINT:
+                continue
+            if place_status == "maybe_uninitialized":
+                self._error("MaybeUninitialized", target)
+            if relation is OverlapRelation.DESCENDANT:
+                self._error("PartiallyMovedValue", target)
+            self._error("UseAfterMove", target)
+
+    def _check_name(self, name: str, state: _OwnershipState) -> None:
+        self._check_place(
+            state.places.get(name) or self._root_place(name),
+            state,
+            name=name,
+            display=name,
+        )
+
+    def _mark_initialized(
+        self,
+        place: Place,
+        state: _OwnershipState,
+        *,
+        name: str | None,
+    ) -> None:
+        state.place_statuses = {
+            moved_place: status
+            for moved_place, status in state.place_statuses.items()
+            if overlap_relation(moved_place, place)
+            not in {OverlapRelation.EQUAL, OverlapRelation.DESCENDANT}
+        }
+        if name is None or name not in state.statuses:
+            return
+        root = state.places.get(name) or self._root_place(name)
+        state.statuses[name] = (
+            "partially_moved"
+            if any(
+                overlap_relation(root, moved_place)
+                in {
+                    OverlapRelation.EQUAL,
+                    OverlapRelation.ANCESTOR,
+                    OverlapRelation.MAY_OVERLAP,
+                }
+                for moved_place in state.place_statuses
+            )
+            else "available"
+        )
+
+    def _consume_place(
+        self,
+        place: Place,
+        state: _OwnershipState,
+        *,
+        name: str | None = None,
+        display: str | None = None,
+        status: str = "moved",
+    ) -> None:
+        root = (
+            state.places.get(name) or self._root_place(name)
+            if name is not None
+            else None
+        )
+        if status == "dropped" and place == root:
+            root_status = state.statuses.get(name)
+            if root_status == "ambiguous":
+                self._error("OwnershipAmbiguity", name)
+            if root_status == "moved":
+                self._error("UseAfterMove", name)
+            if root_status == "dropped":
+                self._error("UseAfterDrop", name)
+        else:
+            self._check_place(place, state, name=name, display=display)
         live = self._live_borrow_of(state, place)
         if live is not None:
             container, provenance = live
@@ -911,15 +987,20 @@ class _OwnershipChecker:
                 provenance=provenance,
                 path=f"move({display or name or place})",
             )
-        if (
-            name is not None
-            and name in state.statuses
-            and place == (state.places.get(name) or self._root_place(name))
-        ):
-            state.statuses[name] = "moved"
+        if name is not None and name in state.statuses and place == root:
+            state.statuses[name] = status
+            state.place_statuses = {
+                moved_place: moved_status
+                for moved_place, moved_status in state.place_statuses.items()
+                if moved_place.root != place.root
+            }
             state.borrows.pop(name, None)
             state.borrow_places.pop(name, None)
-
+            return
+        state.place_statuses[place] = "uninitialized"
+        if name is not None and name in state.statuses:
+            state.statuses[name] = "partially_moved"
+        self._remove_borrows_at_place(state, place)
     def _consume(self, name: str, state: _OwnershipState) -> None:
         self._consume_place(
             state.places.get(name) or self._root_place(name),
@@ -927,22 +1008,6 @@ class _OwnershipChecker:
             name=name,
             display=name,
         )
-    def _reject_projected_owner_move(
-        self,
-        place: Place | None,
-        type_name: TypeId | None,
-        *,
-        allow_borrowed_or_temporary_parent: bool = False,
-    ) -> None:
-        if (
-            place is not None
-            and place.steps
-            and self._owner(type_name)
-            and not self._is_borrowed(type_name)
-            and not allow_borrowed_or_temporary_parent
-        ):
-            self._error("ProjectedOwnerMoveRequiresPartialMoveSupport")
-
 
     def _consume_expr(
         self,
@@ -950,8 +1015,10 @@ class _OwnershipChecker:
         state: _OwnershipState,
         *,
         expected: str | None = None,
-        allow_projected_owner_move: bool = False,
     ) -> None:
+        move_type = self._expr_type(node, expected)
+        if self._is_borrowed(move_type):
+            return
         if isinstance(node, ast.Call):
             qualified = self._qualified_name(node.func)
             if qualified in {"Some", "Ok", "Err"}:
@@ -962,12 +1029,15 @@ class _OwnershipChecker:
                             argument,
                             state,
                             expected=argument_type,
-                            allow_projected_owner_move=allow_projected_owner_move,
                         )
             elif isinstance(node.func, ast.Name):
                 result_type = self._expr_type(node, expected)
                 try:
-                    declaration = self.type_context.declaration(result_type) if result_type is not None else None
+                    declaration = (
+                        self.type_context.declaration(result_type)
+                        if result_type is not None
+                        else None
+                    )
                 except TypeArenaError:
                     declaration = None
                 if (
@@ -976,46 +1046,61 @@ class _OwnershipChecker:
                     and result_type is not None
                     and self.type_context.render(result_type) == node.func.id
                 ):
-                    for field_decl, argument in zip(getattr(declaration, "fields", ()), node.args, strict=False):
-                        field_type_id = self.typed_ast.field_projection_type_id(result_type, field_decl.name)
+                    for field_decl, argument in zip(
+                        getattr(declaration, "fields", ()),
+                        node.args,
+                        strict=False,
+                    ):
+                        field_type_id = self.typed_ast.field_projection_type_id(
+                            result_type,
+                            field_decl.name,
+                        )
                         if field_type_id is not None and self._owner(field_type_id):
                             self._consume_expr(
                                 argument,
                                 state,
                                 expected=field_type_id,
-                                allow_projected_owner_move=allow_projected_owner_move,
                             )
-            if isinstance(node.func, ast.Attribute) and node.func.attr == "get":
-                receiver = node.func.value
-                receiver_type = self._expr_type(receiver)
-                receiver_generic = self._type_args(receiver_type, "Box")
-                result_type = self._expr_type(node, expected)
+            if (
+                isinstance(node.func, ast.Attribute)
+                and node.func.attr in {"get", "unwrap", "unwrap_err"}
+                and self._owner(self._expr_type(node, expected))
+                and self._type_args(
+                    self._expr_type(node.func.value),
+                    "Vec",
+                )
+                is None
+            ):
+                place = self._place_for_expr(node, state)
+                root = self._root_name(node.func.value)
                 if (
-                    receiver_generic is not None
-                    and self._owner(result_type)
+                    place is not None
+                    and root is not None
+                    and root not in self.parameters
+                    and root in state.statuses
                 ):
-                    self._reject_projected_owner_move(
-                        self._place_for_expr(node, state),
-                        result_type,
-                        allow_borrowed_or_temporary_parent=isinstance(
-                            receiver,
-                            ast.Call,
-                        ),
+                    self._consume_place(
+                        place,
+                        state,
+                        name=root,
+                        display=ast.unparse(node),
                     )
             return
         if not isinstance(node, (ast.Name, ast.Attribute, ast.Subscript)):
             return
         root = self._root_name(node)
-        if root is not None:
-            self._check_name(root, state)
         place = self._place_for_expr(node, state)
-        self._reject_projected_owner_move(
-            place,
-            self._expr_type(node, expected),
-            allow_borrowed_or_temporary_parent=(
-                allow_projected_owner_move and root in self.parameters
-            ),
-        )
+        if place is None:
+            return
+        if (
+            place.steps
+            and (
+                root is None
+                or root in self.parameters
+                or root not in state.statuses
+            )
+        ):
+            return
         self._consume_place(
             place,
             state,
@@ -1023,18 +1108,36 @@ class _OwnershipChecker:
             display=ast.unparse(node),
         )
 
-    def _reject_projected_owner_drop(
+    def _check_assignment_place(
         self,
-        place: Place | None,
-        type_name: TypeId | None,
+        name: str,
+        place: Place,
+        state: _OwnershipState,
+        *,
+        display: str,
     ) -> None:
+        root_status = state.statuses.get(name)
+        if root_status == "ambiguous":
+            self._error("OwnershipAmbiguity", name)
+        if root_status == "moved":
+            self._error("UseAfterMove", name)
+        if root_status == "dropped":
+            self._error("UseAfterDrop", name)
+        for moved_place, status in state.place_statuses.items():
+            relation = overlap_relation(moved_place, place)
+            if relation in {OverlapRelation.DISJOINT, OverlapRelation.EQUAL}:
+                continue
+            if relation is OverlapRelation.DESCENDANT:
+                continue
+            if status == "maybe_uninitialized":
+                self._error("MaybeUninitialized", display)
+            self._error("UseAfterMove", display)
         if (
-            place is not None
-            and place.steps
-            and self._owner(type_name)
-            and not self._is_borrowed(type_name)
+            self._live_borrow_of(state, place)
+            or self._borrow_provenances_at(state, place)
+            or self._borrow_storage_overlaps(state, place)
         ):
-            self._error("ProjectedOwnerDropRequiresPartialMoveSupport")
+            self._error("MutationDuringBorrow", display)
 
     def _check_mutation(
         self,
@@ -1044,8 +1147,8 @@ class _OwnershipChecker:
         place: Place | None = None,
         display: str | None = None,
     ) -> None:
-        self._check_name(name, state)
         target = place or state.places.get(name) or self._root_place(name)
+        self._check_place(target, state, name=name, display=display or name)
         if (
             self._live_borrow_of(state, target) is not None
             or self._borrow_provenances_at(state, target)
@@ -1053,13 +1156,31 @@ class _OwnershipChecker:
         ):
             self._error("MutationDuringBorrow", display or name)
 
-    def _check_mutation_expr(self, node: ast.AST, state: _OwnershipState) -> None:
+    def _check_mutation_expr(
+        self,
+        node: ast.AST,
+        state: _OwnershipState,
+        *,
+        reinitialize: bool = False,
+    ) -> None:
         root = self._root_name(node)
         place = self._place_for_expr(node, state)
-        if root is not None:
-            self._check_name(root, state)
-        if place is None:
+        if root is None or place is None:
             return
+        if reinitialize:
+            self._check_assignment_place(
+                root,
+                place,
+                state,
+                display=ast.unparse(node),
+            )
+            return
+        self._check_place(
+            place,
+            state,
+            name=root,
+            display=ast.unparse(node),
+        )
         if (
             self._live_borrow_of(state, place)
             or self._borrow_provenances_at(state, place)
@@ -1093,15 +1214,29 @@ class _OwnershipChecker:
             return self.env.get(node.id)
         if isinstance(node, ast.Attribute):
             root = self._root_name(node)
-            if root is not None:
-                self._check_name(root, state)
-            self._check_expr(node.value, state)
+            place = self._place_for_expr(node, state)
+            if root is not None and place is not None:
+                self._check_place(
+                    place,
+                    state,
+                    name=root,
+                    display=ast.unparse(node),
+                )
+            else:
+                self._check_expr(node.value, state)
             return self._expr_type(node)
         if isinstance(node, ast.Subscript):
             root = self._root_name(node.value)
-            if root is not None:
-                self._check_name(root, state)
-            self._check_expr(node.value, state)
+            place = self._place_for_expr(node, state)
+            if root is not None and place is not None:
+                self._check_place(
+                    place,
+                    state,
+                    name=root,
+                    display=ast.unparse(node),
+                )
+            else:
+                self._check_expr(node.value, state)
             self._check_expr(node.slice, state)
             return self._expr_type(node, expected)
         if isinstance(node, ast.Call):
@@ -1117,24 +1252,40 @@ class _OwnershipChecker:
                 target_name = (
                     target_node.id if isinstance(target_node, ast.Name) else None
                 )
+                target_root = self._root_name(self._borrow_source(target_node))
                 target_place = self._place_for_expr(target_node, state)
-                if target_name is not None and target_name in state.borrows and target_name not in state.statuses:
+                if (
+                    target_name is not None
+                    and target_name in state.borrows
+                    and target_name not in state.statuses
+                ):
                     del state.borrows[target_name]
                     state.borrow_places.pop(target_name, None)
                     return "Unit"
-                if target_name is not None and state.statuses.get(target_name) == "dropped":
+                if (
+                    target_name is not None
+                    and state.statuses.get(target_name) == "dropped"
+                ):
                     self._error("DuplicateDrop", target_name)
-                if target_name is not None:
-                    self._check_name(target_name, state)
-                self._reject_projected_owner_drop(
-                    target_place,
-                    self._expr_type(target_node),
-                )
                 if target_place is None:
                     self._error("InvalidDrop")
-                if target_name is None and self._contains_borrow(self._expr_type(target_node)):
+                target_type = self._expr_type(target_node)
+                if self._contains_borrow(target_type) and not self._owner(target_type):
                     self._remove_borrows_at_place(state, target_place)
                     return "Unit"
+                if (
+                    target_place.steps
+                    and (
+                        target_root is None
+                        or target_root in self.parameters
+                        or target_root not in state.statuses
+                    )
+                    and self._owner(target_type)
+                ):
+                    self._error(
+                        "ProjectedOwnerMoveFromBorrowedPlace",
+                        ast.unparse(target_node),
+                    )
                 live = self._live_borrow_of(state, target_place)
                 if live is not None:
                     container, provenance = live
@@ -1144,10 +1295,13 @@ class _OwnershipChecker:
                         provenance=provenance,
                         path=f"drop({ast.unparse(target_node)})",
                     )
-                if target_name is not None:
-                    state.borrows.pop(target_name, None)
-                    state.borrow_places.pop(target_name, None)
-                    state.statuses[target_name] = "dropped"
+                self._consume_place(
+                    target_place,
+                    state,
+                    name=target_root,
+                    display=ast.unparse(target_node),
+                    status="dropped",
+                )
                 return "Unit"
             raw_receiver = (
                 node.func.value
@@ -1188,8 +1342,6 @@ class _OwnershipChecker:
                 self._error("MapOperationsRequireScalarValues", receiver_type)
             receiver_root = self._root_name(receiver)
             receiver_place = self._place_for_expr(receiver, state)
-            if receiver_root is not None:
-                self._check_name(receiver_root, state)
             if receiver_root and method in {
                 "push", "get_mut", "insert", "increment",
                 "append_byte", "append_scalar", "append_text", "append_uint64",
@@ -1200,8 +1352,6 @@ class _OwnershipChecker:
                     place=receiver_place,
                     display=ast.unparse(receiver),
                 )
-            if receiver_root and method in {"view", "get", "get_mut", "entries", "as_view"}:
-                self._check_name(receiver_root, state)
             if receiver is not None:
                 self._check_expr(receiver, state)
             for argument in node.args:
@@ -1295,8 +1445,14 @@ class _OwnershipChecker:
                         )
             if isinstance(node.func, ast.Name) and node.func.id in self.functions:
                 callee = self.functions[node.func.id]
-                for argument, parameter in zip(node.args, callee.args.args):
-                    parameter_type = self.typed_ast.annotation_type_id(parameter.annotation)
+                for argument, parameter in zip(
+                    node.args,
+                    callee.args.args,
+                    strict=False,
+                ):
+                    parameter_type = self.typed_ast.annotation_type_id(
+                        parameter.annotation
+                    )
                     returned = any(
                         isinstance(item, ast.Return)
                         and isinstance(item.value, ast.Name)
@@ -1423,6 +1579,7 @@ class _OwnershipChecker:
                 dict(before.borrow_places),
                 break_paths,
                 backedge_paths,
+                dict(before.place_statuses),
             )
         merged_statuses = dict(live[0].statuses)
         for name in sorted(before.statuses):
@@ -1431,6 +1588,9 @@ class _OwnershipChecker:
                 for branch in live
             }
             if len(statuses) > 1:
+                if statuses <= {"available", "partially_moved"}:
+                    merged_statuses[name] = "partially_moved"
+                    continue
                 if self.binding_kinds_by_name.get(name) != "binding":
                     self._error("OwnershipAmbiguity", name)
                 # Inferred rebindings use drop-flag slots; keep the ambiguity
@@ -1452,6 +1612,22 @@ class _OwnershipChecker:
         borrow_places = [branch.borrow_places for branch in live]
         if borrow_places and any(item != borrow_places[0] for item in borrow_places[1:]):
             self._error("OwnershipAmbiguity")
+        tracked_places = set(before.place_statuses)
+        for branch in live:
+            tracked_places.update(branch.place_statuses)
+        merged_place_statuses: dict[Place, str] = {}
+        for place in tracked_places:
+            statuses = {
+                branch.place_statuses.get(place, "available")
+                for branch in live
+            }
+            if statuses == {"available"}:
+                continue
+            merged_place_statuses[place] = (
+                statuses.pop()
+                if len(statuses) == 1
+                else "maybe_uninitialized"
+            )
         return _OwnershipState(
             merged_statuses,
             dict(live[0].borrows),
@@ -1460,6 +1636,7 @@ class _OwnershipChecker:
             dict(live[0].borrow_places),
             break_paths,
             backedge_paths,
+            merged_place_statuses,
         )
     @staticmethod
     def _snapshot_state(state: _OwnershipState) -> _OwnershipState:
@@ -1469,6 +1646,9 @@ class _OwnershipChecker:
             dict(state.places),
             False,
             dict(state.borrow_places),
+            (),
+            (),
+            dict(state.place_statuses),
         )
     @staticmethod
     def _clear_iteration_borrow(state: _OwnershipState, name: str) -> None:
@@ -1530,6 +1710,15 @@ class _OwnershipChecker:
                 for name in tracked_borrows
                 if name in candidate.borrow_places
             },
+            (),
+            (),
+            {
+                place: status
+                for place, status in candidate.place_statuses.items()
+                if place.root in {
+                    visible.root for visible in before.places.values()
+                }
+            },
         )
     @staticmethod
     def _loop_assignment_names(
@@ -1585,15 +1774,7 @@ class _OwnershipChecker:
         assignment_names: set[str] | frozenset[str] = frozenset(),
     ) -> None:
         """Require every ownership-visible backedge to reach the loop entry."""
-        for name in sorted(set(candidate.statuses) - set(before.statuses)):
-            if (
-                candidate.statuses[name] not in {"dropped", "moved"}
-                and name not in assignment_names
-            ):
-                self._error(
-                    "LoopOwnershipBackedgeRequiresFixedPointSupport: OwnershipAmbiguity",
-                    name,
-                )
+        candidate = self._loop_visible_state(before, candidate)
         for name in sorted(before.statuses):
             if candidate.statuses.get(name, "absent") != before.statuses[name]:
                 self._error(
@@ -1606,6 +1787,10 @@ class _OwnershipChecker:
                     "LoopOwnershipBackedgeRequiresFixedPointSupport: OwnershipAmbiguity",
                     name,
                 )
+        if candidate.place_statuses != before.place_statuses:
+            self._error(
+                "LoopOwnershipBackedgeRequiresFixedPointSupport: OwnershipAmbiguity"
+            )
         for name in sorted(self._loop_tracked_borrow_names(before, candidate)):
             if candidate.borrows.get(name) != before.borrows.get(name):
                 self._error(
@@ -1625,12 +1810,6 @@ class _OwnershipChecker:
         assignment_names: set[str] | frozenset[str] = frozenset(),
     ) -> _OwnershipState:
         """Project a break exit only after cleaning iteration-local owners."""
-        for name in sorted(set(candidate.statuses) - set(before.statuses)):
-            if (
-                candidate.statuses[name] not in {"dropped", "moved"}
-                and name not in assignment_names
-            ):
-                self._error("OwnershipAmbiguity", name)
         return self._loop_visible_state(before, candidate)
     def _join_loop_states(
         self,
@@ -1650,6 +1829,9 @@ class _OwnershipChecker:
             dict(joined.places),
             joined.terminal,
             dict(joined.borrow_places),
+            (),
+            (),
+            dict(joined.place_statuses),
         )
     def _check_statements(self, statements: list[ast.stmt], state: _OwnershipState) -> _OwnershipState:
         for node in statements:
@@ -1689,16 +1871,7 @@ class _OwnershipChecker:
                 if existing_place is not None:
                     state.places[node.target.id] = existing_place
                 else:
-                    binding_place = self._binding_place(node.value, state)
-                    state.places[node.target.id] = (
-                        binding_place or self._root_place(node.target.id)
-                        if (
-                            self._owner(type_name)
-                            and not self._is_borrowed(type_name)
-                            and not self._contains_borrow(type_name)
-                        )
-                        else self._root_place(node.target.id)
-                    )
+                    state.places[node.target.id] = self._root_place(node.target.id)
                 if self._owner(type_name):
                     state.statuses[node.target.id] = "available"
                 continue
@@ -1725,7 +1898,11 @@ class _OwnershipChecker:
                                 state,
                                 expected=target_type,
                             )
-                            state.statuses[target.id] = "available"
+                            self._mark_initialized(
+                                target_place,
+                                state,
+                                name=target.id,
+                            )
                         if target_type and self._contains_borrow(target_type):
                             self._register_borrows(
                                 state,
@@ -1737,9 +1914,31 @@ class _OwnershipChecker:
                                 place=state.places.get(target.id),
                             )
                     elif isinstance(target, (ast.Attribute, ast.Subscript)):
-                        self._check_mutation_expr(target, state)
+                        self._check_mutation_expr(
+                            target,
+                            state,
+                            reinitialize=True,
+                        )
                         target_root = self._root_name(target)
                         target_type = self._expr_type(target)
+                        target_place = self._place_for_expr(target, state)
+                        if target_type and self._owner(target_type):
+                            source_root = self._root_name(node.value)
+                            if not (
+                                source_root in self.parameters
+                                and source_root not in self.owned_parameters
+                            ):
+                                self._consume_expr(
+                                    node.value,
+                                    state,
+                                    expected=target_type,
+                                )
+                            if target_place is not None:
+                                self._mark_initialized(
+                                    target_place,
+                                    state,
+                                    name=target_root,
+                                )
                         if (
                             target_root is not None
                             and self._contains_borrow(target_type or value_type)
@@ -1769,7 +1968,7 @@ class _OwnershipChecker:
                                     provenances,
                                     f"store({ast.unparse(target)})",
                                 ),
-                                place=self._place_for_expr(target, state),
+                                place=target_place,
                             )
                 continue
             if isinstance(node, ast.Expr):
@@ -1853,7 +2052,6 @@ class _OwnershipChecker:
                         node.value,
                         state,
                         expected=result_type,
-                        allow_projected_owner_move=True,
                     )
                 state.terminal = True
                 break
@@ -1863,6 +2061,9 @@ class _OwnershipChecker:
                 before_borrows = set(state.borrows)
                 before_borrow_places = set(state.borrow_places)
                 before_places = set(state.places)
+                before_place_roots = {
+                    place.root for place in state.places.values()
+                }
                 then_state = self._check_statements(node.body, state.clone())
                 else_state = self._check_statements(node.orelse, state.clone())
                 for branch in (then_state, else_state):
@@ -1874,6 +2075,11 @@ class _OwnershipChecker:
                         branch.borrow_places.pop(name, None)
                     for name in set(branch.places) - before_places:
                         branch.places.pop(name, None)
+                    branch.place_statuses = {
+                        place: status
+                        for place, status in branch.place_statuses.items()
+                        if place.root in before_place_roots
+                    }
                 state = self._merge(state, (then_state, else_state))
                 continue
             if isinstance(node, ast.While):
@@ -2046,6 +2252,16 @@ class _OwnershipChecker:
                 for index, argument in enumerate(function.args.args)
             }
             self.parameters = set(self.env)
+            self.owned_parameters = {
+                item.value.id
+                for item in ast.walk(function)
+                if (
+                    isinstance(item, ast.Return)
+                    and isinstance(item.value, ast.Name)
+                    and item.value.id in self.parameters
+                    and self._owner(self.env.get(item.value.id))
+                )
+            }
             state = _OwnershipState(
                 {
                     name: "available"

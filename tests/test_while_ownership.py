@@ -42,7 +42,7 @@ def _user_loop(
     [
         (
             _user_loop("        let moved: Text = user.name\n"),
-            "ProjectedOwnerMoveRequiresPartialMoveSupport",
+            "LoopOwnershipBackedgeRequiresFixedPointSupport",
         ),
         (
             _user_loop(
@@ -256,8 +256,8 @@ def test_contained_borrow_mutation_is_rejected_inside_loop() -> None:
         _compile(_compile_contained)
 
 
-def test_for_owner_binding_requires_cleanup_before_backedge() -> None:
-    source = (
+def test_for_owner_binding_is_cleaned_before_backedge() -> None:
+    _compile(
         "fn main(input: BytesView) -> UInt64:\n"
         "    let values: Vec[Text] = Vec.new()\n"
         "    var index: UInt64 = 0\n"
@@ -265,11 +265,6 @@ def test_for_owner_binding_requires_cleanup_before_backedge() -> None:
         "        index += 1\n"
         "    return index\n"
     )
-    with pytest.raises(
-        StructuredHIRCompileError,
-        match="LoopOwnershipBackedgeRequiresFixedPointSupport",
-    ):
-        _compile(source)
 
 
 def test_for_owner_binding_is_clean_after_explicit_drop() -> None:

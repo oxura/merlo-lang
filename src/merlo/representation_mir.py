@@ -46,8 +46,8 @@ from merlo.type_arena import (
 class MIRVerificationError(ValueError):
     """Fail-closed executable MIR verification failure."""
 
-GENERAL_MIR_SCHEMA_VERSION = 4
-GENERAL_MIR_CONTRACT = "merlo.performance-mir.general-representation.v4"
+GENERAL_MIR_SCHEMA_VERSION = 5
+GENERAL_MIR_CONTRACT = "merlo.performance-mir.general-representation.v5"
 _DOMAIN_OPS = {
     "json_parse",
     "json_tokenize",
@@ -701,10 +701,12 @@ class _CFGBuilder:
         function: RIRFunction,
         authority: TypeContext,
         drop_plan_ids: dict[TypeId, DropPlanId] | None = None,
+        trivial_drop_types: frozenset[TypeId] = frozenset(),
     ) -> None:
         self.function = function
         self.authority = authority
         self.drop_plan_ids = drop_plan_ids or {}
+        self.trivial_drop_types = trivial_drop_types
         self.blocks: list[_MutableBlock] = []
         self.block_ordinal = 0
         self.instruction_ordinal = 0
@@ -913,8 +915,39 @@ class _CFGBuilder:
         elif op == "read_enum_tag":
             op = "load_enum_tag"
         elif op == "construct_record":
+            for index, (child, operand) in enumerate(
+                zip(operation.children, operands, strict=True)
+            ):
+                if child.type_id in self.drop_plan_ids:
+                    self._forget_owned(child)
+                    self.instruction(
+                        block,
+                        "move_value",
+                        operation,
+                        operands=(operand,),
+                        result=False,
+                        attributes={
+                            "field_index": index,
+                            "owned_payload": True,
+                        },
+                    )
             op = "construct_record"
         elif op == "construct_enum":
+            for child, operand in zip(
+                operation.children,
+                operands,
+                strict=True,
+            ):
+                if child.type_id in self.drop_plan_ids:
+                    self._forget_owned(child)
+                    self.instruction(
+                        block,
+                        "move_value",
+                        operation,
+                        operands=(operand,),
+                        result=False,
+                        attributes={"owned_payload": True},
+                    )
             op = "construct_enum"
         elif op == "bytes_text_operation":
             callee = str(operation.attribute_map.get("callee", ""))
@@ -1002,7 +1035,39 @@ class _CFGBuilder:
         elif op in {"expression", "then", "else", "loop_body", "enum_case", "if", "while", "match_enum"}:
             return (operands[-1] if operands else None), block
         if operation.op == "drop_value":
+            if len(operation.children) != 1 or len(operands) != 1:
+                raise ValueError("drop_value requires one typed operand")
+            target_type_id = operation.children[0].type_id
+            if target_type_id is None:
+                raise ValueError("drop_value target has no TypeId")
+            drop_plan_id = self.drop_plan_ids.get(target_type_id)
+            if drop_plan_id is None:
+                if target_type_id in self.trivial_drop_types:
+                    self._forget_owned(operation)
+                    return None, block
+                raise ValueError(
+                    "missing drop plan for "
+                    f"{self.authority.render(target_type_id)}"
+                )
+            attributes = {
+                **operation.attribute_map,
+                "type": self.authority.render(target_type_id),
+                "type_id": target_type_id,
+                "drop_plan_id": drop_plan_id,
+                "automatic": False,
+                "path_sensitive": True,
+            }
+            self.instruction(
+                block,
+                "drop_value",
+                operation,
+                operands=operands,
+                result=False,
+                attributes=attributes,
+                type_id=target_type_id,
+            )
             self._forget_owned(operation)
+            return None, block
         inferred_type_id = operation.type_id
         if op == "load_local" and inferred_type_id is None:
             name = operation.attribute_map.get("name")
@@ -1829,8 +1894,18 @@ def lower_rir_to_performance_mir(
         for type_id, drop_plan_id, action in drop_plan_bindings
         if action != "trivial"
     }
+    trivial_drop_types = frozenset(
+        type_id
+        for type_id, _drop_plan_id, action in drop_plan_bindings
+        if action == "trivial"
+    )
     functions = tuple(
-        _CFGBuilder(function, authority, drop_plan_ids).build()
+        _CFGBuilder(
+            function,
+            authority,
+            drop_plan_ids,
+            trivial_drop_types,
+        ).build()
         for function in representation.functions
     )
     requires_drop_glue = any(

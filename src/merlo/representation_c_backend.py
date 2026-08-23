@@ -1544,8 +1544,11 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                             return False
                     elif attrs.get("representation_lowering") in {
                         "option_unwrap_clone",
+                        "option_unwrap_move",
                         "result_unwrap_clone",
+                        "result_unwrap_move",
                         "result_unwrap_err_clone",
+                        "result_unwrap_err_move",
                     }:
                         if len(instruction.operands) != 1:
                             return False
@@ -1561,8 +1564,11 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                         }
                         variant = {
                             "option_unwrap_clone": "Some",
+                            "option_unwrap_move": "Some",
                             "result_unwrap_clone": "Ok",
+                            "result_unwrap_move": "Ok",
                             "result_unwrap_err_clone": "Err",
+                            "result_unwrap_err_move": "Err",
                         }[attrs["representation_lowering"]]
                         if variant not in variants:
                             return False
@@ -2586,6 +2592,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
         parameter_names = {item.name for item in function.parameters}
         pointer_values: set[str] = set()
         moved_values: set[str] = set()
+        move_out_values: set[str] = set()
         borrowed_pointer_values: set[str] = set()
         inline_call_results: set[str] = set()
         inline_construct_results: set[str] = set()
@@ -2884,6 +2891,107 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                         and self._parameter_is_pointer(target.parameters[index])
                     ):
                         pointer_call_operand_ids.add(operand_id)
+        projected_owner_ops = frozenset(
+            {
+                "load_field",
+                "bounds_checked_index",
+                "box_get",
+                "load_enum_payload",
+            }
+        )
+
+        parameter_ownership = {
+            parameter.name: parameter.ownership
+            for parameter in function.parameters
+        }
+
+        def projected_owner_root(value_id: str) -> str | None:
+            source = result_instructions.get(value_id)
+            if source is None:
+                return None
+            if source.op == "load_local":
+                name = source.attribute_map.get("name")
+                return name if isinstance(name, str) else None
+            if source.op not in projected_owner_ops or not source.operands:
+                return None
+            return projected_owner_root(source.operands[0])
+
+        def projected_owner_value(value_id: str) -> bool:
+            source = result_instructions.get(value_id)
+            descriptor = self.descriptors.get(
+                source.type_name if source is not None else ""
+            )
+            root = projected_owner_root(value_id)
+            return (
+                source is not None
+                and source.op in projected_owner_ops
+                and descriptor is not None
+                and _is_owner(descriptor)
+                and root is not None
+                and root not in parameter_ownership
+            )
+
+        for block in mir_function.blocks:
+            if (
+                block.terminator.kind == "return"
+                and block.terminator.value is not None
+                and projected_owner_value(block.terminator.value)
+            ):
+                move_out_values.add(block.terminator.value)
+            for instruction in block.instructions:
+                attributes = instruction.attribute_map
+                if instruction.op in {"move_value", "drop_value"}:
+                    move_out_values.update(
+                        operand
+                        for operand in instruction.operands
+                        if projected_owner_value(operand)
+                    )
+                if (
+                    instruction.op in {"store_local", "store_field"}
+                    and instruction.operands
+                ):
+                    descriptor = self.descriptors.get(
+                        instruction.type_name or ""
+                    )
+                    if (
+                        descriptor is not None
+                        and _is_owner(descriptor)
+                        and projected_owner_value(instruction.operands[0])
+                    ):
+                        move_out_values.add(instruction.operands[0])
+                if instruction.op == "construct_record":
+                    record = self.descriptors.get(
+                        instruction.type_name or ""
+                    )
+                    if record is not None:
+                        for operand, field in zip(
+                            instruction.operands,
+                            record.fields,
+                            strict=False,
+                        ):
+                            field_descriptor = self.descriptors.get(field[1])
+                            if (
+                                field_descriptor is not None
+                                and _is_owner(field_descriptor)
+                                and projected_owner_value(operand)
+                            ):
+                                move_out_values.add(operand)
+                policies = tuple(
+                    attributes.get("parameter_ownership", ())
+                )
+                for index, operand in enumerate(instruction.operands):
+                    policy = (
+                        policies[index]
+                        if index < len(policies)
+                        else attributes.get("receiver_ownership")
+                        if index == 0
+                        else None
+                    )
+                    if (
+                        policy in {"owned", "consuming"}
+                        and projected_owner_value(operand)
+                    ):
+                        move_out_values.add(operand)
         for block in mir_function.blocks:
             for instruction in block.instructions:
                 if instruction.op == "call":
@@ -2912,6 +3020,11 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 attrs = instruction.attribute_map
                 if instruction.op == "move_value":
                     moved_values.update(instruction.operands)
+                if (
+                    instruction.result is not None
+                    and attrs.get("move_out") is True
+                ):
+                    move_out_values.add(instruction.result)
                 if instruction.op == "store_local":
                     target = attrs.get("name", attrs.get("target"))
                     if (
@@ -2996,15 +3109,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                             or (
                                 instruction.op == "load_field"
                                 and instruction.operands
-                                and descriptor.kind
-                                in {
-                                    "text",
-                                    "vec",
-                                    "box",
-                                    "map",
-                                    "record",
-                                    "enum",
-                                }
+                                and _is_owner(descriptor)
                             )
                             or instruction.op == "file_line_next"
                             or instruction.op == "bounds_checked_index"
@@ -3030,7 +3135,11 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     pointer_values.add(instruction.result)
                     if (
                         attrs.get("result_ownership") in {"borrow", "borrow_mut"}
-                        or instruction.op in {"load_field", "const", "bounds_checked_index"}
+                        or (
+                            instruction.op
+                            in {"load_field", "const", "bounds_checked_index"}
+                            and instruction.result not in move_out_values
+                        )
                         or (
                             instruction.op == "load_local"
                             and local_name in match_payload_names
@@ -3794,19 +3903,33 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             if instruction.op == "drop_value":
                 local = attrs.get("local")
                 type_name = attrs.get("type", instruction.type_name)
-                if not isinstance(local, str) or not isinstance(type_name, str):
+                if not isinstance(type_name, str):
                     raise RepresentationCBackendError(
                         "MIR drop_value is malformed"
                     )
-                if local in returning_locals:
-                    return
-                if active_block_id in consumed_local_blocks.get(local, set()):
-                    return
-                if local in protected_return_locals.get(active_block_id, set()):
-                    return
+                if isinstance(local, str):
+                    if local in returning_locals:
+                        return
+                    if active_block_id in consumed_local_blocks.get(local, set()):
+                        return
+                    if local in protected_return_locals.get(active_block_id, set()):
+                        return
+                    address = local_pointer(local)
+                elif len(instruction.operands) == 1:
+                    operand_id = instruction.operands[0]
+                    operand = value_of(operand_id)
+                    address = (
+                        operand
+                        if operand_id in pointer_values
+                        else f"&({operand})"
+                    )
+                    consumed_values.add(operand_id)
+                else:
+                    raise RepresentationCBackendError(
+                        "MIR drop_value is malformed"
+                    )
                 lines.append(
-                    f"    merlo_drop_{_identifier(type_name)}"
-                    f"({local_pointer(local)});"
+                    f"    merlo_drop_{_identifier(type_name)}({address});"
                 )
                 return
             if instruction.op in {"break", "continue"}:
@@ -4874,8 +4997,11 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     )
                 elif attrs.get("representation_lowering") in {
                     "option_unwrap_clone",
+                    "option_unwrap_move",
                     "result_unwrap_clone",
+                    "result_unwrap_move",
                     "result_unwrap_err_clone",
+                    "result_unwrap_err_move",
                 }:
                     if len(operands) != 1:
                         raise RepresentationCBackendError(
@@ -4890,8 +5016,11 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     lowering = attrs["representation_lowering"]
                     variant = {
                         "option_unwrap_clone": "Some",
+                        "option_unwrap_move": "Some",
                         "result_unwrap_clone": "Ok",
+                        "result_unwrap_move": "Ok",
                         "result_unwrap_err_clone": "Err",
+                        "result_unwrap_err_move": "Err",
                     }[lowering]
                     payload_type = next(
                         (
@@ -4910,8 +5039,11 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     suffix = _identifier(source_type)
                     diagnostic = {
                         "option_unwrap_clone": "OptionUnwrapWrongVariant",
+                        "option_unwrap_move": "OptionUnwrapWrongVariant",
                         "result_unwrap_clone": "ResultUnwrapWrongVariant",
+                        "result_unwrap_move": "ResultUnwrapWrongVariant",
                         "result_unwrap_err_clone": "ResultUnwrapErrWrongVariant",
+                        "result_unwrap_err_move": "ResultUnwrapErrWrongVariant",
                     }[lowering]
                     if payload_type in {None, "Unit"}:
                         payload = self._zero_expression(payload_type or "Unit")
@@ -4923,8 +5055,18 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                             payload_descriptor is not None
                             and _is_owner(payload_descriptor)
                         ):
+                            receiver_root = projected_owner_root(
+                                instruction.operands[0]
+                            )
+                            move_payload = (
+                                lowering.endswith("_move")
+                                and receiver_root is not None
+                                and parameter_ownership.get(receiver_root)
+                                not in {"borrow", "borrow_mut", "contained_borrow"}
+                            )
+                            helper = "move" if move_payload else "clone"
                             payload = (
-                                f"merlo_clone_{_identifier(payload_type)}"
+                                f"merlo_{helper}_{_identifier(payload_type)}"
                                 f"(&{payload_access})"
                             )
                         else:
@@ -5619,10 +5761,17 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                         and descriptor is not None
                         and _is_owner(descriptor)
                     ):
+                        helper = (
+                            "move"
+                            if instruction.operands[0] in move_out_values
+                            else "clone"
+                        )
                         store_value = (
-                            f"merlo_clone_{_identifier(instruction.type_name or '')}"
+                            f"merlo_{helper}_{_identifier(instruction.type_name or '')}"
                             f"({store_value})"
                         )
+                        if helper == "move":
+                            consumed_values.add(instruction.operands[0])
                     elif (
                         instruction.operands[0] in result_types
                         and instruction.operands[0] not in inline_call_results
@@ -6030,6 +6179,10 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                         operands[0],
                         instruction.type_name,
                         force_move=True,
+                    )
+                    lines.append(
+                        f"    merlo_drop_{_identifier(instruction.type_name)}"
+                        f"(&({access}));"
                     )
                 lines.append(f"    {access} = {store_value};")
             elif instruction.op == "pass":

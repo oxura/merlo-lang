@@ -161,7 +161,7 @@ def test_transitive_field_summary_has_one_structural_path() -> None:
     )
 
 
-def test_field_alias_move_requires_partial_move_support() -> None:
+def test_field_alias_move_reports_escaped_view() -> None:
     source = (
         _USER_HEADER
         + "fn borrow_alias(user: User) -> TextView:\n"
@@ -175,7 +175,7 @@ def test_field_alias_move_requires_partial_move_support() -> None:
     )
     with pytest.raises(
         StructuredHIRCompileError,
-        match="^ProjectedOwnerMoveRequiresPartialMoveSupport$",
+        match="^EscapedView: alias",
     ):
         compile_structured_hir(source)
 
