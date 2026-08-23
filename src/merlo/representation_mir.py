@@ -14,13 +14,22 @@ from merlo.collection_protocol import (
 from merlo.representation_ir import (
     DEFAULT_TARGET_SPEC,
     DropPlanId,
+    DropPlan,
     LayoutId,
     RepresentationProgram,
     RIROperation,
     RIRFunction,
     TargetSpec,
     TYPE_ARENA_CONTRACT,
+    drop_plan_id_for,
     verify_representation_program,
+)
+from merlo.mir_ownership import (
+    MIROwnershipProgram,
+    MIROwnershipVerificationError,
+    build_mir_ownership_program,
+    ownership_type_kinds_from_descriptors,
+    verify_ownership_program,
 )
 from merlo.structured_hir_v2 import HIRNode, SourceSpan, StructuredHIRProgram
 from merlo.representation_runtime import EvaluationResult, evaluate_structured_hir
@@ -37,8 +46,8 @@ from merlo.type_arena import (
 class MIRVerificationError(ValueError):
     """Fail-closed executable MIR verification failure."""
 
-GENERAL_MIR_SCHEMA_VERSION = 3
-GENERAL_MIR_CONTRACT = "merlo.performance-mir.general-representation.v3"
+GENERAL_MIR_SCHEMA_VERSION = 4
+GENERAL_MIR_CONTRACT = "merlo.performance-mir.general-representation.v4"
 _DOMAIN_OPS = {
     "json_parse",
     "json_tokenize",
@@ -359,6 +368,21 @@ class GeneralMIRFunction:
             parameter_type_ids,
             _type_id_from_dict(value["return_type_id"], "return"),
         )
+def _ownership_authority_digest(
+    ownership: MIROwnershipProgram,
+) -> str:
+    payload = [
+        (str(type_id), kind.value)
+        for type_id, kind in ownership.type_kinds
+    ]
+    return hashlib.sha256(
+        json.dumps(
+            payload,
+            separators=(",", ":"),
+        ).encode()
+    ).hexdigest()
+
+
 
 
 @dataclass(frozen=True)
@@ -370,6 +394,7 @@ class GeneralPerformanceMIR:
     drop_plans_digest: str
     entry_function: str
     functions: tuple[GeneralMIRFunction, ...]
+    ownership: MIROwnershipProgram
     optimized: bool = False
     optimization_passes: tuple[str, ...] = ()
     requires_drop_glue: bool = False
@@ -383,13 +408,33 @@ class GeneralPerformanceMIR:
     predecessor_digest: str = ""
     target_spec: TargetSpec = DEFAULT_TARGET_SPEC
     target_spec_digest: str = ""
-    drop_plan_bindings: tuple[tuple[TypeId, DropPlanId], ...] = ()
+    drop_plan_bindings: tuple[
+        tuple[TypeId, DropPlanId, str],
+        ...,
+    ] = ()
+    ownership_authority_digest: str = ""
 
     def __post_init__(self) -> None:
         if self.schema_version != GENERAL_MIR_SCHEMA_VERSION:
             raise ValueError("General Performance MIR schema drift")
         if self.contract != GENERAL_MIR_CONTRACT:
             raise ValueError("General Performance MIR contract drift")
+        if not isinstance(self.ownership, MIROwnershipProgram):
+            raise ValueError("General Performance MIR requires ownership SSA")
+        authority_digest = _ownership_authority_digest(
+            self.ownership
+        )
+        if self.ownership_authority_digest == "":
+            object.__setattr__(
+                self,
+                "ownership_authority_digest",
+                authority_digest,
+            )
+        if self.ownership_authority_digest != authority_digest:
+            raise ValueError(
+                "General Performance MIR ownership authority "
+                "digest mismatch"
+            )
         if self.type_arena_contract != TYPE_ARENA_CONTRACT:
             raise ValueError("General Performance MIR TypeArena contract drift")
         if not isinstance(self.type_arena, FrozenTypeArena):
@@ -441,6 +486,15 @@ class GeneralPerformanceMIR:
     @property
     def digest(self) -> str:
         return hashlib.sha256(self.to_json().encode()).hexdigest()
+    def expected_ownership(self) -> MIROwnershipProgram:
+        if not isinstance(self.type_arena, FrozenTypeArena):
+            raise ValueError("General Performance MIR requires a frozen TypeArena")
+        return build_mir_ownership_program(
+            self.functions,
+            self.type_arena,
+            self.drop_plan_bindings,
+        )
+
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -452,6 +506,9 @@ class GeneralPerformanceMIR:
             "predecessor_digest": self.predecessor_digest,
             "descriptors_digest": self.descriptors_digest,
             "drop_plans_digest": self.drop_plans_digest,
+            "ownership_authority_digest": (
+                self.ownership_authority_digest
+            ),
             "entry_function": self.entry_function,
             "type_arena_contract": self.type_arena_contract,
             "type_arena": self.type_arena.to_dict(),
@@ -466,13 +523,16 @@ class GeneralPerformanceMIR:
                 {
                     "type_id": type_id.to_dict(),
                     "drop_plan_id": drop_plan_id.to_dict(),
+                    "action": action,
                 }
-                for type_id, drop_plan_id in self.drop_plan_bindings
+                for type_id, drop_plan_id, action
+                in self.drop_plan_bindings
             ],
             "optimized": self.optimized,
             "optimization_passes": list(self.optimization_passes),
             "instruction_count": self.instruction_count,
             "functions": [item.to_dict() for item in self.functions],
+            "ownership": self.ownership.to_dict(),
             "requires_drop_glue": self.requires_drop_glue,
             "invariants": {
                 "cfg_basic_blocks": True,
@@ -489,6 +549,7 @@ class GeneralPerformanceMIR:
                 "optimizer_verifier_boundary": True,
                 "target_specific_layouts": True,
                 "predecessor_digest_required": True,
+                "ownership_ssa_required": True,
             },
         }
 
@@ -510,6 +571,7 @@ class GeneralPerformanceMIR:
             "predecessor_digest",
             "descriptors_digest",
             "drop_plans_digest",
+            "ownership_authority_digest",
             "entry_function",
             "type_arena_contract",
             "type_arena",
@@ -523,6 +585,7 @@ class GeneralPerformanceMIR:
             "functions",
             "requires_drop_glue",
             "drop_plan_bindings",
+            "ownership",
             "invariants",
         }
         if not isinstance(value, dict) or set(value) != expected:
@@ -542,6 +605,7 @@ class GeneralPerformanceMIR:
             "optimizer_verifier_boundary": True,
             "target_specific_layouts": True,
             "predecessor_digest_required": True,
+            "ownership_ssa_required": True,
         }
         if value["schema_version"] != GENERAL_MIR_SCHEMA_VERSION:
             raise ValueError("MIR schema version drift")
@@ -571,6 +635,7 @@ class GeneralPerformanceMIR:
                 GeneralMIRFunction.from_dict(item)
                 for item in value["functions"]
             ),
+            MIROwnershipProgram.from_dict(value["ownership"]),
             value["optimized"],
             tuple(value["optimization_passes"]),
             value["requires_drop_glue"],
@@ -585,18 +650,28 @@ class GeneralPerformanceMIR:
             ),
             drop_plan_bindings=tuple(
                 (
-                    _type_id_from_dict(item["type_id"], "drop plan binding"),
+                    _type_id_from_dict(
+                        item["type_id"],
+                        "drop plan binding",
+                    ),
                     _drop_plan_id_from_dict(
                         item["drop_plan_id"],
                         "drop plan binding",
                     ),
+                    item["action"],
                 )
                 for item in value["drop_plan_bindings"]
+                if isinstance(item, dict)
+                and set(item)
+                == {"type_id", "drop_plan_id", "action"}
             ),
             type_arena_contract=value["type_arena_contract"],
             predecessor_digest=value["predecessor_digest"],
             target_spec=target_spec,
             target_spec_digest=value["target_spec_digest"],
+            ownership_authority_digest=(
+                value["ownership_authority_digest"]
+            ),
         )
         if result.to_dict() != value:
             raise ValueError("non-canonical MIR artifact")
@@ -690,7 +765,7 @@ class _CFGBuilder:
             raise ValueError(f"MIR instruction {op} missing TypeId")
         operand_type_ids = tuple(
             self.value_types.get(value)
-            or self.owned_locals.get(value)
+            or self.local_types.get(value)
             for value in operands
         )
         if any(item is None for item in operand_type_ids):
@@ -943,11 +1018,11 @@ class _CFGBuilder:
         )
         if (
             operation.op in {"bind_value", "bind_mutable"}
-            and operation.ownership_provenance == "unique_owner"
+            and operation.type_id in self.drop_plan_ids
         ):
             name = str(operation.attribute_map.get("name", value or ""))
-            if operation.type_id is not None:
-                self.owned_locals[name] = operation.type_id
+            assert operation.type_id is not None
+            self.owned_locals[name] = operation.type_id
         return value, block
     def lower_condition(
         self,
@@ -1007,17 +1082,29 @@ class _CFGBuilder:
         target = operation.attribute_map.get("drop_target")
         if isinstance(target, str):
             self.owned_locals.pop(target, None)
-        for child in operation.children:
-            if child.op == "load_name":
-                name = child.attribute_map.get("name")
-                if isinstance(name, str):
-                    self.owned_locals.pop(name, None)
+        if operation.op == "load_name":
+            name = operation.attribute_map.get("name")
+            if isinstance(name, str):
+                self.owned_locals.pop(name, None)
 
-    def insert_drops(self, block: _MutableBlock, operation: RIROperation) -> None:
-        for name, type_id in reversed(tuple(self.owned_locals.items())):
+    def insert_drops(
+        self,
+        block: _MutableBlock,
+        operation: RIROperation,
+        owned_locals: dict[str, TypeId] | None = None,
+    ) -> None:
+        locals_to_drop = (
+            self.owned_locals
+            if owned_locals is None
+            else owned_locals
+        )
+        for name, type_id in reversed(tuple(locals_to_drop.items())):
             drop_plan_id = self.drop_plan_ids.get(type_id)
             if drop_plan_id is None:
-                raise ValueError(f"missing drop plan for {self.authority.render(type_id)}")
+                raise ValueError(
+                    f"missing drop plan for "
+                    f"{self.authority.render(type_id)}"
+                )
             self.instruction(
                 block,
                 "drop_value",
@@ -1050,12 +1137,49 @@ class _CFGBuilder:
                     then_block.id,
                     else_block.id,
                 )
-                then_end = self.lower_sequence(operation.children[1].children, then_block)
-                if then_end.terminator is None:
-                    then_end.terminator = GeneralMIRTerminator("jump", (join_block.id,))
-                else_end = self.lower_sequence(operation.children[2].children, else_block)
-                if else_end.terminator is None:
-                    else_end.terminator = GeneralMIRTerminator("jump", (join_block.id,))
+                entry_owned = dict(self.owned_locals)
+                self.owned_locals = dict(entry_owned)
+                then_end = self.lower_sequence(
+                    operation.children[1].children,
+                    then_block,
+                )
+                then_owned = dict(self.owned_locals)
+                self.owned_locals = dict(entry_owned)
+                else_end = self.lower_sequence(
+                    operation.children[2].children,
+                    else_block,
+                )
+                else_owned = dict(self.owned_locals)
+                fallthrough = [
+                    (end, state)
+                    for end, state in (
+                        (then_end, then_owned),
+                        (else_end, else_owned),
+                    )
+                    if end.terminator is None
+                ]
+                common_names = set(entry_owned)
+                for _end, state in fallthrough:
+                    common_names.intersection_update(state)
+                for end, state in fallthrough:
+                    branch_only = {
+                        name: type_id
+                        for name, type_id in state.items()
+                        if name not in common_names
+                    }
+                    self.insert_drops(
+                        end,
+                        operation,
+                        branch_only,
+                    )
+                    end.terminator = GeneralMIRTerminator(
+                        "jump",
+                        (join_block.id,),
+                    )
+                self.owned_locals = {
+                    name: entry_owned[name]
+                    for name in common_names
+                }
                 current = join_block
                 continue
             if (
@@ -1387,8 +1511,19 @@ class _CFGBuilder:
                     attributes={"name": target, "mutable": False},
                     type_id=item_type_id,
                 )
+                entry_owned = dict(self.owned_locals)
                 body_end = self.lower_sequence(body_operation.children, body_block)
+                body_owned = dict(self.owned_locals)
                 if body_end.terminator is None:
+                    self.insert_drops(
+                        body_end,
+                        body_operation,
+                        {
+                            name: type_id
+                            for name, type_id in body_owned.items()
+                            if name not in entry_owned
+                        },
+                    )
                     next_index = self.instruction(
                         body_end,
                         "binary",
@@ -1435,6 +1570,7 @@ class _CFGBuilder:
                         "jump",
                         (condition_block.id,),
                     )
+                self.owned_locals = entry_owned
                 current = exit_block
                 continue
             if (
@@ -1476,9 +1612,21 @@ class _CFGBuilder:
                     (body_block.id, exit_block.id),
                     line_value,
                 )
+                entry_owned = dict(self.owned_locals)
                 body_end = self.lower_sequence(operation.children[1].children, body_block)
+                body_owned = dict(self.owned_locals)
                 if body_end.terminator is None:
+                    self.insert_drops(
+                        body_end,
+                        operation,
+                        {
+                            name: type_id
+                            for name, type_id in body_owned.items()
+                            if name not in entry_owned
+                        },
+                    )
                     body_end.terminator = GeneralMIRTerminator("jump", (condition_block.id,))
+                self.owned_locals = entry_owned
                 current = exit_block
                 continue
             if operation.op == "while":
@@ -1492,26 +1640,104 @@ class _CFGBuilder:
                     body_block.id,
                     exit_block.id,
                 )
+                entry_owned = dict(self.owned_locals)
                 body_end = self.lower_sequence(operation.children[1].children, body_block)
+                body_owned = dict(self.owned_locals)
                 if body_end.terminator is None:
+                    self.insert_drops(
+                        body_end,
+                        operation,
+                        {
+                            name: type_id
+                            for name, type_id in body_owned.items()
+                            if name not in entry_owned
+                        },
+                    )
                     body_end.terminator = GeneralMIRTerminator("jump", (condition_block.id,))
+                self.owned_locals = entry_owned
                 current = exit_block
                 continue
             if operation.op == "match_enum":
-                subject, current = self.lower_expression(operation.children[0], current)
+                if (
+                    operation.children
+                    and operation.children[0].op == "load_name"
+                    and operation.children[0].ownership_provenance
+                    not in {
+                        "borrow",
+                        "borrowed",
+                        "borrow_mut",
+                        "contained_borrow",
+                        "shared_borrow",
+                    }
+                ):
+                    self._forget_owned(operation.children[0])
+                subject, current = self.lower_expression(
+                    operation.children[0],
+                    current,
+                )
                 join_block = self.new_block("match_join")
                 cases = []
-                for index, case in enumerate(operation.children[1:]):
-                    case_block = self.new_block(f"match_case_{index}")
-                    cases.append((str(case.attribute_map.get("pattern")), case_block.id))
-                    case_end = self.lower_sequence(case.children, case_block)
+                entry_owned = dict(self.owned_locals)
+                fallthrough: list[
+                    tuple[_MutableBlock, dict[str, TypeId]]
+                ] = []
+                for index, case in enumerate(
+                    operation.children[1:]
+                ):
+                    case_block = self.new_block(
+                        f"match_case_{index}"
+                    )
+                    cases.append(
+                        (
+                            str(case.attribute_map.get("pattern")),
+                            case_block.id,
+                        )
+                    )
+                    self.owned_locals = dict(entry_owned)
+                    case_end = self.lower_sequence(
+                        case.children,
+                        case_block,
+                    )
+                    case_owned = dict(self.owned_locals)
                     if case_end.terminator is None:
-                        case_end.terminator = GeneralMIRTerminator("jump", (join_block.id,))
-                current.terminator = GeneralMIRTerminator("switch", tuple(target for _, target in cases), subject, tuple(cases))
+                        fallthrough.append(
+                            (case_end, case_owned)
+                        )
+                common_names = set(entry_owned)
+                for _end, state in fallthrough:
+                    common_names.intersection_update(state)
+                for end, state in fallthrough:
+                    case_only = {
+                        name: type_id
+                        for name, type_id in state.items()
+                        if name not in common_names
+                    }
+                    self.insert_drops(
+                        end,
+                        operation,
+                        case_only,
+                    )
+                    end.terminator = GeneralMIRTerminator(
+                        "jump",
+                        (join_block.id,),
+                    )
+                current.terminator = GeneralMIRTerminator(
+                    "switch",
+                    tuple(target for _, target in cases),
+                    subject,
+                    tuple(cases),
+                )
+                self.owned_locals = {
+                    name: entry_owned[name]
+                    for name in common_names
+                }
                 current = join_block
                 continue
             if operation.op == "return":
-                if operation.children:
+                if (
+                    operation.children
+                    and operation.children[0].op == "load_name"
+                ):
                     self._forget_owned(operation.children[0])
                 value, current = (
                     self.lower_expression(operation.children[0], current)
@@ -1587,13 +1813,22 @@ def lower_rir_to_performance_mir(
     ).hexdigest()
     authority = hir.type_context
     drop_plan_bindings = tuple(
-        (plan.type_id, plan.drop_plan_id)
+        (plan.type_id, plan.drop_plan_id, plan.action)
         for plan in representation.drop_plans
-        if plan.type_id is not None and plan.drop_plan_id is not None
+        if (
+            plan.type_id is not None
+            and plan.drop_plan_id is not None
+        )
     )
-    drop_plan_ids = dict(drop_plan_bindings)
-    if len(drop_plan_ids) != len(drop_plan_bindings):
+    if len({item[0] for item in drop_plan_bindings}) != len(
+        drop_plan_bindings
+    ):
         raise ValueError("duplicate RIR drop plan TypeId")
+    drop_plan_ids = {
+        type_id: drop_plan_id
+        for type_id, drop_plan_id, action in drop_plan_bindings
+        if action != "trivial"
+    }
     functions = tuple(
         _CFGBuilder(function, authority, drop_plan_ids).build()
         for function in representation.functions
@@ -1609,6 +1844,10 @@ def lower_rir_to_performance_mir(
         for descriptor in representation.descriptors
         if descriptor.type_id is not None and descriptor.layout_id is not None
     )
+    ownership_type_kinds = ownership_type_kinds_from_descriptors(
+        representation.descriptors,
+        representation.type_arena,
+    )
     return GeneralPerformanceMIR(
         hir.source_sha256,
         hir.digest,
@@ -1617,6 +1856,12 @@ def lower_rir_to_performance_mir(
         drops_digest,
         representation.entry_function,
         functions,
+        build_mir_ownership_program(
+            functions,
+            representation.type_arena,
+            drop_plan_bindings,
+            type_kinds=ownership_type_kinds,
+        ),
         requires_drop_glue=requires_drop_glue,
         drop_plan_bindings=drop_plan_bindings,
         surface_source=hir.source,
@@ -1657,15 +1902,37 @@ def _verify_general_mir(
         if type_id in layout_map:
             raise ValueError("duplicate MIR descriptor layout identity")
         layout_map[type_id] = layout_id
-    drop_plan_map: dict[TypeId, DropPlanId] = {}
-    for type_id, drop_plan_id in mir.drop_plan_bindings:
+    drop_plan_map: dict[TypeId, tuple[DropPlanId, str]] = {}
+    for type_id, drop_plan_id, action in mir.drop_plan_bindings:
         if not isinstance(type_id, TypeId) or type_id not in arena:
             raise ValueError("MIR drop binding has unknown TypeId")
         if not isinstance(drop_plan_id, DropPlanId):
             raise ValueError("MIR drop binding has invalid DropPlanId")
+        if not isinstance(action, str) or not action:
+            raise ValueError("MIR drop binding has invalid action")
         if type_id in drop_plan_map:
             raise ValueError("duplicate MIR drop plan identity")
-        drop_plan_map[type_id] = drop_plan_id
+        drop_plan_map[type_id] = (drop_plan_id, action)
+    for type_id, (drop_plan_id, action) in drop_plan_map.items():
+        if action != "trivial":
+            continue
+        layout_id = layout_map.get(type_id)
+        if layout_id is None:
+            raise ValueError(
+                "trivial MIR drop binding has no descriptor layout"
+            )
+        expected_id = drop_plan_id_for(
+            DropPlan(
+                arena.canonical(type_id),
+                "trivial",
+                type_id=type_id,
+                layout_id=layout_id,
+            )
+        )
+        if drop_plan_id != expected_id:
+            raise ValueError(
+                "trivial MIR drop binding identity mismatch"
+            )
     if representation is not None:
         verify_representation_program(representation)
         if representation.digest != mir.representation_ir_digest:
@@ -1684,9 +1951,12 @@ def _verify_general_mir(
         if layout_map != expected_layouts:
             raise ValueError("MIR descriptor layout binding mismatch")
         expected_drop_plans = {
-            plan.type_id: plan.drop_plan_id
+            plan.type_id: (plan.drop_plan_id, plan.action)
             for plan in representation.drop_plans
-            if plan.type_id is not None and plan.drop_plan_id is not None
+            if (
+                plan.type_id is not None
+                and plan.drop_plan_id is not None
+            )
         }
         if drop_plan_map != expected_drop_plans:
             raise ValueError("MIR drop plan binding mismatch")
@@ -1700,7 +1970,10 @@ def _verify_general_mir(
         if isinstance(value, TypeId):
             require_id(value, label)
         elif isinstance(value, DropPlanId):
-            if value not in drop_plan_map.values():
+            if value not in {
+                binding[0]
+                for binding in drop_plan_map.values()
+            }:
                 raise ValueError(f"{label} references unknown DropPlanId")
         elif isinstance(value, LayoutId):
             if value not in layout_map.values():
@@ -1836,7 +2109,10 @@ def _verify_general_mir(
                         raise ValueError(
                             f"MIR instruction {instruction.id} has no drop plan"
                         )
-                    if attributes.get("drop_plan_id") != expected_drop_id:
+                    if (
+                        attributes.get("drop_plan_id")
+                        != expected_drop_id[0]
+                    ):
                         raise ValueError(
                             f"MIR instruction {instruction.id} drop plan mismatch"
                         )
@@ -1846,6 +2122,18 @@ def _verify_general_mir(
                         raise ValueError(
                             f"MIR instruction {instruction.id} call signature mismatch"
                         )
+    expected_ownership = mir.expected_ownership()
+    if mir.ownership != expected_ownership:
+        raise MIROwnershipVerificationError(
+            "MIROwnershipMetadataMismatch",
+            mir.entry_function,
+        )
+    verify_ownership_program(
+        mir.functions,
+        arena,
+        mir.drop_plan_bindings,
+        mir.ownership,
+    )
 
 
 def verify_general_mir(
@@ -1855,7 +2143,7 @@ def verify_general_mir(
     """Fail-closed verifier for every executable MIR construction boundary."""
     try:
         _verify_general_mir(mir, representation)
-    except MIRVerificationError:
+    except (MIRVerificationError, MIROwnershipVerificationError):
         raise
     except Exception as exc:
         raise MIRVerificationError(str(exc)) from exc
@@ -1978,12 +2266,24 @@ def _fuse_collection_pipelines(
             )
             blocks.append(replace(block, instructions=instructions))
         functions.append(replace(function, blocks=tuple(blocks)))
-    return replace(mir, functions=tuple(functions))
+    updated_functions = tuple(functions)
+    ownership = build_mir_ownership_program(
+        updated_functions,
+        mir.type_arena,
+        mir.drop_plan_bindings,
+        type_kinds=mir.ownership.type_kinds,
+    )
+    return replace(
+        mir,
+        functions=updated_functions,
+        ownership=ownership,
+    )
 
 
 def optimize_general_mir(mir: GeneralPerformanceMIR) -> GeneralPerformanceMIR:
     verify_general_mir(mir)
     fused = _fuse_collection_pipelines(mir)
+    verify_general_mir(fused)
     functions = []
     for function in fused.functions:
         blocks = []
@@ -1999,9 +2299,17 @@ def optimize_general_mir(mir: GeneralPerformanceMIR) -> GeneralPerformanceMIR:
                 instructions.append(instruction)
             blocks.append(replace(block, instructions=tuple(instructions)))
         functions.append(replace(function, blocks=tuple(blocks)))
+    optimized_functions = tuple(functions)
+    ownership = build_mir_ownership_program(
+        optimized_functions,
+        fused.type_arena,
+        fused.drop_plan_bindings,
+        type_kinds=fused.ownership.type_kinds,
+    )
     optimized = replace(
         mir,
-        functions=tuple(functions),
+        functions=optimized_functions,
+        ownership=ownership,
         optimized=True,
         optimization_passes=(
             "collection_pipeline_fusion",

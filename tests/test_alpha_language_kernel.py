@@ -15,6 +15,7 @@ from merlo.representation_c_backend import (
     RepresentationCBackendError,
     emit_general_c,
 )
+from merlo.mir_ownership import MIROwnershipVerificationError
 from merlo.representation_ir import (
     ArrayDesc,
     CallbackDesc,
@@ -777,9 +778,11 @@ def test_vec_view_of_owned_call_rejects_borrowed_escape() -> None:
         "fn main(input: BytesView) -> UInt64:\n"
         "    return 0\n"
     )
-    hir, rir, _mir, optimized = _layers(source)
-    with pytest.raises(RepresentationCBackendError, match="borrowed result escapes"):
-        emit_general_c(hir, rir, optimized)
+    with pytest.raises(
+        MIROwnershipVerificationError,
+        match="MIROwnershipBorrowEscapes",
+    ):
+        _layers(source)
 
 
 def test_vec_text_get_clones_payload_before_temporary_drop(tmp_path: Path) -> None:
