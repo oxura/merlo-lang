@@ -8,6 +8,7 @@ Vec, Box, Bytes/Text primitives, and the permitted host I/O shim.
 from __future__ import annotations
 
 import hashlib
+import ast as _python_ast
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -1172,14 +1173,38 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             for _, field_type, _ in descriptor.fields
         )
 
+    def _mir_array_value(self, type_name: str) -> bool:
+        descriptor = self.descriptors.get(type_name)
+        return (
+            descriptor is not None
+            and descriptor.kind == "array"
+            and descriptor.element_type is not None
+            and self._mir_plain_value(descriptor.element_type)
+        )
+
+    def _mir_call_safe_value(self, type_name: str) -> bool:
+        return (
+            self._mir_plain_value(type_name)
+            or self._mir_array_value(type_name)
+            or type_name in {"BytesView", "TextView"}
+        )
+
     def _mir_cfg_eligible(
         self,
         function: HIRFunction,
         mir_function: GeneralMIRFunction,
+        *,
+        calls_collections: bool = False,
     ) -> bool:
         if function.requirements or function.ensures:
             return False
-        if not self._mir_plain_value(function.return_type):
+        if (
+            not (
+                self._mir_call_safe_value(function.return_type)
+                if calls_collections
+                else self._mir_plain_value(function.return_type)
+            )
+        ):
             return False
         allowed = {
             "const",
@@ -1195,21 +1220,104 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             "load_field",
             "store_field",
         }
+        if calls_collections:
+            allowed.update(
+                {
+                    "call",
+                    "primitive_call",
+                    "array_literal",
+                    "bounds_checked_index",
+                    "collection_operation",
+                    "implicit_callable",
+                }
+            )
         local_types: dict[str, str] = {}
         for block in mir_function.blocks:
             for instruction in block.instructions:
                 if instruction.op not in allowed:
                     return False
-                if (
-                    instruction.type_name is not None
-                    and not self._mir_plain_value(instruction.type_name)
+                if instruction.type_name is not None and not (
+                    self._mir_call_safe_value(instruction.type_name)
+                    if calls_collections
+                    else self._mir_plain_value(instruction.type_name)
                 ):
                     return False
                 if any(
-                    not self._mir_plain_value(self.hir.type_context.render(type_id))
+                    not (
+                        self._mir_call_safe_value(self.hir.type_context.render(type_id))
+                        if calls_collections
+                        else self._mir_plain_value(self.hir.type_context.render(type_id))
+                    )
                     for type_id in instruction.operand_type_ids
                 ):
                     return False
+                if calls_collections:
+                    if instruction.op == "call":
+                        attrs = instruction.attribute_map
+                        callee = attrs.get("callee")
+                        moves = attrs.get("move_arguments", ())
+                        if not isinstance(callee, str) or moves:
+                            return False
+                        target = next(
+                            (item for item in self.hir.functions if item.name == callee),
+                            None,
+                        )
+                        if target is None:
+                            if not callee.endswith(".len"):
+                                return False
+                        elif not self._mir_call_safe_value(target.return_type):
+                            return False
+                    elif instruction.op == "primitive_call":
+                        attrs = instruction.attribute_map
+                        callee = attrs.get("callee")
+                        contract_symbol = attrs.get("contract_symbol")
+                        if not (
+                            isinstance(callee, str)
+                            and isinstance(contract_symbol, str)
+                            and contract_symbol in {
+                                "BytesView.len",
+                                "TextView.len",
+                                "BytesView.byte",
+                                "TextView.byte",
+                            }
+                        ):
+                            return False
+                    elif instruction.op == "array_literal":
+                        if (
+                            instruction.type_name is None
+                            or not self._mir_array_value(instruction.type_name)
+                        ):
+                            return False
+                    elif instruction.op == "bounds_checked_index":
+                        if (
+                            len(instruction.operand_type_ids) != 2
+                            or not self._mir_array_value(
+                                self.hir.type_context.render(
+                                    instruction.operand_type_ids[0]
+                                )
+                            )
+                        ):
+                            return False
+
+                    elif instruction.op == "collection_operation":
+                        attrs = instruction.attribute_map
+                        if (
+                            attrs.get("collection_operation") != "count"
+                            or attrs.get("collection_kind") != "array"
+                            or not self._mir_array_value(
+                                str(attrs.get("source_collection_type", ""))
+                            )
+                            or len(instruction.operands) != 2
+                        ):
+                            return False
+                    elif instruction.op == "implicit_callable":
+                        if (
+                            not isinstance(
+                                instruction.attribute_map.get("expression"), str
+                            )
+                            or instruction.operands
+                        ):
+                            return False
                 if instruction.op == "store_local":
                     target = instruction.attribute_map.get(
                         "name",
@@ -1218,7 +1326,11 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     if (
                         not isinstance(target, str)
                         or instruction.type_name is None
-                        or not self._mir_plain_value(instruction.type_name)
+                        or not (
+                            self._mir_call_safe_value(instruction.type_name)
+                            if calls_collections
+                            else self._mir_plain_value(instruction.type_name)
+                        )
                     ):
                         return False
                     local_types.setdefault(target.split(".", 1)[0], instruction.type_name)
@@ -1240,6 +1352,16 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             else:
                 return False
         return bool(mir_function.blocks)
+    def _mir_calls_collections_eligible(
+        self,
+        function: HIRFunction,
+        mir_function: GeneralMIRFunction,
+    ) -> bool:
+        return self._mir_cfg_eligible(
+            function,
+            mir_function,
+            calls_collections=True,
+        )
 
     def _mir_scalar_eligible(
         self,
@@ -1384,6 +1506,8 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
         if target is None or len(instruction.operand_type_ids) != 1:
             raise RepresentationCBackendError("MIR scalar cast is malformed")
         source = self.hir.type_context.render(instruction.operand_type_ids[0])
+        if target == "Byte" and source in {"UInt64", "Int64", "Byte"}:
+            return f"merlo_cast_byte((uint64_t)({operand}))"
         if target == "Byte" and source in {"Float32", "Float64"}:
             return f"merlo_cast_byte_from_float64((double)({operand}))"
         if target == "Int64" and source in {"Float32", "Float64"}:
@@ -1395,6 +1519,134 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
         if target == "UInt64" and source == "Int64":
             return f"merlo_cast_uint64((int64_t)({operand}))"
         return f"(({_c_name(target)})({operand}))"
+
+    def _mir_callable_c_expression(
+        self,
+        expression: str,
+        parameter: str,
+    ) -> str:
+        try:
+            node = getattr(_python_ast, "parse")(expression, mode="eval").body
+        except SyntaxError as exc:
+            raise RepresentationCBackendError(
+                f"invalid MIR collection callable: {expression}"
+            ) from exc
+        binary = {
+            _python_ast.Add: "+",
+            _python_ast.Sub: "-",
+            _python_ast.Mult: "*",
+            _python_ast.Div: "/",
+            _python_ast.FloorDiv: "/",
+            _python_ast.Mod: "%",
+            _python_ast.BitOr: "|",
+            _python_ast.BitAnd: "&",
+            _python_ast.BitXor: "^",
+            _python_ast.LShift: "<<",
+            _python_ast.RShift: ">>",
+        }
+        compare = {
+            _python_ast.Eq: "==",
+            _python_ast.NotEq: "!=",
+            _python_ast.Lt: "<",
+            _python_ast.LtE: "<=",
+            _python_ast.Gt: ">",
+            _python_ast.GtE: ">=",
+        }
+
+        def render(current: _python_ast.expr) -> str:
+            if isinstance(current, _python_ast.Name):
+                if current.id in {"__item", parameter}:
+                    return parameter
+                raise RepresentationCBackendError(
+                    f"MIR collection callable captures name: {current.id}"
+                )
+            if isinstance(current, _python_ast.Constant):
+                if isinstance(current.value, bool):
+                    return "true" if current.value else "false"
+                if isinstance(current.value, int):
+                    return (
+                        f"INT64_C({current.value})"
+                        if current.value < 0
+                        else f"UINT64_C({current.value})"
+                    )
+                if isinstance(current.value, float):
+                    return repr(current.value)
+                raise RepresentationCBackendError(
+                    "MIR collection callable literal is unsupported"
+                )
+            if isinstance(current, _python_ast.Attribute):
+                return f"({render(current.value)}).{current.attr}"
+            if isinstance(current, _python_ast.BinOp):
+                operator = binary.get(type(current.op))
+                if operator is None:
+                    raise RepresentationCBackendError(
+                        "MIR collection callable binary operator is unsupported"
+                    )
+                return f"({render(current.left)} {operator} {render(current.right)})"
+            if isinstance(current, _python_ast.BoolOp):
+                operator = "&&" if isinstance(current.op, _python_ast.And) else "||"
+                return f" {operator} ".join(
+                    f"({render(item)})" for item in current.values
+                )
+            if isinstance(current, _python_ast.UnaryOp):
+                if isinstance(current.op, _python_ast.Not):
+                    return f"!({render(current.operand)})"
+                if isinstance(current.op, _python_ast.USub):
+                    return f"-({render(current.operand)})"
+                if isinstance(current.op, _python_ast.UAdd):
+                    return f"+({render(current.operand)})"
+                raise RepresentationCBackendError(
+                    "MIR collection callable unary operator is unsupported"
+                )
+            if isinstance(current, _python_ast.Compare):
+                if len(current.ops) != len(current.comparators):
+                    raise RepresentationCBackendError(
+                        "MIR collection callable comparison is malformed"
+                    )
+                parts = []
+                left = current.left
+                for operator_node, right in zip(
+                    current.ops,
+                    current.comparators,
+                    strict=True,
+                ):
+                    operator = compare.get(type(operator_node))
+                    if operator is None:
+                        raise RepresentationCBackendError(
+                            "MIR collection callable comparison is unsupported"
+                        )
+                    parts.append(f"({render(left)} {operator} {render(right)})")
+                    left = right
+                return " && ".join(parts)
+            if isinstance(current, _python_ast.Call):
+                if (
+                    not isinstance(current.func, _python_ast.Name)
+                    or len(current.args) != 1
+                ):
+                    raise RepresentationCBackendError(
+                        "MIR collection callable function is unsupported"
+                    )
+                callee = next(
+                    (
+                        item
+                        for item in self.hir.functions
+                        if item.name == current.func.id
+                    ),
+                    None,
+                )
+                if callee is None:
+                    raise RepresentationCBackendError(
+                        f"MIR collection callable target is unknown: {current.func.id}"
+                    )
+                return (
+                    f"merlo_fn_{_identifier(callee.name)}"
+                    f"({render(current.args[0])})"
+                )
+            raise RepresentationCBackendError(
+                f"MIR collection callable expression is unsupported: {expression}"
+            )
+
+        return render(node)
 
     def _emit_mir_scalar_function(
         self,
@@ -1588,6 +1840,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             for value, type_name in result_types.items()
         )
         values: dict[str, str] = {}
+        callables: dict[str, GeneralMIRInstruction] = {}
 
         def value_of(value: str) -> str:
             try:
@@ -1607,11 +1860,150 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             temporary = self._mir_scalar_temp(instruction.result)
             lines.append(f"    {temporary} = {expression};")
             values[instruction.result] = temporary
-
         def emit_instruction(instruction: GeneralMIRInstruction) -> None:
-            operands = tuple(value_of(item) for item in instruction.operands)
             attrs = instruction.attribute_map
-            if instruction.op == "const":
+            if instruction.op == "implicit_callable":
+                if instruction.result is None:
+                    raise RepresentationCBackendError(
+                        "MIR implicit callable has no identity"
+                    )
+                callables[instruction.result] = instruction
+                return
+            if instruction.op == "collection_operation":
+                if instruction.result is None or len(instruction.operands) != 2:
+                    raise RepresentationCBackendError(
+                        "MIR collection operation is malformed"
+                    )
+                source = value_of(instruction.operands[0])
+                callable_node = callables.get(instruction.operands[1])
+                if callable_node is None:
+                    raise RepresentationCBackendError(
+                        "MIR collection callable identity is missing"
+                    )
+                source_type = str(attrs.get("source_collection_type", ""))
+                descriptor = self.descriptors.get(source_type)
+                if (
+                    descriptor is None
+                    or descriptor.kind != "array"
+                    or descriptor.element_type is None
+                    or descriptor.length is None
+                ):
+                    raise RepresentationCBackendError(
+                        "MIR collection source is not a fixed array"
+                    )
+                parameter = "__merlo_collection_item"
+                callback = self._mir_callable_c_expression(
+                    str(callable_node.attribute_map["expression"]),
+                    parameter,
+                )
+                temporary = self._mir_scalar_temp(instruction.result)
+                index = f"__merlo_collection_index_{instruction.result}"
+                lines.append(f"    {temporary} = UINT64_C(0);")
+                lines.append(
+                    f"    for (uint64_t {index} = UINT64_C(0); "
+                    f"{index} < UINT64_C({descriptor.length}); ++{index}) {{"
+                )
+                lines.append(
+                    f"        {_c_name(descriptor.element_type)} {parameter} = "
+                    f"({source}).data[{index}];"
+                )
+                lines.append(f"        if ({callback}) ++{temporary};")
+                lines.append("    }")
+                values[instruction.result] = temporary
+                return
+            operands = tuple(value_of(item) for item in instruction.operands)
+            if instruction.op == "call":
+                callee = attrs.get("callee")
+                if not isinstance(callee, str):
+                    raise RepresentationCBackendError("MIR call has no callee")
+                target = next(
+                    (item for item in self.hir.functions if item.name == callee),
+                    None,
+                )
+                if target is not None:
+                    call = (
+                        f"merlo_fn_{_identifier(callee)}"
+                        f"({', '.join(operands)})"
+                    )
+                elif callee.endswith(".len"):
+                    source_name = callee.rsplit(".", 1)[0]
+                    source_type = local_types.get(source_name)
+                    descriptor = self.descriptors.get(source_type or "")
+                    if (
+                        descriptor is None
+                        or descriptor.kind != "array"
+                        or descriptor.length is None
+                    ):
+                        raise RepresentationCBackendError(
+                            f"MIR array length source is unknown: {callee}"
+                        )
+                    call = f"UINT64_C({descriptor.length})"
+                else:
+                    raise RepresentationCBackendError(
+                        f"MIR call target is unsupported: {callee}"
+                    )
+                if instruction.result is None:
+                    lines.append(f"    {call};")
+                else:
+                    define(instruction, call)
+            elif instruction.op == "primitive_call":
+                callee = attrs.get("callee")
+                if not isinstance(callee, str):
+                    raise RepresentationCBackendError(
+                        "MIR primitive call has no callee"
+                    )
+                if callee.endswith(".len") and len(operands) == 1:
+                    define(instruction, f"({operands[0]}).length")
+                elif callee.endswith(".byte") and len(operands) == 2:
+                    receiver = f"&({operands[0]})"
+                    helper = (
+                        "merlo_text_view_load"
+                        if callee.startswith("TextView.")
+                        else "merlo_bytes_load"
+                    )
+                    define(instruction, f"{helper}({receiver}, {operands[1]})")
+                else:
+                    raise RepresentationCBackendError(
+                        f"MIR primitive call is unsupported: {callee}"
+                    )
+            elif instruction.op == "array_literal":
+                descriptor = self.descriptors.get(instruction.type_name or "")
+                if (
+                    descriptor is None
+                    or descriptor.kind != "array"
+                    or descriptor.length is None
+                    or len(operands) != descriptor.length
+                ):
+                    raise RepresentationCBackendError(
+                        "MIR array literal is malformed"
+                    )
+                define(
+                    instruction,
+                    f"({_c_name(instruction.type_name)}){{ .data = "
+                    f"{{{', '.join(operands)}}} }}",
+                )
+            elif instruction.op == "bounds_checked_index":
+                if len(operands) != 2 or len(instruction.operand_type_ids) != 2:
+                    raise RepresentationCBackendError(
+                        "MIR array index is malformed"
+                    )
+                source_type = self.hir.type_context.render(
+                    instruction.operand_type_ids[0]
+                )
+                descriptor = self.descriptors.get(source_type)
+                if descriptor is None or descriptor.length is None:
+                    raise RepresentationCBackendError(
+                        "MIR array index source is malformed"
+                    )
+                lines.append(
+                    f"    if ({operands[1]} >= UINT64_C({descriptor.length})) "
+                    f"merlo_bounds_trap({operands[1]}, UINT64_C({descriptor.length}));"
+                )
+                define(
+                    instruction,
+                    f"({operands[0]}).data[{operands[1]}]",
+                )
+            elif instruction.op == "const":
                 define(
                     instruction,
                     self._mir_literal(instruction.type_name or "Unit", attrs.get("value")),
@@ -1767,6 +2159,12 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             if (
                 mir_function is not None
                 and self._mir_cfg_eligible(function, mir_function)
+            ):
+                emitted.append(self._emit_mir_cfg_function(function, mir_function))
+                continue
+            if (
+                mir_function is not None
+                and self._mir_calls_collections_eligible(function, mir_function)
             ):
                 emitted.append(self._emit_mir_cfg_function(function, mir_function))
                 continue
