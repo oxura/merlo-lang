@@ -11,10 +11,7 @@ import pytest
 
 from merlo import native_syntax
 from merlo.native_c_backend import compile_c_source
-from merlo.representation_c_backend import (
-    RepresentationCBackendError,
-    emit_general_c,
-)
+from merlo.representation_c_backend import emit_general_c
 from merlo.representation_ir import lower_structured_hir_to_rir
 from merlo.representation_mir import (
     lower_rir_to_performance_mir,
@@ -154,7 +151,7 @@ def test_original_and_roundtripped_hir_produce_identical_binaries(
     )
 
 
-def test_backend_visible_native_change_changes_hir_digest_and_c() -> None:
+def test_backend_ignores_legacy_native_artifact_changes() -> None:
     original = _hir()
     payload = copy.deepcopy(original.to_dict())
     constant = _first_encoded_node(payload["native_syntax"], "Constant")
@@ -164,8 +161,7 @@ def test_backend_visible_native_change_changes_hir_digest_and_c() -> None:
     changed = StructuredHIRProgram.from_dict(payload)
 
     assert changed.digest != original.digest
-    assert _generated(changed) != _generated(original)
-
+    assert _generated(changed) == _generated(original)
 
 def test_every_serialized_native_node_is_digest_bound() -> None:
     original = _hir()
@@ -181,7 +177,7 @@ def test_every_serialized_native_node_is_digest_bound() -> None:
         assert changed.digest != original.digest
 
 
-def test_forged_hidden_native_module_is_rejected() -> None:
+def test_forged_hidden_native_module_is_ignored() -> None:
     hir = _hir()
     representation = lower_structured_hir_to_rir(hir)
     mir = optimize_general_mir(
@@ -194,14 +190,10 @@ def test_forged_hidden_native_module_is_rejected() -> None:
     function.name = "forged_main"
     object.__setattr__(hir, "native_module", forged)
 
-    with pytest.raises(
-        RepresentationCBackendError,
-        match="digest-bound HIR native syntax",
-    ):
-        emit_general_c(hir, representation, mir)
+    assert "merlo_fn_main" in emit_general_c(hir, representation, mir).source
 
 
-def test_missing_hidden_module_never_reparses_raw_source(monkeypatch) -> None:
+def test_backend_never_reparses_legacy_artifacts_or_raw_source(monkeypatch) -> None:
     hir = _hir()
     object.__setattr__(hir, "native_module", None)
 
@@ -214,6 +206,9 @@ def test_missing_hidden_module_never_reparses_raw_source(monkeypatch) -> None:
         ROOT / "src" / "merlo" / "representation_c_backend.py"
     ).read_text(encoding="utf-8")
     assert "ast.parse(" not in backend_source
+    assert "native_syntax" not in backend_source
+    assert "native_module" not in backend_source
+    assert "hir.source" not in backend_source
     assert "validate_ffi(hir.source" not in backend_source
 
 

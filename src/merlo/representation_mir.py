@@ -22,8 +22,7 @@ from merlo.representation_ir import (
     TYPE_ARENA_CONTRACT,
     verify_representation_program,
 )
-from merlo.representation_runtime import EvaluationResult, evaluate_structured_hir
-from merlo.structured_hir_v2 import SourceSpan, StructuredHIRProgram
+from merlo.structured_hir_v2 import HIRNode, SourceSpan, StructuredHIRProgram
 from merlo.type_arena import (
     FrozenTypeArena,
     TypeArena,
@@ -49,6 +48,8 @@ _DOMAIN_OPS = {
 def _json_payload(value: object) -> Any:
     if isinstance(value, (TypeId, LayoutId, DropPlanId)):
         return value.to_dict()
+    if isinstance(value, HIRNode):
+        return {"contract": "merlo.hir-node.v1", "value": value.to_dict()}
     if isinstance(value, (tuple, list)):
         return [_json_payload(item) for item in value]
     if isinstance(value, dict):
@@ -88,8 +89,6 @@ def _source_from_dict(value: object) -> SourceSpan:
         value["end_line"],
         value["end_column"],
     )
-
-
 def _hydrate(value: object) -> Any:
     if isinstance(value, dict):
         if (
@@ -102,6 +101,11 @@ def _hydrate(value: object) -> Any:
             and value["contract"] == "merlo.type-id.v1"
         ):
             return _type_id_from_dict(value, "attribute")
+        if (
+            set(value) == {"contract", "value"}
+            and value["contract"] == "merlo.hir-node.v1"
+        ):
+            return HIRNode.from_dict(value["value"])
         return {key: _hydrate(item) for key, item in value.items()}
     if isinstance(value, list):
         return tuple(_hydrate(item) for item in value)

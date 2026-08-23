@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from merlo import native_syntax as ast
+from merlo import typed_codegen as ast
 from merlo.collection_protocol import (
     COLLECTION_OPERATIONS,
     FUSIBLE_COLLECTION_ELEMENTS,
@@ -111,21 +111,9 @@ class GeneralCEmitter(RuntimeEmissionMixin):
             item.name: item
             for item in self.ffi_program.extern_functions
         }
-        try:
-            self.module = hir.backend_module()
-        except (TypeError, ValueError) as exc:
-            raise RepresentationCBackendError(
-                "invalid digest-bound HIR native syntax artifact"
-            ) from exc
-        self.function_nodes = {
-            item.name: item for item in self.module.body if isinstance(item, ast.FunctionDef)
-        }
-        self.closure_nodes = tuple(
-            node
-            for node in ast.walk(self.module)
-            if isinstance(node, ast.Lambda)
-            and getattr(node, "_merlo_closure_metadata", None) is not None
-        )
+        self.module = None
+        self.function_nodes: dict[str, Any] = {}
+        self.closure_nodes: tuple[Any, ...] = ()
         self.current_function: HIRFunction | None = None
         self.env_types: dict[str, str] = {}
         self.pointer_values: set[str] = set()
@@ -156,9 +144,30 @@ class GeneralCEmitter(RuntimeEmissionMixin):
         return (
             f"{constructor}["
             + ",".join(self._descriptor_key_for_argument(item) for item in arguments)
+
             + "]"
         )
 
+    def _ensure_typed_module(self) -> None:
+        if self.module is not None:
+            return
+        try:
+            self.module = ast.lower_hir_program(self.hir)
+        except (TypeError, ValueError) as exc:
+            raise RepresentationCBackendError(
+                "invalid typed HIR codegen program"
+            ) from exc
+        self.function_nodes = {
+            item.name: item
+            for item in self.module.body
+            if isinstance(item, ast.FunctionDef)
+        }
+        self.closure_nodes = tuple(
+            node
+            for node in ast.walk(self.module)
+            if isinstance(node, ast.Lambda)
+            and getattr(node, "_merlo_closure_metadata", None) is not None
+        )
     def _descriptor_key_for_argument(self, type_name: str) -> str:
         descriptor = self.descriptors.get(type_name)
         if descriptor is not None:
@@ -756,6 +765,12 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
 
 
     def _closure_types(self) -> str:
+        if any(
+            node.kind == "ClosureCreate"
+            for function in self.hir.functions
+            for node in function.walk()
+        ):
+            self._ensure_typed_module()
         lines: list[str] = []
         for node in self.closure_nodes:
             closure_id, _parameters, _return_type, captures, _owner = (
@@ -1141,11 +1156,399 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 "}",
             ])
         return "\n".join(lines)
-    def _functions(self) -> str:
-        return "\n\n".join(
-            self._emit_function(self.function_nodes[item.name], item)
-            for item in self.hir.functions
+    def _mir_plain_value(self, type_name: str, active: frozenset[str] = frozenset()) -> bool:
+        if type_name in active:
+            return False
+        descriptor = self.descriptors.get(type_name)
+        if descriptor is None:
+            return False
+        if descriptor.kind == "scalar":
+            return True
+        if descriptor.kind != "record":
+            return False
+        next_active = active | {type_name}
+        return all(
+            self._mir_plain_value(field_type, next_active)
+            for _, field_type, _ in descriptor.fields
         )
+
+    def _mir_scalar_eligible(
+        self,
+        function: HIRFunction,
+        mir_function: GeneralMIRFunction,
+    ) -> bool:
+        if function.requirements or function.ensures:
+            return False
+        if not self._mir_plain_value(function.return_type):
+            return False
+        if len(mir_function.blocks) != 1:
+            return False
+        block = mir_function.blocks[0]
+        if block.terminator.kind != "return":
+            return False
+        allowed = {
+            "const",
+            "load_local",
+            "store_local",
+            "binary",
+            "boolean",
+            "compare",
+            "unary",
+            "numeric_intrinsic",
+            "scalar_cast",
+            "construct_record",
+            "load_field",
+            "store_field",
+        }
+        for instruction in block.instructions:
+            if instruction.op not in allowed:
+                return False
+            if (
+                instruction.type_name is not None
+                and not self._mir_plain_value(instruction.type_name)
+            ):
+                return False
+            if any(
+                not self._mir_plain_value(self.hir.type_context.render(type_id))
+                for type_id in instruction.operand_type_ids
+            ):
+                return False
+            if instruction.op == "store_field":
+                target = instruction.attribute_map.get("target")
+                if not isinstance(target, str) or "." not in target:
+                    return False
+                root = target.split(".", 1)[0]
+                root_type = next(
+                    (
+                        item.type_name
+                        for item in block.instructions
+                        if item.op == "store_local"
+                        and item.attribute_map.get("name") == root
+                    ),
+                    None,
+                )
+                if not isinstance(root_type, str) or not self._mir_plain_value(root_type):
+                    return False
+        return True
+
+    def _mir_scalar_temp(self, value: str) -> str:
+        return f"__merlo_mir_{value}"
+
+    def _mir_literal(self, type_name: str, value: object) -> str:
+        if type_name == "Bool":
+            return "true" if value else "false"
+        if type_name == "Byte":
+            return f"UINT8_C({int(value)})"
+        if type_name == "UInt64":
+            return f"UINT64_C({int(value)})"
+        if type_name == "Int64":
+            return f"INT64_C({int(value)})"
+        if type_name in {"Float32", "Float64"}:
+            return repr(float(value))
+        if type_name == "Unit":
+            return "0"
+        raise RepresentationCBackendError(
+            f"MIR scalar literal has unsupported type: {type_name}"
+        )
+
+    def _mir_scalar_binary(
+        self,
+        type_name: str,
+        operator: str,
+        left: str,
+        right: str,
+        overflow: str | None,
+    ) -> str:
+        checked = {
+            "Byte": {
+                "Add": "merlo_checked_byte_add",
+                "Sub": "merlo_checked_byte_sub",
+                "Mult": "merlo_checked_byte_mult",
+                "Div": "merlo_checked_byte_div",
+                "FloorDiv": "merlo_checked_byte_div",
+                "Mod": "merlo_checked_byte_mod",
+                "LShift": "merlo_checked_byte_lshift",
+                "RShift": "merlo_checked_byte_rshift",
+            },
+            "UInt64": {
+                "Add": "merlo_checked_uint64_add",
+                "Sub": "merlo_checked_uint64_sub",
+                "Mult": "merlo_checked_uint64_mult",
+                "Div": "merlo_checked_uint64_div",
+                "FloorDiv": "merlo_checked_uint64_div",
+                "Mod": "merlo_checked_uint64_mod",
+                "LShift": "merlo_checked_uint64_lshift",
+                "RShift": "merlo_checked_uint64_rshift",
+            },
+            "Int64": {
+                "Add": "merlo_checked_int64_add",
+                "Sub": "merlo_checked_int64_sub",
+                "Mult": "merlo_checked_int64_mult",
+                "Div": "merlo_checked_int64_div",
+                "FloorDiv": "merlo_checked_int64_floor_div",
+                "Mod": "merlo_checked_int64_mod",
+                "LShift": "merlo_checked_int64_lshift",
+                "RShift": "merlo_checked_int64_rshift",
+            },
+        }
+        if overflow == "checked":
+            helper = checked.get(type_name, {}).get(operator)
+            if helper is not None:
+                return f"{helper}({left}, {right})"
+        operators = {
+            "Add": "+",
+            "Sub": "-",
+            "Mult": "*",
+            "Div": "/",
+            "FloorDiv": "/",
+            "Mod": "%",
+            "BitOr": "|",
+            "BitAnd": "&",
+            "BitXor": "^",
+            "LShift": "<<",
+            "RShift": ">>",
+        }
+        symbol = operators.get(operator)
+        if symbol is None:
+            raise RepresentationCBackendError(
+                f"MIR scalar binary operator unsupported: {operator}"
+            )
+        if overflow == "wrapping" and type_name == "Int64" and operator in {
+            "Add",
+            "Sub",
+            "Mult",
+        }:
+            return (
+                f"((int64_t)((uint64_t)({left}) {symbol} "
+                f"(uint64_t)({right})))"
+            )
+        return f"(({left}) {symbol} ({right}))"
+    def _mir_scalar_intrinsic(
+        self,
+        instruction: GeneralMIRInstruction,
+        operands: tuple[str, ...],
+    ) -> str:
+        callee = str(instruction.attribute_map.get("callee", ""))
+        numeric_type = str(
+            instruction.attribute_map.get("numeric_type", instruction.type_name)
+        )
+        if len(operands) != 2:
+            raise RepresentationCBackendError(
+                f"MIR numeric intrinsic arity mismatch: {callee}"
+            )
+        overflow = instruction.attribute_map.get("overflow")
+        if overflow is None:
+            overflow = "checked" if callee.startswith("checked_") else "wrapping"
+        return self._mir_scalar_binary(
+            numeric_type,
+            {
+                "wrapping_add": "Add",
+                "wrapping_sub": "Sub",
+                "wrapping_mul": "Mult",
+                "checked_add": "Add",
+                "checked_sub": "Sub",
+                "checked_mul": "Mult",
+            }.get(callee, ""),
+            operands[0],
+            operands[1],
+            str(overflow),
+        )
+
+    def _mir_scalar_cast(
+        self,
+        instruction: GeneralMIRInstruction,
+        operand: str,
+    ) -> str:
+        target = instruction.type_name
+        if target is None or len(instruction.operand_type_ids) != 1:
+            raise RepresentationCBackendError("MIR scalar cast is malformed")
+        source = self.hir.type_context.render(instruction.operand_type_ids[0])
+        if target == "Byte" and source in {"Float32", "Float64"}:
+            return f"merlo_cast_byte_from_float64((double)({operand}))"
+        if target == "Int64" and source in {"Float32", "Float64"}:
+            return f"merlo_cast_int64_from_float64((double)({operand}))"
+        if target == "Int64" and source in {"Byte", "UInt64"}:
+            return f"merlo_cast_int64((uint64_t)({operand}))"
+        if target == "UInt64" and source in {"Float32", "Float64"}:
+            return f"merlo_cast_uint64_from_float64((double)({operand}))"
+        if target == "UInt64" and source == "Int64":
+            return f"merlo_cast_uint64((int64_t)({operand}))"
+        return f"(({_c_name(target)})({operand}))"
+
+    def _emit_mir_scalar_function(
+        self,
+        function: HIRFunction,
+        mir_function: GeneralMIRFunction,
+    ) -> str:
+        block = mir_function.blocks[0]
+        local_types: dict[str, str] = {}
+        parameter_names = {item.name for item in function.parameters}
+        for instruction in block.instructions:
+            if instruction.op == "store_local":
+                name = instruction.attribute_map.get("name")
+                if isinstance(name, str) and name not in parameter_names:
+                    if instruction.type_name is None:
+                        raise RepresentationCBackendError(
+                            f"MIR local has no type: {name}"
+                        )
+                    local_types[name] = instruction.type_name
+        declarations = [
+            f"    {_c_name(type_name)} {name} = {{0}};"
+            for name, type_name in local_types.items()
+        ]
+        values: dict[str, str] = {}
+        lines = [self._function_signature(function) + " {"]
+        lines.extend(declarations)
+
+        def value_of(value: str) -> str:
+            try:
+                return values[value]
+            except KeyError as exc:
+                raise RepresentationCBackendError(
+                    f"MIR scalar uses undefined value: {value}"
+                ) from exc
+
+        def define(instruction: GeneralMIRInstruction, expression: str) -> None:
+            if instruction.result is None:
+                return
+            if instruction.type_name is None:
+                raise RepresentationCBackendError(
+                    f"MIR scalar result has no type: {instruction.op}"
+                )
+            temporary = self._mir_scalar_temp(instruction.result)
+            lines.append(
+                f"    {_c_name(instruction.type_name)} {temporary} = {expression};"
+            )
+            values[instruction.result] = temporary
+
+        for instruction in block.instructions:
+            operands = tuple(value_of(item) for item in instruction.operands)
+            attrs = instruction.attribute_map
+            if instruction.op == "const":
+                define(
+                    instruction,
+                    self._mir_literal(instruction.type_name or "Unit", attrs.get("value")),
+                )
+            elif instruction.op == "load_local":
+                name = attrs.get("name")
+                if not isinstance(name, str):
+                    raise RepresentationCBackendError("MIR load_local has no name")
+                define(instruction, name)
+            elif instruction.op == "store_local":
+                name = attrs.get("name")
+                if not isinstance(name, str) or len(operands) != 1:
+                    raise RepresentationCBackendError("MIR store_local is malformed")
+                lines.append(f"    {name} = {operands[0]};")
+            elif instruction.op == "binary":
+                if len(operands) != 2:
+                    raise RepresentationCBackendError("MIR binary is malformed")
+                overflow = attrs.get("overflow", attrs.get("signed_overflow"))
+                if (
+                    attrs.get("division_by_zero") == "trap"
+                    or attrs.get("shift_range") == "checked"
+                ):
+                    overflow = "checked"
+                define(
+                    instruction,
+                    self._mir_scalar_binary(
+                        instruction.type_name or "",
+                        str(attrs.get("operator", "")),
+                        operands[0],
+                        operands[1],
+                        str(overflow) if overflow is not None else None,
+                    ),
+                )
+            elif instruction.op == "boolean":
+                if not operands:
+                    raise RepresentationCBackendError("MIR boolean has no operands")
+                symbol = "&&" if attrs.get("operator") == "And" else "||"
+                define(instruction, f" {symbol} ".join(f"({item})" for item in operands))
+            elif instruction.op == "compare":
+                operators = tuple(attrs.get("operators", ()))
+                if len(operators) != len(operands) - 1:
+                    raise RepresentationCBackendError("MIR compare is malformed")
+                symbols = {
+                    "Eq": "==",
+                    "NotEq": "!=",
+                    "Lt": "<",
+                    "LtE": "<=",
+                    "Gt": ">",
+                    "GtE": ">=",
+                }
+                comparisons = [
+                    f"({operands[index]} {symbols[str(operator)]} "
+                    f"{operands[index + 1]})"
+                    for index, operator in enumerate(operators)
+                ]
+                define(instruction, " && ".join(comparisons))
+            elif instruction.op == "unary":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError("MIR unary is malformed")
+                operator = str(attrs.get("operator", ""))
+                if operator == "Not":
+                    expression = f"!({operands[0]})"
+                elif operator == "USub" and instruction.type_name == "Int64":
+                    expression = f"merlo_checked_int64_neg({operands[0]})"
+                elif operator == "USub":
+                    expression = f"-({operands[0]})"
+                elif operator == "UAdd":
+                    expression = f"+({operands[0]})"
+                elif operator == "Invert":
+                    expression = f"~({operands[0]})"
+                else:
+                    raise RepresentationCBackendError(
+                        f"MIR unary operator unsupported: {operator}"
+                    )
+                define(instruction, expression)
+            elif instruction.op == "numeric_intrinsic":
+                define(instruction, self._mir_scalar_intrinsic(instruction, operands))
+            elif instruction.op == "scalar_cast":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError("MIR scalar cast is malformed")
+                define(instruction, self._mir_scalar_cast(instruction, operands[0]))
+            elif instruction.op == "construct_record":
+                descriptor = self.descriptors.get(instruction.type_name or "")
+                if descriptor is None or len(operands) != len(descriptor.fields):
+                    raise RepresentationCBackendError("MIR record construction is malformed")
+                define(
+                    instruction,
+                    f"({_c_name(instruction.type_name)}){{{', '.join(operands)}}}",
+                )
+            elif instruction.op == "load_field":
+                field = attrs.get("field")
+                if len(operands) != 1 or not isinstance(field, str):
+                    raise RepresentationCBackendError("MIR load_field is malformed")
+                define(instruction, f"({operands[0]}).{field}")
+            elif instruction.op == "store_field":
+                target = attrs.get("target")
+                if len(operands) != 1 or not isinstance(target, str):
+                    raise RepresentationCBackendError("MIR store_field is malformed")
+                lines.append(f"    {target} = {operands[0]};")
+            else:
+                raise RepresentationCBackendError(
+                    f"unsupported MIR scalar operation: {instruction.op}"
+                )
+        if block.terminator.value is None:
+            lines.append("    return;")
+        else:
+            lines.append(f"    return {value_of(block.terminator.value)};")
+        lines.append("}")
+        return "\n".join(lines)
+
+    def _functions(self) -> str:
+        mir_functions = {item.name: item for item in self.mir.functions}
+        emitted: list[str] = []
+        for function in self.hir.functions:
+            mir_function = mir_functions.get(function.name)
+            if (
+                mir_function is not None
+                and self._mir_scalar_eligible(function, mir_function)
+            ):
+                emitted.append(self._emit_mir_scalar_function(function, mir_function))
+                continue
+            self._ensure_typed_module()
+            emitted.append(self._emit_function(self.function_nodes[function.name], function))
+        return "\n\n".join(emitted)
 
     def _emit_function(
         self,

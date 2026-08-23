@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from merlo.native_c_backend import compile_c_source
+from merlo import typed_codegen
 from merlo.intrinsics import CONTRACT_GRAPH
 from merlo.representation_c_backend import emit_general_c
 from merlo.representation_ir import lower_structured_hir_to_rir
@@ -356,3 +357,34 @@ def test_invalid_numeric_programs_fail_before_hir(
 ) -> None:
     with pytest.raises(SurfaceElaborationError, match=diagnostic):
         elaborate_surface(parse_surface(source))
+
+def test_scalar_codegen_uses_mir_without_typed_hir_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    source = (
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let value: UInt64 = 2\n"
+        "    return value + 3\n"
+    )
+    canonical = elaborate_surface(parse_surface(source, path="mir-scalar.mlo")).canonical
+    hir = compile_canonical_hir(canonical)
+    representation = lower_structured_hir_to_rir(hir)
+    mir = optimize_general_mir(lower_rir_to_performance_mir(hir, representation))
+
+    def forbidden(_hir: object) -> object:
+        raise AssertionError("scalar MIR path used typed HIR fallback")
+
+    monkeypatch.setattr(typed_codegen, "lower_hir_program", forbidden)
+    generated = emit_general_c(hir, representation, mir)
+    build = compile_c_source(generated.source, output_dir=tmp_path, stem="mir-scalar")
+    assert build.status == "MEASURED", build.stderr
+    assert build.binary_path is not None
+    completed = subprocess.run(
+        [build.binary_path],
+        input=b"",
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0
+    assert b"OK result=5" in completed.stdout

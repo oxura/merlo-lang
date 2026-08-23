@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from merlo import native_syntax as ast
+from merlo import typed_codegen as ast
 from merlo.ffi import pointer_type
 from merlo.representation_ir import TypeDescriptor
 from merlo.type_parser import generic_parts, parse_type
