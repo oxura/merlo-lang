@@ -27,6 +27,7 @@ from merlo.representation_mir import (
     GeneralMIRFunction,
     GeneralMIRInstruction,
     GeneralPerformanceMIR,
+    verify_general_mir,
 )
 from merlo.structured_hir_v2 import (
     HIRFunction,
@@ -88,6 +89,7 @@ class GeneralCEmitter(RuntimeEmissionMixin):
             raise RepresentationCBackendError("RIR/HIR predecessor mismatch")
         if mir.representation_ir_digest != representation.digest:
             raise RepresentationCBackendError("MIR/RIR predecessor mismatch")
+        verify_general_mir(mir, representation)
         self.hir = hir
         self.contract_graph = CONTRACT_GRAPH.bind(hir.type_context)
         self.representation = representation
@@ -6979,6 +6981,7 @@ def emit_general_c(
     representation: RepresentationProgram,
     mir: GeneralPerformanceMIR,
 ) -> GeneratedC:
+    emitter = GeneralCEmitter(hir, representation, mir)
     holes = tuple(
         node
         for function in hir.functions
@@ -7003,7 +7006,7 @@ def emit_general_c(
             0,
             (),
         )
-    return GeneralCEmitter(hir, representation, mir).emit()
+    return emitter.emit()
 
 
 def write_general_c(

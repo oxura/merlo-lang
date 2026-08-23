@@ -15,7 +15,11 @@ from types import MappingProxyType
 from typing import Any, Mapping
 
 from merlo.representation_ir import DropPlanId, LayoutId
-from merlo.representation_mir import GeneralPerformanceMIR, GeneralMIRInstruction
+from merlo.representation_mir import (
+    GeneralMIRInstruction,
+    GeneralPerformanceMIR,
+    verify_general_mir,
+)
 from merlo.type_arena import TypeId
 PARALLEL_IR_SCHEMA_VERSION = 1
 PARALLEL_IR_CONTRACT = "merlo.parallel-ir.v1"
@@ -461,6 +465,7 @@ def lower_performance_mir(mir: GeneralPerformanceMIR) -> ParallelIR:
     """Lower GeneralPerformanceMIR without guessing at unsupported parallelism."""
     if not isinstance(mir, GeneralPerformanceMIR):
         raise _error("ParallelIRInvalidPredecessor", "expected GeneralPerformanceMIR")
+    verify_general_mir(mir)
     predecessor = mir.digest
     operations: list[ParallelOperation] = []
     for function in mir.functions:

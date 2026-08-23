@@ -27,3 +27,7 @@ Small bug fixes, diagnostics that do not change behavior, internal refactors, do
   Implemented 2026-08-21 by PR #82
 - [RFC 0004: Type Arena and Structural Type Identity v1](0004-type-arena-v1.md),
   Implemented 2026-08-21 by PR #81
+- [RFC 0005: RIR and Executable MIR Type Authority v3](0005-rir-mir-type-authority-v3.md),
+  Implemented 2026-08-23 by PR #98
+- [RFC 0006: Executable MIR Ownership SSA v1](0006-mir-ownership-ssa-v1.md),
+  Draft, tracked by issue #101

@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from merlo.compiler import compile_project
+from merlo.mir_ownership import build_mir_ownership_program
 from merlo.representation_mir import (
     GeneralMIRBlock,
     GeneralMIRFunction,
@@ -254,6 +255,11 @@ def test_mir_lowering_proves_or_falls_back() -> None:
             span,
             return_type_id=uint64_id,
         )
+        ownership = build_mir_ownership_program(
+            (function,),
+            type_arena,
+            (),
+        )
         return GeneralPerformanceMIR(
             _DIGEST,
             "2" * 64,
@@ -262,6 +268,7 @@ def test_mir_lowering_proves_or_falls_back() -> None:
             "5" * 64,
             "main",
             (function,),
+            ownership,
             type_arena=type_arena,
             type_arena_digest=type_arena.digest,
         )
