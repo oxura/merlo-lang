@@ -1991,6 +1991,21 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 self._closure_expression(child, local_types)
                 for child in children
             )
+            if kind == "CallbackCall":
+                callee_type = local_types.get(callee)
+                if callee_type is None:
+                    raise RepresentationCBackendError(
+                        f"closure callback target is unknown: {callee}"
+                    )
+                pointer = (
+                    callee
+                    if callee_type.startswith("Borrow[")
+                    else f"&{callee}"
+                )
+                return (
+                    f"({pointer})->call(({pointer})->environment"
+                    f"{', ' if arguments else ''}{arguments})"
+                )
             return f"merlo_fn_{_identifier(callee)}({arguments})"
         raise RepresentationCBackendError(
             f"unsupported typed closure expression: {kind}"
@@ -5055,9 +5070,23 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     raise RepresentationCBackendError(
                         f"MIR callback target is unknown: {callee}"
                     )
+                callback_parameter = next(
+                    (
+                        parameter
+                        for parameter in function.parameters
+                        if parameter.name == callee
+                    ),
+                    None,
+                )
+                callback = (
+                    callee
+                    if callback_parameter is not None
+                    and self._parameter_is_pointer(callback_parameter)
+                    else f"&{callee}"
+                )
                 call = (
-                    f"{callee}->call({callee}->environment, "
-                    f"{', '.join(operands)})"
+                    f"({callback})->call(({callback})->environment"
+                    f"{', ' if operands else ''}{', '.join(operands)})"
                 )
                 if instruction.result is None:
                     lines.append(f"    {call};")
