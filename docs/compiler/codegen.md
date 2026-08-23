@@ -48,11 +48,12 @@ toolchain; it is outside the IR lineage and is not a proof-producing C verifier.
 
 ## Experimental boundary
 
-The alpha targets one C11 host ABI and one native platform. The emitter currently
-walks typed HIR/representation data and validates MIR provenance; the C backend
-does not claim to interpret every MIR instruction as a direct instruction-by-
-instruction lowering proof. Planned `backend/c11.py` and `backend/toolchain.py`
-paths are not current imports.
+The alpha targets one C11 host ABI and one native platform. The emitter
+consumes typed RIR/MIR descriptors, operations, and provenance; HIR is used
+only for predecessor identity and typed metadata validation. It does not
+claim to interpret every MIR instruction as a direct instruction-by-
+instruction lowering proof. Planned `backend/c11.py` and
+`backend/toolchain.py` paths are not current imports.
 
 ## Native core measurement
 

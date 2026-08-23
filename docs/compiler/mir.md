@@ -35,6 +35,15 @@ drop-plan predecessor digests are retained. Optimization preserves source
 identity, ownership provenance, effects, predecessor lineage, `TypeId` bindings,
 and descriptor `LayoutId` bindings.
 
+`verify_general_mir` runs at MIR construction, deserialization, and every
+optimization boundary. It fails closed on a non-frozen or mismatched
+`TypeArena`, predecessor or target-spec digest drift, unknown/duplicate
+`TypeId`/`LayoutId`/`DropPlanId` bindings, parameter/return/operand/result/place
+identity mismatches, duplicate values or instructions, missing CFG targets,
+undefined terminator values, invalid nested attributes, missing drop plans,
+and call-signature drift. The optional RIR predecessor is reverified and its
+descriptor layouts and drop plans must equal the MIR bindings.
+
 ## Failure modes
 
 Missing entry functions, schema drift, domain intrinsics, missing required drop

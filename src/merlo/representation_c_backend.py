@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import ast as _python_ast
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -853,9 +853,8 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
         if pointer_type(parameter.type_name) is not None:
             return True
         descriptor = self.descriptors[parameter.type_name]
-        return (
-            parameter.ownership == "borrow_mut"
-            or parameter.ownership == "borrow"
+        return parameter.ownership in {"borrow_mut", "contained_borrow"} or (
+            parameter.ownership == "borrow"
             and _is_owner(descriptor)
         )
 
@@ -1406,6 +1405,8 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             "bounds_checked_index",
             "callback_call",
             "closure_create",
+            "load_enum_tag",
+            "typed_error",
         }
         result_instructions = {
             instruction.result: instruction
@@ -2571,6 +2572,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
         inline_call_results: set[str] = set()
         inline_construct_results: set[str] = set()
         call_operand_ids: set[str] = set()
+        pointer_call_operand_ids: set[str] = set()
         result_branch_inputs: set[str] = set()
         replacement_names: dict[str, tuple[str, str]] = {}
         replacement_index = 0
@@ -2824,6 +2826,27 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
         }
         for block in mir_function.blocks:
             for instruction in block.instructions:
+                if instruction.op != "call":
+                    continue
+                callee = instruction.attribute_map.get("callee")
+                target = next(
+                    (
+                        item
+                        for item in self.hir.functions
+                        if item.name == callee
+                    ),
+                    None,
+                )
+                if target is None:
+                    continue
+                for index, operand_id in enumerate(instruction.operands):
+                    if (
+                        index < len(target.parameters)
+                        and self._parameter_is_pointer(target.parameters[index])
+                    ):
+                        pointer_call_operand_ids.add(operand_id)
+        for block in mir_function.blocks:
+            for instruction in block.instructions:
                 if instruction.op == "call":
                     call_operand_ids.update(instruction.operands)
                 if instruction.op == "call" and instruction.result is not None:
@@ -2896,50 +2919,63 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     None,
                 )
                 pointer_result = (
-                    descriptor is not None
-                    and (
-                        _is_owner(descriptor)
-                        or instruction.op == "file_line_next"
-                        or (
-                            instruction.op == "load_local"
-                            and local_name in file_line_names
+                    (
+                        instruction.result in pointer_call_operand_ids
+                        and instruction.op == "load_local"
+                        and not (
+                            target_function is not None
+                            and descriptor is not None
+                            and descriptor.kind in {"callback", "closure"}
                         )
                     )
-                    and (
-                        attrs.get("result_ownership") in {"borrow", "borrow_mut"}
-                        or (
-                            instruction.op == "load_field"
-                            and instruction.operands
-                            and descriptor.kind in {
-                                "text",
-                                "vec",
-                                "box",
-                                "map",
-                                "record",
-                                "enum",
-                            }
-                        )
-                        or instruction.op == "file_line_next"
-                        or instruction.op == "bounds_checked_index"
-                        or (
-                            instruction.op == "const"
-                            and descriptor.kind == "text"
-                        )
-                        or (
-                            instruction.op == "load_local"
-                            and local_name in match_payload_names
-                        )
-                        or (
-                            instruction.op == "load_local"
-                            and not (
-                                target_function is not None
-                                and descriptor.kind in {"callback", "closure"}
+                    or (
+                        instruction.op == "load_local"
+                        and local_parameter is not None
+                        and self._parameter_is_pointer(local_parameter)
+                    )
+                    or (
+                        descriptor is not None
+                        and (
+                            _is_owner(descriptor)
+                            or instruction.op == "file_line_next"
+                            or (
+                                instruction.op == "load_local"
+                                and local_name in file_line_names
                             )
                         )
-                        or (
-                            instruction.op == "load_local"
-                            and local_parameter is not None
-                            and self._parameter_is_pointer(local_parameter)
+                        and (
+                            attrs.get("result_ownership")
+                            in {"borrow", "borrow_mut"}
+                            or (
+                                instruction.op == "load_field"
+                                and instruction.operands
+                                and descriptor.kind
+                                in {
+                                    "text",
+                                    "vec",
+                                    "box",
+                                    "map",
+                                    "record",
+                                    "enum",
+                                }
+                            )
+                            or instruction.op == "file_line_next"
+                            or instruction.op == "bounds_checked_index"
+                            or (
+                                instruction.op == "const"
+                                and descriptor.kind == "text"
+                            )
+                            or (
+                                instruction.op == "load_local"
+                                and local_name in match_payload_names
+                            )
+                            or (
+                                instruction.op == "load_local"
+                                and not (
+                                    target_function is not None
+                                    and descriptor.kind in {"callback", "closure"}
+                                )
+                            )
                         )
                     )
                 )
@@ -4582,6 +4618,52 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     f"merlo_closure_make_{closure_id}"
                     f"({', '.join(arguments)})",
                 )
+                return
+            if instruction.op == "typed_error":
+                emit_instruction(replace(instruction, op="call"))
+                return
+            if instruction.op == "load_enum_tag":
+                callee = attrs.get("callee")
+                if (
+                    not isinstance(callee, str)
+                    or not callee.endswith(".tag")
+                    or instruction.operands
+                    or instruction.result is None
+                ):
+                    raise RepresentationCBackendError(
+                        "MIR enum tag load is malformed"
+                    )
+                receiver_name = callee.rsplit(".", 1)[0]
+                parts = receiver_name.split(".")
+                receiver_type = next(
+                    (
+                        item.type_name
+                        for item in function.parameters
+                        if item.name == parts[0]
+                    ),
+                    local_types.get(parts[0]),
+                )
+                receiver = method_receiver_pointer(receiver_name)
+                for field in parts[1:]:
+                    descriptor = self.descriptors.get(receiver_type or "")
+                    if descriptor is None or descriptor.kind != "record":
+                        raise RepresentationCBackendError(
+                            "MIR enum tag receiver is not a record field"
+                        )
+                    receiver_type = next(
+                        (
+                            field_type
+                            for field_name, field_type, _ownership in descriptor.fields
+                            if field_name == field
+                        ),
+                        None,
+                    )
+                descriptor = self.descriptors.get(receiver_type or "")
+                if descriptor is None or descriptor.kind != "enum":
+                    raise RepresentationCBackendError(
+                        "MIR enum tag receiver is not an enum"
+                    )
+                define(instruction, f"({receiver})->tag")
                 return
             if instruction.op == "call":
                 callee = attrs.get("callee")

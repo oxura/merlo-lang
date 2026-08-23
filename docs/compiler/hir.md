@@ -4,9 +4,11 @@
 
 Structured HIR is the typed semantic tree between canonical elaboration and
 physical representation. It preserves source and semantic identity while
-leaving layout and low-level control flow to later stages. The v12 change
-keeps the HIR and ownership/borrow analyses on one compiler-local TypeId
-authority; it does not migrate RIR, MIR, or backend representation identity.
+leaving layout and low-level control flow to later stages. The v13 change
+keeps HIR and ownership/borrow analyses on one compiler-local TypeId
+authority and removes the native-syntax compatibility artifact from the
+production handoff; RIR, MIR, and backend representation identity remain
+downstream contracts.
 
 `compile_canonical_hir(program, entry_function="main")` in
 [`src/merlo/structured_hir_v2.py`](../../src/merlo/structured_hir_v2.py)
@@ -17,13 +19,13 @@ tree is rejected; serialized projections are not compiler input.
 ## Version and contents
 
 The function returns `StructuredHIRProgram`, contract
-`merlo.structured-typed-hir.v12`, schema version `12`. It contains source
+`merlo.structured-typed-hir.v13`, schema version `13`. It contains source
 text/digest, one complete `TypeArena` snapshot and its digest, `HIRTypeDecl`
 values with typed record invariants, `HIRField`/`HIRVariant` values,
 `HIRFunction` records, typed parameters, function contracts, contextual
-`TypedHole` nodes, an entry function, and tree-shaped `HIRNode` bodies. It
-also contains the complete canonical Merlo native-syntax tree used by the C
-adapter and validated typed FFI declarations.
+`TypedHole` nodes, an entry function, tree-shaped `HIRNode` bodies, and
+validated typed FFI declarations. It does not retain a native-syntax
+compatibility artifact; physical lowering consumes typed RIR/MIR.
 
 Each function carries a versioned `merlo.borrow-summary.v4` contract. Its
 semantic `BorrowRelation` values bind direct or contained returned borrows to
@@ -100,7 +102,7 @@ canonical and deterministic; the digest covers the canonical snapshot. A
 reader validates in this order:
 
 1. validate the outer object’s exact keys, contract, schema version, and
-   envelope invariants, rejecting HIR v11 rather than accepting it as a
+   envelope invariants, rejecting HIR v12 rather than accepting it as a
    compatibility path;
 2. restore the `TypeArena` snapshot, require a closed arena, recompute and
    compare `type_arena_digest`, and reject malformed, missing, cyclic, or
@@ -108,9 +110,9 @@ reader validates in this order:
 3. validate HIR-only FFI annotations, requiring every supplied `TypeId` to
    exist in that arena and its canonical spelling to match the retained
    spelling;
-4. restore native syntax and typed HIR records, requiring each supplied
-   `TypeId` to exist in the arena and requiring
-   `arena.canonical(type_id)` to equal the retained canonical HIR spelling;
+4. restore typed HIR records, requiring each supplied `TypeId` to exist in the
+   arena and requiring `arena.canonical(type_id)` to equal the retained
+   canonical HIR spelling;
 5. let `StructuredHIRProgram` validate source digest, uniqueness,
    cross-record identities, and canonical roundtrip invariants.
 
@@ -185,18 +187,16 @@ A missing retained Surface tree, unsupported expressions, invalid map
 specializations, duplicate declarations, a missing `main`, duplicate node
 IDs, forbidden low-level kinds, an open or tampered arena, a missing or
 mismatched `TypeId`, invalid machine state membership, and schema drift raise
-`StructuredHIRCompileError` or `ValueError`. HIR v11 is not readable by the
-v12 reader. The coordinator surfaces construction failures as a production
+`StructuredHIRCompileError` or `ValueError`. HIR v12 is not readable by the
+v13 reader. The coordinator surfaces construction failures as a production
 lowering diagnostic.
 ## Trusted and experimental boundaries
 
-The canonical program identity, digest-bound native syntax and FFI artifacts,
-and HIR spans/IDs form the semantic handoff to later stages. HIR JSON has a
-strict validated deserializer. A retained in-memory native module may witness
-construction consistency, but code generation always restores the serialized
-tree and rejects a mismatching witness. HIR carries ownership and effect
-facts for later checking but is not itself a complete borrow proof or
-physical-layout specification.
+The canonical program identity, HIR spans/IDs, and typed FFI artifacts form
+the semantic handoff to later stages. HIR JSON has a strict validated
+deserializer. Code generation never restores or consumes a native-syntax tree;
+HIR carries ownership and effect facts for later checking but is not itself a
+complete borrow proof or physical-layout specification.
 
 This migration makes ownership, `Place` lookup, borrow provenance, and the
 physical representation boundary TypeId-authoritative through the shared
@@ -208,13 +208,14 @@ rather than upgraded through a compatibility shim. Issue #85 records this
 cutover; issue #86 covers user-defined generic declaration/package provenance;
 issue #72 covers native-syntax removal and executable-MIR backend authority.
 
-The HIR builder and representation backend share Merlo-owned structured
-syntax nodes emitted directly from the typed Surface tree. The node
-vocabulary keeps the old bootstrap shape where that preserves audited
-lowering rules, but the objects, traversal, source locations, and rendering
-are owned by Merlo. The legacy direct-source helper may parse canonical
-snippets through Python before converting them; production project compilation
-does not. HIR intentionally does not model low-level CFG or drop flags.
+The HIR builder produces Merlo-owned structured records from the typed Surface
+tree. The node vocabulary keeps the old bootstrap shape where that preserves
+audited lowering rules, but the objects, traversal, source locations, and
+rendering are owned by Merlo. The representation backend consumes typed RIR/MIR
+and ephemeral typed codegen nodes; it does not consume HIR source or native
+syntax. The legacy direct-source helper may parse canonical snippets through
+Python before converting them; production project compilation does not. HIR
+intentionally does not model low-level CFG or drop flags.
 
 ## Verification commands
 

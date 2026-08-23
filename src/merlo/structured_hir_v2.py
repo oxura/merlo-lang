@@ -1,4 +1,4 @@
-"""Structured Typed HIR v12 for Merlo's general representation milestone.
+"""Structured Typed HIR v13 for Merlo's general representation milestone.
 
 The HIR is deliberately a tree. Control-flow graphs, allocation primitives, drop
 flags, and pointer arithmetic belong to lower layers.
