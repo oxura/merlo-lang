@@ -206,6 +206,8 @@ def _identity_digest(contract: str, payload: object) -> str:
 def _json_payload(value: object) -> Any:
     if isinstance(value, (TypeId, LayoutId, DropPlanId)):
         return value.to_dict()
+    if isinstance(value, HIRNode):
+        return {"contract": "merlo.hir-node.v1", "value": value.to_dict()}
     if isinstance(value, (tuple, list)):
         return [_json_payload(item) for item in value]
     if isinstance(value, dict):
@@ -232,6 +234,11 @@ def _hydrate_identity_payload(value: object) -> Any:
             and value["contract"] == "merlo.type-id.v1"
         ):
             return _type_id_from_dict(value, "attribute")
+        if (
+            set(value) == {"contract", "value"}
+            and value["contract"] == "merlo.hir-node.v1"
+        ):
+            return HIRNode.from_dict(value["value"])
         return {
             str(key): _hydrate_identity_payload(item)
             for key, item in value.items()

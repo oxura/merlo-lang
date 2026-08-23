@@ -11,8 +11,9 @@ Array[UInt64,8]
 
 Several compiler stages historically carried those values as strings. The
 TypeArena/TypeContext boundary is now the semantic authority for structured HIR,
-ownership, Place lookup, and borrow provenance. It does not itself authorize an
-RIR, MIR, or backend representation-identity cutover.
+ownership, Place lookup, borrow provenance, and the TypeId side of the RIR/MIR
+representation boundary. Physical identity remains a separate `LayoutId`
+domain; this arena does not authorize a layout by itself.
 
 ## Boundary and lifecycle
 
@@ -75,8 +76,10 @@ declaration `TypeId`s are stable by qualified nominal name; declaration
 semantics changing is represented by a new `RevisionId`, not by changing the
 nominal type identity. `TypeId` is structural/nominal type identity,
 `SymbolId` is declaration identity, and `RevisionId` is a semantic
-declaration revision. A future `LayoutId`, if introduced, will describe a
-physical layout and is not interchangeable with any of these IDs.
+declaration revision. `LayoutId` identifies one target-specific physical
+layout
+and is not interchangeable with any of these IDs; its hash domain is
+documented in [`representation-ir.md`](representation-ir.md#layoutid-hash-domain).
 
 ## Snapshot and digest
 
@@ -96,16 +99,15 @@ Standalone `TypeRef.from_dict` canonicalizes aliases. Arena snapshots are
 stricter: `TypeArena.from_dict` rejects a serialized alias before identity
 validation, so snapshots have one canonical byte representation.
 
-HIR v12 stores the snapshot plus `type_arena_digest` in
+HIR v13 stores the snapshot plus `type_arena_digest` in
 `StructuredHIRProgram`. The snapshot is closed (`allow_unresolved=false`).
 The reader checks the outer contract, schema version, and envelope invariants
-first; HIR v11 is strictly rejected. The arena is then restored, its
+first; HIR v12 is strictly rejected. The arena is then restored, its
 closedness is required, and the digest is recomputed and compared. HIR-only
-FFI annotations are validated next, then
-native syntax and typed HIR records are restored. Each present `TypeId` must
-exist in the arena, and its canonical spelling must equal the retained
-canonical HIR spelling. Finally, `StructuredHIRProgram` validates source
-digest, uniqueness, cross-record identities, and canonical roundtrip
+FFI annotations are validated next, then typed HIR records are restored. Each
+present `TypeId` must exist in the arena, and its canonical spelling must equal
+the retained canonical HIR spelling. Finally, `StructuredHIRProgram` validates
+source digest, uniqueness, cross-record identities, and canonical roundtrip
 invariants. Every spelling/ID pair is present or absent together. There is
 no fallback parser or compatibility reconstruction.
 
@@ -115,7 +117,7 @@ not.
 
 ## HIR and consumer migration surface
 
-HIR v12 carries `TypeId` beside retained spelling at every HIR-visible type
+HIR v13 carries `TypeId` beside retained spelling at every HIR-visible type
 position. Semantic attribute spellings (closures, holes, result/error,
 intrinsics, casts, foreign calls, collection operations, and map
 specializations) carry paired identities; machine state identities remain
@@ -149,26 +151,28 @@ executable-MIR backend authority. These remain separate boundaries.
 ## Initial scope
 
 Type Arena v1 is a foundation with a complete HIR/ownership/borrow authority
-boundary, not a whole-compiler cutover. This migration:
+boundary and the shared semantic identity input to the RIR/MIR cutover. This
+migration:
 
-- keeps `TypeId`, `TypeRef`, and `TypeArena` as the single arena authority;
-- gives structured HIR schema 12 one closed arena snapshot and digest;
+- keeps `TypeId`, `TypeRef`, and `TypeArena` as the single semantic arena
+  authority;
+- gives structured HIR schema 13 one closed arena snapshot and digest;
 - centralizes structural constructor arity validation;
 - makes `TypePropertyResolver` the first resolver-local production consumer;
 - consistently classifies `Int`, `UInt`, and `Float` aliases by their
   canonical scalar types instead of treating them as unknown owner types;
 - rejects malformed generic arities and unknown generic constructors earlier;
-- preserves existing RIR, MIR, backend, and generated-C semantics while
-  ownership, Place lookup, borrow provenance, and ContractGraph use TypeId
-  authority.
+- preserves generated-C semantics while RIR descriptors and executable MIR
+  carry validated `TypeId` and target-specific `LayoutId` bindings.
 
 The migration proceeds in narrow commits:
 
-1. Add `TypeId` beside existing HIR positions (the HIR v12 migration).
-2. Keep machine state labels in their separate deterministic identity domain;
+1. Add `TypeId` beside existing HIR positions (the HIR v13 migration).
+2. Keep machine state labels in their separate deterministic identity domain.
 3. Migrate ownership, Place lookup, borrow provenance, and ContractGraph
    consumers and remove duplicate parsing (issue #84 scope, now landed).
-4. Migrate RIR descriptors and executable MIR identities (issue #85 scope).
+4. Migrate RIR descriptors and executable MIR identities (issue #85 scope,
+   now landed).
 5. Add user-defined generic declaration/package provenance (issue #86 scope).
 6. Remove native syntax and make the executable-MIR backend authoritative
-   (issue #72 scope).
+   (issue #72 scope, now landed locally).

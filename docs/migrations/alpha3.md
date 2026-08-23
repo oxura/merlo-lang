@@ -1,7 +1,7 @@
 # Migrating from alpha.2 to alpha.3
 > **Current-contract note (issue #85, RIR v6 / MIR v3):** Alpha.3 originally
 > shipped the HIR v10 transition described below. The current development
-> compiler uses HIR v12, `merlo.borrow-summary.v4`, SemanticWorld v19,
+> compiler uses HIR v13, `merlo.borrow-summary.v4`, SemanticWorld v19,
 > `merlo.representation-ir.v6`, and
 > `merlo.performance-mir.general-representation.v3`. Ownership, `Place`
 > lookup, borrow provenance, ContractGraph, semantic HIR attributes, bound FFI
@@ -12,19 +12,19 @@
 > native-syntax removal and executable-MIR backend authority.
 
 Alpha.3 intentionally changes the filesystem and verification models. The
-compiler reports language `0.3`, frontend `8`, canonical `6`, HIR `12`,
+compiler reports language `0.3`, frontend `8`, canonical `6`, HIR `13`,
 Obligation IR `1`, range analysis `1`, bounded symbolic execution `1`,
 optional SMT `1`, property evidence `1`, verification metrics `1`, ChangeIR
 `1`, semantic capsule `1`, semantic impact `1`, patch evidence `1`,
 preservation report `1`, change transaction `1`, RIR `6`, MIR `3`, runtime ABI
 `2`, and SemanticWorld `19`. Earlier lockfiles must be regenerated with the
-alpha.3 compiler; HIR v11, RIR v5, and MIR v2 artifacts are not readable by
+alpha.3 compiler; HIR v12, RIR v5, and MIR v2 artifacts are not readable by
 the current readers.
 
-## Structured HIR v12 and TypeArena
+## Structured HIR v13 and TypeArena
 
 Structured HIR is now serialized as the strict
-`merlo.structured-typed-hir.v12` contract (schema `12`). Every HIR-visible
+`merlo.structured-typed-hir.v13` contract (schema `13`). Every HIR-visible
 type position carries retained canonical diagnostic spelling together with a
 validated `TypeId`, or carries neither. Semantic type attributes carry paired
 IDs as well. Machine state labels use deterministic state IDs outside the
@@ -39,11 +39,11 @@ Each `StructuredHIRProgram` owns one completed local `TypeArena` snapshot and
 the sole interning authority for declarations, functions, nodes, contracts,
 flows, machines, and bound FFI identities. The reader validates outer exact
 keys/contract/schema/invariants, restores the closed arena and checks its
-digest, restores the typed FFI model directly, restores native and typed
-records, then checks source digest, uniqueness, cross-record identities, and
-canonical roundtrip invariants. Each `TypeId` must exist in the arena and
+digest, restores the typed FFI model directly, restores typed records, then
+checks source digest, uniqueness, cross-record identities, and canonical
+roundtrip invariants. Each `TypeId` must exist in the arena and
 `arena.canonical(type_id)` must equal the retained canonical HIR spelling. The
-reader never reparses spelling and has no post-load fallback parser. HIR v11
+reader never reparses spelling and has no post-load fallback parser. HIR v12
 artifacts are rejected rather than upgraded through a compatibility shim.
 
 Aliases are normalized before interning (`Int`/`UInt`/`Float` map to

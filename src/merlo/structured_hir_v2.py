@@ -1,4 +1,4 @@
-"""Structured Typed HIR v12 for Merlo's general representation milestone.
+"""Structured Typed HIR v13 for Merlo's general representation milestone.
 
 The HIR is deliberately a tree. Control-flow graphs, allocation primitives, drop
 flags, and pointer arithmetic belong to lower layers.
@@ -55,8 +55,8 @@ from merlo.ownership import (
     _stable_id,
 )
 
-STRUCTURED_HIR_SCHEMA_VERSION = 12
-STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v12"
+STRUCTURED_HIR_SCHEMA_VERSION = 13
+STRUCTURED_HIR_CONTRACT = "merlo.structured-typed-hir.v13"
 _SCALAR_TYPES = frozenset(
     {
         "Bool",
@@ -170,6 +170,8 @@ def _hydrate_typed_attributes(value: object) -> Any:
     if isinstance(value, Mapping):
         if set(value) == {"contract", "value"} and value.get("contract") == "merlo.type-id.v1":
             return TypeId.from_dict(value)
+        if set(value) == {"contract", "value"} and value.get("contract") == "merlo.hir-node.v1":
+            return HIRNode.from_dict(value["value"])
         return {
             str(key): _hydrate_typed_attributes(item)
             for key, item in value.items()
@@ -180,6 +182,8 @@ def _hydrate_typed_attributes(value: object) -> Any:
 def _json_payload(value: object) -> Any:
     if isinstance(value, TypeId):
         return value.to_dict()
+    if isinstance(value, HIRNode):
+        return {"contract": "merlo.hir-node.v1", "value": value.to_dict()}
     if isinstance(value, (list, tuple)):
         return [_json_payload(item) for item in value]
     if isinstance(value, Mapping):
@@ -357,6 +361,59 @@ class HIRNode:
             "attributes": _json_payload(dict(self.attributes)),
             "children": [item.to_dict() for item in self.children],
         }
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "HIRNode":
+        expected = {
+            "id",
+            "kind",
+            "source",
+            "scope_id",
+            "type",
+            "type_id",
+            "ownership",
+            "effects",
+            "symbol_id",
+            "revision_id",
+            "attributes",
+            "children",
+        }
+        if set(value) != expected:
+            raise ValueError("HIR node schema mismatch")
+        source = value["source"]
+        if not isinstance(source, Mapping):
+            raise ValueError("HIR node source must be an object")
+        attributes = value["attributes"]
+        if not isinstance(attributes, Mapping):
+            raise ValueError("HIR node attributes must be an object")
+        type_id = (
+            None
+            if value["type_id"] is None
+            else TypeId.from_dict(value["type_id"])
+        )
+        return cls(
+            value["id"],
+            value["kind"],
+            SourceSpan(
+                source["path"],
+                source["line"],
+                source["column"],
+                source["end_line"],
+                source["end_column"],
+            ),
+            value["scope_id"],
+            value["type"],
+            type_id,
+            value["ownership"],
+            tuple(value["effects"]),
+            value["symbol_id"],
+            value["revision_id"],
+            tuple(
+                (str(key), _hydrate_typed_attributes(item))
+                for key, item in attributes.items()
+            ),
+            tuple(cls.from_dict(item) for item in value["children"]),
+        )
 
 
 @dataclass(frozen=True)
@@ -715,13 +772,11 @@ class StructuredHIRProgram:
     types: tuple[HIRTypeDecl, ...]
     functions: tuple[HIRFunction, ...]
     entry_function: str
-    native_syntax_json: str
     ffi_program: FFIProgram
     type_context: TypeContext
     type_arena_digest: str
     schema_version: int = STRUCTURED_HIR_SCHEMA_VERSION
     contract: str = STRUCTURED_HIR_CONTRACT
-    native_module: ast.Module | None = field(default=None, repr=False, compare=False)
     flows: tuple[HIRFlow, ...] = ()
     machines: tuple[HIRMachine, ...] = ()
 
@@ -877,14 +932,6 @@ class StructuredHIRProgram:
                 for node in owner.walk():
                     check_type(node.type_name, node.type_id, "node type")
                     check_attributes(node)
-        try:
-            artifact_module = ast.module_from_json(self.native_syntax_json)
-        except (TypeError, ValueError) as exc:
-            raise ValueError("invalid Structured HIR native syntax artifact") from exc
-        if self.native_module is not None and (
-            ast.module_to_json(self.native_module) != self.native_syntax_json
-        ):
-            raise ValueError("Structured HIR hidden native module mismatch")
         if not isinstance(self.ffi_program, FFIProgram):
             raise ValueError("invalid Structured HIR FFI artifact")
         _validate_ffi_types(self.ffi_program, self.type_context)
@@ -925,13 +972,6 @@ class StructuredHIRProgram:
         }
         if actual & forbidden:
             raise ValueError("CFG or raw-memory detail escaped into Structured HIR")
-        artifact_functions = [
-            item.name
-            for item in artifact_module.body
-            if isinstance(item, ast.FunctionDef)
-        ]
-        if artifact_functions != function_names:
-            raise ValueError("Structured HIR/native syntax function mismatch")
 
     @property
     def digest(self) -> str:
@@ -954,17 +994,6 @@ class StructuredHIRProgram:
     def function(self, name: str) -> HIRFunction:
         return next(item for item in self.functions if item.name == name)
 
-    def backend_module(self) -> ast.Module:
-        """Restore backend syntax only from the digest-bound artifact.
-
-        A retained in-memory module is accepted solely as a consistency witness;
-        it is never the object consumed by code generation.
-        """
-        if self.native_module is not None and (
-            ast.module_to_json(self.native_module) != self.native_syntax_json
-        ):
-            raise ValueError("Structured HIR hidden native module mismatch")
-        return ast.module_from_json(self.native_syntax_json)
 
     def to_dict(self) -> dict[str, Any]:
         if self.type_context.arena.digest != self.type_arena_digest:
@@ -978,7 +1007,6 @@ class StructuredHIRProgram:
             "entry_function": self.entry_function,
             "type_arena": self.type_context.arena.to_dict(),
             "type_arena_digest": self.type_arena_digest,
-            "native_syntax": json.loads(self.native_syntax_json),
             "ffi": _ffi_hir_dict(self.ffi_program, self.type_context.arena),
             "types": [item.to_dict() for item in self.types],
             "functions": [item.to_dict() for item in self.functions],
@@ -1026,8 +1054,7 @@ class StructuredHIRProgram:
             {
                 "schema_version", "contract", "path", "source", "source_sha256",
                 "entry_function", "type_arena", "type_arena_digest",
-                "native_syntax", "ffi", "types", "functions", "flows", "machines",
-                "invariants",
+                "ffi", "types", "functions", "flows", "machines", "invariants",
             },
             "Structured HIR",
         )
@@ -1050,9 +1077,6 @@ class StructuredHIRProgram:
 
         ffi_program = FFIProgram.from_dict(raw["ffi"])
 
-        native = _artifact_keys(raw["native_syntax"], {"schema_version", "contract", "module"}, "native syntax artifact")
-        native_module = ast.module_from_dict(native)
-        native_json = ast.module_to_json(native_module)
         types = tuple(
             _type_decl_from_dict(item, arena)
             for item in _artifact_list(raw["types"], "HIR types")
@@ -1075,7 +1099,6 @@ class StructuredHIRProgram:
             types,
             functions,
             _artifact_text(raw["entry_function"], "HIR entry function"),
-            native_json,
             ffi_program,
             context,
             arena_digest,
@@ -1874,11 +1897,21 @@ class _HIRBuilder:
                 if isinstance(node.value, bytes)
                 else "Unit"
             )
+            option_variants = _sum_variants(expected)
             type_name = (
                 expected
-                if expected in _LANGUAGE_NUMERIC_TYPES
-                and inferred_type in _LANGUAGE_NUMERIC_TYPES
-                else inferred_type
+                if (
+                    node.value is None
+                    and expected is not None
+                    and option_variants is not None
+                    and "NoneValue" in option_variants
+                )
+                else (
+                    expected
+                    if expected in _LANGUAGE_NUMERIC_TYPES
+                    and inferred_type in _LANGUAGE_NUMERIC_TYPES
+                    else inferred_type
+                )
             )
             attributes: dict[str, Any] = {"value": node.value}
             if isinstance(node.value, bytes):
@@ -2240,6 +2273,7 @@ class _HIRBuilder:
                     if hasattr(node, attribute):
                         setattr(capture, attribute, getattr(node, attribute))
                 capture_nodes.append(self.expression(capture))
+            closure_body = self.expression(node.body, expected=return_type)
             return self._new_node(
                 node,
                 "ClosureCreate",
@@ -2251,6 +2285,7 @@ class _HIRBuilder:
                     "return_type": return_type,
                     "captures": captures,
                     "owner": owner,
+                    "closure_body": closure_body,
                 },
                 children=capture_nodes,
             )
@@ -2910,6 +2945,7 @@ class _HIRBuilder:
                 and method_signature.operation_family == "box"
             ):
                 kind = "BoxOperation"
+                operation_children = (self.expression(node.func.value),) + arguments
                 if not method_signature.accepts_arity(len(arguments)):
                     raise StructuredHIRCompileError(
                         f"{self.path}:{node.lineno}: unsupported Box operation "
@@ -2920,6 +2956,7 @@ class _HIRBuilder:
                 and method_signature.operation_family == "vec"
             ):
                 kind = "VecOperation"
+                operation_children = (self.expression(node.func.value),) + arguments
                 if not method_signature.accepts_arity(len(arguments)):
                     raise StructuredHIRCompileError(
                         f"{self.path}:{node.lineno}: unsupported Vec operation "
@@ -4083,11 +4120,9 @@ def compile_structured_hir(
         types=tuple(types.values()),
         functions=functions,
         entry_function=entry_function,
-        native_syntax_json=ast.module_to_json(module),
         ffi_program=ffi_program,
         type_context=type_context,
         type_arena_digest=frozen_arena.digest,
-        native_module=module,
     )
 
 
@@ -4222,11 +4257,9 @@ def compile_canonical_hir(
         types=tuple(types.values()),
         functions=functions,
         entry_function=entry_function,
-        native_syntax_json=ast.module_to_json(module),
         ffi_program=ffi_program,
         type_context=type_context,
         type_arena_digest=frozen_arena.digest,
-        native_module=module,
         flows=flows,
         machines=machines,
     )

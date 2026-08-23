@@ -28,6 +28,24 @@ from HIR, so downstream inspection retains interprocedural direct and
 contained-borrow origins without making witnesses semantic. RIR v6 requires
 the closed predecessor `FrozenTypeArena`; retained spellings are diagnostic
 projections only.
+
+## LayoutId hash domain
+
+`LayoutId` is the opaque SHA-256 identity of a physical descriptor. Its
+canonical payload uses contract `merlo.layout-id.v1`, schema `1`, the target
+specification contract and digest, target triple, endianness, pointer width,
+address space, ABI policy, ABI/preferred alignment, size, representation kind,
+packing, ABI class, field offsets plus child `LayoutId`s, enum tag encoding
+plus payload `LayoutId`s, payload offsets, niche policy, collection length,
+and element/payload/key/value child `LayoutId`s. The payload is serialized as
+UTF-8 JSON with sorted keys, no insignificant whitespace, and SHA-256 is
+applied to those bytes.
+
+Semantic `TypeId`, declaration names, source spans, drop plans, and diagnostic
+borrow witnesses are not part of this domain. Changing physical target policy
+or any physical child layout therefore changes the `LayoutId`; changing only
+semantic spelling or diagnostic provenance does not.
+
 The RIR digest canonicalizes those diagnostic witness arrays to empty values;
 changing only a witness therefore preserves both predecessor and RIR hashes.
 

@@ -8,46 +8,38 @@ Vec, Box, Bytes/Text primitives, and the permitted host I/O shim.
 from __future__ import annotations
 
 import hashlib
+import ast as _python_ast
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
-from merlo import native_syntax as ast
-from merlo.collection_protocol import (
-    COLLECTION_OPERATIONS,
-    FUSIBLE_COLLECTION_ELEMENTS,
-    collection_result_type,
-    collection_shape,
-)
 from merlo.ffi import pointer_type
 from merlo.representation_ir import RepresentationProgram
 from merlo.intrinsics import (
     CONTRACT_GRAPH,
     TypeConstructorId,
     INTRINSIC_SIGNATURES,
-    format_intrinsic_arity,
     intrinsic_signature,
 )
-from merlo.representation_mir import GeneralPerformanceMIR
+from merlo.representation_mir import (
+    GeneralMIRBlock,
+    GeneralMIRFunction,
+    GeneralMIRInstruction,
+    GeneralPerformanceMIR,
+)
 from merlo.structured_hir_v2 import (
     HIRFunction,
     StructuredHIRProgram,
 )
 from merlo.version import VERSIONS
-from merlo.type_parser import generic_arguments, generic_parts
-from merlo.type_arena import TypeArenaError, TypeId
+from merlo.type_parser import generic_arguments
 from merlo.representation_c_types import (
-    _array_parts,
     _callback_parts,
     _c_name,
-    _generic,
     _identifier,
     _is_owner,
-    _map_entry_types,
-    _map_types,
     _result_types,
-    _type_from_annotation,
 )
 from merlo.representation_c_runtime import RuntimeEmissionMixin
 
@@ -111,39 +103,13 @@ class GeneralCEmitter(RuntimeEmissionMixin):
             item.name: item
             for item in self.ffi_program.extern_functions
         }
-        try:
-            self.module = hir.backend_module()
-        except (TypeError, ValueError) as exc:
-            raise RepresentationCBackendError(
-                "invalid digest-bound HIR native syntax artifact"
-            ) from exc
-        self.function_nodes = {
-            item.name: item for item in self.module.body if isinstance(item, ast.FunctionDef)
-        }
         self.closure_nodes = tuple(
             node
-            for node in ast.walk(self.module)
-            if isinstance(node, ast.Lambda)
-            and getattr(node, "_merlo_closure_metadata", None) is not None
+            for function in hir.functions
+            for node in function.walk()
+            if node.kind == "ClosureCreate"
         )
-        self.current_function: HIRFunction | None = None
-        self.env_types: dict[str, str] = {}
-        self.pointer_values: set[str] = set()
-        self.owned_locals: dict[str, str] = {}
-        self.pending_expression_lines: list[str] = []
-        self.pending_expression_drops: list[str] = []
-        self.temporary_declarations: list[tuple[str, str]] = []
-        self.temporary_ordinal = 0
-        self.return_ordinal = 0
-        self.loop_ordinal = 0
-        self.loop_exit_labels: list[str] = []
-        self.match_depth = 0
-        self.expression_context = "statement"
-        self.returning_borrowed = False
-        self.assigning_borrowed = False
-        self.current_ensures: tuple[ast.AST, ...] = ()
-        self.contract_result_name: str | None = None
-        self.indent = 0
+
     def _descriptor_key(self, type_name: str) -> str:
         descriptor = self.descriptors[type_name]
         if descriptor.source_type_identity is not None:
@@ -156,6 +122,7 @@ class GeneralCEmitter(RuntimeEmissionMixin):
         return (
             f"{constructor}["
             + ",".join(self._descriptor_key_for_argument(item) for item in arguments)
+
             + "]"
         )
 
@@ -758,9 +725,15 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
     def _closure_types(self) -> str:
         lines: list[str] = []
         for node in self.closure_nodes:
-            closure_id, _parameters, _return_type, captures, _owner = (
-                node._merlo_closure_metadata
-            )
+            closure_id = node.attribute_map.get("closure_id")
+            captures = node.attribute_map.get("captures", ())
+            if (
+                not isinstance(closure_id, str)
+                or not isinstance(captures, (list, tuple))
+            ):
+                raise RepresentationCBackendError(
+                    "typed closure metadata is malformed"
+                )
             fields = " ".join(
                 f"{_c_name(type_name)} {name};"
                 for name, type_name, _ownership in captures
@@ -847,6 +820,9 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             if not self._is_descriptor_alias(descriptor.name):
                 continue
             primary = self._descriptor_aliases[descriptor.name]
+            lines.append(
+                f"typedef {_c_name(primary)} {_c_name(descriptor.name)};"
+            )
             if descriptor.kind != "enum":
                 continue
             if all(payload is None for _, payload, _ in descriptor.variants):
@@ -877,9 +853,8 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
         if pointer_type(parameter.type_name) is not None:
             return True
         descriptor = self.descriptors[parameter.type_name]
-        return (
-            parameter.ownership == "borrow_mut"
-            or parameter.ownership == "borrow"
+        return parameter.ownership in {"borrow_mut", "contained_borrow"} or (
+            parameter.ownership == "borrow"
             and _is_owner(descriptor)
         )
 
@@ -1141,168 +1116,5178 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 "}",
             ])
         return "\n".join(lines)
-    def _functions(self) -> str:
-        return "\n\n".join(
-            self._emit_function(self.function_nodes[item.name], item)
-            for item in self.hir.functions
+    def _mir_plain_value(self, type_name: str, active: frozenset[str] = frozenset()) -> bool:
+        if type_name in active:
+            return False
+        descriptor = self.descriptors.get(type_name)
+        if descriptor is None:
+            return False
+        if descriptor.kind == "scalar":
+            return True
+        if descriptor.kind != "record":
+            return False
+        next_active = active | {type_name}
+        return all(
+            self._mir_plain_value(field_type, next_active)
+            for _, field_type, _ in descriptor.fields
         )
 
-    def _emit_function(
-        self,
-        node: ast.FunctionDef,
-        function: HIRFunction,
-    ) -> str:
-        self.current_function = function
-        self.current_ensures = tuple(
-            getattr(node, "_merlo_ensures", ())
+    def _mir_array_value(self, type_name: str) -> bool:
+        descriptor = self.descriptors.get(type_name)
+        return (
+            descriptor is not None
+            and descriptor.kind == "array"
+            and descriptor.element_type is not None
+            and self._mir_plain_value(descriptor.element_type)
         )
-        self.contract_result_name = None
-        self.env_types = {
-            item.name: item.type_name for item in function.parameters
-        }
-        self.pointer_values = {
-            item.name
-            for item in function.parameters
-            if self._parameter_is_pointer(item)
-        }
-        self.borrowed_owner_bindings = {
-            item.name
-            for item in function.parameters
-            if item.ownership in {"borrow", "borrow_mut"}
-            and _is_owner(self.descriptors[item.type_name])
-        }
-        self.owned_locals = {
-            item.name: item.type_name
-            for item in function.parameters
-            if item.ownership == "owned"
-            and _is_owner(self.descriptors[item.type_name])
-        }
-        self.pending_expression_lines = []
-        self.pending_expression_drops = []
-        self.temporary_declarations = []
-        self.temporary_ordinal = 0
-        self.expression_context = "statement"
-        self.returning_borrowed = False
-        self.assigning_borrowed = False
-        for hir_node in function.walk():
-            if hir_node.kind in {"LetBinding", "VarBinding"}:
-                binding_name = hir_node.attribute_map.get("name")
-                if isinstance(binding_name, str) and hir_node.type_name:
-                    self.env_types[binding_name] = hir_node.type_name
-        for child in ast.walk(node):
-            if isinstance(child, ast.Assign) and isinstance(child.targets[0], ast.Name):
-                binding_name = child.targets[0].id
-                if self._is_borrow_expression(child.value):
-                    self.pointer_values.add(binding_name)
-                    self.owned_locals.pop(binding_name, None)
-                    type_name = self.env_types.get(binding_name)
-                    if (
-                        type_name is not None
-                        and _is_owner(self.descriptors[type_name])
-                    ):
-                        self.borrowed_owner_bindings.add(binding_name)
-            if isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name):
-                type_name = _type_from_annotation(child.annotation)
-                self.env_types[child.target.id] = type_name
-                if self._is_borrow_expression(child.value):
-                    self.pointer_values.add(child.target.id)
-                    self.owned_locals.pop(child.target.id, None)
-                    if _is_owner(self.descriptors[type_name]):
-                        self.borrowed_owner_bindings.add(child.target.id)
-        declarations = []
-        parameter_names = {item.name for item in function.parameters}
-        for name, type_name in self.env_types.items():
-            if name in parameter_names:
-                continue
-            if name in self.pointer_values:
-                declarations.append(f"    {_c_name(type_name)} *{name} = NULL;")
-            elif _is_owner(self.descriptors[type_name]):
-                declarations.append(
-                    f"    {_c_name(type_name)} {name} = merlo_zero_{_identifier(type_name)}();"
-                )
-            else:
-                declarations.append(f"    {_c_name(type_name)} {name} = {{0}};")
-        self.indent = 1
-        body = []
-        for statement in node.body:
-            body.extend(self._statement(statement))
+
+    def _mir_call_safe_value(self, type_name: str) -> bool:
+        return (
+            self._mir_plain_value(type_name)
+            or self._mir_array_value(type_name)
+            or type_name in {"BytesView", "TextView"}
+        )
+
+    def _mir_cfg_eligible(
+        self,
+        function: HIRFunction,
+        mir_function: GeneralMIRFunction,
+        *,
+        calls_collections: bool = False,
+    ) -> bool:
+        if function.requirements or function.ensures:
+            return False
         if (
-            function.return_type == "Unit"
-            and not any(
-                isinstance(item, ast.Return)
-                for item in ast.walk(node)
+            not (
+                self._mir_call_safe_value(function.return_type)
+                if calls_collections
+                else self._mir_plain_value(function.return_type)
             )
         ):
-            body.extend(
-                self._contract_checks(
-                    self.current_ensures,
-                    "ensure",
-                    "    ",
+            return False
+        allowed = {
+            "const",
+            "load_local",
+            "store_local",
+            "binary",
+            "boolean",
+            "compare",
+            "unary",
+            "numeric_intrinsic",
+            "scalar_cast",
+            "construct_record",
+            "load_field",
+            "store_field",
+        }
+        if calls_collections:
+            allowed.update(
+                {
+                    "call",
+                    "primitive_call",
+                    "array_literal",
+                    "bounds_checked_index",
+                    "collection_operation",
+                    "fused_collection_pipeline",
+                    "implicit_callable",
+                }
+            )
+        local_types: dict[str, str] = {}
+        for block in mir_function.blocks:
+            for instruction in block.instructions:
+                if instruction.op not in allowed:
+                    return False
+                if instruction.type_name is not None and not (
+                    self._mir_call_safe_value(instruction.type_name)
+                    if calls_collections
+                    else self._mir_plain_value(instruction.type_name)
+                ):
+                    return False
+                if any(
+                    not (
+                        self._mir_call_safe_value(self.hir.type_context.render(type_id))
+                        if calls_collections
+                        else self._mir_plain_value(self.hir.type_context.render(type_id))
+                    )
+                    for type_id in instruction.operand_type_ids
+                ):
+                    return False
+                if calls_collections:
+                    if instruction.op == "call":
+                        attrs = instruction.attribute_map
+                        callee = attrs.get("callee")
+                        moves = attrs.get("move_arguments", ())
+                        if not isinstance(callee, str) or moves:
+                            return False
+                        target = next(
+                            (item for item in self.hir.functions if item.name == callee),
+                            None,
+                        )
+                        if target is None:
+                            if not callee.endswith(".len"):
+                                return False
+                        elif not self._mir_call_safe_value(target.return_type):
+                            return False
+                    elif instruction.op == "primitive_call":
+                        attrs = instruction.attribute_map
+                        callee = attrs.get("callee")
+                        contract_symbol = attrs.get("contract_symbol")
+                        if not (
+                            isinstance(callee, str)
+                            and isinstance(contract_symbol, str)
+                            and contract_symbol in {
+                                "BytesView.len",
+                                "TextView.len",
+                                "BytesView.byte",
+                                "TextView.byte",
+                            }
+                        ):
+                            return False
+                    elif instruction.op == "array_literal":
+                        if (
+                            instruction.type_name is None
+                            or not self._mir_array_value(instruction.type_name)
+                        ):
+                            return False
+                    elif instruction.op == "bounds_checked_index":
+                        if (
+                            len(instruction.operand_type_ids) != 2
+                            or not self._mir_array_value(
+                                self.hir.type_context.render(
+                                    instruction.operand_type_ids[0]
+                                )
+                            )
+                        ):
+                            return False
+
+                    elif instruction.op == "collection_operation":
+                        attrs = instruction.attribute_map
+                        source_collection_type = str(
+                            attrs.get("source_collection_type", "")
+                        )
+                        collection_kind = attrs.get("collection_kind")
+                        descriptor = self.descriptors.get(source_collection_type)
+                        if (
+                            attrs.get("collection_operation") != "count"
+                            or descriptor is None
+                            or descriptor.element_type is None
+                            or collection_kind
+                            not in {"array", "vec"}
+                            or (
+                                collection_kind == "array"
+                                and (
+                                    descriptor.kind != "array"
+                                    or descriptor.length is None
+                                )
+                            )
+                            or (
+                                collection_kind == "vec"
+                                and descriptor.kind != "vec"
+                            )
+                            or not self._mir_plain_value(descriptor.element_type)
+                        ):
+                            return False
+                    elif instruction.op == "implicit_callable":
+                        if (
+                            not isinstance(
+                                instruction.attribute_map.get("expression"),
+                                str,
+                            )
+                            or instruction.operands
+                        ):
+                            return False
+                if instruction.op == "store_local":
+                    target = instruction.attribute_map.get(
+                        "name",
+                        instruction.attribute_map.get("target"),
+                    )
+                    if (
+                        not isinstance(target, str)
+                        or instruction.type_name is None
+                        or not (
+                            self._mir_call_safe_value(instruction.type_name)
+                            if calls_collections
+                            else self._mir_plain_value(instruction.type_name)
+                        )
+                    ):
+                        return False
+                    local_types.setdefault(target.split(".", 1)[0], instruction.type_name)
+                if instruction.op == "store_field":
+                    target = instruction.attribute_map.get("target")
+                    if not isinstance(target, str) or "." not in target:
+                        return False
+                    if target.split(".", 1)[0] not in local_types:
+                        return False
+            terminator = block.terminator
+            if terminator.kind == "branch":
+                if len(terminator.targets) != 2 or terminator.value is None:
+                    return False
+            elif terminator.kind == "jump":
+                if len(terminator.targets) != 1:
+                    return False
+            elif terminator.kind == "return":
+                pass
+            else:
+                return False
+        return bool(mir_function.blocks)
+    def _mir_calls_collections_eligible(
+        self,
+        function: HIRFunction,
+        mir_function: GeneralMIRFunction,
+    ) -> bool:
+        return self._mir_cfg_eligible(
+            function,
+            mir_function,
+            calls_collections=True,
+        )
+
+    def _mir_ownership_ffi_eligible(
+        self,
+        function: HIRFunction,
+        mir_function: GeneralMIRFunction,
+    ) -> bool:
+        allowed = {
+            "allocate",
+            "allocate_deferred",
+            "open_file_reader",
+            "file_open_read",
+            "bounds_check",
+            "borrow_key",
+            "checked_growth",
+            "checked_uint64_add",
+            "copy_key_if_vacant",
+            "pass",
+            "drop_value",
+            "return",
+            "borrow_lines",
+            "invalidate_line_borrow",
+            "file_line_next",
+            "file_lines",
+            "break",
+            "continue",
+            "const",
+            "load_local",
+            "store_local",
+            "aug_assign",
+            "binary",
+            "boolean",
+            "compare",
+            "unary",
+            "numeric_intrinsic",
+            "scalar_cast",
+            "construct_enum",
+            "construct_record",
+            "load_field",
+            "store_field",
+            "result_branch",
+            "vec_view",
+            "vec_operation",
+            "vec_new",
+            "vec_push",
+            "vec_get",
+            "vec_get_mut",
+            "vec_len",
+            "box_new",
+            "box_get",
+            "map_new",
+            "map_insert",
+            "map_get",
+            "map_increment",
+            "map_entries",
+            "entries_len",
+            "entries_get",
+            "move_value",
+            "byte_load",
+            "collection_operation",
+            "fused_collection_pipeline",
+            "implicit_callable",
+            "call",
+            "primitive_call",
+            "array_literal",
+            "bounds_checked_index",
+            "callback_call",
+            "closure_create",
+            "load_enum_tag",
+            "typed_error",
+        }
+        result_instructions = {
+            instruction.result: instruction
+            for block in mir_function.blocks
+            for instruction in block.instructions
+            if instruction.result is not None
+        }
+        def method_receiver_type(receiver: str) -> str | None:
+            parts = receiver.split(".")
+            if not parts or not parts[0]:
+                return None
+            source_type = next(
+                (
+                    item.type_name
+                    for candidate in mir_function.blocks
+                    for item in candidate.instructions
+                    if (
+                        item.op == "store_local"
+                        and item.attribute_map.get(
+                            "name", item.attribute_map.get("target")
+                        )
+                        == parts[0]
+                    )
+                ),
+                next(
+                    (
+                        parameter.type_name
+                        for parameter in function.parameters
+                        if parameter.name == parts[0]
+                    ),
+                    None,
+                ),
+            )
+            for field in parts[1:]:
+                descriptor = self.descriptors.get(source_type or "")
+                if descriptor is None or descriptor.kind != "record":
+                    return None
+                source_type = next(
+                    (
+                        field_type
+                        for field_name, field_type, _ownership in descriptor.fields
+                        if field_name == field
+                    ),
+                    None,
+                )
+                if source_type is None:
+                    return None
+            return source_type
+        for block in mir_function.blocks:
+            for instruction in block.instructions:
+                if instruction.op not in allowed:
+                    return False
+                attrs = instruction.attribute_map
+                if instruction.op == "call":
+                    callee = attrs.get("callee")
+                    if not isinstance(callee, str):
+                        return False
+                    target = next(
+                        (
+                            item
+                            for item in self.hir.functions
+                            if item.name == callee
+                        ),
+                        None,
+                    )
+                    if target is not None:
+                        pass
+                    elif callee.startswith("fs."):
+                        if callee not in {
+                            "fs.open_read",
+                            "fs.open_write",
+                            "fs.read",
+                            "fs.read_text",
+                            "fs.read_chunk",
+                            "fs.write",
+                            "fs.write_text",
+                            "fs.write_chunk",
+                            "fs.close_read",
+                            "fs.close_write",
+                        }:
+                            return False
+                    elif callee in {
+                        "console.write",
+                        "console.read",
+                        "console.read_line",
+                        "console.read_all",
+                        "env.read",
+                        "env.get",
+                        "clock.now",
+                        "random.read",
+                        "network.http_request",
+                        "network.tcp_connect",
+                        "network.tcp_send",
+                        "network.tcp_receive",
+                        "network.tcp_close",
+                        "process.args",
+                        "process.arg",
+                    }:
+                        pass
+                    elif callee == "Unit":
+                        if instruction.operands:
+                            return False
+                    elif callee == "Path":
+                        if len(instruction.operands) != 1:
+                            return False
+                    elif attrs.get("representation_lowering") in {
+                        "option_is_none",
+                        "option_is_some",
+                        "result_is_err",
+                        "result_is_ok",
+                    }:
+                        if len(instruction.operands) != 1:
+                            return False
+                        option_type = self.hir.type_context.render(
+                            instruction.operand_type_ids[0]
+                        )
+                        option_descriptor = self.descriptors.get(option_type)
+                        if option_descriptor is None or option_descriptor.kind != "enum":
+                            return False
+                        required_variants = (
+                            {"NoneValue", "Some"}
+                            if attrs["representation_lowering"].startswith("option_")
+                            else {"Ok", "Err"}
+                        )
+                        if (
+                            {
+                                name
+                                for name, _payload, _tag in option_descriptor.variants
+                            }
+                            < required_variants
+                        ):
+                            return False
+                    elif attrs.get("representation_lowering") in {
+                        "option_unwrap_clone",
+                        "result_unwrap_clone",
+                        "result_unwrap_err_clone",
+                    }:
+                        if len(instruction.operands) != 1:
+                            return False
+                        source_type = self.hir.type_context.render(
+                            instruction.operand_type_ids[0]
+                        )
+                        source_descriptor = self.descriptors.get(source_type)
+                        if source_descriptor is None or source_descriptor.kind != "enum":
+                            return False
+                        variants = {
+                            name: payload
+                            for name, payload, _tag in source_descriptor.variants
+                        }
+                        variant = {
+                            "option_unwrap_clone": "Some",
+                            "result_unwrap_clone": "Ok",
+                            "result_unwrap_err_clone": "Err",
+                        }[attrs["representation_lowering"]]
+                        if variant not in variants:
+                            return False
+                    elif callee.endswith(".clone"):
+                        if len(instruction.operands) == 1:
+                            source_type = self.hir.type_context.render(
+                                instruction.operand_type_ids[0]
+                            )
+                        elif not instruction.operands:
+                            source_name = callee.rsplit(".clone", 1)[0]
+                            source_type = method_receiver_type(source_name)
+                        else:
+                            return False
+                        source_descriptor = self.descriptors.get(source_type or "")
+                        if (
+                            source_descriptor is None
+                            or not _is_owner(source_descriptor)
+                        ):
+                            return False
+                    elif callee.endswith(".len"):
+                        source_name = callee.rsplit(".", 1)[0]
+                        source_type = next(
+                            (
+                                item.type_name
+                                for candidate in mir_function.blocks
+                                for item in candidate.instructions
+                                if (
+                                    item.op == "store_local"
+                                    and item.attribute_map.get("name")
+                                    == source_name
+                                )
+                            ),
+                            None,
+                        )
+                        descriptor = self.descriptors.get(source_type or "")
+                        if (
+                            descriptor is None
+                            or descriptor.kind != "array"
+                            or descriptor.length is None
+                        ):
+                            return False
+                    elif not (
+                        instruction.type_name is not None
+                        and (
+                            descriptor := self.descriptors.get(
+                                instruction.type_name
+                            )
+                        ) is not None
+                        and descriptor.kind == "enum"
+                        and any(
+                            variant == callee
+                            for variant, _payload, _tag in descriptor.variants
+                        )
+                    ):
+                        return False
+                elif instruction.op == "primitive_call":
+                    callee = attrs.get("callee")
+                    if not isinstance(callee, str):
+                        return False
+                    if not (
+                        callee in {"Text.from_bytes", "TextBuilder.new", "len", "to_text"}
+                        or callee.endswith(".append_byte")
+                        or callee.endswith(".append_scalar")
+                        or callee.endswith(".append_uint64")
+                        or callee.endswith(".append_text")
+                        or callee.endswith(".finish")
+                        or callee == "clone"
+                        or callee.endswith(".ends_with")
+                        or callee.endswith(".len")
+                        or callee.endswith(".clone")
+                        or callee.endswith(".view")
+                        or callee.endswith(".as_view")
+                        or callee in {"view", "as_view"}
+                        or callee.endswith(".slice")
+                        or callee == "slice_bytes"
+                        or callee.endswith(".slice_bytes")
+                        or callee.endswith(".to_text")
+                        or callee.endswith(".contains")
+                        or callee.endswith(".contains_ascii_case_insensitive")
+                    ):
+                        return False
+                elif instruction.op == "collection_operation":
+                    source_collection_type = str(
+                        attrs.get("source_collection_type", "")
+                    )
+                    collection_kind = attrs.get("collection_kind")
+                    collection_operation = attrs.get("collection_operation")
+                    if (
+                        collection_operation not in {"count", "where", "map"}
+                        or collection_kind
+                        not in {
+                            "array",
+                            "vec",
+                            "slice",
+                            "bytes",
+                            "bytes_view",
+                            "text",
+                            "text_view",
+                        }
+                    ):
+                        return False
+                    if collection_kind in {"array", "vec", "slice"}:
+                        descriptor_type = source_collection_type
+                        if (
+                            descriptor_type.startswith("Borrow[")
+                            and descriptor_type.endswith("]")
+                        ):
+                            descriptor_type = descriptor_type[7:-1]
+                        descriptor = self.descriptors.get(descriptor_type)
+                        if (
+                            descriptor is None
+                            or descriptor.kind != collection_kind
+                            or descriptor.element_type is None
+                            or (
+                                collection_kind == "array"
+                                and descriptor.length is None
+                            )
+                        ):
+                            return False
+                    elif attrs.get("element_type") != "Byte":
+                        return False
+                elif instruction.op == "implicit_callable":
+                    if (
+                        not isinstance(
+                            attrs.get("expression"),
+                            str,
+                        )
+                        or instruction.operands
+                    ):
+                        return False
+                elif instruction.op == "closure_create":
+                    closure_id = attrs.get("closure_id")
+                    captures = attrs.get("captures", ())
+                    if (
+                        not isinstance(closure_id, str)
+                        or not isinstance(captures, (list, tuple))
+                        or len(captures) != len(instruction.operands)
+                        or not any(
+                            node.attribute_map.get("closure_id") == closure_id
+                            for node in self.closure_nodes
+                        )
+                    ):
+                        return False
+                elif instruction.op == "construct_enum":
+                    callee = attrs.get("callee")
+                    descriptor = self.descriptors.get(instruction.type_name or "")
+                    if (
+                        descriptor is None
+                        or descriptor.kind != "enum"
+                        or not isinstance(callee, str)
+                        or "." not in callee
+                        or not any(
+                            name == callee.rsplit(".", 1)[1]
+                            for name, _payload, _tag in descriptor.variants
+                        )
+                    ):
+                        return False
+                elif instruction.op == "bounds_checked_index":
+                    if len(instruction.operand_type_ids) != 2:
+                        return False
+                    source_type = self.hir.type_context.render(
+                        instruction.operand_type_ids[0]
+                    )
+                    descriptor = self.descriptors.get(source_type)
+                    if source_type in {
+                        "Bytes",
+                        "BytesView",
+                        "Text",
+                        "TextView",
+                    }:
+                        pass
+                    elif descriptor is None:
+                        return False
+                    elif descriptor.kind not in {"array", "vec", "slice"}:
+                        return False
+                    elif (
+                        descriptor.kind == "array"
+                        and descriptor.length is None
+                    ):
+                        return False
+                elif instruction.op == "result_branch":
+                    source_type = (
+                        self.hir.type_context.render(instruction.operand_type_ids[0])
+                        if instruction.operand_type_ids
+                        else None
+                    )
+                    descriptor = self.descriptors.get(source_type or "")
+                    if (
+                        descriptor is None
+                        or descriptor.kind != "enum"
+                        or not any(
+                            variant == "Ok"
+                            for variant, _payload, _tag in descriptor.variants
+                        )
+                    ):
+                        return False
+            terminator = block.terminator
+            if terminator.kind == "branch":
+                if len(terminator.targets) != 2 or terminator.value is None:
+                    return False
+            elif terminator.kind == "jump":
+                if len(terminator.targets) != 1:
+                    return False
+            elif terminator.kind == "switch":
+                if terminator.value is None or not terminator.cases:
+                    return False
+                source = result_instructions.get(terminator.value)
+                descriptor = self.descriptors.get(
+                    source.type_name if source is not None else ""
+                )
+                if descriptor is None or descriptor.kind != "enum":
+                    return False
+                if any(
+                    variant != "_"
+                    and variant.rsplit(".", 1)[-1]
+                    not in {
+                        name for name, _payload, _tag in descriptor.variants
+                    }
+                    for variant, _target in terminator.cases
+                ):
+                    return False
+            elif terminator.kind == "return":
+                pass
+            else:
+                return False
+        return bool(mir_function.blocks)
+
+    def _mir_scalar_eligible(
+        self,
+        function: HIRFunction,
+        mir_function: GeneralMIRFunction,
+    ) -> bool:
+        return (
+            self._mir_cfg_eligible(function, mir_function)
+            and len(mir_function.blocks) == 1
+            and mir_function.blocks[0].terminator.kind == "return"
+        )
+
+    def _mir_scalar_temp(self, value: str) -> str:
+        return f"__merlo_mir_{value}"
+
+    def _mir_literal(
+        self,
+        type_name: str,
+        value: object,
+        *,
+        owned: bool = False,
+    ) -> str:
+        if type_name == "Bool":
+            return "true" if value else "false"
+        if type_name == "Byte":
+            return f"UINT8_C({int(value)})"
+        if type_name == "UInt64":
+            return f"UINT64_C({int(value)})"
+        if type_name == "Int64":
+            return f"INT64_C({int(value)})"
+        if type_name in {"Float32", "Float64"}:
+            return repr(float(value))
+        if type_name == "Unit":
+            return "0"
+        if value is None:
+            descriptor = self.descriptors.get(type_name)
+            if descriptor is not None and descriptor.kind == "enum":
+                variant = next(
+                    (
+                        name
+                        for name, payload, _tag in descriptor.variants
+                        if name == "NoneValue" and payload is None
+                    ),
+                    None,
+                )
+                if variant is not None:
+                    if all(
+                        payload is None
+                        for _name, payload, _tag in descriptor.variants
+                    ):
+                        return (
+                            f"MERLO_{_identifier(type_name)}"
+                            f"_{variant}"
+                        )
+                    return (
+                        f"merlo_make_{_identifier(type_name)}"
+                        f"_{variant}()"
+                    )
+        if type_name == "Text" and isinstance(value, str):
+            if owned:
+                payload = value.encode("utf-8")
+                values = (
+                    ", ".join(f"UINT8_C({byte})" for byte in payload)
+                    or "UINT8_C(0)"
+                )
+                return (
+                    "merlo_text_literal("
+                    f"(const uint8_t[]){{{values}}}, "
+                    f"UINT64_C({len(payload)}))"
+                )
+            return self._borrowed_text_literal(value)
+        if type_name == "Bytes" and isinstance(value, (bytes, bytearray, list, tuple)):
+            payload = bytes(value)
+            values = (
+                ", ".join(f"UINT8_C({byte})" for byte in payload)
+                or "UINT8_C(0)"
+            )
+            return (
+                "merlo_bytes_literal("
+                f"(const uint8_t[]){{{values}}}, "
+                f"UINT64_C({len(payload)}))"
+            )
+        raise RepresentationCBackendError(
+            f"MIR scalar literal has unsupported type: {type_name}"
+        )
+
+    def _closure_expression(
+        self,
+        node: Any,
+        local_types: dict[str, str],
+    ) -> str:
+        kind = getattr(node, "kind", "")
+        attrs = getattr(node, "attribute_map", {})
+        children = tuple(getattr(node, "children", ()))
+        if kind == "Name":
+            name = attrs.get("name")
+            if not isinstance(name, str) or name not in local_types:
+                raise RepresentationCBackendError(
+                    "closure name is not in the typed environment"
+                )
+            return (
+                f"(*{name})"
+                if local_types[name].startswith("Borrow[")
+                else name
+            )
+        if kind == "Literal":
+            type_name = getattr(node, "type_name", None)
+            if not isinstance(type_name, str):
+                raise RepresentationCBackendError(
+                    "closure literal has no type"
+                )
+            descriptor = self.descriptors.get(type_name)
+            return self._mir_literal(
+                type_name,
+                attrs.get("value"),
+                owned=descriptor is not None and _is_owner(descriptor),
+            )
+        if kind in {"Compare", "Binary"}:
+            if len(children) != 2:
+                raise RepresentationCBackendError(
+                    "closure comparison is malformed"
+                )
+            operator = attrs.get("operators", attrs.get("operator"))
+            if isinstance(operator, (list, tuple)):
+                operator = operator[0] if operator else None
+            symbol = {
+                "Eq": "==",
+                "NotEq": "!=",
+                "Lt": "<",
+                "LtE": "<=",
+                "Gt": ">",
+                "GtE": ">=",
+                "Add": "+",
+                "Sub": "-",
+                "Mul": "*",
+                "Div": "/",
+            }.get(str(operator))
+            if symbol is None:
+                raise RepresentationCBackendError(
+                    f"unsupported closure operator: {operator}"
+                )
+            left = self._closure_expression(children[0], local_types)
+            right = self._closure_expression(children[1], local_types)
+            return f"(({left}) {symbol} ({right}))"
+        if kind == "Boolean":
+            if len(children) != 2:
+                raise RepresentationCBackendError(
+                    "closure boolean is malformed"
+                )
+            operator = attrs.get("operators", attrs.get("operator"))
+            if isinstance(operator, (list, tuple)):
+                operator = operator[0] if operator else None
+            symbol = {"And": "&&", "Or": "||"}.get(str(operator))
+            if symbol is None:
+                raise RepresentationCBackendError(
+                    f"unsupported closure boolean: {operator}"
+                )
+            return " ".join(
+                (
+                    f"({self._closure_expression(children[0], local_types)})",
+                    symbol,
+                    f"({self._closure_expression(children[1], local_types)})",
                 )
             )
-        if function.return_type == "Unit" and not any(isinstance(item, ast.Return) for item in ast.walk(node)):
-            body.extend(self._drop_owned_lines("    "))
-            body.append("    return;")
-        elif function.return_type == "Unit":
-            body.append("    return;")
-        temporary_declarations = [
-            f"    {_c_name(type_name)} {name} = {self._zero_expression(type_name)};"
-            for name, type_name in self.temporary_declarations
+        if kind == "Unary":
+            if len(children) != 1:
+                raise RepresentationCBackendError(
+                    "closure unary expression is malformed"
+                )
+            operator = attrs.get("operator")
+            symbol = {"Not": "!", "USub": "-", "UAdd": "+"}.get(str(operator))
+            if symbol is None:
+                raise RepresentationCBackendError(
+                    f"unsupported closure unary operator: {operator}"
+                )
+            return f"({symbol}{self._closure_expression(children[0], local_types)})"
+        if kind == "BytesTextOperation":
+            if len(children) != 1:
+                raise RepresentationCBackendError(
+                    "closure bytes/text operation is malformed"
+                )
+            callee = attrs.get("callee")
+            if not isinstance(callee, str) or not callee.endswith(".len"):
+                raise RepresentationCBackendError(
+                    f"unsupported closure bytes/text operation: {callee}"
+                )
+            receiver = self._closure_expression(children[0], local_types)
+            return f"({receiver}).length"
+        if kind == "FieldAccess":
+            if len(children) != 1 or not isinstance(attrs.get("field"), str):
+                raise RepresentationCBackendError(
+                    "closure field access is malformed"
+                )
+            receiver = self._closure_expression(children[0], local_types)
+            return f"({receiver}).{attrs['field']}"
+        if kind in {"DirectCall", "CallbackCall"}:
+            callee = attrs.get("callee")
+            if not isinstance(callee, str):
+                raise RepresentationCBackendError(
+                    "closure call has no callee"
+                )
+            arguments = ", ".join(
+                self._closure_expression(child, local_types)
+                for child in children
+            )
+            if kind == "CallbackCall":
+                callee_type = local_types.get(callee)
+                if callee_type is None:
+                    raise RepresentationCBackendError(
+                        f"closure callback target is unknown: {callee}"
+                    )
+                pointer = (
+                    callee
+                    if callee_type.startswith("Borrow[")
+                    else f"&{callee}"
+                )
+                return (
+                    f"({pointer})->call(({pointer})->environment"
+                    f"{', ' if arguments else ''}{arguments})"
+                )
+            return f"merlo_fn_{_identifier(callee)}({arguments})"
+        raise RepresentationCBackendError(
+            f"unsupported typed closure expression: {kind}"
+        )
+
+    def _mir_contract_expression(
+        self,
+        node: Any,
+        *,
+        result_expression: str | None = None,
+    ) -> str:
+        kind = getattr(node, "kind", "")
+        attrs = getattr(node, "attribute_map", {})
+        children = tuple(getattr(node, "children", ()))
+        if kind == "Name":
+            name = attrs.get("name")
+            if not isinstance(name, str):
+                raise RepresentationCBackendError("MIR contract name is malformed")
+            if name == "result":
+                if result_expression is None:
+                    raise RepresentationCBackendError(
+                        "MIR contract result is unavailable"
+                    )
+                return f"({result_expression})"
+            return name
+        if kind == "Literal":
+            return self._mir_literal(
+                getattr(node, "type_name", None) or "Unit",
+                attrs.get("value"),
+            )
+        if kind == "Compare":
+            operators = tuple(attrs.get("operators", ()))
+            if len(operators) != len(children) - 1:
+                raise RepresentationCBackendError("MIR contract compare is malformed")
+            symbols = {
+                "Eq": "==",
+                "NotEq": "!=",
+                "Lt": "<",
+                "LtE": "<=",
+                "Gt": ">",
+                "GtE": ">=",
+            }
+            try:
+                return " && ".join(
+                    f"({self._mir_contract_expression(children[index], result_expression=result_expression)} "
+                    f"{symbols[str(operator)]} "
+                    f"{self._mir_contract_expression(children[index + 1], result_expression=result_expression)})"
+                    for index, operator in enumerate(operators)
+                )
+            except KeyError as exc:
+                raise RepresentationCBackendError(
+                    "MIR contract compare operator is unsupported"
+                ) from exc
+        if kind in {"BoolOp", "Boolean"}:
+            if not children:
+                raise RepresentationCBackendError("MIR contract boolean is malformed")
+            symbol = "&&" if attrs.get("operator") in {"And", "and"} else "||"
+            return f" {symbol} ".join(
+                f"({self._mir_contract_expression(child, result_expression=result_expression)})"
+                for child in children
+            )
+        if kind in {"BinOp", "Binary"}:
+            if len(children) != 2:
+                raise RepresentationCBackendError("MIR contract binary is malformed")
+            symbols = {
+                "Add": "+",
+                "Sub": "-",
+                "Mult": "*",
+                "Div": "/",
+                "Mod": "%",
+            }
+            operator = attrs.get("operator")
+            if operator not in symbols:
+                raise RepresentationCBackendError(
+                    "MIR contract binary operator is unsupported"
+                )
+            return (
+                f"({self._mir_contract_expression(children[0], result_expression=result_expression)} "
+                f"{symbols[operator]} "
+                f"{self._mir_contract_expression(children[1], result_expression=result_expression)})"
+            )
+        if kind == "Unary":
+            if len(children) != 1:
+                raise RepresentationCBackendError("MIR contract unary is malformed")
+            symbol = {
+                "Not": "!",
+                "USub": "-",
+                "UAdd": "+",
+            }.get(attrs.get("operator"))
+            if symbol is None:
+                raise RepresentationCBackendError(
+                    "MIR contract unary operator is unsupported"
+                )
+            return f"{symbol}({self._mir_contract_expression(children[0], result_expression=result_expression)})"
+        if kind == "ScalarCast":
+            if len(children) != 1:
+                raise RepresentationCBackendError("MIR contract scalar cast is malformed")
+            target_type = getattr(node, "type_name", None)
+            if not isinstance(target_type, str):
+                raise RepresentationCBackendError("MIR contract scalar cast type is missing")
+            return (
+                f"({_c_name(target_type)})"
+                f"({self._mir_contract_expression(children[0], result_expression=result_expression)})"
+            )
+        if kind in {"Attribute", "Field"}:
+            if len(children) != 1:
+                raise RepresentationCBackendError("MIR contract field is malformed")
+            field = attrs.get("attribute", attrs.get("field", attrs.get("name")))
+            if not isinstance(field, str):
+                raise RepresentationCBackendError("MIR contract field is unnamed")
+            return f"({self._mir_contract_expression(children[0], result_expression=result_expression)}).{field}"
+        raise RepresentationCBackendError(
+            f"unsupported MIR contract expression: {kind or type(node).__name__}"
+        )
+
+    def _mir_contract_checks(
+        self,
+        function: HIRFunction,
+        contracts: tuple[Any, ...],
+        kind: str,
+        *,
+        result_expression: str | None = None,
+        indent: str = "    ",
+    ) -> list[str]:
+        lines: list[str] = []
+        for contract in contracts:
+            condition = self._mir_contract_expression(
+                contract.condition,
+                result_expression=result_expression,
+            )
+            line = getattr(getattr(contract, "condition", None), "source", None)
+            line_number = getattr(line, "line", 0)
+            lines.append(
+                f'{indent}if (!({condition})) merlo_contract_trap('
+                f'"{kind}", "{function.name}", UINT64_C({line_number}));'
+            )
+        return lines
+    def _mir_scalar_binary(
+
+        self,
+        type_name: str,
+        operator: str,
+        left: str,
+        right: str,
+        overflow: str | None,
+    ) -> str:
+        checked = {
+            "Byte": {
+                "Add": "merlo_checked_byte_add",
+                "Sub": "merlo_checked_byte_sub",
+                "Mult": "merlo_checked_byte_mult",
+                "Div": "merlo_checked_byte_div",
+                "FloorDiv": "merlo_checked_byte_div",
+                "Mod": "merlo_checked_byte_mod",
+                "LShift": "merlo_checked_byte_lshift",
+                "RShift": "merlo_checked_byte_rshift",
+            },
+            "UInt64": {
+                "Add": "merlo_checked_uint64_add",
+                "Sub": "merlo_checked_uint64_sub",
+                "Mult": "merlo_checked_uint64_mult",
+                "Div": "merlo_checked_uint64_div",
+                "FloorDiv": "merlo_checked_uint64_div",
+                "Mod": "merlo_checked_uint64_mod",
+                "LShift": "merlo_checked_uint64_lshift",
+                "RShift": "merlo_checked_uint64_rshift",
+            },
+            "Int64": {
+                "Add": "merlo_checked_int64_add",
+                "Sub": "merlo_checked_int64_sub",
+                "Mult": "merlo_checked_int64_mult",
+                "Div": "merlo_checked_int64_div",
+                "FloorDiv": "merlo_checked_int64_floor_div",
+                "Mod": "merlo_checked_int64_mod",
+                "LShift": "merlo_checked_int64_lshift",
+                "RShift": "merlo_checked_int64_rshift",
+            },
+        }
+        if overflow == "checked":
+            helper = checked.get(type_name, {}).get(operator)
+            if helper is not None:
+                return f"{helper}({left}, {right})"
+        operators = {
+            "Add": "+",
+            "Sub": "-",
+            "Mult": "*",
+            "Div": "/",
+            "FloorDiv": "/",
+            "Mod": "%",
+            "BitOr": "|",
+            "BitAnd": "&",
+            "BitXor": "^",
+            "LShift": "<<",
+            "RShift": ">>",
+        }
+        symbol = operators.get(operator)
+        if symbol is None:
+            raise RepresentationCBackendError(
+                f"MIR scalar binary operator unsupported: {operator}"
+            )
+        if overflow == "wrapping" and type_name == "Int64" and operator in {
+            "Add",
+            "Sub",
+            "Mult",
+        }:
+            return (
+                f"((int64_t)((uint64_t)({left}) {symbol} "
+                f"(uint64_t)({right})))"
+            )
+        return f"(({left}) {symbol} ({right}))"
+    def _mir_scalar_intrinsic(
+        self,
+        instruction: GeneralMIRInstruction,
+        operands: tuple[str, ...],
+    ) -> str:
+        callee = str(instruction.attribute_map.get("callee", ""))
+        numeric_type = str(
+            instruction.attribute_map.get("numeric_type", instruction.type_name)
+        )
+        if len(operands) != 2:
+            raise RepresentationCBackendError(
+                f"MIR numeric intrinsic arity mismatch: {callee}"
+            )
+        overflow = instruction.attribute_map.get("overflow")
+        if overflow is None:
+            overflow = "checked" if callee.startswith("checked_") else "wrapping"
+        return self._mir_scalar_binary(
+            numeric_type,
+            {
+                "wrapping_add": "Add",
+                "wrapping_sub": "Sub",
+                "wrapping_mul": "Mult",
+                "checked_add": "Add",
+                "checked_sub": "Sub",
+                "checked_mul": "Mult",
+            }.get(callee, ""),
+            operands[0],
+            operands[1],
+            str(overflow),
+        )
+
+    def _mir_scalar_cast(
+        self,
+        instruction: GeneralMIRInstruction,
+        operand: str,
+    ) -> str:
+        target = instruction.type_name
+        if target is None or len(instruction.operand_type_ids) != 1:
+            raise RepresentationCBackendError("MIR scalar cast is malformed")
+        source = self.hir.type_context.render(instruction.operand_type_ids[0])
+        if target == "Byte" and source in {"UInt64", "Int64", "Byte"}:
+            return f"merlo_cast_byte((uint64_t)({operand}))"
+        if target == "Byte" and source in {"Float32", "Float64"}:
+            return f"merlo_cast_byte_from_float64((double)({operand}))"
+        if target == "Int64" and source in {"Float32", "Float64"}:
+            return f"merlo_cast_int64_from_float64((double)({operand}))"
+        if target == "Int64" and source in {"Byte", "UInt64"}:
+            return f"merlo_cast_int64((uint64_t)({operand}))"
+        if target == "UInt64" and source in {"Float32", "Float64"}:
+            return f"merlo_cast_uint64_from_float64((double)({operand}))"
+        if target == "UInt64" and source == "Int64":
+            return f"merlo_cast_uint64((int64_t)({operand}))"
+        return f"(({_c_name(target)})({operand}))"
+
+    def _mir_callable_c_expression(
+        self,
+        expression: str,
+        parameter: str,
+    ) -> str:
+        try:
+            node = getattr(_python_ast, "parse")(expression, mode="eval").body
+        except SyntaxError as exc:
+            raise RepresentationCBackendError(
+                f"invalid MIR collection callable: {expression}"
+            ) from exc
+        binary = {
+            _python_ast.Add: "+",
+            _python_ast.Sub: "-",
+            _python_ast.Mult: "*",
+            _python_ast.Div: "/",
+            _python_ast.FloorDiv: "/",
+            _python_ast.Mod: "%",
+            _python_ast.BitOr: "|",
+            _python_ast.BitAnd: "&",
+            _python_ast.BitXor: "^",
+            _python_ast.LShift: "<<",
+            _python_ast.RShift: ">>",
+        }
+        compare = {
+            _python_ast.Eq: "==",
+            _python_ast.NotEq: "!=",
+            _python_ast.Lt: "<",
+            _python_ast.LtE: "<=",
+            _python_ast.Gt: ">",
+            _python_ast.GtE: ">=",
+        }
+
+        def render(current: _python_ast.expr) -> str:
+            if isinstance(current, _python_ast.Name):
+                if current.id in {"__item", parameter}:
+                    return parameter
+                raise RepresentationCBackendError(
+                    f"MIR collection callable captures name: {current.id}"
+                )
+            if isinstance(current, _python_ast.Constant):
+                if isinstance(current.value, bool):
+                    return "true" if current.value else "false"
+                if isinstance(current.value, int):
+                    return (
+                        f"INT64_C({current.value})"
+                        if current.value < 0
+                        else f"UINT64_C({current.value})"
+                    )
+                if isinstance(current.value, float):
+                    return repr(current.value)
+                raise RepresentationCBackendError(
+                    "MIR collection callable literal is unsupported"
+                )
+            if isinstance(current, _python_ast.Attribute):
+                return f"({render(current.value)}).{current.attr}"
+            if isinstance(current, _python_ast.BinOp):
+                operator = binary.get(type(current.op))
+                if operator is None:
+                    raise RepresentationCBackendError(
+                        "MIR collection callable binary operator is unsupported"
+                    )
+                return f"({render(current.left)} {operator} {render(current.right)})"
+            if isinstance(current, _python_ast.BoolOp):
+                operator = "&&" if isinstance(current.op, _python_ast.And) else "||"
+                return f" {operator} ".join(
+                    f"({render(item)})" for item in current.values
+                )
+            if isinstance(current, _python_ast.UnaryOp):
+                if isinstance(current.op, _python_ast.Not):
+                    return f"!({render(current.operand)})"
+                if isinstance(current.op, _python_ast.USub):
+                    return f"-({render(current.operand)})"
+                if isinstance(current.op, _python_ast.UAdd):
+                    return f"+({render(current.operand)})"
+                raise RepresentationCBackendError(
+                    "MIR collection callable unary operator is unsupported"
+                )
+            if isinstance(current, _python_ast.Compare):
+                if len(current.ops) != len(current.comparators):
+                    raise RepresentationCBackendError(
+                        "MIR collection callable comparison is malformed"
+                    )
+                parts = []
+                left = current.left
+                for operator_node, right in zip(
+                    current.ops,
+                    current.comparators,
+                    strict=True,
+                ):
+                    operator = compare.get(type(operator_node))
+                    if operator is None:
+                        raise RepresentationCBackendError(
+                            "MIR collection callable comparison is unsupported"
+                        )
+                    parts.append(f"({render(left)} {operator} {render(right)})")
+                    left = right
+                return " && ".join(parts)
+            if isinstance(current, _python_ast.Call):
+                if (
+                    not isinstance(current.func, _python_ast.Name)
+                    or len(current.args) != 1
+                ):
+                    raise RepresentationCBackendError(
+                        "MIR collection callable function is unsupported"
+                    )
+                callee = next(
+                    (
+                        item
+                        for item in self.hir.functions
+                        if item.name == current.func.id
+                    ),
+                    None,
+                )
+                if callee is None:
+                    raise RepresentationCBackendError(
+                        f"MIR collection callable target is unknown: {current.func.id}"
+                    )
+                return (
+                    f"merlo_fn_{_identifier(callee.name)}"
+                    f"({render(current.args[0])})"
+                )
+            raise RepresentationCBackendError(
+                f"MIR collection callable expression is unsupported: {expression}"
+            )
+
+        return render(node)
+
+    def _emit_mir_scalar_function(
+        self,
+        function: HIRFunction,
+        mir_function: GeneralMIRFunction,
+    ) -> str:
+        block = mir_function.blocks[0]
+        local_types: dict[str, str] = {}
+        parameter_names = {item.name for item in function.parameters}
+        for instruction in block.instructions:
+            if instruction.op == "store_local":
+                name = instruction.attribute_map.get("name")
+                if isinstance(name, str) and name not in parameter_names:
+                    if instruction.type_name is None:
+                        raise RepresentationCBackendError(
+                            f"MIR local has no type: {name}"
+                        )
+                    local_types[name] = instruction.type_name
+        declarations = [
+            f"    {_c_name(type_name)} {name} = {{0}};"
+            for name, type_name in local_types.items()
         ]
+        values: dict[str, str] = {}
         lines = [self._function_signature(function) + " {"]
         lines.extend(declarations)
-        lines.extend(temporary_declarations)
-        lines.extend(body)
+
+        def value_of(value: str) -> str:
+            try:
+                return values[value]
+            except KeyError as exc:
+                raise RepresentationCBackendError(
+                    f"MIR scalar uses undefined value: {value}"
+                ) from exc
+
+        def define(instruction: GeneralMIRInstruction, expression: str) -> None:
+            if instruction.result is None:
+                return
+            if instruction.type_name is None:
+                raise RepresentationCBackendError(
+                    f"MIR scalar result has no type: {instruction.op}"
+                )
+            temporary = self._mir_scalar_temp(instruction.result)
+            lines.append(
+                f"    {_c_name(instruction.type_name)} {temporary} = {expression};"
+            )
+            values[instruction.result] = temporary
+
+        for instruction in block.instructions:
+            operands = tuple(value_of(item) for item in instruction.operands)
+            attrs = instruction.attribute_map
+            if instruction.op == "const":
+                define(
+                    instruction,
+                    self._mir_literal(instruction.type_name or "Unit", attrs.get("value")),
+                )
+            elif instruction.op == "load_local":
+                name = attrs.get("name")
+                if not isinstance(name, str):
+                    raise RepresentationCBackendError("MIR load_local has no name")
+                define(instruction, name)
+            elif instruction.op == "store_local":
+                name = attrs.get("name")
+                if not isinstance(name, str) or len(operands) != 1:
+                    raise RepresentationCBackendError("MIR store_local is malformed")
+                lines.append(f"    {name} = {operands[0]};")
+            elif instruction.op == "binary":
+                if len(operands) != 2:
+                    raise RepresentationCBackendError("MIR binary is malformed")
+                overflow = attrs.get("overflow", attrs.get("signed_overflow"))
+                if (
+                    attrs.get("division_by_zero") == "trap"
+                    or attrs.get("shift_range") == "checked"
+                ):
+                    overflow = "checked"
+                define(
+                    instruction,
+                    self._mir_scalar_binary(
+                        instruction.type_name or "",
+                        str(attrs.get("operator", "")),
+                        operands[0],
+                        operands[1],
+                        str(overflow) if overflow is not None else None,
+                    ),
+                )
+            elif instruction.op == "boolean":
+                if not operands:
+                    raise RepresentationCBackendError("MIR boolean has no operands")
+                symbol = "&&" if attrs.get("operator") == "And" else "||"
+                define(instruction, f" {symbol} ".join(f"({item})" for item in operands))
+            elif instruction.op == "compare":
+                operators = tuple(attrs.get("operators", ()))
+                if len(operators) != len(operands) - 1:
+                    raise RepresentationCBackendError("MIR compare is malformed")
+                symbols = {
+                    "Eq": "==",
+                    "NotEq": "!=",
+                    "Lt": "<",
+                    "LtE": "<=",
+                    "Gt": ">",
+                    "GtE": ">=",
+                }
+                comparisons: list[str] = []
+                for index, operator in enumerate(operators):
+                    left_type = self.hir.type_context.render(
+                        instruction.operand_type_ids[index]
+                    )
+                    right_type = self.hir.type_context.render(
+                        instruction.operand_type_ids[index + 1]
+                    )
+                    if left_type == right_type == "Text" and operator in {"Eq", "NotEq"}:
+                        equal = (
+                            f"merlo_text_equal_values({operands[index]}, "
+                            f"{operands[index + 1]})"
+                        )
+                        comparisons.append(
+                            equal if operator == "Eq" else f"!({equal})"
+                        )
+                    else:
+                        comparisons.append(
+                            f"({operands[index]} {symbols[str(operator)]} "
+                            f"{operands[index + 1]})"
+                        )
+                define(instruction, " && ".join(comparisons))
+            elif instruction.op == "unary":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError("MIR unary is malformed")
+                operator = str(attrs.get("operator", ""))
+                if operator == "Not":
+                    expression = f"!({operands[0]})"
+                elif operator == "USub" and instruction.type_name == "Int64":
+                    expression = f"merlo_checked_int64_neg({operands[0]})"
+                elif operator == "USub":
+                    expression = f"-({operands[0]})"
+                elif operator == "UAdd":
+                    expression = f"+({operands[0]})"
+                elif operator == "Invert":
+                    expression = f"~({operands[0]})"
+                else:
+                    raise RepresentationCBackendError(
+                        f"MIR unary operator unsupported: {operator}"
+                    )
+                define(instruction, expression)
+            elif instruction.op == "numeric_intrinsic":
+                define(instruction, self._mir_scalar_intrinsic(instruction, operands))
+            elif instruction.op == "scalar_cast":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError("MIR scalar cast is malformed")
+                define(instruction, self._mir_scalar_cast(instruction, operands[0]))
+            elif instruction.op == "construct_record":
+                descriptor = self.descriptors.get(instruction.type_name or "")
+                if descriptor is None or len(operands) != len(descriptor.fields):
+                    raise RepresentationCBackendError("MIR record construction is malformed")
+                define(
+                    instruction,
+                    f"merlo_make_{_identifier(instruction.type_name)}"
+                    f"({', '.join(operands)})",
+                )
+            elif instruction.op == "load_field":
+                field = attrs.get("field")
+                if len(operands) != 1 or not isinstance(field, str):
+                    raise RepresentationCBackendError("MIR load_field is malformed")
+                define(instruction, f"({operands[0]}).{field}")
+            elif instruction.op == "store_field":
+                target = attrs.get("target")
+                if len(operands) != 1 or not isinstance(target, str):
+                    raise RepresentationCBackendError("MIR store_field is malformed")
+                lines.append(f"    {target} = {operands[0]};")
+            else:
+                raise RepresentationCBackendError(
+                    f"unsupported MIR scalar operation: {instruction.op}"
+                )
+        if block.terminator.value is None:
+            lines.append("    return;")
+        else:
+            lines.append(f"    return {value_of(block.terminator.value)};")
         lines.append("}")
         return "\n".join(lines)
 
-    def _is_borrow_expression(self, node: ast.AST | None) -> bool:
-        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
-            return False
-        method = node.func.attr
-        if method not in {"get", "get_mut"}:
-            return False
-        receiver_type = self._expression_type(node.func.value) or ""
-        generic = _generic(receiver_type)
-        if (
-            method == "get"
-            and generic is not None
-            and generic[0] in {"Vec", "Box"}
-            and self._is_owning_temporary(node.func.value, receiver_type)
-        ):
-            return False
-        return _map_types(receiver_type) is None
+    def _emit_mir_cfg_function(
+        self,
+        function: HIRFunction,
+        mir_function: GeneralMIRFunction,
+    ) -> str:
+        parameter_names = {item.name for item in function.parameters}
+        pointer_values: set[str] = set()
+        moved_values: set[str] = set()
+        borrowed_pointer_values: set[str] = set()
+        inline_call_results: set[str] = set()
+        inline_construct_results: set[str] = set()
+        call_operand_ids: set[str] = set()
+        pointer_call_operand_ids: set[str] = set()
+        result_branch_inputs: set[str] = set()
+        replacement_names: dict[str, tuple[str, str]] = {}
+        replacement_index = 0
+        seen_call_results: set[str] = set()
+        seen_construct_results: set[str] = set()
+        local_types: dict[str, str] = {}
+        result_types: dict[str, str] = {}
+        result_names: dict[str, str] = {}
+        owned_temporaries: dict[str, tuple[str, str]] = {}
+        owned_temp_index = 0
+        result_instructions = {
+            instruction.result: instruction
+            for block in mir_function.blocks
+            for instruction in block.instructions
+            if instruction.result is not None
+        }
+        block_by_id = {block.id: block for block in mir_function.blocks}
+        block_index = {
+            block.id: index for index, block in enumerate(mir_function.blocks)
+        }
+        successors = {
+            block.id: tuple(block.terminator.targets)
+            for block in mir_function.blocks
+        }
 
-    def _has_borrowed_owner_root(self, node: ast.AST) -> bool:
-        if isinstance(node, ast.Name):
-            return node.id in self.borrowed_owner_bindings
-        if isinstance(node, (ast.Attribute, ast.Subscript)):
-            return self._has_borrowed_owner_root(node.value)
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-            return (
-                self._is_borrow_expression(node)
-                or node.func.attr in {"unwrap", "unwrap_err"}
-                and self._has_borrowed_owner_root(node.func.value)
+        def reachable(start: str, goal: str) -> bool:
+            pending = [start]
+            seen: set[str] = set()
+            while pending:
+                current = pending.pop()
+                if current == goal:
+                    return True
+                if current in seen:
+                    continue
+                seen.add(current)
+                pending.extend(successors.get(current, ()))
+            return False
+        def case_reachable(start: str, goal: str) -> bool:
+            pending = [start]
+            seen: set[str] = set()
+            while pending:
+                current = pending.pop()
+                if current == goal:
+                    return True
+                if current in seen or "_match_join" in current:
+                    continue
+                seen.add(current)
+                pending.extend(successors.get(current, ()))
+            return False
+
+        loop_pairs = [
+            (
+                block.id,
+                block.terminator.targets[0],
+                block.terminator.targets[1],
             )
-        return False
-
-    def _pad(self) -> str:
-        return "    " * self.indent
-
-    def _drop_owned_lines(self, pad: str) -> list[str]:
-        return [
-            f"{pad}merlo_drop_{_identifier(type_name)}({name if name in self.pointer_values else f'&{name}'});"
-            for name, type_name in reversed(tuple(self.owned_locals.items()))
+            for block in mir_function.blocks
+            if (
+                any(
+                    marker in block.id
+                    for marker in (
+                        "_while_condition",
+                        "_for_condition",
+                        "_file_lines_condition",
+                    )
+                )
+                and block.terminator.kind == "branch"
+                and len(block.terminator.targets) == 2
+            )
         ]
+        loop_source_positions = {
+            block.id: (
+                str(block.instructions[0].source.path),
+                block.instructions[0].source.line,
+                block.instructions[0].source.column,
+            )
+            for block in mir_function.blocks
+            if any(
+                marker in block.id
+                for marker in (
+                    "_while_condition",
+                    "_for_condition",
+                    "_file_lines_condition",
+                )
+            )
+            and block.instructions
+        }
+        control_targets: dict[tuple[str, str], str] = {}
+        for block in mir_function.blocks:
+            for instruction in block.instructions:
+                if instruction.op not in {"break", "continue"}:
+                    continue
+                break_source = instruction.source
+                break_position = (
+                    (
+                        str(break_source.path),
+                        break_source.line,
+                        break_source.column,
+                    )
+                    if break_source is not None
+                    else None
+                )
+                candidates = [
+                    pair
+                    for pair in loop_pairs
+                    if reachable(pair[1], block.id)
+                    and (
+                        break_position is None
+                        or pair[0] not in loop_source_positions
+                        or loop_source_positions[pair[0]] <= break_position
+                    )
+                ]
+                if not candidates:
+                    continue
+                condition, _body, exit_block = max(
+                    candidates,
+                    key=lambda pair: (
+                        loop_source_positions.get(
+                            pair[0],
+                            ("", -1, -1),
+                        ),
+                        block_index[pair[0]],
+                    ),
+                )
+                control_targets[(block.id, instruction.op)] = (
+                    exit_block if instruction.op == "break" else condition
+                )
+        stored_local_names = {
+            str(instruction.attribute_map["name"])
+            for block in mir_function.blocks
+            for instruction in block.instructions
+            if instruction.op == "store_local"
+            and isinstance(instruction.attribute_map.get("name"), str)
+        }
+        match_payload_bindings: dict[
+            str, dict[str, tuple[str, str, str]]
+        ] = {}
+        file_line_bindings: dict[str, str] = {}
+        match_payload_names: set[str] = set()
+        match_cases: list[tuple[str, str, str, str]] = []
+        direct_case_bindings: dict[
+            str, dict[str, tuple[str, str, str]]
+        ] = {}
+        for block in mir_function.blocks:
+            terminator = block.terminator
+            if terminator.kind != "switch" or terminator.value is None:
+                continue
+            switch_type = next(
+                (
+                    instruction.type_name
+                    for candidate_block in mir_function.blocks
+                    for instruction in candidate_block.instructions
+                    if instruction.result == terminator.value
+                ),
+                None,
+            )
+            switch_descriptor = self.descriptors.get(switch_type or "")
+            if switch_descriptor is None or switch_descriptor.kind != "enum":
+                continue
+            for variant, target in terminator.cases:
+                variant_name = variant.rsplit(".", 1)[-1]
+                payload = next(
+                    (
+                        payload
+                        for name, payload, _tag in switch_descriptor.variants
+                        if name == variant_name
+                    ),
+                    None,
+                )
+                if payload is None or payload == "Unit":
+                    continue
+                match_cases.append(
+                    (terminator.value, variant_name, payload, target)
+                )
+                target_block = block_by_id.get(target)
+                if target_block is None:
+                    continue
+                candidates: dict[str, tuple[str, str, str]] = {}
+                for instruction in target_block.instructions:
+                    name = instruction.attribute_map.get("name")
+                    if (
+                        instruction.op == "load_local"
+                        and isinstance(name, str)
+                        and name not in parameter_names
+                        and name not in stored_local_names
+                    ):
+                        candidates[name] = (
+                            terminator.value,
+                            variant_name,
+                            payload,
+                        )
+                direct_case_bindings[target] = candidates
+                match_payload_names.update(candidates)
+        for _source_id, _variant, _payload, target in match_cases:
+            candidates = direct_case_bindings.get(target, {})
+            bindings: dict[str, tuple[str, str, str]] = {}
+            for name, binding in candidates.items():
+                shadowed = any(
+                    other_target != target
+                    and block_index.get(other_target, len(block_index))
+                    < block_index.get(target, len(block_index))
+                    and name in direct_case_bindings.get(other_target, {})
+                    and case_reachable(other_target, target)
+                    for (
+                        _other_source,
+                        _other_variant,
+                        _other_payload,
+                        other_target,
+                    ) in match_cases
+                )
+                if not shadowed:
+                    bindings[name] = binding
+            match_payload_bindings[target] = bindings
+        direct_match_payload_names = set(match_payload_names)
+        for source_id, variant, payload, target in match_cases:
+            pending = [target]
+            seen: set[str] = set()
+            case_bindings: dict[str, tuple[str, str, str]] = {}
+            while pending:
+                block_id = pending.pop()
+                if block_id in seen or "_match_join" in block_id:
+                    continue
+                seen.add(block_id)
+                block = block_by_id.get(block_id)
+                if block is None:
+                    continue
+                for instruction in block.instructions:
+                    name = instruction.attribute_map.get("name")
+                    if (
+                        instruction.op == "load_local"
+                        and isinstance(name, str)
+                        and name not in parameter_names
+                        and name not in stored_local_names
+                        and name not in direct_match_payload_names
+                    ):
+                        case_bindings[name] = (source_id, variant, payload)
+                pending.extend(successors.get(block_id, ()))
+            for block_id in seen:
+                block = block_by_id.get(block_id)
+                if block is None:
+                    continue
+                bindings = match_payload_bindings.setdefault(block_id, {})
+                for instruction in block.instructions:
+                    name = instruction.attribute_map.get("name")
+                    if (
+                        instruction.op == "load_local"
+                        and isinstance(name, str)
+                        and name in case_bindings
+                    ):
+                        bindings[name] = case_bindings[name]
+            match_payload_names.update(case_bindings)
+        for source_id, variant, payload, target in match_cases:
+            inherited = match_payload_bindings.get(target, {})
+            pending = [target]
+            seen: set[str] = set()
+            while pending:
+                block_id = pending.pop()
+                if block_id in seen or "_match_join" in block_id:
+                    continue
+                seen.add(block_id)
+                existing = match_payload_bindings.get(block_id, {})
+                merged = dict(existing)
+                merged.update(inherited)
+                match_payload_bindings[block_id] = merged
+                pending.extend(successors.get(block_id, ()))
+        file_line_names = {
+            str(instruction.attribute_map["target"])
+            for block in mir_function.blocks
+            for instruction in block.instructions
+            if instruction.op == "file_line_next"
+            and isinstance(instruction.attribute_map.get("target"), str)
+        }
+        for block in mir_function.blocks:
+            for instruction in block.instructions:
+                if instruction.op != "call":
+                    continue
+                callee = instruction.attribute_map.get("callee")
+                target = next(
+                    (
+                        item
+                        for item in self.hir.functions
+                        if item.name == callee
+                    ),
+                    None,
+                )
+                if target is None:
+                    continue
+                for index, operand_id in enumerate(instruction.operands):
+                    if (
+                        index < len(target.parameters)
+                        and self._parameter_is_pointer(target.parameters[index])
+                    ):
+                        pointer_call_operand_ids.add(operand_id)
+        for block in mir_function.blocks:
+            for instruction in block.instructions:
+                if instruction.op == "call":
+                    call_operand_ids.update(instruction.operands)
+                if instruction.op == "call" and instruction.result is not None:
+                    seen_call_results.add(instruction.result)
+                if (
+                    instruction.op == "store_local"
+                    and instruction.operands
+                    and instruction.operands[0] in seen_call_results
+                ):
+                    inline_call_results.add(instruction.operands[0])
+                if instruction.op == "result_branch":
+                    result_branch_inputs.update(instruction.operands)
+                if (
+                    instruction.op == "construct_record"
+                    and instruction.result is not None
+                ):
+                    seen_construct_results.add(instruction.result)
+                if (
+                    instruction.op == "store_local"
+                    and instruction.operands
+                    and instruction.operands[0] in seen_construct_results
+                ):
+                    inline_construct_results.add(instruction.operands[0])
+                attrs = instruction.attribute_map
+                if instruction.op == "move_value":
+                    moved_values.update(instruction.operands)
+                if instruction.op == "store_local":
+                    target = attrs.get("name", attrs.get("target"))
+                    if (
+                        isinstance(target, str)
+                        and "." not in target
+                        and target not in parameter_names
+                        and instruction.type_name is not None
+                    ):
+                        local_types.setdefault(target, instruction.type_name)
+                    reassignment_target = attrs.get("target")
+                    reassignment_type = self.descriptors.get(
+                        instruction.type_name
+                    )
+                    if (
+                        isinstance(reassignment_target, str)
+                        and reassignment_type is not None
+                        and _is_owner(reassignment_type)
+                    ):
+                        replacement_index += 1
+                        replacement = f"__merlo_replacement_{replacement_index}"
+                        replacement_names[instruction.operands[0]] = (
+                            replacement,
+                            instruction.type_name,
+                        )
+                        local_types[replacement] = instruction.type_name
+                if instruction.result is None or instruction.type_name is None:
+                    continue
+                descriptor = self.descriptors.get(instruction.type_name)
+                local_name = attrs.get("name")
+                local_parameter = next(
+                    (
+                        parameter
+                        for parameter in function.parameters
+                        if parameter.name == local_name
+                    ),
+                    None,
+                )
+                target_function = next(
+                    (
+                        item
+                        for item in self.hir.functions
+                        if item.name == local_name
+                    ),
+                    None,
+                )
+                pointer_result = (
+                    pointer_type(instruction.type_name) is not None
+                    or (
+                        instruction.type_id is not None
+                        and self.hir.type_context.resolve(
+                            instruction.type_id
+                        ).constructor
+                        == "Borrow"
+                    )
+                    or (
+                        instruction.result in pointer_call_operand_ids
+                        and instruction.op == "load_local"
+                        and not (
+                            target_function is not None
+                            and descriptor is not None
+                            and descriptor.kind in {"callback", "closure"}
+                        )
+                    )
+                    or (
+                        instruction.op == "load_local"
+                        and local_parameter is not None
+                        and self._parameter_is_pointer(local_parameter)
+                    )
+                    or (
+                        descriptor is not None
+                        and (
+                            _is_owner(descriptor)
+                            or instruction.op == "file_line_next"
+                            or (
+                                instruction.op == "load_local"
+                                and local_name in file_line_names
+                            )
+                        )
+                        and (
+                            attrs.get("result_ownership")
+                            in {"borrow", "borrow_mut"}
+                            or (
+                                instruction.op == "load_field"
+                                and instruction.operands
+                                and descriptor.kind
+                                in {
+                                    "text",
+                                    "vec",
+                                    "box",
+                                    "map",
+                                    "record",
+                                    "enum",
+                                }
+                            )
+                            or instruction.op == "file_line_next"
+                            or instruction.op == "bounds_checked_index"
+                            or (
+                                instruction.op == "const"
+                                and descriptor.kind == "text"
+                            )
+                            or (
+                                instruction.op == "load_local"
+                                and local_name in match_payload_names
+                            )
+                            or (
+                                instruction.op == "load_local"
+                                and not (
+                                    target_function is not None
+                                    and descriptor.kind in {"callback", "closure"}
+                                )
+                            )
+                        )
+                    )
+                )
+                if pointer_result:
+                    pointer_values.add(instruction.result)
+                    if (
+                        attrs.get("result_ownership") in {"borrow", "borrow_mut"}
+                        or instruction.op in {"load_field", "const", "bounds_checked_index"}
+                        or (
+                            instruction.op == "load_local"
+                            and local_name in match_payload_names
+                        )
+                        or (
+                            instruction.op == "load_local"
+                            and local_parameter is not None
+                            and local_parameter.ownership != "owned"
+                        )
+                    ):
+                        borrowed_pointer_values.add(instruction.result)
+                else:
+                    result_types[instruction.result] = instruction.type_name
+        owned_call_results = {
+            instruction.result
+            for block in mir_function.blocks
+            for instruction in block.instructions
+            if (
+                instruction.op == "call"
+                and instruction.result is not None
+                and instruction.result in result_types
+                and self.descriptors.get(instruction.type_name or "") is not None
+                and _is_owner(self.descriptors[instruction.type_name or ""])
+            )
+        }
+        for value, type_name in result_types.items():
+            descriptor = self.descriptors.get(type_name)
+            if (
+                value in call_operand_ids
+                and value not in result_names
+                and descriptor is not None
+                and _is_owner(descriptor)
+            ):
+                owned_temp_index += 1
+                temporary = f"__merlo_owned_temp_{owned_temp_index}"
+                result_names[value] = temporary
+                owned_temporaries[value] = (temporary, type_name)
+        returning_locals: set[str] = set()
+        for block in mir_function.blocks:
+            if block.terminator.kind != "return" or block.terminator.value is None:
+                continue
+            for instruction in block.instructions:
+                if (
+                    instruction.op == "load_local"
+                    and instruction.result == block.terminator.value
+                    and isinstance(instruction.attribute_map.get("name"), str)
+                ):
+                    returning_locals.add(str(instruction.attribute_map["name"]))
+        explicit_drop_local_blocks: dict[str, set[str]] = {}
+        for block in mir_function.blocks:
+            for instruction in block.instructions:
+                if (
+                    instruction.op == "drop_value"
+                    and isinstance(instruction.attribute_map.get("local"), str)
+                ):
+                    local = str(instruction.attribute_map["local"])
+                    explicit_drop_local_blocks.setdefault(local, set()).add(block.id)
+        instruction_by_result = {
+            instruction.result: instruction
+            for block in mir_function.blocks
+            for instruction in block.instructions
+            if instruction.result is not None
+        }
 
-    def _drop_new_iteration_locals(self, existing: set[str], pad: str) -> list[str]:
-        lines = []
-        for name, type_name in reversed(tuple(self.owned_locals.items())):
-            if name not in existing:
-                address = name if name in self.pointer_values else f"&{name}"
-                lines.append(f"{pad}merlo_drop_{_identifier(type_name)}({address});")
-                self.owned_locals.pop(name, None)
-        return lines
+        def return_roots(block: GeneralMIRBlock) -> set[str]:
+            value_id = block.terminator.value
+            if value_id is None:
+                return set()
+
+            def owner(type_name: str | None) -> bool:
+                descriptor = self.descriptors.get(type_name or "")
+                return descriptor is not None and _is_owner(descriptor)
+
+            def owned_operands(
+                instruction: GeneralMIRInstruction,
+            ) -> tuple[str, ...]:
+                attrs = instruction.attribute_map
+                if instruction.op == "move_value":
+                    return instruction.operands
+                if instruction.op == "store_local":
+                    return instruction.operands if owner(instruction.type_name) else ()
+                if instruction.op == "result_branch":
+                    return instruction.operands
+                if instruction.op == "construct_record":
+                    descriptor = self.descriptors.get(instruction.type_name or "")
+                    if descriptor is None:
+                        return ()
+                    return tuple(
+                        operand
+                        for operand, (_name, type_name, _ownership) in zip(
+                            instruction.operands,
+                            descriptor.fields,
+                        )
+                        if owner(type_name)
+                    )
+                if instruction.op in {"construct_enum", "call"}:
+                    callee = attrs.get("callee")
+                    if not isinstance(callee, str):
+                        return ()
+                    target = next(
+                        (item for item in self.hir.functions if item.name == callee),
+                        None,
+                    )
+                    if target is not None:
+                        return tuple(
+                            operand
+                            for operand, parameter in zip(
+                                instruction.operands,
+                                target.parameters,
+                            )
+                            if parameter.ownership in {"owned", "consuming"}
+                        )
+                    descriptor = self.descriptors.get(instruction.type_name or "")
+                    if descriptor is not None and descriptor.kind == "enum":
+                        variant = callee.rsplit(".", 1)[-1]
+                        payload = next(
+                            (
+                                payload
+                                for name, payload, _tag in descriptor.variants
+                                if name == variant
+                            ),
+                            None,
+                        )
+                        if payload is not None and payload != "Unit" and owner(payload):
+                            return instruction.operands[:1]
+                if instruction.op == "primitive_call":
+                    callee = attrs.get("callee")
+                    if isinstance(callee, str) and callee.endswith(".finish"):
+                        return instruction.operands[:1]
+                return ()
+
+            pending = [value_id]
+            seen: set[str] = set()
+            roots: set[str] = set()
+            bindings = match_payload_bindings.get(block.id, {})
+            while pending:
+                current = pending.pop()
+                if current in seen:
+                    continue
+                seen.add(current)
+                instruction = instruction_by_result.get(current)
+                if instruction is None:
+                    continue
+                if instruction.op == "load_local":
+                    name = instruction.attribute_map.get("name")
+                    if isinstance(name, str):
+                        binding = bindings.get(name)
+                        if binding is not None:
+                            pending.append(binding[0])
+                        else:
+                            roots.add(name)
+                pending.extend(owned_operands(instruction))
+            return roots
+
+        protected_return_locals = {
+            block.id: return_roots(block)
+            for block in mir_function.blocks
+            if block.terminator.kind == "return"
+        }
+        host_temporary_types: dict[str, str] = {}
+        for block in mir_function.blocks:
+            for instruction in block.instructions:
+                callee = instruction.attribute_map.get("callee")
+                if (
+                    instruction.result is None
+                    or not (
+                        instruction.op == "file_open_read"
+                        or (
+                            instruction.op == "call"
+                            and isinstance(callee, str)
+                            and (
+                                callee.startswith("fs.")
+                                or callee.startswith("network.")
+                                or callee.startswith("env.")
+                                or callee.startswith("clock.")
+                                or callee.startswith("random.")
+                                or callee.startswith("process.")
+                            )
+                        )
+                    )
+                    or instruction.type_name is None
+                ):
+                    continue
+                result_parts = self._result_parts(instruction.type_name)
+                if result_parts is not None and result_parts[0] != "Unit":
+                    host_temporary_types[instruction.result] = result_parts[0]
+        lines = [self._function_signature(function) + " {"]
+        lines.extend(
+            f"    {_c_name(type_name)} {name} = {{0}};"
+            for name, type_name in local_types.items()
+        )
+        lines.extend(
+            f"    {_c_name(type_name)} "
+            f"{result_names.get(value, self._mir_scalar_temp(value))} = {{0}};"
+            for value, type_name in result_types.items()
+        )
+        lines.extend(
+            f"    {_c_name(type_name)} __merlo_host_value_{value} = {{0}};"
+            for value, type_name in host_temporary_types.items()
+        )
+        lines.extend(
+            self._mir_contract_checks(
+                function,
+                tuple(function.requirements),
+                "require",
+            )
+        )
+        values: dict[str, str] = {}
+        callables: dict[str, GeneralMIRInstruction] = {}
+        pending_drops: dict[str, list[tuple[str, str]]] = {}
+        local_value_names: dict[str, str] = {}
+        # A moved owner is zeroed, but branch-local cleanup must still run on
+        # every path; explicit close only suppresses its same-block drop.
+        consumed_locals: set[str] = set()
+        consumed_local_blocks: dict[str, set[str]] = {}
+        closed_local_blocks: dict[str, set[str]] = {}
+        consumed_values: set[str] = set()
+        pending_receiver_drops: dict[str, list[tuple[str, str]]] = {}
+        active_match_bindings: dict[str, tuple[str, str, str]] = {}
+
+        def value_of(value: str) -> str:
+            try:
+                return values[value]
+            except KeyError as exc:
+                raise RepresentationCBackendError(
+                    f"MIR CFG uses undefined value: {value}"
+                ) from exc
+
+        def define(instruction: GeneralMIRInstruction, expression: str) -> None:
+            if instruction.result is None:
+                return
+            if instruction.result in pointer_values:
+                values[instruction.result] = expression
+                return
+            if instruction.result not in result_types:
+                raise RepresentationCBackendError(
+                    f"MIR CFG result has no type: {instruction.op}"
+                )
+            if (
+                (
+                    instruction.op == "call"
+                    and instruction.result in inline_call_results
+                )
+                or (
+                    instruction.op == "construct_record"
+                    and instruction.result in inline_construct_results
+                )
+            ):
+                values[instruction.result] = expression
+                return
+            temporary = result_names.get(
+                instruction.result,
+                self._mir_scalar_temp(instruction.result),
+            )
+            lines.append(f"    {temporary} = {expression};")
+            values[instruction.result] = temporary
+        def mark_consumed_local(local: str, *, closed: bool = False) -> None:
+            consumed_locals.add(local)
+            consumed_local_blocks.setdefault(local, set()).add(active_block_id)
+            if closed:
+                closed_local_blocks.setdefault(local, set()).add(active_block_id)
+
+        def consume(
+            operand_id: str,
+            operand: str,
+            type_name: str | None,
+            *,
+            force_move: bool = False,
+        ) -> str:
+            descriptor = self.descriptors.get(type_name or "")
+            if descriptor is None or not _is_owner(descriptor):
+                return operand
+            address = operand if operand_id in pointer_values else f"&({operand})"
+            if operand_id in borrowed_pointer_values:
+                return f"merlo_clone_{_identifier(type_name)}({address})"
+            if force_move or (
+                operand_id not in pointer_values
+                or operand_id in moved_values
+            ):
+                consumed_values.add(operand_id)
+                local = local_value_names.get(operand_id)
+                if local is not None:
+                    mark_consumed_local(local)
+                return f"merlo_move_{_identifier(type_name)}({address})"
+            return f"merlo_clone_{_identifier(type_name)}({address})"
+
+        def local_pointer(name: str) -> str:
+            parameter = next(
+                (item for item in function.parameters if item.name == name),
+                None,
+            )
+            if parameter is not None and self._parameter_is_pointer(parameter):
+                return name
+            return f"&{name}"
+        def method_receiver_pointer(receiver: str) -> str:
+            parts = receiver.split(".")
+            expression = local_pointer(parts[0])
+            for field in parts[1:]:
+                expression = f"&(({expression})->{field})"
+            return expression
+
+        def operand_type(
+            item: GeneralMIRInstruction,
+            index: int,
+        ) -> str | None:
+            if index >= len(item.operand_type_ids):
+                return None
+            return self.hir.type_context.render(item.operand_type_ids[index])
+
+        def borrow(operand_id: str, operand: str, type_name: str | None) -> str:
+            descriptor = self.descriptors.get(type_name or "")
+            if descriptor is None or not _is_owner(descriptor):
+                return operand
+            address = operand if operand_id in pointer_values else f"&({operand})"
+            return address
+
+        def call_argument(
+            parameter: Any,
+            operand_id: str,
+            operand: str,
+            source_type: str | None,
+        ) -> str:
+            source_pointer = (
+                operand
+                if operand_id in pointer_values
+                else f"&({operand})"
+            )
+            if parameter.type_name == "TextView" and source_type == "Text":
+                return (
+                    f"(MerloTextView){{ ({source_pointer})->data, "
+                    f"({source_pointer})->length }}"
+                )
+            if parameter.type_name == "BytesView" and source_type == "Bytes":
+                return (
+                    f"(MerloBytesView){{ ({source_pointer})->data, "
+                    f"({source_pointer})->length }}"
+                )
+            if parameter.type_name in {"TextView", "BytesView"} and (
+                parameter.type_name == source_type
+            ):
+                return (
+                    f"*({operand})"
+                    if operand_id in pointer_values
+                    else operand
+                )
+            if self._parameter_is_pointer(parameter):
+                return (
+                    operand
+                    if operand_id in pointer_values
+                    else f"&({operand})"
+                )
+            if parameter.ownership in {"consuming", "owned"} and source_type is not None:
+                descriptor = self.descriptors.get(source_type)
+                if (
+                    descriptor is not None
+                    and _is_owner(descriptor)
+                    and operand_id in borrowed_pointer_values
+                    and descriptor.kind == "map"
+                ):
+                    raise RepresentationCBackendError(
+                        "cannot clone borrowed owner Map"
+                    )
+                if descriptor is not None and _is_owner(descriptor):
+                    return consume(
+                        operand_id,
+                        operand,
+                        source_type,
+                        force_move=parameter.ownership in {"consuming", "owned"},
+                    )
+            return operand
+        def host_address(operand_id: str, operand: str) -> str:
+            return operand if operand_id in pointer_values else f"&({operand})"
+
+        def host_result(
+            instruction: GeneralMIRInstruction,
+            expression: str,
+            failure_condition: str,
+            *,
+            error_code: str = "merlo_file_error",
+            text_payload: str | None = None,
+        ) -> None:
+            result_type = instruction.type_name
+            if instruction.result is None or result_type is None:
+                lines.append(f"    {expression};")
+                return
+            parts = self._result_parts(result_type)
+            if parts is None:
+                define(instruction, expression)
+                return
+            ok_type, error_type = parts
+            result_name = result_names.get(
+                instruction.result,
+                self._mir_scalar_temp(instruction.result),
+            )
+            error = self._error_value(
+                error_type,
+                error_code,
+                text_payload=text_payload,
+            )
+            if ok_type == "Unit":
+                lines.append(f"    (void)({expression});")
+                success = f"merlo_make_{_identifier(result_type)}_Ok()"
+            else:
+                raw_name = f"__merlo_host_value_{instruction.result}"
+                lines.append(
+                    f"    __merlo_host_value_{instruction.result} = {expression};"
+                )
+                success = (
+                    f"merlo_make_{_identifier(result_type)}_Ok({raw_name})"
+                )
+            failure = f"merlo_make_{_identifier(result_type)}_Err({error})"
+            lines.append(
+                f"    {result_name} = ({failure_condition} ? "
+                f"{failure} : {success});"
+            )
+            values[instruction.result] = result_name
+
+        def host_call(
+            callee: str,
+            instruction: GeneralMIRInstruction,
+            operands: tuple[str, ...],
+        ) -> tuple[str, str] | None:
+            if callee in {"fs.open_read", "fs.open_write"}:
+                if len(operands) != 1:
+                    raise RepresentationCBackendError(
+                        f"MIR {callee} arity is invalid"
+                    )
+                helper = (
+                    "merlo_file_open_read"
+                    if callee == "fs.open_read"
+                    else "merlo_file_open_write"
+                )
+                return (
+                    f"{helper}({host_address(instruction.operands[0], operands[0])})",
+                    "merlo_file_error != 0",
+                )
+            if callee in {"fs.read", "fs.read_text"}:
+                if len(operands) != 1:
+                    raise RepresentationCBackendError(
+                        f"MIR {callee} arity is invalid"
+                    )
+                helper = (
+                    "merlo_file_read_all"
+                    if callee == "fs.read"
+                    else "merlo_file_read_text"
+                )
+                return (
+                    f"{helper}({host_address(instruction.operands[0], operands[0])})",
+                    "merlo_file_error != 0",
+                )
+            if callee == "fs.read_chunk":
+                if len(operands) != 2:
+                    raise RepresentationCBackendError(
+                        "MIR fs.read_chunk arity is invalid"
+                    )
+                return (
+                    f"merlo_file_read_chunk("
+                    f"{host_address(instruction.operands[0], operands[0])}, "
+                    f"{operands[1]})",
+                    "merlo_file_error != 0",
+                )
+            if callee in {"fs.write", "fs.write_text", "fs.write_chunk"}:
+                if len(operands) != 2:
+                    raise RepresentationCBackendError(
+                        f"MIR {callee} arity is invalid"
+                    )
+                if callee == "fs.write_chunk":
+                    helper = "merlo_file_write_chunk"
+                    data = host_address(instruction.operands[1], operands[1])
+                else:
+                    helper = (
+                        "merlo_file_write_text"
+                        if callee == "fs.write_text"
+                        else "merlo_file_write_all"
+                    )
+                    data = host_address(instruction.operands[1], operands[1])
+                    if callee == "fs.write_text" and operand_type(instruction, 1) == "Text":
+                        data = (
+                            f"&((MerloTextView){{ ({data})->data, "
+                            f"({data})->length }})"
+                        )
+                return (
+                    f"{helper}("
+                    f"{host_address(instruction.operands[0], operands[0])}, "
+                    f"{data})",
+                    (
+                        "merlo_file_error != 0 || merlo_file_write_error != 0"
+                        if callee != "fs.write_chunk"
+                        else "merlo_file_error != 0"
+                    ),
+                )
+            if callee in {"fs.close_read", "fs.close_write"}:
+                if len(operands) != 1:
+                    raise RepresentationCBackendError(
+                        f"MIR {callee} arity is invalid"
+                    )
+                helper = (
+                    "merlo_file_close"
+                    if callee == "fs.close_read"
+                    else "merlo_file_close_writer"
+                )
+                address = host_address(instruction.operands[0], operands[0])
+                if instruction.operands[0] in pointer_values and address.startswith("&"):
+                    address = f"&({address[1:]})"
+                return f"{helper}({address})", "merlo_file_error != 0"
+            if callee == "console.read":
+                if operands:
+                    raise RepresentationCBackendError(
+                        "MIR console.read arity is invalid"
+                    )
+                return "merlo_console_read()", "false"
+            if callee == "console.read_line":
+                if operands:
+                    raise RepresentationCBackendError(
+                        "MIR console.read_line arity is invalid"
+                    )
+                return "merlo_console_read_line()", "false"
+            if callee == "console.read_all":
+                if operands:
+                    raise RepresentationCBackendError(
+                        "MIR console.read_all arity is invalid"
+                    )
+                return "merlo_console_read_all()", "false"
+            if callee in {"env.read", "env.get"}:
+                if len(operands) != 1:
+                    raise RepresentationCBackendError(
+                        f"MIR {callee} arity is invalid"
+                    )
+                return (
+                    f"merlo_env_read({host_address(instruction.operands[0], operands[0])})",
+                    "false",
+                )
+            if callee == "clock.now":
+                if operands:
+                    raise RepresentationCBackendError(
+                        "MIR clock.now arity is invalid"
+                    )
+                return "merlo_clock_now()", "false"
+            if callee == "random.read":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError(
+                        "MIR random.read arity is invalid"
+                    )
+                return f"merlo_random_read({operands[0]})", "false"
+            if callee == "process.args":
+                if operands:
+                    raise RepresentationCBackendError(
+                        "MIR process.args arity is invalid"
+                    )
+                return "merlo_process_args_count()", "false"
+            if callee == "process.arg":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError(
+                        "MIR process.arg arity is invalid"
+                    )
+                return f"merlo_process_arg({operands[0]})", "false"
+            if callee == "network.http_request":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError(
+                        "MIR network.http_request arity is invalid"
+                    )
+                return (
+                    "merlo_network_http_request("
+                    f"{host_address(instruction.operands[0], operands[0])})",
+                    "merlo_network_error != 0",
+                )
+            if callee == "network.tcp_connect":
+                if len(operands) != 2:
+                    raise RepresentationCBackendError(
+                        "MIR network.tcp_connect arity is invalid"
+                    )
+                return (
+                    "merlo_network_tcp_connect("
+                    f"{host_address(instruction.operands[0], operands[0])}, "
+                    f"{operands[1]})",
+                    "merlo_network_error != 0",
+                )
+            if callee == "network.tcp_send":
+                if len(operands) != 2:
+                    raise RepresentationCBackendError(
+                        "MIR network.tcp_send arity is invalid"
+                    )
+                data = (
+                    operands[1]
+                    if instruction.operands[1] in pointer_values
+                    else f"&({operands[1]})"
+                )
+                return (
+                    f"merlo_network_tcp_send({operands[0]}, {data})",
+                    "merlo_network_error != 0",
+                )
+            if callee == "network.tcp_receive":
+                if len(operands) != 2:
+                    raise RepresentationCBackendError(
+                        "MIR network.tcp_receive arity is invalid"
+                    )
+                return (
+                    f"merlo_network_tcp_receive({operands[0]}, {operands[1]})",
+                    "merlo_network_error != 0",
+                )
+            if callee == "network.tcp_close":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError(
+                        "MIR network.tcp_close arity is invalid"
+                    )
+                return (
+                    f"merlo_network_tcp_close({operands[0]})",
+                    "merlo_network_error != 0",
+                )
+            return None
+        def collection_layout(
+            instruction: GeneralMIRInstruction,
+            source: str,
+        ) -> tuple[str, str, str, Any | None]:
+            source_type = str(
+                instruction.attribute_map.get("source_collection_type", "")
+            )
+            collection_kind = instruction.attribute_map.get("collection_kind")
+            if instruction.op == "fused_collection_pipeline":
+                source_instruction = instruction_by_result.get(
+                    instruction.operands[0]
+                )
+                if (
+                    source_instruction is not None
+                    and source_instruction.type_name is not None
+                ):
+                    source_type = source_instruction.type_name
+                    source_descriptor = self.descriptors.get(source_type)
+                    if source_descriptor is not None:
+                        collection_kind = source_descriptor.kind
+            descriptor_type = source_type
+            if (
+                descriptor_type.startswith("Borrow[")
+                and descriptor_type.endswith("]")
+            ):
+                descriptor_type = descriptor_type[7:-1]
+            descriptor = self.descriptors.get(descriptor_type)
+            if collection_kind in {"array", "vec", "slice"}:
+                if (
+                    descriptor is None
+                    or descriptor.kind != collection_kind
+                    or descriptor.element_type is None
+                    or (
+                        collection_kind == "array"
+                        and descriptor.length is None
+                    )
+                ):
+                    raise RepresentationCBackendError(
+                        "MIR collection source is malformed"
+                    )
+                element_type = descriptor.element_type
+            elif collection_kind in {
+                "bytes",
+                "bytes_view",
+                "text",
+                "text_view",
+            }:
+                if instruction.attribute_map.get("element_type") != "Byte":
+                    raise RepresentationCBackendError(
+                        "MIR byte collection element is malformed"
+                    )
+                element_type = "Byte"
+            else:
+                raise RepresentationCBackendError(
+                    "MIR collection kind is unsupported"
+                )
+            source_is_pointer = (
+                instruction.operands[0] in pointer_values
+                or source_type.startswith("Borrow[")
+            )
+            source_pointer = (
+                source
+                if source_is_pointer
+                else f"&({source})"
+            )
+            data = f"({source_pointer})->data"
+            length = (
+                f"UINT64_C({descriptor.length})"
+                if collection_kind == "array"
+                and descriptor is not None
+                and descriptor.length is not None
+                else f"({source_pointer})->length"
+            )
+            return element_type, data, length, descriptor
+
+        def collection_owned_value(
+            expression: str,
+            expression_source: str,
+            type_name: str,
+        ) -> str:
+            descriptor = self.descriptors.get(type_name)
+            if descriptor is None or not _is_owner(descriptor):
+                return expression
+            try:
+                parsed = getattr(_python_ast, "parse")(
+                    expression_source,
+                    mode="eval",
+                ).body
+            except SyntaxError as exc:
+                raise RepresentationCBackendError(
+                    f"invalid MIR collection callable: {expression_source}"
+                ) from exc
+            if isinstance(parsed, _python_ast.Call):
+                return expression
+            return (
+                f"merlo_clone_{_identifier(type_name)}"
+                f"(&({expression}))"
+            )
+
+
+
+        active_block_id = ""
+        control_flow_condition_values = {
+            block.terminator.value
+            for block in mir_function.blocks
+            if block.terminator.kind == "branch"
+            and block.terminator.value is not None
+        }
+        def emit_instruction(instruction: GeneralMIRInstruction) -> None:
+            attrs = instruction.attribute_map
+            if instruction.op == "return":
+                if len(instruction.operands) > 1:
+                    raise RepresentationCBackendError(
+                        "MIR return instruction is malformed"
+                    )
+                emit_return(
+                    instruction.operands[0]
+                    if instruction.operands
+                    else None
+                )
+                return
+            if instruction.op == "file_line_next":
+                if len(instruction.operands) != 1:
+                    raise RepresentationCBackendError(
+                        "MIR file_line_next is malformed"
+                    )
+                source_name = local_value_names.get(instruction.operands[0])
+                if source_name is not None:
+                    receiver = local_pointer(source_name)
+                else:
+                    source = value_of(instruction.operands[0])
+                    receiver = (
+                        source
+                        if instruction.operands[0] in pointer_values
+                        else f"&({source})"
+                    )
+                target = attrs.get("target")
+                if isinstance(target, str) and instruction.result is not None:
+                    file_line_bindings[target] = instruction.result
+                if instruction.result is None or instruction.type_name is None:
+                    raise RepresentationCBackendError(
+                        "MIR file_line_next has no result type"
+                    )
+                temporary = self._mir_scalar_temp(instruction.result)
+                lines.append(
+                    f"    {_c_name(instruction.type_name)} *{temporary} = "
+                    f"merlo_file_next({receiver});"
+                )
+                values[instruction.result] = temporary
+                return
+            if instruction.op == "drop_value":
+                local = attrs.get("local")
+                type_name = attrs.get("type", instruction.type_name)
+                if not isinstance(local, str) or not isinstance(type_name, str):
+                    raise RepresentationCBackendError(
+                        "MIR drop_value is malformed"
+                    )
+                if local in returning_locals:
+                    return
+                if active_block_id in consumed_local_blocks.get(local, set()):
+                    return
+                if local in protected_return_locals.get(active_block_id, set()):
+                    return
+                lines.append(
+                    f"    merlo_drop_{_identifier(type_name)}"
+                    f"({local_pointer(local)});"
+                )
+                return
+            if instruction.op in {"break", "continue"}:
+                target = control_targets.get((active_block_id, instruction.op))
+                if target is None:
+                    raise RepresentationCBackendError(
+                        f"MIR {instruction.op} has no loop target"
+                    )
+                lines.append(
+                    f"    /* {instruction.op}; */"
+                )
+                lines.append(f"    goto {labels[target]};")
+                return
+            if instruction.op in {
+                "allocate",
+                "allocate_deferred",
+                "open_file_reader",
+                "bounds_check",
+                "borrow_key",
+                "checked_growth",
+                "checked_uint64_add",
+                "copy_key_if_vacant",
+                "move_value",
+                "borrow_lines",
+                "invalidate_line_borrow",
+            }:
+                return
+            if instruction.op == "implicit_callable":
+                if instruction.result is None:
+                    raise RepresentationCBackendError(
+                        "MIR implicit callable has no identity"
+                    )
+                callables[instruction.result] = instruction
+                return
+            if instruction.op == "fused_collection_pipeline":
+                pipeline = tuple(attrs.get("pipeline_operations", ()))
+                if pipeline not in {
+                    ("where", "map"),
+                    ("where", "map", "count"),
+                }:
+                    raise RepresentationCBackendError(
+                        "MIR fused collection pipeline stages are unsupported"
+                    )
+                if (
+                    instruction.result is None
+                    or len(instruction.operands) != len(pipeline) + 1
+                ):
+                    raise RepresentationCBackendError(
+                        "MIR fused collection pipeline is malformed"
+                    )
+                callable_nodes = [
+                    callables.get(operand)
+                    for operand in instruction.operands[1:]
+                ]
+                if any(node is None for node in callable_nodes):
+                    raise RepresentationCBackendError(
+                        "MIR fused collection callable identity is missing"
+                    )
+                source = value_of(instruction.operands[0])
+                element_type, data, length, _source_descriptor = (
+                    collection_layout(instruction, source)
+                )
+                where_node = callable_nodes[0]
+                map_node = callable_nodes[1]
+                parameter = "__merlo_collection_item"
+                where_source = str(where_node.attribute_map["expression"])
+                map_source = str(map_node.attribute_map["expression"])
+                where_callback = self._mir_callable_c_expression(
+                    where_source,
+                    parameter,
+                )
+                map_callback = self._mir_callable_c_expression(
+                    map_source,
+                    parameter,
+                )
+                map_type = str(map_node.type_name or "")
+                index = f"__merlo_collection_index_{instruction.result}"
+                lines.append(
+                    f"    /* __merlo_fused_collection_{instruction.result}; */"
+                )
+                if pipeline == ("where", "map"):
+                    result_type = instruction.type_name
+                    result_descriptor = self.descriptors.get(
+                        result_type or ""
+                    )
+                    if (
+                        result_descriptor is None
+                        or result_descriptor.kind != "vec"
+                        or result_descriptor.element_type != map_type
+                    ):
+                        raise RepresentationCBackendError(
+                            "MIR fused collection result is malformed"
+                        )
+                    temporary = (
+                        f"__merlo_fused_collection_result_{instruction.result}"
+                    )
+                    push_expression = collection_owned_value(
+                        map_callback,
+                        map_source,
+                        map_type,
+                    )
+                    lines.append(
+                        f"    {_c_name(result_type)} {temporary} = "
+                        f"merlo_{_identifier(result_type)}_new();"
+                    )
+                    lines.append(
+                        f"    for (uint64_t {index} = UINT64_C(0); "
+                        f"{index} < {length}; ++{index}) {{"
+                    )
+                    lines.append(
+                        f"        {_c_name(element_type)} {parameter} = "
+                        f"{data}[{index}];"
+                    )
+                    lines.append(f"        if ({where_callback}) {{")
+                    lines.append(
+                        f"            merlo_{_identifier(result_type)}_push"
+                        f"(&{temporary}, {push_expression});"
+                    )
+                    lines.append("        }")
+                    lines.append("    }")
+                    values[instruction.result] = temporary
+                    return
+                count_node = callable_nodes[2]
+                map_type = str(map_node.type_name or "")
+                if not self._mir_plain_value(map_type):
+                    raise RepresentationCBackendError(
+                        "MIR fused collection map result is not scalar"
+                    )
+                mapped_parameter = (
+                    f"__merlo_collection_mapped_{instruction.result}"
+                )
+                count_callback = self._mir_callable_c_expression(
+                    str(count_node.attribute_map["expression"]),
+                    mapped_parameter,
+                )
+                temporary = self._mir_scalar_temp(instruction.result)
+                lines.append(f"    {temporary} = UINT64_C(0);")
+                lines.append(
+                    f"    for (uint64_t {index} = UINT64_C(0); "
+                    f"{index} < {length}; ++{index}) {{"
+                )
+                lines.append(
+                    f"        {_c_name(element_type)} {parameter} = "
+                    f"{data}[{index}];"
+                )
+                lines.append(f"        if ({where_callback}) {{")
+                lines.append(
+                    f"            {_c_name(map_type)} {mapped_parameter} = "
+                    f"{map_callback};"
+                )
+                lines.append(
+                    f"            if ({count_callback}) ++{temporary};"
+                )
+                lines.append("        }")
+                lines.append("    }")
+                values[instruction.result] = temporary
+                return
+            if instruction.op == "collection_operation":
+                if instruction.result is None or len(instruction.operands) != 2:
+                    raise RepresentationCBackendError(
+                        "MIR collection operation is malformed"
+                    )
+                source = value_of(instruction.operands[0])
+                callable_node = callables.get(instruction.operands[1])
+                if callable_node is None:
+                    raise RepresentationCBackendError(
+                        "MIR collection callable identity is missing"
+                    )
+                element_type, data, length, _source_descriptor = (
+                    collection_layout(instruction, source)
+                )
+                operation = attrs.get("collection_operation")
+                parameter = "__merlo_collection_item"
+                expression_source = str(
+                    callable_node.attribute_map["expression"]
+                )
+                callback = self._mir_callable_c_expression(
+                    expression_source,
+                    parameter,
+                )
+                index = f"__merlo_collection_index_{instruction.result}"
+                if operation == "count":
+                    temporary = self._mir_scalar_temp(instruction.result)
+                    lines.append(f"    {temporary} = UINT64_C(0);")
+                    lines.append(
+                        f"    for (uint64_t {index} = UINT64_C(0); "
+                        f"{index} < {length}; ++{index}) {{"
+                    )
+                    lines.append(
+                        f"        {_c_name(element_type)} {parameter} = "
+                        f"{data}[{index}];"
+                    )
+                    lines.append(
+                        f"        if ({callback}) ++{temporary};"
+                    )
+                    lines.append("    }")
+                    values[instruction.result] = temporary
+                    return
+                result_type = instruction.type_name
+                result_descriptor = self.descriptors.get(result_type or "")
+                result_element_type = (
+                    result_descriptor.element_type
+                    if result_descriptor is not None
+                    else None
+                )
+                if (
+                    result_descriptor is None
+                    or result_descriptor.kind != "vec"
+                    or result_element_type is None
+                ):
+                    raise RepresentationCBackendError(
+                        "MIR collection result is not a Vec"
+                    )
+                if operation == "where":
+                    if (callable_node.type_name or "") != "Bool":
+                        raise RepresentationCBackendError(
+                            "MIR collection where callback is not Bool"
+                        )
+                    push_expression = collection_owned_value(
+                        f"{data}[{index}]",
+                        "__item",
+                        element_type,
+                    )
+                elif operation == "map":
+                    callback_type = str(
+                        callable_node.attribute_map.get(
+                            "callable_return_type"
+                        )
+                        or callable_node.type_name
+                        or ""
+                    )
+                    if callback_type != result_element_type:
+                        raise RepresentationCBackendError(
+                            "MIR collection map result type is malformed"
+                        )
+                    push_expression = collection_owned_value(
+                        callback,
+                        expression_source,
+                        callback_type,
+                    )
+                else:
+                    raise RepresentationCBackendError(
+                        "MIR collection operation is unsupported"
+                    )
+                temporary = (
+                    f"__merlo_collection_result_{instruction.result}"
+                )
+                lines.append(
+                    f"    {_c_name(result_type)} {temporary} = "
+                    f"merlo_{_identifier(result_type)}_new();"
+                )
+                lines.append(
+                    f"    for (uint64_t {index} = UINT64_C(0); "
+                    f"{index} < {length}; ++{index}) {{"
+                )
+                lines.append(
+                    f"        {_c_name(element_type)} {parameter} = "
+                    f"{data}[{index}];"
+                )
+                if operation == "where":
+                    lines.append(f"        if ({callback}) {{")
+                    lines.append(
+                        f"            merlo_{_identifier(result_type)}_push"
+                        f"(&{temporary}, {push_expression});"
+                    )
+                    lines.append("        }")
+                else:
+                    lines.append(
+                        f"        merlo_{_identifier(result_type)}_push"
+                        f"(&{temporary}, {push_expression});"
+                    )
+                lines.append("    }")
+                values[instruction.result] = temporary
+                return
+            operands = tuple(value_of(item) for item in instruction.operands)
+            if instruction.op == "file_open_read":
+                callee = attrs.get("callee")
+                if not isinstance(callee, str):
+                    raise RepresentationCBackendError(
+                        "MIR file_open_read has no intrinsic"
+                    )
+                host = host_call(callee, instruction, operands)
+                if host is None:
+                    raise RepresentationCBackendError(
+                        f"MIR file operation is unsupported: {callee}"
+                    )
+                expression, failure = host
+                host_result(
+                    instruction,
+                    expression,
+                    failure,
+                    text_payload=(
+                        host_address(instruction.operands[0], operands[0])
+                        if callee in {"fs.open_read", "fs.read", "fs.read_text"}
+                        and operands
+                        else None
+                    ),
+                )
+                return
+            if instruction.op == "result_branch":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError(
+                        "MIR result_branch is malformed"
+                    )
+                result_type = operand_type(instruction, 0)
+                result_descriptor = self.descriptors.get(result_type or "")
+                if result_descriptor is None or result_descriptor.kind != "enum":
+                    raise RepresentationCBackendError(
+                        "MIR result_branch source is not an enum"
+                    )
+                ok_payload = next(
+                    (
+                        payload
+                        for variant, payload, _tag in result_descriptor.variants
+                        if variant == "Ok"
+                    ),
+                    None,
+                )
+                ok_tag = next(
+                    (
+                        tag
+                        for variant, _payload, tag in result_descriptor.variants
+                        if variant == "Ok"
+                    ),
+                    None,
+                )
+                if ok_tag is None or ok_payload is None:
+                    raise RepresentationCBackendError(
+                        "MIR result_branch source has no Ok variant"
+                    )
+                result_value = operands[0]
+                drops = pending_drops.pop(instruction.operands[0], [])
+                lines.append(
+                    f"    if ({result_value}.tag != "
+                    f"MERLO_{_identifier(result_type)}_Ok_TAG) {{"
+                )
+                for temporary, type_name in drops:
+                    lines.append(
+                        f"        merlo_drop_{_identifier(type_name)}"
+                        f"(&{temporary});"
+                    )
+                target_parts = self._result_parts(function.return_type)
+                source_error_type = next(
+                    payload
+                    for variant, payload, _tag in result_descriptor.variants
+                    if variant == "Err"
+                )
+                compatible_error_type = (
+                    target_parts is not None
+                    and self._descriptor_aliases.get(
+                        target_parts[1],
+                        target_parts[1],
+                    )
+                    == self._descriptor_aliases.get(
+                        source_error_type,
+                        source_error_type,
+                    )
+                )
+                if not compatible_error_type:
+                    raise RepresentationCBackendError(
+                        "MIR result propagation error type is incompatible"
+                    )
+                error_payload = f"{result_value}.payload.Err"
+                lines.append(
+                    f"        return merlo_make_{_identifier(function.return_type)}"
+                    f"_Err({error_payload});"
+                )
+                lines.append("    }")
+                payload = f"{result_value}.payload.Ok"
+                payload_descriptor = self.descriptors.get(ok_payload)
+                define(
+                    instruction,
+                    (
+                        f"merlo_move_{_identifier(ok_payload)}"
+                        f"(&{payload})"
+                        if payload_descriptor is not None
+                        and _is_owner(payload_descriptor)
+                        else payload
+                    ),
+                )
+                lines.append(
+                    f"    {result_value}.tag = "
+                    f"MERLO_{_identifier(result_type)}_MOVED_TAG;"
+                )
+                for temporary, type_name in drops:
+                    lines.append(
+                        f"    merlo_drop_{_identifier(type_name)}"
+                        f"(&{temporary});"
+                    )
+                return
+            if instruction.op == "file_lines":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError(
+                        "MIR file_lines is malformed"
+                    )
+                receiver = (
+                    operands[0]
+                    if instruction.operands[0] in pointer_values
+                    else f"&({operands[0]})"
+                )
+                define(instruction, f"merlo_file_lines({receiver})")
+                return
+            if instruction.op == "vec_view":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError(
+                        "MIR Vec.view is malformed"
+                    )
+                if instruction.operands[0] in owned_call_results:
+                    raise RepresentationCBackendError(
+                        "borrowed result escapes"
+                    )
+                receiver = (
+                    operands[0]
+                    if instruction.operands[0] in pointer_values
+                    else f"&({operands[0]})"
+                )
+                define(instruction, receiver)
+                return
+            if instruction.op == "vec_operation":
+                callee = attrs.get("callee")
+                if (
+                    not isinstance(callee, str)
+                    or not callee.endswith(".clone")
+                    or len(operands) != 1
+                ):
+                    raise RepresentationCBackendError(
+                        "MIR Vec operation is unsupported"
+                    )
+                source_type = operand_type(instruction, 0)
+                descriptor = self.descriptors.get(source_type or "")
+                if descriptor is None or descriptor.kind != "vec":
+                    raise RepresentationCBackendError(
+                        "MIR Vec clone source is invalid"
+                    )
+                source = (
+                    operands[0]
+                    if instruction.operands[0] in pointer_values
+                    else f"&({operands[0]})"
+                )
+                define(
+                    instruction,
+                    f"merlo_clone_{_identifier(source_type)}({source})",
+                )
+                return
+            if instruction.op == "vec_new":
+                type_name = instruction.type_name
+                descriptor = self.descriptors.get(type_name or "")
+                if descriptor is None or descriptor.kind != "vec":
+                    raise RepresentationCBackendError("MIR Vec.new type is invalid")
+                define(
+                    instruction,
+                    f"merlo_{_identifier(type_name)}_new()",
+                )
+                return
+            if instruction.op == "vec_push":
+                callee = attrs.get("callee")
+                if not isinstance(callee, str) or len(operands) not in {1, 2}:
+                    raise RepresentationCBackendError("MIR Vec.push is malformed")
+                receiver_name = callee.split(".", 1)[0]
+                if len(operands) == 2:
+                    receiver_id, receiver = instruction.operands[0], operands[0]
+                    item_id, item = instruction.operands[1], operands[1]
+                    receiver_type = operand_type(instruction, 0)
+                    item_type = operand_type(instruction, 1)
+                    receiver_pointer = (
+                        receiver
+                        if receiver_id in pointer_values
+                        else f"&({receiver})"
+                    )
+                else:
+                    receiver_id, receiver = receiver_name, local_pointer(receiver_name)
+                    item_id, item = instruction.operands[0], operands[0]
+                    receiver_type = local_types.get(receiver_name)
+                    if receiver_type is None:
+                        receiver_type = next(
+                            (
+                                parameter.type_name
+                                for parameter in function.parameters
+                                if parameter.name == receiver_name
+                            ),
+                            None,
+                        )
+                    item_type = operand_type(instruction, 0)
+                    receiver_pointer = receiver
+                descriptor = self.descriptors.get(str(receiver_type or ""))
+                if descriptor is None or descriptor.kind != "vec":
+                    raise RepresentationCBackendError("MIR Vec.push receiver is invalid")
+                value = consume(item_id, item, item_type)
+                lines.append(
+                    f"    merlo_{_identifier(descriptor.name)}_push"
+                    f"({receiver_pointer}, {value});"
+                )
+                return
+            if instruction.op in {"vec_get", "vec_get_mut"}:
+                callee = attrs.get("callee")
+                if not isinstance(callee, str) or len(operands) not in {1, 2}:
+                    raise RepresentationCBackendError("MIR Vec.get is malformed")
+                receiver_name = callee.split(".", 1)[0]
+                if (
+                    instruction.op == "vec_get_mut"
+                    and (
+                        (
+                            len(operands) == 1
+                            and receiver_name not in local_types
+                            and not any(
+                                parameter.name == receiver_name
+                                for parameter in function.parameters
+                            )
+                        )
+                        or (
+                            len(operands) == 2
+                            and instruction.operands[0] in owned_call_results
+                        )
+                    )
+                ):
+                    raise RepresentationCBackendError("borrowed result escapes")
+                receiver_temp: tuple[str, str] | None = None
+                if len(operands) == 2:
+                    receiver_id, receiver = instruction.operands[0], operands[0]
+                    index = operands[1]
+                    receiver_type = operand_type(instruction, 0)
+                    receiver_pointer = (
+                        receiver
+                        if receiver_id in pointer_values
+                        else f"&({receiver})"
+                    )
+                else:
+                    index = operands[0]
+                    receiver_type = local_types.get(receiver_name)
+                    if receiver_type is None:
+                        receiver_type = next(
+                            (
+                                parameter.type_name
+                                for parameter in function.parameters
+                                if parameter.name == receiver_name
+                            ),
+                            None,
+                        )
+                    if receiver_type is None:
+                        contract = str(attrs.get("contract_symbol", ""))
+                        receiver_type = contract.rsplit(".", 1)[0] or None
+                        producer = next(
+                            (
+                                item
+                                for item in self.hir.functions
+                                if item.return_type == receiver_type
+                                and not item.parameters
+                            ),
+                            None,
+                        )
+                        if producer is None:
+                            raise RepresentationCBackendError(
+                                "MIR Vec.get receiver is unknown"
+                            )
+                        receiver_name = f"__merlo_vec_receiver_{instruction.result}"
+                        lines.append(
+                            f"    {_c_name(receiver_type)} {receiver_name} = "
+                            f"merlo_zero_{_identifier(receiver_type)}();"
+                        )
+                        lines.append(
+                            f"    {receiver_name} = merlo_fn_{producer.name}();"
+                        )
+                        receiver_temp = (receiver_name, receiver_type)
+                        receiver_pointer = f"&{receiver_name}"
+                    else:
+                        receiver_pointer = local_pointer(receiver_name)
+                descriptor_type = str(receiver_type or "")
+                if (
+                    descriptor_type.startswith("Borrow[")
+                    and descriptor_type.endswith("]")
+                ):
+                    descriptor_type = descriptor_type[7:-1]
+                descriptor = self.descriptors.get(descriptor_type)
+                if descriptor is None or descriptor.kind != "vec":
+                    raise RepresentationCBackendError("MIR Vec.get receiver is invalid")
+                expression = (
+                    f"merlo_{_identifier(descriptor.name)}_get"
+                    f"({receiver_pointer}, {index})"
+                )
+                if instruction.result not in pointer_values:
+                    expression = f"*({expression})"
+                define(instruction, expression)
+                if receiver_temp is not None and instruction.result is not None:
+                    pending_receiver_drops[instruction.result] = [receiver_temp]
+                return
+            if instruction.op == "vec_len":
+                callee = attrs.get("callee")
+                if not isinstance(callee, str):
+                    raise RepresentationCBackendError("MIR Vec.len is malformed")
+                if len(operands) == 1:
+                    receiver_id = instruction.operands[0]
+                    receiver = operands[0]
+                    receiver_type = operand_type(instruction, 0)
+                    receiver_name = callee.split(".", 1)[0]
+                    receiver_pointer = (
+                        receiver
+                        if receiver_id in pointer_values
+                        else f"&({receiver})"
+                    )
+                elif not operands:
+                    receiver_name = callee.split(".", 1)[0]
+                    receiver_type = next(
+                        (
+                            item.type_name
+                            for item in function.parameters
+                            if item.name == receiver_name
+                        ),
+                        None,
+                    )
+                    if receiver_type is None:
+                        receiver_type = next(
+                            (
+                                item.type_name
+                                for item in mir_function.blocks[0].instructions
+                                if item.op == "store_local"
+                                and item.attribute_map.get("name") == receiver_name
+                            ),
+                            None,
+                        )
+                    receiver_pointer = local_pointer(receiver_name)
+                else:
+                    raise RepresentationCBackendError("MIR Vec.len is malformed")
+                descriptor_type = str(receiver_type or "")
+                if (
+                    descriptor_type.startswith("Borrow[")
+                    and descriptor_type.endswith("]")
+                ):
+                    descriptor_type = descriptor_type[7:-1]
+                descriptor = self.descriptors.get(descriptor_type)
+                if descriptor is None or descriptor.kind != "vec":
+                    raise RepresentationCBackendError("MIR Vec.len receiver is invalid")
+                define(
+                    instruction,
+                    f"merlo_{_identifier(descriptor.name)}_len"
+                    f"({receiver_pointer})",
+                )
+                return
+            if instruction.op == "box_new":
+                type_name = instruction.type_name
+                descriptor = self.descriptors.get(type_name or "")
+                if (
+                    descriptor is None
+                    or descriptor.kind != "box"
+                    or descriptor.payload_type is None
+                    or len(operands) != 1
+                ):
+                    raise RepresentationCBackendError("MIR Box.new is malformed")
+                value = consume(
+                    instruction.operands[0],
+                    operands[0],
+                    operand_type(instruction, 0),
+                )
+                define(
+                    instruction,
+                    f"merlo_{_identifier(type_name)}_new({value})",
+                )
+                return
+            if instruction.op == "box_get":
+                callee = attrs.get("callee")
+                if not isinstance(callee, str):
+                    raise RepresentationCBackendError("MIR Box.get is malformed")
+                receiver_name = callee.split(".", 1)[0]
+                receiver_temp: tuple[str, str] | None = None
+                if len(operands) == 1:
+                    receiver_id, receiver = instruction.operands[0], operands[0]
+                    receiver_type = operand_type(instruction, 0)
+                    receiver_pointer = (
+                        receiver
+                        if receiver_id in pointer_values
+                        else f"&({receiver})"
+                    )
+                elif not operands:
+                    receiver_type = next(
+                        (
+                            parameter.type_name
+                            for parameter in function.parameters
+                            if parameter.name == receiver_name
+                        ),
+                        None,
+                    )
+                    if receiver_type is None:
+                        contract = str(attrs.get("contract_symbol", ""))
+                        receiver_type = contract.rsplit(".", 1)[0] or None
+                    producer = next(
+                        (
+                            item
+                            for item in self.hir.functions
+                            if item.return_type == receiver_type
+                            and not item.parameters
+                        ),
+                        None,
+                    )
+                    if receiver_type is None or producer is None:
+                        raise RepresentationCBackendError(
+                            "MIR Box.get receiver is unknown"
+                        )
+                    receiver_name = f"__merlo_box_receiver_{instruction.result}"
+                    lines.append(
+                        f"    {_c_name(receiver_type)} {receiver_name} = "
+                        f"merlo_zero_{_identifier(receiver_type)}();"
+                    )
+                    lines.append(
+                        f"    {receiver_name} = merlo_fn_{producer.name}();"
+                    )
+                    receiver_temp = (receiver_name, receiver_type)
+                    receiver_pointer = f"&{receiver_name}"
+                else:
+                    raise RepresentationCBackendError("MIR Box.get is malformed")
+                descriptor = self.descriptors.get(str(receiver_type or ""))
+                if (
+                    descriptor is None
+                    or descriptor.kind != "box"
+                    or descriptor.payload_type is None
+                ):
+                    raise RepresentationCBackendError("MIR Box.get receiver is invalid")
+                expression = (
+                    f"merlo_{_identifier(descriptor.name)}_get"
+                    f"({receiver_pointer})"
+                )
+                if instruction.result not in pointer_values:
+                    expression = f"*({expression})"
+                define(instruction, expression)
+                if receiver_temp is not None and instruction.result is not None:
+                    pending_receiver_drops[instruction.result] = [receiver_temp]
+                return
+            if instruction.op == "map_entries":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError(
+                        "MIR Map.entries is malformed"
+                    )
+                source_pointer = (
+                    operands[0]
+                    if instruction.operands[0] in pointer_values
+                    else f"&({operands[0]})"
+                )
+                define(instruction, source_pointer)
+                return
+            if instruction.op == "entries_len":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError(
+                        "MIR Map.entries length is malformed"
+                    )
+                source_type = operand_type(instruction, 0)
+                source_pointer = (
+                    operands[0]
+                    if instruction.operands[0] in pointer_values
+                    or (source_type or "").startswith("Borrow[Map[")
+                    else f"&({operands[0]})"
+                )
+                define(instruction, f"({source_pointer})->length")
+                return
+            if instruction.op == "entries_get":
+                if len(operands) != 2:
+                    raise RepresentationCBackendError(
+                        "MIR Map entry access is malformed"
+                    )
+                source_type = operand_type(instruction, 0)
+                source_pointer = (
+                    operands[0]
+                    if instruction.operands[0] in pointer_values
+                    or (source_type or "").startswith("Borrow[Map[")
+                    else f"&({operands[0]})"
+                )
+                access = (
+                    f"({source_pointer})->entries[{operands[1]}]"
+                )
+                define(instruction, access)
+                return
+            if instruction.op == "map_new":
+                type_name = instruction.type_name
+                descriptor = self.descriptors.get(type_name or "")
+                if descriptor is None or descriptor.kind != "map":
+                    raise RepresentationCBackendError("MIR Map.new type is invalid")
+                define(
+                    instruction,
+                    f"merlo_{_identifier(type_name)}_new()",
+                )
+                return
+            if instruction.op == "map_insert":
+                if len(operands) != 3:
+                    raise RepresentationCBackendError("MIR Map.insert is malformed")
+                map_type = operand_type(instruction, 0)
+                descriptor = self.descriptors.get(map_type or "")
+                if descriptor is None or descriptor.kind != "map" or descriptor.value_type is None:
+                    raise RepresentationCBackendError("MIR Map.insert type is invalid")
+                key = borrow(
+                    instruction.operands[1],
+                    operands[1],
+                    operand_type(instruction, 1),
+                )
+                value = consume(
+                    instruction.operands[2],
+                    operands[2],
+                    operand_type(instruction, 2),
+                )
+                lines.append(
+                    f"    merlo_{_identifier(descriptor.name)}_insert"
+                    f"({borrow(instruction.operands[0], operands[0], map_type)}, "
+                    f"{key}, {value});"
+                )
+                return
+            if instruction.op == "map_get":
+                if len(operands) != 2:
+                    raise RepresentationCBackendError("MIR Map.get is malformed")
+                map_type = operand_type(instruction, 0)
+                descriptor = self.descriptors.get(map_type or "")
+                if descriptor is None or descriptor.kind != "map":
+                    raise RepresentationCBackendError("MIR Map.get type is invalid")
+                key = borrow(
+                    instruction.operands[1],
+                    operands[1],
+                    operand_type(instruction, 1),
+                )
+                expression = (
+                    f"merlo_{_identifier(descriptor.name)}_get"
+                    f"({borrow(instruction.operands[0], operands[0], map_type)}, {key})"
+                )
+                define(instruction, expression)
+                return
+            if instruction.op == "map_increment":
+                if len(operands) != 3:
+                    raise RepresentationCBackendError("MIR Map.increment is malformed")
+                map_type = operand_type(instruction, 0)
+                descriptor = self.descriptors.get(map_type or "")
+                if descriptor is None or descriptor.kind != "map":
+                    raise RepresentationCBackendError("MIR Map.increment type is invalid")
+                key = borrow(
+                    instruction.operands[1],
+                    operands[1],
+                    operand_type(instruction, 1),
+                )
+                expression = (
+                    f"merlo_{_identifier(descriptor.name)}_increment"
+                    f"({borrow(instruction.operands[0], operands[0], map_type)}, "
+                    f"{key}, {operands[2]})"
+                )
+                if instruction.result is None:
+                    lines.append(f"    {expression};")
+                else:
+                    define(instruction, expression)
+                return
+            if instruction.op == "closure_create":
+                closure_id = attrs.get("closure_id")
+                captures = attrs.get("captures", ())
+                if (
+                    not isinstance(closure_id, str)
+                    or not isinstance(captures, (list, tuple))
+                    or len(captures) != len(operands)
+                ):
+                    raise RepresentationCBackendError(
+                        "MIR closure construction is malformed"
+                    )
+                arguments = []
+                for index, (_name, type_name, ownership) in enumerate(captures):
+                    operand_id = instruction.operands[index]
+                    operand = operands[index]
+                    if ownership == "owned":
+                        argument = (
+                            operand
+                            if operand_id in pointer_values
+                            else f"&({operand})"
+                        )
+                    else:
+                        argument = operand
+                    arguments.append(argument)
+                define(
+                    instruction,
+                    f"merlo_closure_make_{closure_id}"
+                    f"({', '.join(arguments)})",
+                )
+                return
+            if instruction.op == "typed_error":
+                emit_instruction(replace(instruction, op="call"))
+                return
+            if instruction.op == "load_enum_tag":
+                callee = attrs.get("callee")
+                if (
+                    not isinstance(callee, str)
+                    or not callee.endswith(".tag")
+                    or instruction.operands
+                    or instruction.result is None
+                ):
+                    raise RepresentationCBackendError(
+                        "MIR enum tag load is malformed"
+                    )
+                receiver_name = callee.rsplit(".", 1)[0]
+                parts = receiver_name.split(".")
+                receiver_type = next(
+                    (
+                        item.type_name
+                        for item in function.parameters
+                        if item.name == parts[0]
+                    ),
+                    local_types.get(parts[0]),
+                )
+                receiver = method_receiver_pointer(receiver_name)
+                for field in parts[1:]:
+                    descriptor = self.descriptors.get(receiver_type or "")
+                    if descriptor is None or descriptor.kind != "record":
+                        raise RepresentationCBackendError(
+                            "MIR enum tag receiver is not a record field"
+                        )
+                    receiver_type = next(
+                        (
+                            field_type
+                            for field_name, field_type, _ownership in descriptor.fields
+                            if field_name == field
+                        ),
+                        None,
+                    )
+                descriptor = self.descriptors.get(receiver_type or "")
+                if descriptor is None or descriptor.kind != "enum":
+                    raise RepresentationCBackendError(
+                        "MIR enum tag receiver is not an enum"
+                    )
+                tag = (
+                    f"*({receiver})"
+                    if all(
+                        payload is None
+                        for _name, payload, _tag in descriptor.variants
+                    )
+                    else f"({receiver})->tag"
+                )
+                define(instruction, tag)
+                return
+            if instruction.op == "call":
+                callee = attrs.get("callee")
+                if not isinstance(callee, str):
+                    raise RepresentationCBackendError("MIR call has no callee")
+                target = next(
+                    (item for item in self.hir.functions if item.name == callee),
+                    None,
+                )
+                if (
+                    instruction.result in control_flow_condition_values
+                    and any(
+                        (
+                            (
+                                source_instruction := instruction_by_result.get(
+                                    operand
+                                )
+                            )
+                            is not None
+                            and source_instruction.type_name is not None
+                            and (
+                                source_descriptor := self.descriptors.get(
+                                    source_instruction.type_name
+                                )
+                            )
+                            is not None
+                            and _is_owner(source_descriptor)
+                            and source_instruction.attribute_map.get(
+                                "result_ownership"
+                            )
+                            == "owned"
+                        )
+                        for operand in instruction.operands
+                    )
+                ):
+                    raise RepresentationCBackendError(
+                        "control-flow expression cannot consume owned temporary"
+                    )
+                host = host_call(callee, instruction, operands)
+                if host is not None:
+                    if (
+                        callee in {"fs.close_read", "fs.close_write"}
+                        and instruction.operands
+                    ):
+                        local = local_value_names.get(instruction.operands[0])
+                        if local is not None:
+                            mark_consumed_local(local, closed=True)
+                    expression, failure = host
+                    if callee == "network.tcp_connect":
+                        result_parts = self._result_parts(instruction.type_name or "")
+                        if result_parts is not None:
+                            ok_type, _error_type = result_parts
+                            ok_descriptor = self.descriptors.get(ok_type)
+                            if (
+                                ok_descriptor is not None
+                                and ok_descriptor.kind == "record"
+                                and tuple(
+                                    field_type
+                                    for _field_name, field_type, _ownership
+                                    in ok_descriptor.fields
+                                )
+                                == ("UInt64",)
+                            ):
+                                expression = (
+                                    f"merlo_make_{_identifier(ok_type)}"
+                                    f"({expression})"
+                                )
+                    host_result(
+                        instruction,
+                        expression,
+                        failure,
+                        error_code=(
+                            "merlo_network_error"
+                            if callee.startswith("network.")
+                            else "merlo_file_error"
+                        ),
+                        text_payload=(
+                            host_address(
+                                instruction.operands[0],
+                                operands[0],
+                            )
+                            if callee in {
+                                "fs.open_read",
+                                "fs.read",
+                                "fs.read_text",
+                            }
+                            and operands
+                            else None
+                        ),
+                    )
+                    return
+                if callee == "Path":
+                    if len(operands) != 1:
+                        raise RepresentationCBackendError(
+                            "MIR Path constructor arity is invalid"
+                        )
+                    call = consume(
+                        instruction.operands[0],
+                        operands[0],
+                        operand_type(instruction, 0),
+                    )
+                elif attrs.get("representation_lowering") in {
+                    "option_is_none",
+                    "option_is_some",
+                    "result_is_err",
+                    "result_is_ok",
+                }:
+                    if len(operands) != 1:
+                        raise RepresentationCBackendError(
+                            "MIR enum predicate arity is invalid"
+                        )
+                    enum_type = operand_type(instruction, 0)
+                    descriptor = self.descriptors.get(enum_type or "")
+                    if descriptor is None or descriptor.kind != "enum":
+                        raise RepresentationCBackendError(
+                            "MIR enum predicate source is not an enum"
+                        )
+                    lowering = attrs["representation_lowering"]
+                    variant = {
+                        "option_is_none": "NoneValue",
+                        "option_is_some": "Some",
+                        "result_is_err": "Err",
+                        "result_is_ok": "Ok",
+                    }[lowering]
+                    if not any(
+                        name == variant
+                        for name, _payload, _tag in descriptor.variants
+                    ):
+                        raise RepresentationCBackendError(
+                            "MIR enum predicate variant is missing"
+                        )
+                    value = operands[0]
+                    access = (
+                        f"({value})->tag"
+                        if instruction.operands[0] in pointer_values
+                        else f"({value}).tag"
+                    )
+                    call = (
+                        f"({access} == "
+                        f"MERLO_{_identifier(enum_type)}_{variant}_TAG)"
+                    )
+                elif attrs.get("representation_lowering") in {
+                    "option_unwrap_clone",
+                    "result_unwrap_clone",
+                    "result_unwrap_err_clone",
+                }:
+                    if len(operands) != 1:
+                        raise RepresentationCBackendError(
+                            "MIR enum unwrap arity is invalid"
+                        )
+                    source_type = operand_type(instruction, 0)
+                    descriptor = self.descriptors.get(source_type or "")
+                    if descriptor is None or descriptor.kind != "enum":
+                        raise RepresentationCBackendError(
+                            "MIR enum unwrap source is not an enum"
+                        )
+                    lowering = attrs["representation_lowering"]
+                    variant = {
+                        "option_unwrap_clone": "Some",
+                        "result_unwrap_clone": "Ok",
+                        "result_unwrap_err_clone": "Err",
+                    }[lowering]
+                    payload_type = next(
+                        (
+                            payload
+                            for name, payload, _tag in descriptor.variants
+                            if name == variant
+                        ),
+                        None,
+                    )
+                    receiver = (
+                        operands[0]
+                        if instruction.operands[0] in pointer_values
+                        else f"&({operands[0]})"
+                    )
+                    tag_access = f"({receiver})->tag"
+                    suffix = _identifier(source_type)
+                    diagnostic = {
+                        "option_unwrap_clone": "OptionUnwrapWrongVariant",
+                        "result_unwrap_clone": "ResultUnwrapWrongVariant",
+                        "result_unwrap_err_clone": "ResultUnwrapErrWrongVariant",
+                    }[lowering]
+                    if payload_type in {None, "Unit"}:
+                        payload = self._zero_expression(payload_type or "Unit")
+                        failure = payload
+                    else:
+                        payload_access = f"({receiver})->payload.{variant}"
+                        payload_descriptor = self.descriptors.get(payload_type)
+                        if (
+                            payload_descriptor is not None
+                            and _is_owner(payload_descriptor)
+                        ):
+                            payload = (
+                                f"merlo_clone_{_identifier(payload_type)}"
+                                f"(&{payload_access})"
+                            )
+                        else:
+                            payload = payload_access
+                        failure = self._zero_expression(payload_type)
+                    call = (
+                        f"(({tag_access} == MERLO_{suffix}_{variant}_TAG) "
+                        f"? ({payload}) : "
+                        f"(merlo_ownership_trap(\"{diagnostic}\"), "
+                        f"{failure}))"
+                    )
+                elif callee == "console.write":
+                    if len(operands) != 1:
+                        raise RepresentationCBackendError(
+                            "MIR console.write arity is invalid"
+                        )
+                    value = operands[0]
+                    pointer = (
+                        value
+                        if instruction.operands[0] in pointer_values
+                        else f"&({value})"
+                    )
+                    call = (
+                        "merlo_console_write_view((MerloTextView){ "
+                        f"({pointer})->data, ({pointer})->length }})"
+                    )
+                elif callee == "Unit":
+                    if operands:
+                        raise RepresentationCBackendError(
+                            "MIR Unit constructor arity is invalid"
+                        )
+                    call = "0"
+                elif target is not None:
+                    call_operands = []
+                    for index, (operand_id, operand) in enumerate(
+                        zip(instruction.operands, operands)
+                    ):
+                        parameter = (
+                            target.parameters[index]
+                            if index < len(target.parameters)
+                            else None
+                        )
+                        if parameter is None:
+                            raise RepresentationCBackendError(
+                                f"MIR call arity exceeds target: {callee}"
+                            )
+                        call_operands.append(
+                            call_argument(
+                                parameter,
+                                operand_id,
+                                operand,
+                                operand_type(instruction, index),
+                            )
+                        )
+                    call = (
+                        f"merlo_fn_{_identifier(callee)}"
+                        f"({', '.join(call_operands)})"
+                    )
+                elif (
+                    instruction.type_name is not None
+                    and (
+                        result_descriptor := self.descriptors.get(
+                            instruction.type_name
+                        )
+                    ) is not None
+                    and result_descriptor.kind == "enum"
+                    and any(
+                        variant == callee
+                        for variant, _payload, _tag in result_descriptor.variants
+                    )
+                ):
+                    variant = next(
+                        variant
+                        for variant, _payload, _tag in result_descriptor.variants
+                        if variant == callee
+                    )
+                    payload = next(
+                        payload
+                        for variant_name, payload, _tag in result_descriptor.variants
+                        if variant_name == variant
+                    )
+                    if payload is None:
+                        if operands:
+                            raise RepresentationCBackendError(
+                                "MIR enum constructor arity is invalid"
+                            )
+                        if all(
+                            item_payload is None
+                            for _name, item_payload, _tag in result_descriptor.variants
+                        ):
+                            call = (
+                                f"MERLO_{_identifier(instruction.type_name)}"
+                                f"_{variant}"
+                            )
+                        else:
+                            call = (
+                                f"merlo_make_{_identifier(instruction.type_name)}"
+                                f"_{variant}()"
+                            )
+                    elif payload == "Unit":
+                        if operands:
+                            raise RepresentationCBackendError(
+                                "MIR enum constructor arity is invalid"
+                            )
+                        call = (
+                            f"merlo_make_{_identifier(instruction.type_name)}"
+                            f"_{variant}()"
+                        )
+                    elif len(operands) == 1:
+                        call = (
+                            f"merlo_make_{_identifier(instruction.type_name)}"
+                            f"_{variant}({consume(instruction.operands[0], operands[0], payload, force_move=True)})"
+                        )
+                    else:
+                        raise RepresentationCBackendError(
+                            f"MIR enum constructor arity is invalid: {callee}"
+                        )
+                elif callee.endswith(".clone"):
+                    source_name = callee.rsplit(".clone", 1)[0]
+                    if len(operands) == 1:
+                        source = (
+                            operands[0]
+                            if instruction.operands[0] in pointer_values
+                            else f"&({operands[0]})"
+                        )
+                        source_type = operand_type(instruction, 0)
+                    elif not operands:
+                        source = method_receiver_pointer(source_name)
+                        source_type = instruction.type_name
+                    else:
+                        raise RepresentationCBackendError(
+                            f"MIR clone arity is invalid: {callee}"
+                        )
+                    if source_type is None:
+                        raise RepresentationCBackendError(
+                            "MIR clone source type is missing"
+                        )
+                    call = (
+                        f"merlo_clone_{_identifier(source_type)}"
+                        f"({source})"
+                    )
+                elif callee.endswith(".len"):
+                    source_name = callee.rsplit(".", 1)[0]
+                    source_type = local_types.get(source_name)
+                    descriptor = self.descriptors.get(source_type or "")
+                    if (
+                        descriptor is None
+                        or descriptor.kind != "array"
+                        or descriptor.length is None
+                    ):
+                        raise RepresentationCBackendError(
+                            f"MIR array length source is unknown: {callee}"
+                        )
+                    call = f"UINT64_C({descriptor.length})"
+                else:
+                    raise RepresentationCBackendError(
+                        f"MIR call target is unsupported: {callee}"
+                    )
+                if instruction.result is None:
+                    lines.append(f"    {call};")
+                else:
+                    define(instruction, call)
+                drops = [
+                    (temporary, type_name)
+                    for operand_id, (temporary, type_name) in owned_temporaries.items()
+                    if operand_id in instruction.operands
+                ]
+                if (
+                    instruction.result in inline_call_results
+                    or instruction.result in result_branch_inputs
+                ):
+                    pending_drops[instruction.result] = drops
+                else:
+                    for temporary, type_name in drops:
+                        lines.append(
+                            f"    merlo_drop_{_identifier(type_name)}"
+                            f"(&{temporary});"
+                        )
+            elif instruction.op == "callback_call":
+                callee = attrs.get("callee")
+                if not isinstance(callee, str) or not operands:
+                    raise RepresentationCBackendError(
+                        "MIR callback call is malformed"
+                    )
+                callback_type = next(
+                    (
+                        parameter.type_name
+                        for parameter in function.parameters
+                        if parameter.name == callee
+                    ),
+                    local_types.get(callee),
+                )
+                descriptor = self.descriptors.get(callback_type or "")
+                if descriptor is None or descriptor.kind not in {"callback", "closure"}:
+                    raise RepresentationCBackendError(
+                        f"MIR callback target is unknown: {callee}"
+                    )
+                callback_parameter = next(
+                    (
+                        parameter
+                        for parameter in function.parameters
+                        if parameter.name == callee
+                    ),
+                    None,
+                )
+                callback = (
+                    callee
+                    if callback_parameter is not None
+                    and self._parameter_is_pointer(callback_parameter)
+                    else f"&{callee}"
+                )
+                call = (
+                    f"({callback})->call(({callback})->environment"
+                    f"{', ' if operands else ''}{', '.join(operands)})"
+                )
+                if instruction.result is None:
+                    lines.append(f"    {call};")
+                else:
+                    define(instruction, call)
+            elif instruction.op == "primitive_call":
+                callee = attrs.get("callee")
+                if not isinstance(callee, str):
+                    raise RepresentationCBackendError(
+                        "MIR primitive call has no callee"
+                    )
+                if callee == "Text.from_bytes" and len(operands) == 3:
+                    source = host_address(instruction.operands[0], operands[0])
+                    source_type = operand_type(instruction, 0)
+                    if source_type == "Bytes":
+                        view = (
+                            f"&(MerloBytesView){{ ({source})->data, "
+                            f"({source})->length }}"
+                        )
+                    elif source_type == "BytesView":
+                        view = source
+                    else:
+                        raise RepresentationCBackendError(
+                            "MIR Text.from_bytes source is not byte-like"
+                        )
+                    define(
+                        instruction,
+                        f"merlo_text_from_bytes({view}, "
+                        f"{operands[1]}, {operands[2]})",
+                    )
+                elif callee == "TextBuilder.new" and not operands:
+                    define(instruction, "merlo_text_builder_new()")
+                elif callee.endswith(".append_byte") and len(operands) == 2:
+                    receiver = (
+                        operands[0]
+                        if instruction.operands[0] in pointer_values
+                        else f"&({operands[0]})"
+                    )
+                    lines.append(
+                        f"    merlo_text_builder_append_byte({receiver}, "
+                        f"{operands[1]});"
+                    )
+                elif callee.endswith(".append_scalar") and len(operands) == 2:
+                    receiver = (
+                        operands[0]
+                        if instruction.operands[0] in pointer_values
+                        else f"&({operands[0]})"
+                    )
+                    lines.append(
+                        f"    merlo_text_builder_append_scalar({receiver}, "
+                        f"{operands[1]});"
+                    )
+                elif callee.endswith(".append_uint64") and len(operands) == 2:
+                    receiver = (
+                        operands[0]
+                        if instruction.operands[0] in pointer_values
+                        else f"&({operands[0]})"
+                    )
+                    lines.append(
+                        f"    merlo_text_builder_append_uint64({receiver}, "
+                        f"{operands[1]});"
+                    )
+                elif (
+                    (
+                        callee.endswith(".contains")
+                        or callee.endswith(".contains_ascii_case_insensitive")
+                    )
+                    and len(operands) == 2
+                ):
+                    receiver = (
+                        operands[0]
+                        if instruction.operands[0] in pointer_values
+                        else f"&({operands[0]})"
+                    )
+                    source_type = operand_type(instruction, 0)
+                    if source_type == "Text":
+                        receiver = (
+                            f"&(MerloTextView){{ ({receiver})->data, "
+                            f"({receiver})->length }}"
+                        )
+                    needle = (
+                        operands[1]
+                        if instruction.operands[1] in pointer_values
+                        else f"&({operands[1]})"
+                    )
+                    ignore_case = (
+                        "true"
+                        if callee.endswith(".contains_ascii_case_insensitive")
+                        else "false"
+                    )
+                    define(
+                        instruction,
+                        f"merlo_text_view_contains({receiver}, {needle}, "
+                        f"{ignore_case})",
+                    )
+                elif (
+                    (
+                        callee.endswith(".starts_with")
+                        or callee.endswith(".ends_with")
+                    )
+                    and len(operands) == 2
+                ):
+                    receiver = (
+                        operands[0]
+                        if instruction.operands[0] in pointer_values
+                        else f"&({operands[0]})"
+                    )
+                    source_type = operand_type(instruction, 0)
+                    if source_type == "Text":
+                        receiver = (
+                            f"&(MerloTextView){{ ({receiver})->data, "
+                            f"({receiver})->length }}"
+                        )
+                    needle = (
+                        operands[1]
+                        if instruction.operands[1] in pointer_values
+                        else f"&({operands[1]})"
+                    )
+                    suffix = (
+                        "true"
+                        if callee.endswith(".ends_with")
+                        else "false"
+                    )
+                    define(
+                        instruction,
+                        f"merlo_text_view_prefix_suffix({receiver}, "
+                        f"{needle}, {suffix})",
+                    )
+                elif callee.endswith(".append_text") and len(operands) == 2:
+                    receiver = (
+                        operands[0]
+                        if instruction.operands[0] in pointer_values
+                        else f"&({operands[0]})"
+                    )
+                    text = (
+                        operands[1]
+                        if instruction.operands[1] in pointer_values
+                        else f"&({operands[1]})"
+                    )
+                    lines.append(
+                        f"    merlo_text_builder_append_text({receiver}, "
+                        f"{text});"
+                    )
+                elif callee.endswith(".finish") and len(operands) == 1:
+                    receiver = (
+                        operands[0]
+                        if instruction.operands[0] in pointer_values
+                        else f"&({operands[0]})"
+                    )
+                    define(
+                        instruction,
+                        f"merlo_text_builder_finish({receiver})",
+                    )
+                elif (
+                    callee in {"view", "as_view"}
+                    or callee.endswith(".view")
+                    or callee.endswith(".as_view")
+                ):
+                    if len(operands) != 1:
+                        raise RepresentationCBackendError(
+                            f"MIR view operation arity is invalid: {callee}"
+                        )
+                    source = host_address(instruction.operands[0], operands[0])
+                    source_type = operand_type(instruction, 0)
+                    view_type = (
+                        "MerloBytesView"
+                        if source_type == "Bytes"
+                        else "MerloTextView"
+                    )
+                    define(
+                        instruction,
+                        f"({view_type}){{ ({source})->data, "
+                        f"({source})->length }}",
+                    )
+                elif callee.endswith(".slice") and len(operands) == 3:
+                    source = host_address(instruction.operands[0], operands[0])
+                    define(
+                        instruction,
+                        "(MerloBytesView){ "
+                        f"({source})->data + ({operands[1]}), "
+                        f"({operands[2]}) }}",
+                    )
+                elif (callee == "slice_bytes" or callee.endswith(".slice_bytes")) and len(operands) == 3:
+                    source = host_address(instruction.operands[0], operands[0])
+                    define(
+                        instruction,
+                        "merlo_text_view_slice_bytes("
+                        f"{source}, {operands[1]}, {operands[2]})",
+                    )
+                elif (callee == "to_text" or callee.endswith(".to_text")) and len(operands) == 1:
+                    source = host_address(instruction.operands[0], operands[0])
+                    source_type = operand_type(instruction, 0)
+                    if source_type == "Bytes":
+                        expression = (
+                            "merlo_text_from_bytes("
+                            f"&(MerloBytesView){{ ({source})->data, "
+                            f"({source})->length }}, UINT64_C(0), "
+                            f"({source})->length)"
+                        )
+                    elif source_type == "TextView":
+                        expression = f"merlo_text_from_view({source})"
+                    else:
+                        descriptor = self.descriptors.get(source_type or "")
+                        if descriptor is None or descriptor.kind != "text":
+                            raise RepresentationCBackendError(
+                                "MIR to_text source is not text-like"
+                            )
+                        expression = f"merlo_text_clone({source})"
+                    define(instruction, expression)
+                elif (callee == "clone" or callee.endswith(".clone")) and len(operands) == 1:
+                    source = (
+                        operands[0]
+                        if instruction.operands[0] in pointer_values
+                        else f"&({operands[0]})"
+                    )
+                    source_type = operand_type(instruction, 0)
+                    if source_type is None:
+                        raise RepresentationCBackendError(
+                            "MIR clone source type is missing"
+                        )
+                    define(
+                        instruction,
+                        f"merlo_clone_{_identifier(source_type)}({source})",
+                    )
+                elif (callee.endswith(".len") or callee == "len") and len(operands) == 1:
+                    receiver = (
+                        f"({operands[0]})->length"
+                        if instruction.operands[0] in pointer_values
+                        else f"({operands[0]}).length"
+                    )
+                    define(instruction, receiver)
+                elif callee.endswith(".byte") and len(operands) == 2:
+                    source_type = (
+                        self.hir.type_context.render(instruction.operand_type_ids[0])
+                        if instruction.operand_type_ids
+                        else None
+                    )
+                    if source_type == "Bytes":
+                        source = operands[0]
+                        if instruction.operands[0] in pointer_values:
+                            receiver = (
+                                f"&(({_c_name('BytesView')})"
+                                f"{{({source})->data, ({source})->length}})"
+                            )
+                        else:
+                            receiver = (
+                                f"&(({_c_name('BytesView')})"
+                                f"{{({source}).data, ({source}).length}})"
+                            )
+                    else:
+                        receiver = (
+                            operands[0]
+                            if instruction.operands[0] in pointer_values
+                            else f"&({operands[0]})"
+                        )
+                    contract = str(attrs.get("contract_symbol", callee))
+                    if contract.startswith("TextView."):
+                        helper = "merlo_text_view_load"
+                    elif contract.startswith("Text."):
+                        helper = "merlo_text_load"
+                    else:
+                        helper = "merlo_bytes_load"
+                    define(instruction, f"{helper}({receiver}, {operands[1]})")
+                else:
+                    raise RepresentationCBackendError(
+                        f"MIR primitive call is unsupported: {callee}"
+                    )
+            elif instruction.op == "array_literal":
+                descriptor = self.descriptors.get(instruction.type_name or "")
+                if (
+                    descriptor is None
+                    or descriptor.kind != "array"
+                    or descriptor.length is None
+                    or descriptor.element_type is None
+                    or len(operands) != descriptor.length
+                ):
+                    raise RepresentationCBackendError(
+                        "MIR array literal is malformed"
+                    )
+                elements = [
+                    consume(instruction.operands[index], value, descriptor.element_type)
+                    if _is_owner(self.descriptors[descriptor.element_type])
+                    else value
+                    for index, value in enumerate(operands)
+                ]
+                define(
+                    instruction,
+                    f"({_c_name(instruction.type_name)}){{ .data = "
+                    f"{{{', '.join(elements)}}} }}",
+                )
+            elif instruction.op == "bounds_checked_index":
+                if len(operands) != 2 or len(instruction.operand_type_ids) != 2:
+                    raise RepresentationCBackendError(
+                        "MIR collection index is malformed"
+                    )
+                source_type = self.hir.type_context.render(
+                    instruction.operand_type_ids[0]
+                )
+                descriptor = self.descriptors.get(source_type)
+                if (
+                    source_type not in {
+                        "Bytes",
+                        "BytesView",
+                        "Text",
+                        "TextView",
+                    }
+                    and (
+                        descriptor is None
+                        or descriptor.kind not in {
+                            "array",
+                            "vec",
+                            "slice",
+                        }
+                    )
+                ):
+                    raise RepresentationCBackendError(
+                        "MIR collection index source is malformed"
+                    )
+                source_pointer = (
+                    operands[0]
+                    if instruction.operands[0] in pointer_values
+                    else f"&({operands[0]})"
+                )
+                if (
+                    descriptor is not None
+                    and descriptor.kind == "array"
+                    and descriptor.length is not None
+                ):
+                    length = f"UINT64_C({descriptor.length})"
+                else:
+                    length = f"({source_pointer})->length"
+                lines.append(
+                    f"    if ({operands[1]} >= {length}) "
+                    f"merlo_bounds_trap({operands[1]}, {length});"
+                )
+                access = (
+                    f"({source_pointer})->data[{operands[1]}]"
+                )
+                define(
+                    instruction,
+                    f"&({access})"
+                    if instruction.result in pointer_values
+                    else access,
+                )
+            elif instruction.op == "byte_load":
+                if len(operands) != 2:
+                    raise RepresentationCBackendError("MIR byte_load is malformed")
+                callee = attrs.get("callee")
+                if not isinstance(callee, str):
+                    raise RepresentationCBackendError("MIR byte_load has no callee")
+                source_type = (
+                    self.hir.type_context.render(instruction.operand_type_ids[0])
+                    if instruction.operand_type_ids
+                    else None
+                )
+                if source_type == "Bytes":
+                    source = operands[0]
+                    if instruction.operands[0] in pointer_values:
+                        receiver = (
+                            f"&(({_c_name('BytesView')})"
+                            f"{{({source})->data, ({source})->length}})"
+                        )
+                    else:
+                        receiver = (
+                            f"&(({_c_name('BytesView')})"
+                            f"{{({source}).data, ({source}).length}})"
+                        )
+                else:
+                    receiver = (
+                        operands[0]
+                        if instruction.operands[0] in pointer_values
+                        else f"&({operands[0]})"
+                    )
+                contract = str(attrs.get("contract_symbol", callee))
+                if contract.startswith("TextView."):
+                    helper = "merlo_text_view_load"
+                elif contract.startswith("Text."):
+                    helper = "merlo_text_load"
+                else:
+                    helper = "merlo_bytes_load"
+                define(instruction, f"{helper}({receiver}, {operands[1]})")
+            elif instruction.op == "const":
+                literal = self._mir_literal(
+                    instruction.type_name or "Unit",
+                    attrs.get("value"),
+                    owned=instruction.result not in pointer_values,
+                )
+                if instruction.result in pointer_values:
+                    literal = f"&({literal})"
+                define(instruction, literal)
+            elif instruction.op == "load_local":
+                name = attrs.get("name")
+                if not isinstance(name, str):
+                    raise RepresentationCBackendError("MIR CFG load_local has no name")
+                line_binding = file_line_bindings.get(name)
+                local_value_names[instruction.result or ""] = name
+                if line_binding is not None:
+                    define(instruction, value_of(line_binding))
+                    return
+                binding = active_match_bindings.get(name)
+                if binding is not None:
+                    source_id, variant, _payload_type = binding
+                    source = value_of(source_id)
+                    access = (
+                        f"({source})->payload.{variant}"
+                        if source_id in pointer_values
+                        else f"({source}).payload.{variant}"
+                    )
+                    expression = (
+                        f"&({access})"
+                        if instruction.result in pointer_values
+                        else access
+                    )
+                    define(instruction, expression)
+                    return
+                target = next(
+                    (item for item in self.hir.functions if item.name == name),
+                    None,
+                )
+                descriptor = self.descriptors.get(instruction.type_name or "")
+                if (
+                    target is not None
+                    and descriptor is not None
+                    and descriptor.kind in {"callback", "closure"}
+                ):
+                    define(
+                        instruction,
+                        f"({_c_name(instruction.type_name)}){{ "
+                        f"merlo_closure_adapter_{name}, NULL, NULL, NULL }}",
+                    )
+                else:
+                    parameter_pointer = any(
+                        parameter.name == name
+                        and self._parameter_is_pointer(parameter)
+                        for parameter in function.parameters
+                    )
+                    expression = (
+                        name
+                        if (
+                            parameter_pointer
+                            or (
+                                instruction.type_name is not None
+                                and (
+                                    pointer_type(instruction.type_name) is not None
+                                    or instruction.type_name.startswith("Borrow[")
+                                )
+                            )
+                            or instruction.result not in pointer_values
+                        )
+                        else f"&{name}"
+                    )
+                    define(instruction, expression)
+                    if parameter_pointer:
+                        pointer_values.add(instruction.result or "")
+            elif instruction.op == "store_local":
+                target = attrs.get("name", attrs.get("target"))
+                if not isinstance(target, str) or len(operands) != 1:
+                    raise RepresentationCBackendError("MIR CFG store_local is malformed")
+                replacement = replacement_names.get(instruction.operands[0])
+                if "target" in attrs and replacement is not None:
+                    replacement_name, replacement_type = replacement
+                    lines.append(
+                        f"    {replacement_name} = {operands[0]};"
+                    )
+                    lines.append(
+                        f"    merlo_drop_{_identifier(replacement_type)}"
+                        f"(&{target});"
+                    )
+                    lines.append(
+                        f"    {target} = merlo_move_{_identifier(replacement_type)}"
+                        f"(&{replacement_name});"
+                    )
+                else:
+                    store_value = operands[0]
+                    descriptor = self.descriptors.get(instruction.type_name or "")
+                    if (
+                        instruction.operands[0] in pointer_values
+                        and descriptor is not None
+                        and _is_owner(descriptor)
+                    ):
+                        store_value = (
+                            f"merlo_clone_{_identifier(instruction.type_name or '')}"
+                            f"({store_value})"
+                        )
+                    elif (
+                        instruction.operands[0] in result_types
+                        and instruction.operands[0] not in inline_call_results
+                        and instruction.operands[0] not in inline_construct_results
+                        and descriptor is not None
+                        and _is_owner(descriptor)
+                    ):
+                        store_value = (
+                            f"merlo_move_{_identifier(instruction.type_name or '')}"
+                            f"(&({store_value}))"
+                        )
+                    lines.append(f"    {target} = {store_value};")
+                for temporary, type_name in pending_drops.pop(
+                    instruction.operands[0],
+                    [],
+                ):
+                    lines.append(
+                        f"    merlo_drop_{_identifier(type_name)}"
+                        f"(&{temporary});"
+                    )
+                for temporary, type_name in pending_receiver_drops.pop(
+                    instruction.operands[0],
+                    [],
+                ):
+                    lines.append(
+                        f"    merlo_drop_{_identifier(type_name)}"
+                        f"(&{temporary});"
+                    )
+            elif instruction.op == "binary":
+                if len(operands) != 2:
+                    raise RepresentationCBackendError("MIR CFG binary is malformed")
+                overflow = attrs.get("overflow", attrs.get("signed_overflow"))
+                if (
+                    attrs.get("division_by_zero") == "trap"
+                    or attrs.get("shift_range") == "checked"
+                ):
+                    overflow = "checked"
+                define(
+                    instruction,
+                    self._mir_scalar_binary(
+                        instruction.type_name or "",
+                        str(attrs.get("operator", "")),
+                        operands[0],
+                        operands[1],
+                        str(overflow) if overflow is not None else None,
+                    ),
+                )
+            elif instruction.op == "aug_assign":
+                if len(operands) != 2:
+                    raise RepresentationCBackendError(
+                        "MIR CFG augmented assignment is malformed"
+                    )
+                overflow = attrs.get("overflow", attrs.get("signed_overflow"))
+                if (
+                    attrs.get("division_by_zero") == "trap"
+                    or attrs.get("shift_range") == "checked"
+                ):
+                    overflow = "checked"
+                if overflow is None and instruction.type_name in {
+                    "Byte",
+                    "UInt64",
+                    "Int64",
+                }:
+                    overflow = "checked"
+                define(
+                    instruction,
+                    self._mir_scalar_binary(
+                        instruction.type_name or "",
+                        str(attrs.get("operator", "")),
+                        operands[0],
+                        operands[1],
+                        str(overflow) if overflow is not None else None,
+                    ),
+                )
+                target = attrs.get("target")
+                if not isinstance(target, str):
+                    raise RepresentationCBackendError(
+                        "MIR CFG augmented assignment has no target"
+                    )
+                lines.append(f"    {target} = {value_of(instruction.result or '')};")
+            elif instruction.op == "boolean":
+                if not operands:
+                    raise RepresentationCBackendError("MIR CFG boolean has no operands")
+                symbol = "&&" if attrs.get("operator") == "And" else "||"
+                define(instruction, f" {symbol} ".join(f"({item})" for item in operands))
+            elif instruction.op == "compare":
+                operators = tuple(attrs.get("operators", ()))
+                if len(operators) != len(operands) - 1:
+                    raise RepresentationCBackendError("MIR CFG compare is malformed")
+                symbols = {
+                    "Eq": "==",
+                    "NotEq": "!=",
+                    "Lt": "<",
+                    "LtE": "<=",
+                    "Gt": ">",
+                    "GtE": ">=",
+                }
+                try:
+                    comparisons: list[str] = []
+                    for index, operator in enumerate(operators):
+                        left_type = operand_type(instruction, index)
+                        right_type = operand_type(instruction, index + 1)
+                        descriptor = self.descriptors.get(left_type or "")
+                        if (
+                            left_type == right_type == "Text"
+                            and operator in {"Eq", "NotEq"}
+                        ):
+                            left = (
+                                f"*({operands[index]})"
+                                if instruction.operands[index] in pointer_values
+                                else operands[index]
+                            )
+                            right = (
+                                f"*({operands[index + 1]})"
+                                if instruction.operands[index + 1] in pointer_values
+                                else operands[index + 1]
+                            )
+                            equal = (
+                                f"merlo_text_equal_values({left}, {right})"
+                            )
+                            comparisons.append(
+                                equal if operator == "Eq" else f"!({equal})"
+                            )
+                        elif (
+                            left_type == right_type
+                            and descriptor is not None
+                            and descriptor.kind == "enum"
+                            and operator in {"Eq", "NotEq"}
+                        ):
+                            pure_enum = all(
+                                payload is None
+                                for _name, payload, _tag in descriptor.variants
+                            )
+
+                            def unit_constructor(value_id: str) -> bool:
+                                producer = result_instructions.get(value_id)
+                                if producer is None:
+                                    return False
+                                if producer.op == "load_field":
+                                    field = producer.attribute_map.get("field")
+                                    variant = field if isinstance(field, str) else ""
+                                elif producer.op in {"call", "construct_enum"}:
+                                    callee = producer.attribute_map.get("callee")
+                                    if not isinstance(callee, str):
+                                        return False
+                                    variant = callee.rsplit(".", 1)[-1]
+                                else:
+                                    return False
+                                return any(
+                                    name == variant
+                                    and payload in {None, "Unit"}
+                                    for name, payload, _tag in descriptor.variants
+                                )
+
+                            if not pure_enum and not any(
+                                unit_constructor(value_id)
+                                for value_id in instruction.operands[
+                                    index : index + 2
+                                ]
+                            ):
+                                raise RepresentationCBackendError(
+                                    "MIR payload enum equality requires "
+                                    "a unit variant"
+                                )
+
+                            def enum_tag(value_id: str, value: str) -> str:
+                                if pure_enum:
+                                    return (
+                                        f"*({value})"
+                                        if value_id in pointer_values
+                                        else value
+                                    )
+                                return (
+                                    f"({value})->tag"
+                                    if value_id in pointer_values
+                                    else f"({value}).tag"
+                                )
+
+                            left = enum_tag(
+                                instruction.operands[index],
+                                operands[index],
+                            )
+                            right = enum_tag(
+                                instruction.operands[index + 1],
+                                operands[index + 1],
+                            )
+                            equal = f"({left} == {right})"
+                            comparisons.append(
+                                equal if operator == "Eq" else f"!{equal}"
+                            )
+                        else:
+                            comparisons.append(
+                                f"({operands[index]} {symbols[str(operator)]} "
+                                f"{operands[index + 1]})"
+                            )
+                except KeyError as exc:
+                    raise RepresentationCBackendError(
+                        "MIR CFG compare operator is unsupported"
+                    ) from exc
+                define(instruction, " && ".join(comparisons))
+            elif instruction.op == "unary":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError("MIR CFG unary is malformed")
+                operator = str(attrs.get("operator", ""))
+                if operator == "Not":
+                    expression = f"!({operands[0]})"
+                elif operator == "USub" and instruction.type_name == "Int64":
+                    expression = f"merlo_checked_int64_neg({operands[0]})"
+                elif operator == "USub":
+                    expression = f"-({operands[0]})"
+                elif operator == "UAdd":
+                    expression = f"+({operands[0]})"
+                elif operator == "Invert":
+                    expression = f"~({operands[0]})"
+                else:
+                    raise RepresentationCBackendError(
+                        f"MIR CFG unary operator unsupported: {operator}"
+                    )
+                define(instruction, expression)
+            elif instruction.op == "numeric_intrinsic":
+                define(instruction, self._mir_scalar_intrinsic(instruction, operands))
+            elif instruction.op == "scalar_cast":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError("MIR CFG scalar cast is malformed")
+                define(instruction, self._mir_scalar_cast(instruction, operands[0]))
+            elif instruction.op == "construct_enum":
+                descriptor = self.descriptors.get(instruction.type_name or "")
+                callee = attrs.get("callee")
+                if (
+                    descriptor is None
+                    or descriptor.kind != "enum"
+                    or not isinstance(callee, str)
+                    or "." not in callee
+                ):
+                    raise RepresentationCBackendError(
+                        "MIR enum construction is malformed"
+                    )
+                variant = callee.rsplit(".", 1)[1]
+                payload = next(
+                    (
+                        payload
+                        for name, payload, _tag in descriptor.variants
+                        if name == variant
+                    ),
+                    None,
+                )
+                if payload is None:
+                    if operands:
+                        raise RepresentationCBackendError(
+                            "MIR enum construction arity is invalid"
+                        )
+                    if all(
+                        item_payload is None
+                        for _name, item_payload, _tag in descriptor.variants
+                    ):
+                        expression = (
+                            f"MERLO_{_identifier(instruction.type_name)}"
+                            f"_{variant}"
+                        )
+                    else:
+                        expression = (
+                            f"merlo_make_{_identifier(instruction.type_name)}"
+                            f"_{variant}()"
+                        )
+                elif payload == "Unit":
+                    if operands:
+                        raise RepresentationCBackendError(
+                            "MIR enum construction arity is invalid"
+                        )
+                    expression = (
+                        f"merlo_make_{_identifier(instruction.type_name)}"
+                        f"_{variant}()"
+                    )
+                elif len(operands) == 1:
+                    expression = (
+                        f"merlo_make_{_identifier(instruction.type_name)}"
+                        f"_{variant}("
+                        f"{consume(instruction.operands[0], operands[0], payload, force_move=True)})"
+                    )
+                else:
+                    raise RepresentationCBackendError(
+                        "MIR enum construction arity is invalid"
+                    )
+                define(instruction, expression)
+            elif instruction.op == "construct_record":
+                descriptor = self.descriptors.get(instruction.type_name or "")
+                if descriptor is None or len(operands) > len(descriptor.fields):
+                    raise RepresentationCBackendError(
+                        "MIR CFG record construction is malformed"
+                    )
+                fields = []
+                for index, (_field_name, field_type, _ownership) in enumerate(
+                    descriptor.fields
+                ):
+                    if index >= len(operands):
+                        fields.append(self._zero_expression(field_type))
+                        continue
+                    value = operands[index]
+                    operand_id = instruction.operands[index]
+                    field_descriptor = self.descriptors[field_type]
+                    fields.append(
+                        consume(operand_id, value, field_type)
+                        if _is_owner(field_descriptor)
+                        else value
+                    )
+                define(
+                    instruction,
+                    f"merlo_make_{_identifier(instruction.type_name)}"
+                    f"({', '.join(fields)})",
+                )
+            elif instruction.op == "load_field":
+                field = attrs.get("field")
+                if not isinstance(field, str):
+                    raise RepresentationCBackendError("MIR CFG load_field is malformed")
+                if len(operands) == 0:
+                    descriptor = self.descriptors.get(instruction.type_name or "")
+                    variant_payload = next(
+                        (
+                            payload
+                            for variant, payload, _tag in (
+                                descriptor.variants
+                                if descriptor is not None
+                                and descriptor.kind == "enum"
+                                else ()
+                            )
+                            if variant == field
+                        ),
+                        None,
+                    )
+                    if (
+                        descriptor is not None
+                        and descriptor.kind == "enum"
+                        and any(
+                            variant == field
+                            for variant, _payload, _tag in descriptor.variants
+                        )
+                    ):
+                        if variant_payload is None and all(
+                            payload is None
+                            for _name, payload, _tag in descriptor.variants
+                        ):
+                            expression = (
+                                f"MERLO_{_identifier(instruction.type_name)}"
+                                f"_{field}"
+                            )
+                        else:
+                            expression = (
+                                f"merlo_make_{_identifier(instruction.type_name)}"
+                                f"_{field}()"
+                            )
+                    else:
+                        expression = (
+                            f"MERLO_{_identifier(instruction.type_name)}_{field}"
+                        )
+                    define(instruction, expression)
+                    return
+                if len(operands) != 1:
+                    raise RepresentationCBackendError(
+                        "MIR CFG load_field is malformed"
+                    )
+                access = (
+                    f"({operands[0]})->{field}"
+                    if instruction.operands[0] in pointer_values
+                    else f"({operands[0]}).{field}"
+                )
+                define(
+                    instruction,
+                    f"&({access})"
+                    if instruction.result in pointer_values
+                    else access,
+                )
+            elif instruction.op == "store_field":
+                target = attrs.get("target")
+                if len(operands) != 1 or not isinstance(target, str):
+                    raise RepresentationCBackendError(
+                        "MIR CFG store_field is malformed"
+                    )
+                base, separator, field = target.partition(".")
+                if not separator or not field:
+                    raise RepresentationCBackendError(
+                        "MIR CFG store_field target is malformed"
+                    )
+                base_parameter = next(
+                    (
+                        parameter
+                        for parameter in function.parameters
+                        if parameter.name == base
+                    ),
+                    None,
+                )
+                access = (
+                    f"{base}->{field}"
+                    if base in pointer_values
+                    or (
+                        base_parameter is not None
+                        and self._parameter_is_pointer(base_parameter)
+                    )
+                    else f"{base}.{field}"
+                )
+                store_value = operands[0]
+                descriptor = self.descriptors.get(instruction.type_name or "")
+                if descriptor is not None and _is_owner(descriptor):
+                    store_value = consume(
+                        instruction.operands[0],
+                        operands[0],
+                        instruction.type_name,
+                        force_move=True,
+                    )
+                lines.append(f"    {access} = {store_value};")
+            elif instruction.op == "pass":
+                if instruction.operands or instruction.result is not None:
+                    raise RepresentationCBackendError(
+                        "MIR pass instruction is malformed"
+                    )
+            else:
+                raise RepresentationCBackendError(
+                    f"unsupported MIR CFG operation: {instruction.op}"
+                )
+        return_ordinal = 0
+
+        def emit_return(value_id: str | None) -> None:
+            nonlocal return_ordinal
+            value: str | None = None
+            if value_id is not None:
+                value = value_of(value_id)
+                descriptor = self.descriptors.get(function.return_type)
+                if descriptor is not None and _is_owner(descriptor):
+                    if value_id in borrowed_pointer_values:
+                        value = (
+                            f"merlo_clone_{_identifier(function.return_type)}"
+                            f"({value})"
+                        )
+                    else:
+                        address = (
+                            value
+                            if value_id in pointer_values
+                            else f"&({value})"
+                        )
+                        value = (
+                            f"merlo_move_{_identifier(function.return_type)}"
+                            f"({address})"
+                        )
+                if function.return_type != "Unit":
+                    return_ordinal += 1
+                    return_name = f"__merlo_return_{return_ordinal}"
+                    lines.append(
+                        f"    {_c_name(function.return_type)} "
+                        f"{return_name} = {value};"
+                    )
+                    value = return_name
+                lines.extend(
+                    self._mir_contract_checks(
+                        function,
+                        tuple(function.ensures),
+                        "ensure",
+                        result_expression=value,
+                    )
+                )
+            elif function.return_type == "Unit":
+                lines.extend(
+                    self._mir_contract_checks(
+                        function,
+                        tuple(function.ensures),
+                        "ensure",
+                        result_expression="0",
+                    )
+                )
+
+            for name, type_name in local_types.items():
+                descriptor = self.descriptors.get(type_name)
+                if (
+                    descriptor is not None
+                    and _is_owner(descriptor)
+                    and (
+                        active_block_id
+                        not in explicit_drop_local_blocks.get(name, set())
+                        or name in protected_return_locals.get(
+                            active_block_id,
+                            set(),
+                        )
+                        or (
+                            active_block_id
+                            in consumed_local_blocks.get(name, set())
+                            and active_block_id
+                            not in closed_local_blocks.get(name, set())
+                        )
+                    )
+                ):
+                    lines.append(
+                        f"    merlo_drop_{_identifier(type_name)}"
+                        f"({local_pointer(name)});"
+                    )
+            for result_id, type_name in result_types.items():
+                descriptor = self.descriptors.get(type_name)
+                temporary = result_names.get(
+                    result_id,
+                    self._mir_scalar_temp(result_id),
+                )
+                if (
+                    descriptor is not None
+                    and _is_owner(descriptor)
+                    and result_id != value_id
+                    and result_id not in consumed_values
+                    and result_id not in moved_values
+                    and result_id not in owned_temporaries
+                ):
+                    lines.append(
+                        f"    merlo_drop_{_identifier(type_name)}"
+                        f"(&{temporary});"
+                    )
+            if value_id is None:
+                if function.return_type == "Unit":
+                    lines.append("    return;")
+                else:
+                    lines.append('    merlo_ownership_trap("Unreachable");')
+                    lines.append(
+                        f"    return {self._zero_expression(function.return_type)};"
+                    )
+                return
+            if function.return_type == "Unit":
+                lines.append("    return;")
+                return
+            assert value is not None
+            lines.append(f"    return {value};")
+
+        labels = {
+            block.id: (
+                f"__merlo_loop_exit_{block.id}"
+                if "_while_exit" in block.id
+                else (
+                    f"__merlo_loop_condition_{block.id}"
+                    if "_while_condition" in block.id
+                    else f"__merlo_{block.id}"
+                )
+            )
+            for block in mir_function.blocks
+        }
+        for block in mir_function.blocks:
+            active_block_id = block.id
+            active_match_bindings = match_payload_bindings.get(block.id, {})
+            lines.append(f"{labels[block.id]}:;")
+            for instruction in block.instructions:
+                emit_instruction(instruction)
+            terminator = block.terminator
+            if terminator.kind == "branch":
+                assert terminator.value is not None
+                lines.append(
+                    f"    if ({value_of(terminator.value)}) "
+                    f"goto {labels[terminator.targets[0]]};"
+                )
+                lines.append(f"    goto {labels[terminator.targets[1]]};")
+            elif terminator.kind == "jump":
+                lines.append(f"    goto {labels[terminator.targets[0]]};")
+            elif terminator.kind == "switch":
+                if terminator.value is None or not terminator.cases:
+                    raise RepresentationCBackendError(
+                        "MIR switch terminator is malformed"
+                    )
+                switch_type = next(
+                    (
+                        instruction.type_name
+                        for candidate_block in mir_function.blocks
+                        for instruction in candidate_block.instructions
+                        if instruction.result == terminator.value
+                    ),
+                    None,
+                )
+                descriptor = self.descriptors.get(switch_type or "")
+                if descriptor is None or descriptor.kind != "enum":
+                    raise RepresentationCBackendError(
+                        "MIR switch source is not an enum"
+                    )
+                switch_value = value_of(terminator.value)
+                payloadless_enum = all(
+                    payload is None
+                    for _name, payload, _tag in descriptor.variants
+                )
+                switch_access = (
+                    switch_value
+                    if payloadless_enum
+                    else (
+                        f"({switch_value})->tag"
+                        if terminator.value in pointer_values
+                        else f"({switch_value}).tag"
+                    )
+                )
+                lines.append(f"    switch ({switch_access}) {{")
+                wildcard_target: str | None = None
+                for variant, target in terminator.cases:
+                    if variant == "_":
+                        wildcard_target = target
+                        continue
+                    variant_name = variant.rsplit(".", 1)[-1]
+                    tag = next(
+                        (
+                            tag
+                            for name, _payload, tag in descriptor.variants
+                            if name == variant_name
+                        ),
+                        None,
+                    )
+                    if tag is None:
+                        raise RepresentationCBackendError(
+                            f"MIR switch variant is unknown: {variant}"
+                        )
+                    case_name = (
+                        f"MERLO_{_identifier(descriptor.name)}_{variant_name}"
+                        if payloadless_enum
+                        else (
+                            f"MERLO_{_identifier(descriptor.name)}"
+                            f"_{variant_name}_TAG"
+                        )
+                    )
+                    lines.append(
+                        f"    case {case_name}: goto {labels[target]};"
+                    )
+                lines.append("    default:")
+                if wildcard_target is not None:
+                    lines.append(f"        goto {labels[wildcard_target]};")
+                else:
+                    lines.append(
+                        '        merlo_ownership_trap("InvalidEnumTag");'
+                    )
+                    lines.append(f"        goto {labels[terminator.targets[0]]};")
+                lines.append("    }")
+            elif terminator.kind == "return":
+                emit_return(terminator.value)
+            else:
+                raise RepresentationCBackendError(
+                    f"unsupported MIR CFG terminator: {terminator.kind}"
+                )
+        lines.append("}")
+        return "\n".join(lines)
+
+    def _functions(self) -> str:
+        mir_functions = {item.name: item for item in self.mir.functions}
+        emitted: list[str] = []
+        for function in self.hir.functions:
+            mir_function = mir_functions.get(function.name)
+            if (
+                mir_function is not None
+                and self._mir_scalar_eligible(function, mir_function)
+            ):
+                emitted.append(self._emit_mir_scalar_function(function, mir_function))
+                continue
+            if (
+                mir_function is not None
+                and self._mir_cfg_eligible(function, mir_function)
+            ):
+                emitted.append(self._emit_mir_cfg_function(function, mir_function))
+                continue
+            if (
+                mir_function is not None
+                and self._mir_calls_collections_eligible(function, mir_function)
+            ):
+                emitted.append(self._emit_mir_cfg_function(function, mir_function))
+                continue
+            if (
+                mir_function is not None
+                and self._mir_ownership_ffi_eligible(function, mir_function)
+            ):
+                emitted.append(self._emit_mir_cfg_function(function, mir_function))
+                continue
+            raise RepresentationCBackendError(
+                f"function is not supported by structured MIR emitter: {function.name}"
+            )
+        return "\n\n".join(emitted)
 
     def _canonical_nominal(self, type_name: str) -> str:
         descriptor = self.descriptors.get(type_name)
@@ -1392,956 +6377,6 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             result = f"(({code}) == UINT32_C({number}) ? {values[number]} : {result})"
         return result
 
-    def _wrap_host_result(
-        self,
-        expression: str,
-        expected: str | None,
-        *,
-        failure_condition: str | None = None,
-        error_code: str = "merlo_file_error",
-    ) -> str:
-        if not expected:
-            return expression
-        parts = self._result_parts(expected)
-        if parts is None:
-            return expression
-        ok_type, error_type = parts
-        value_type = ok_type
-        constructor = ""
-        if ok_type != "Unit":
-            descriptor = self.descriptors.get(ok_type)
-            if descriptor is not None and descriptor.kind == "record":
-                if len(descriptor.fields) != 1:
-                    raise RepresentationCBackendError(
-                        f"host Result record {ok_type} must have one field"
-                    )
-                value_type = descriptor.fields[0][1]
-                constructor = f"merlo_make_{_identifier(ok_type)}"
-        if failure_condition is None:
-            if ok_type == "Unit":
-                return (
-                    f"((void)({expression}), "
-                    f"merlo_make_{_identifier(expected)}_Ok())"
-                )
-            value = expression
-            if constructor:
-                value = f"{constructor}({value})"
-            return f"merlo_make_{_identifier(expected)}_Ok({value})"
-        error = self._error_value(error_type, error_code)
-        failure = f"merlo_make_{_identifier(expected)}_Err({error})"
-        success_value = f"merlo_make_{_identifier(expected)}_Ok()"
-        raw_temporary = None
-        if ok_type != "Unit":
-            self.temporary_ordinal += 1
-            raw_temporary = f"__merlo_host_value_{self.temporary_ordinal}"
-            self.temporary_declarations.append((raw_temporary, value_type))
-            raw_owned = (
-                value_type in self.descriptors
-                and _is_owner(self.descriptors[value_type])
-            )
-            value = (
-                f"merlo_move_{_identifier(value_type)}(&{raw_temporary})"
-                if raw_owned
-                else raw_temporary
-            )
-            if constructor:
-                value = f"{constructor}({value})"
-            if raw_owned:
-                failure = (
-                    f"((void)merlo_drop_{_identifier(value_type)}"
-                    f"(&{raw_temporary}), {failure})"
-                )
-            success_value = f"merlo_make_{_identifier(expected)}_Ok({value})"
-        self.temporary_ordinal += 1
-        result_temporary = f"__merlo_host_result_{self.temporary_ordinal}"
-        self.temporary_declarations.append((result_temporary, expected))
-        evaluate = (
-            f"(void)({expression})"
-            if raw_temporary is None
-            else f"{raw_temporary} = {expression}"
-        )
-        clears = []
-        if "network" in error_code:
-            clears.append("merlo_network_error = 0")
-        else:
-            clears.append("merlo_file_error = 0")
-            if "fs.write" in self.used_effects:
-                clears.append("merlo_file_write_error = 0")
-        clear_expression = ", ".join(clears)
-        return (
-            f"(({clear_expression}), ({evaluate}), "
-            f"({result_temporary} = ({failure_condition}) "
-            f"? {failure} : {success_value}), {clear_expression}, "
-            f"merlo_move_{_identifier(expected)}(&{result_temporary}))"
-        )
-    def _try_binding(self, target: str | None, marker: ast.Call, expected: str) -> list[str]:
-        if len(marker.args) != 1:
-            raise RepresentationCBackendError("postfix propagation expects one expression")
-        inner = marker.args[0]
-        result_type = self._expression_type(inner)
-        parts = self._result_parts(result_type)
-        current_parts = self._result_parts(self.current_function.return_type if self.current_function else None)
-        if parts is None or current_parts is None or parts[1] != current_parts[1]:
-            raise RepresentationCBackendError("postfix propagation Result type mismatch")
-        ok_type, error_type = parts
-        pad = self._pad()
-        self.return_ordinal += 1
-        temporary = f"__merlo_try_{self.return_ordinal}"
-        lines: list[str] = []
-        if target in self.owned_locals:
-            lines.append(
-                f"{pad}merlo_drop_{_identifier(self.owned_locals[target])}"
-                f"(&{target});"
-            )
-        is_file_read = (
-            isinstance(inner, ast.Call)
-            and isinstance(inner.func, ast.Attribute)
-            and ast.unparse(inner.func.value) == "fs"
-            and inner.func.attr in {"open_read", "read", "read_text"}
-        )
-        if is_file_read:
-            error_code_temporary = (
-                f"__merlo_error_code_{self.return_ordinal}"
-            )
-            error_line_temporary = (
-                f"__merlo_error_line_{self.return_ordinal}"
-            )
-            error_value = self._error_value(
-                error_type,
-                error_code_temporary,
-                text_payload=self._address_expression(inner.args[0]),
-                integer_payload=error_line_temporary,
-            )
-            lines.append(
-                f"{pad}{_c_name(ok_type)} {temporary} = "
-                f"{self._expression(inner, expected=None)};"
-            )
-            lines.append(f"{pad}if (merlo_file_error != 0) {{")
-            lines.append(
-                f"{pad}uint32_t {error_code_temporary} = merlo_file_error;"
-            )
-            lines.append(
-                f"{pad}uint64_t {error_line_temporary} = "
-                "merlo_file_error_line;"
-            )
-            self.indent += 1
-            lines.extend(self._drop_owned_lines(self._pad()))
-            error_temporary = f"__merlo_error_{self.return_ordinal}"
-            lines.append(
-                f"{self._pad()}{_c_name(error_type)} {error_temporary} = "
-                f"{error_value};"
-            )
-            lines.append(f"{self._pad()}merlo_file_error = 0;")
-            lines.append(
-                f"{self._pad()}return "
-                f"merlo_make_{_identifier(self.current_function.return_type)}_Err("
-                f"{error_temporary});"
-            )
-            self.indent -= 1
-            lines.append(f"{pad}}}")
-            lines.append(f"{pad}merlo_file_error = 0;")
-            lines.append(f"{pad}{target} = {temporary};")
-            if target is not None and _is_owner(self.descriptors[ok_type]):
-                self.owned_locals[target] = ok_type
-            return lines
-        result_ctype = _c_name(result_type or "")
-        lines.append(
-            f"{pad}{result_ctype} {temporary} = "
-            f"{self._expression(inner, expected=result_type)};"
-        )
-        lines.append(
-            f"{pad}if ({temporary}.tag != MERLO_{_identifier(result_type or '')}_Ok_TAG) {{"
-        )
-        self.indent += 1
-        lines.extend(self._drop_owned_lines(self._pad()))
-        if result_type == self.current_function.return_type:
-            lines.append(f"{self._pad()}return {temporary};")
-        else:
-            lines.append(
-                f"{self._pad()}return merlo_make_{_identifier(self.current_function.return_type)}_Err("
-                f"{temporary}.payload.Err);"
-            )
-        self.indent -= 1
-        lines.append(f"{pad}}}")
-        if target is None:
-            if ok_type != "Unit" and _is_owner(self.descriptors[ok_type]):
-                lines.append(
-                    f"{pad}merlo_drop_{_identifier(ok_type)}(&{temporary}.payload.Ok);"
-                )
-            lines.append(f"{pad}{temporary}.tag = MERLO_{_identifier(result_type or '')}_MOVED_TAG;")
-            return lines
-        lines.append(f"{pad}{target} = {temporary}.payload.Ok;")
-        lines.append(f"{pad}{temporary}.tag = MERLO_{_identifier(result_type or '')}_MOVED_TAG;")
-        if _is_owner(self.descriptors[ok_type]):
-            self.owned_locals[target] = ok_type
-        return lines
-
-    def _contract_checks(
-        self,
-        conditions: tuple[ast.AST, ...],
-        kind: str,
-        pad: str,
-    ) -> list[str]:
-        if self.current_function is None:
-            raise RepresentationCBackendError(
-                "contract emitted outside a function"
-            )
-        if kind not in {"require", "ensure"}:
-            raise RepresentationCBackendError(
-                f"unsupported contract kind: {kind}"
-            )
-        previous_result_type = self.env_types.get("result")
-        if (
-            kind == "ensure"
-            and self.current_function.return_type != "Unit"
-        ):
-            self.env_types["result"] = self.current_function.return_type
-        lines = []
-        try:
-            for condition in conditions:
-                expression = self._expression_in_context(
-                    condition,
-                    context="control_flow",
-                    expected="Bool",
-                )
-                line = getattr(condition, "lineno", 0)
-                lines.append(
-                    f'{pad}if (!({expression})) '
-                    f'merlo_contract_trap("{kind}", '
-                    f'"{self.current_function.name}", '
-                    f"UINT64_C({line}));"
-                )
-        finally:
-            if previous_result_type is None:
-                self.env_types.pop("result", None)
-            else:
-                self.env_types["result"] = previous_result_type
-        return lines
-
-
-    def _statement(self, node: ast.stmt) -> list[str]:
-        start = len(self.pending_expression_lines)
-        drop_start = len(self.pending_expression_drops)
-        lines = self._statement_impl(node)
-        pending = self.pending_expression_lines[start:]
-        drops = self.pending_expression_drops[drop_start:]
-        del self.pending_expression_lines[start:]
-        del self.pending_expression_drops[drop_start:]
-        if drops:
-            return_indices = [
-                index
-                for index, line in enumerate(lines)
-                if line.lstrip() == "return;" or line.lstrip().startswith("return ")
-            ]
-            for index in reversed(return_indices):
-                indent = lines[index][: len(lines[index]) - len(lines[index].lstrip())]
-                lines[index:index] = [
-                    f"{indent}{drop.lstrip()}" for drop in drops
-                ]
-            if not isinstance(node, ast.Return) or not return_indices:
-                lines.extend(drops)
-        return pending + lines
-    def _statement_impl(self, node: ast.stmt) -> list[str]:
-        if (
-            isinstance(node, ast.Expr)
-            and isinstance(node.value, ast.Call)
-            and isinstance(node.value.func, ast.Name)
-            and node.value.func.id == "__merlo_try__"
-        ):
-            return self._try_binding(None, node.value, "Unit")
-        pad = self._pad()
-        if isinstance(node, ast.Contract):
-            return self._contract_checks(
-                (node.condition,),
-                node.kind,
-                pad,
-            )
-        if (
-            isinstance(node, ast.Expr)
-            and isinstance(node.value, ast.Call)
-            and isinstance(node.value.func, ast.Name)
-            and node.value.func.id == "drop"
-            and len(node.value.args) == 1
-        ):
-            target = node.value.args[0]
-            type_name = self._expression_type(target)
-            descriptor = self.descriptors.get(type_name or "")
-            if not isinstance(target, ast.Name):
-                if (
-                    descriptor is not None
-                    and _is_owner(descriptor)
-                    and descriptor.kind not in {"borrow", "slice", "file_lines"}
-                ):
-                    raise RepresentationCBackendError(
-                        "ProjectedOwnerDropRequiresPartialMoveSupport"
-                    )
-                raise RepresentationCBackendError("drop requires a named owner")
-            if descriptor is None or not _is_owner(descriptor):
-                raise RepresentationCBackendError("drop requires an owning value")
-            self.owned_locals.pop(target.id, None)
-            address = target.id if target.id in self.pointer_values else f"&{target.id}"
-            return [f"{pad}merlo_drop_{_identifier(type_name or '')}({address});"]
-        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            expected = _type_from_annotation(node.annotation)
-            if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and node.value.func.id == "__merlo_try__":
-                previous_borrowed = self.assigning_borrowed
-                self.assigning_borrowed = self._contains_borrow(expected)
-                try:
-                    return self._try_binding(node.target.id, node.value, expected)
-                finally:
-                    self.assigning_borrowed = previous_borrowed
-            previous_borrowed = self.assigning_borrowed
-            self.assigning_borrowed = (
-                self._contains_borrow(expected)
-            )
-            live_owner = node.target.id in self.owned_locals
-            owning_binding = (
-                node.target.id not in self.pointer_values
-                and _is_owner(self.descriptors[expected])
-            )
-            try:
-                value = (
-                    self._move_expression(
-                        node.value,
-                        expected,
-                        enforce_projected_move=True,
-                    )
-                    if (
-                        node.value is not None
-                        and owning_binding
-                    )
-                    else self._expression(
-                        node.value,
-                        expected=expected,
-                        want_pointer=node.target.id in self.pointer_values,
-                    )
-                    if node.value is not None
-                    else self._zero_expression(expected)
-                )
-            finally:
-                self.assigning_borrowed = previous_borrowed
-            lines = []
-            if live_owner and owning_binding:
-                self.temporary_ordinal += 1
-                replacement = f"__merlo_replacement_{self.temporary_ordinal}"
-                self.temporary_declarations.append((replacement, expected))
-                lines.append(f"{pad}{replacement} = {value};")
-                lines.append(
-                    f"{pad}merlo_drop_{_identifier(self.owned_locals[node.target.id])}"
-                    f"(&{node.target.id});"
-                )
-                value = f"merlo_move_{_identifier(expected)}(&{replacement})"
-            lines.append(f"{pad}{node.target.id} = {value};")
-            if node.value is not None and owning_binding:
-                self.owned_locals[node.target.id] = expected
-            return lines
-        if isinstance(node, ast.Assign):
-            target = self._lvalue(node.targets[0])
-            expected = self._expression_type(node.targets[0])
-            if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and node.value.func.id == "__merlo_try__":
-                previous_borrowed = self.assigning_borrowed
-                self.assigning_borrowed = self._contains_borrow(expected or "Unit")
-                try:
-                    return self._try_binding(target, node.value, expected or "Unit")
-                finally:
-                    self.assigning_borrowed = previous_borrowed
-            previous_borrowed = self.assigning_borrowed
-            self.assigning_borrowed = (
-                self._contains_borrow(expected or "")
-            )
-            named_target = (
-                node.targets[0].id
-                if isinstance(node.targets[0], ast.Name)
-                else None
-            )
-            live_owner = named_target in self.owned_locals
-            owning_binding = (
-                expected is not None
-                and named_target is not None
-                and named_target not in self.pointer_values
-                and _is_owner(self.descriptors[expected])
-            )
-            try:
-                value = (
-                    self._move_expression(
-                        node.value,
-                        expected,
-                        enforce_projected_move=True,
-                    )
-                    if owning_binding
-                    else self._expression(
-                        node.value,
-                        expected=expected,
-                        want_pointer=isinstance(node.targets[0], ast.Name)
-                        and node.targets[0].id in self.pointer_values,
-                    )
-                )
-            finally:
-                self.assigning_borrowed = previous_borrowed
-            lines = []
-            if live_owner and owning_binding and named_target is not None and expected is not None:
-                self.temporary_ordinal += 1
-                replacement = f"__merlo_replacement_{self.temporary_ordinal}"
-                self.temporary_declarations.append((replacement, expected))
-                lines.append(f"{pad}{replacement} = {value};")
-                lines.append(
-                    f"{pad}merlo_drop_"
-                    f"{_identifier(self.owned_locals[named_target])}"
-                    f"(&{named_target});"
-                )
-                value = f"merlo_move_{_identifier(expected)}(&{replacement})"
-            lines.append(f"{pad}{target} = {value};")
-            if owning_binding and named_target is not None and expected is not None:
-                self.owned_locals[named_target] = expected
-            return lines
-        if isinstance(node, ast.AugAssign):
-            target = self._lvalue(node.target)
-            expected = self._expression_type(node.target)
-            value = self._binary_expression(node.target, node.op, node.value, expected=expected)
-            return [f"{pad}{target} = {value};"]
-        if isinstance(node, ast.Expr):
-            if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute):
-                return self._method_statement(node.value)
-            return [f"{pad}(void){self._expression(node.value)};"]
-        if isinstance(node, ast.If):
-            test = self._expression_in_context(
-                node.test,
-                context="control_flow",
-                expected="Bool",
-            )
-            lines = [f"{pad}if ({test}) {{"]
-            self.indent += 1
-            for statement in node.body:
-                lines.extend(self._statement(statement))
-            self.indent -= 1
-            if node.orelse:
-                lines.append(f"{pad}}} else {{")
-                self.indent += 1
-                for statement in node.orelse:
-                    lines.extend(self._statement(statement))
-                self.indent -= 1
-            lines.append(f"{pad}}}")
-            return lines
-        if isinstance(node, ast.While):
-            test = self._expression_in_context(
-                node.test,
-                context="control_flow",
-                expected="Bool",
-            )
-            self.loop_ordinal += 1
-            loop_exit = f"__merlo_loop_exit_{self.loop_ordinal}"
-            lines = [f"{pad}while ({test}) {{"]
-            self.loop_exit_labels.append(loop_exit)
-            self.indent += 1
-            for statement in node.body:
-                lines.extend(self._statement(statement))
-            self.indent -= 1
-            self.loop_exit_labels.pop()
-            lines.append(f"{pad}}}")
-            lines.append(f"{pad}{loop_exit}:;")
-            return lines
-        if isinstance(node, ast.Break):
-            if self.match_depth and self.loop_exit_labels:
-                return [f"{pad}goto {self.loop_exit_labels[-1]};"]
-            return [f"{pad}break;"]
-        if isinstance(node, ast.Continue):
-            return [f"{pad}continue;"]
-        if isinstance(node, ast.Pass):
-            return [f"{pad}(void)0;"]
-        if isinstance(node, ast.For):
-            return self._map_entries_for_statement(node)
-        if isinstance(node, ast.Match):
-            return self._match_statement(node)
-        if isinstance(node, ast.Return):
-            return self._return_statement(node)
-        raise RepresentationCBackendError(f"unsupported C statement: {type(node).__name__}@{getattr(node, 'lineno', 0)}")
-
-    def _method_statement(self, call: ast.Call) -> list[str]:
-        pad = self._pad()
-        assert isinstance(call.func, ast.Attribute)
-        receiver = call.func.value
-        receiver_type = self._expression_type(receiver)
-        receiver_expr = self._address_expression(receiver)
-        method = call.func.attr
-        generic = _generic(receiver_type or "")
-        if generic and generic[0] == "Vec" and method == "push":
-            element_type = generic[1]
-            argument = self._move_expression(
-                call.args[0],
-                element_type,
-                enforce_projected_move=True,
-            )
-            return [f"{pad}merlo_{_identifier(receiver_type)}_push({receiver_expr}, {argument});"]
-        if receiver_type == "TextBuilder" and method == "append_byte":
-            return [f"{pad}merlo_text_builder_append_byte({receiver_expr}, {self._expression(call.args[0], expected='UInt64')});"]
-        if receiver_type == "TextBuilder" and method == "append_scalar":
-            return [f"{pad}merlo_text_builder_append_scalar({receiver_expr}, {self._expression(call.args[0], expected='UInt64')});"]
-        if receiver_type == "TextBuilder" and method == "append_text":
-            return [f"{pad}merlo_text_builder_append_text({receiver_expr}, {self._address_expression(call.args[0])});"]
-        if receiver_type == "TextBuilder" and method == "append_uint64":
-            return [f"{pad}merlo_text_builder_append_uint64({receiver_expr}, {self._expression(call.args[0], expected='UInt64')});"]
-        map_types = _map_types(receiver_type or "")
-        if map_types is not None:
-            _, value_type = map_types
-            suffix = _identifier(receiver_type or "")
-            key = self._address_expression(call.args[0])
-            if method == "insert":
-                value = self._expression(call.args[1], expected=value_type)
-                return [f"{pad}merlo_{suffix}_insert({receiver_expr}, {key}, {value});"]
-            if method == "increment":
-                if value_type != "UInt64":
-                    raise RepresentationCBackendError(
-                        "Map.increment requires UInt64 values"
-                    )
-                amount = (
-                    self._expression(call.args[1], expected="UInt64")
-                    if len(call.args) == 2
-                    else "UINT64_C(1)"
-                )
-                return [f"{pad}(void)merlo_{suffix}_increment({receiver_expr}, {key}, {amount});"]
-        return [f"{pad}(void){self._expression(call)};"]
-
-    def _map_entries_for_statement(self, node: ast.For) -> list[str]:
-        if (
-            isinstance(node.target, ast.Name)
-            and (
-                (
-                    isinstance(node.iter, ast.Call)
-                    and isinstance(node.iter.func, ast.Attribute)
-                    and node.iter.func.attr == "lines"
-                    and self._expression_type(node.iter.func.value) == "FileReader"
-                )
-                or self._expression_type(node.iter) == "FileLines"
-            )
-            and not node.orelse
-        ):
-            pad = self._pad()
-            self.loop_ordinal += 1
-            ordinal = self.loop_ordinal
-            view = f"__merlo_file_lines_{ordinal}"
-            line = f"__merlo_file_line_{ordinal}"
-            loop_exit = f"__merlo_loop_exit_{ordinal}"
-            self.loop_exit_labels.append(loop_exit)
-            target = node.target.id
-            self.env_types[target] = "TextView"
-            lines = [
-                f"{pad}{{",
-                f"{pad}    MerloFileLines {view} = {self._expression(node.iter)};",
-                f"{pad}    for (MerloTextView *{line} = merlo_file_next(&{view}); {line} != NULL; {line} = merlo_file_next(&{view})) {{",
-                f"{pad}        MerloTextView {target} = *{line};",
-            ]
-            iteration_owned = set(self.owned_locals)
-            self.indent += 2
-            for statement in node.body:
-                lines.extend(self._statement(statement))
-            lines.extend(self._drop_new_iteration_locals(iteration_owned, f"{pad}        "))
-            self.indent -= 2
-            self.loop_exit_labels.pop()
-            lines.extend(
-                [
-                    f"{pad}    }}",
-                    f"{pad}    {loop_exit}:;",
-                    f"{pad}}}",
-                ]
-            )
-            return lines
-        direct_shape = self._collection_shape_for_name(self._expression_type(node.iter))
-        if (
-            isinstance(node.target, ast.Name)
-            and direct_shape is not None
-            and not node.orelse
-            and not (
-                isinstance(node.iter, ast.Call)
-                and isinstance(node.iter.func, ast.Attribute)
-                and node.iter.func.attr == "view"
-            )
-        ):
-            pad = self._pad()
-            self.loop_ordinal += 1
-            ordinal = self.loop_ordinal
-            index = f"__merlo_collection_index_{ordinal}"
-            loop_exit = f"__merlo_loop_exit_{ordinal}"
-            self.loop_exit_labels.append(loop_exit)
-            target = node.target.id
-            receiver = self._address_expression(node.iter)
-            length = (
-                f"UINT64_C({direct_shape.fixed_length})"
-                if direct_shape.fixed_length is not None
-                else f"({receiver})->length"
-            )
-            self.env_types[target] = self._collection_element_name(direct_shape)
-            element = self.descriptors[self._collection_element_name(direct_shape)]
-            pointer = _is_owner(element)
-            if pointer:
-                self.pointer_values.add(target)
-            declaration = (
-                f"{_c_name(self._collection_element_name(direct_shape))} *{target} = "
-                f"&({receiver})->data[{index}];"
-                if pointer
-                else f"{_c_name(self._collection_element_name(direct_shape))} {target} = "
-                f"({receiver})->data[{index}];"
-            )
-            lines = [
-                f"{pad}for (uint64_t {index} = 0; "
-                f"{index} < {length}; ++{index}) {{",
-                f"{pad}    {declaration}",
-            ]
-            iteration_owned = set(self.owned_locals)
-            self.indent += 1
-            for statement in node.body:
-                lines.extend(self._statement(statement))
-            lines.extend(
-                self._drop_new_iteration_locals(
-                    iteration_owned,
-                    f"{pad}    ",
-                )
-            )
-            self.indent -= 1
-            self.loop_exit_labels.pop()
-            lines.extend([f"{pad}}}", f"{pad}{loop_exit}:;"])
-            return lines
-        if (
-            isinstance(node.target, ast.Name)
-            and isinstance(node.iter, ast.Call)
-            and isinstance(node.iter.func, ast.Attribute)
-            and node.iter.func.attr == "view"
-            and not node.orelse
-        ):
-            receiver_node = node.iter.func.value
-            receiver_type = self._expression_type(receiver_node)
-            generic = _generic(receiver_type or "")
-            if generic is not None and generic[0] == "Vec":
-                element_type = generic[1]
-                pad = self._pad()
-                self.loop_ordinal += 1
-                index = f"__merlo_vec_index_{self.loop_ordinal}"
-                loop_exit = f"__merlo_loop_exit_{self.loop_ordinal}"
-                self.loop_exit_labels.append(loop_exit)
-                target = node.target.id
-                receiver = self._address_expression(receiver_node)
-                self.env_types[target] = element_type
-                self.pointer_values.add(target)
-                lines = [
-                    f"{pad}for (uint64_t {index} = 0; {index} < ({receiver})->length; ++{index}) {{",
-                    f"{pad}    {_c_name(element_type)} *{target} = &({receiver})->data[{index}];",
-                ]
-                iteration_owned = set(self.owned_locals)
-                self.indent += 1
-                for statement in node.body:
-                    lines.extend(self._statement(statement))
-                lines.extend(self._drop_new_iteration_locals(iteration_owned, f"{pad}    "))
-                self.indent -= 1
-                self.loop_exit_labels.pop()
-                lines.extend(
-                    [
-                        f"{pad}}}",
-                        f"{pad}{loop_exit}:;",
-                    ]
-                )
-                return lines
-        if (
-            not isinstance(node.target, ast.Name)
-            or not isinstance(node.iter, ast.Call)
-            or not isinstance(node.iter.func, ast.Attribute)
-            or node.iter.func.attr != "entries"
-            or node.orelse
-        ):
-            raise RepresentationCBackendError(
-                f"unsupported C for loop: {ast.unparse(node)}"
-            )
-        receiver_node = node.iter.func.value
-        receiver_type = self._expression_type(receiver_node)
-        map_types = _map_types(receiver_type or "")
-        if map_types is None:
-            raise RepresentationCBackendError(
-                "for iteration requires a concrete Map.entries()"
-            )
-        self.loop_ordinal += 1
-        ordinal = self.loop_ordinal
-        loop_exit = f"__merlo_loop_exit_{ordinal}"
-        self.loop_exit_labels.append(loop_exit)
-        pad = self._pad()
-        ctype = _c_name(receiver_type or "")
-        suffix = _identifier(receiver_type or "")
-        view = f"__merlo_map_view_{ordinal}"
-        index = f"__merlo_map_index_{ordinal}"
-        receiver = self._address_expression(receiver_node)
-        target = node.target.id
-        previous_type = self.env_types.get(target)
-        was_pointer = target in self.pointer_values
-        self.env_types[target] = f"MapEntry[{map_types[0]},{map_types[1]}]"
-        self.pointer_values.add(target)
-        lines = [
-            f"{pad}{{",
-            f"{pad}    {ctype}EntriesView {view} = merlo_{suffix}_entries({receiver});",
-            f"{pad}    for (uint64_t {index} = 0; {index} < {view}.length; ++{index}) {{",
-            f"{pad}        {ctype}Entry *{target} = &{view}.owner->entries[{index}];",
-        ]
-        iteration_owned = set(self.owned_locals)
-        self.indent += 2
-        for statement in node.body:
-            lines.extend(self._statement(statement))
-        self.indent -= 2
-        self.loop_exit_labels.pop()
-        lines.extend([
-            f"{pad}    }}",
-            f"{pad}    {loop_exit}:;",
-            f"{pad}    merlo_{suffix}_entries_close(&{view});",
-            f"{pad}}}",
-        ])
-        if previous_type is None:
-            del self.env_types[target]
-        else:
-            self.env_types[target] = previous_type
-        if not was_pointer:
-            self.pointer_values.discard(target)
-        return lines
-
-    def _return_statement(self, node: ast.Return) -> list[str]:
-        assert self.current_function is not None
-        pad = self._pad()
-        self.return_ordinal += 1
-        result_name = f"__merlo_return_{self.return_ordinal}"
-        lines: list[str] = []
-        self.returning_borrowed = (
-            self._contains_borrow(self.current_function.return_type)
-        )
-        if (
-            self.current_function.return_type == "Unit"
-            and node.value is not None
-        ):
-            if (
-                isinstance(node.value, ast.Call)
-                and isinstance(node.value.func, ast.Attribute)
-            ):
-                lines.extend(self._method_statement(node.value))
-            else:
-                lines.append(
-                    f"{pad}(void){self._expression(node.value)};"
-                )
-        if self.current_function.return_type != "Unit":
-            return_type = self.current_function.return_type
-            if _is_owner(self.descriptors[return_type]):
-                assert node.value is not None
-                expression = self._move_expression(
-                    node.value,
-                    return_type,
-                    enforce_projected_move=True,
-                    clone_projected_move=True,
-                )
-            else:
-                expression = self._expression(node.value, expected=return_type)
-            lines.append(
-                f"{pad}{_c_name(return_type)} "
-                f"{result_name} = {expression};"
-            )
-            self.contract_result_name = result_name
-        try:
-            lines.extend(
-                self._contract_checks(
-                    self.current_ensures,
-                    "ensure",
-                    pad,
-                )
-            )
-        finally:
-            self.contract_result_name = None
-        for name, type_name in reversed(tuple(self.owned_locals.items())):
-            lines.append(f"{pad}merlo_drop_{_identifier(type_name)}(&{name});")
-        self.returning_borrowed = False
-        if self.current_function.return_type == "Unit":
-            lines.append(f"{pad}return;")
-        else:
-            lines.append(f"{pad}return {result_name};")
-        return lines
-
-    def _match_statement(self, node: ast.Match) -> list[str]:
-        pad = self._pad()
-        subject_type = self._expression_type(node.subject)
-        subject = self._expression(node.subject)
-        if subject_type in self.descriptors and self.descriptors[subject_type].kind == "enum" and any(payload is not None for _, payload, _ in self.descriptors[subject_type].variants):
-            tag_expression = f"({subject})->tag" if self._expression_is_pointer(node.subject) else f"({subject}).tag"
-        elif subject_type in self.descriptors and self.descriptors[subject_type].kind == "enum":
-            tag_expression = subject
-        else:
-            tag_expression = subject
-        lines = [f"{pad}switch ({tag_expression}) {{"]
-        has_wildcard = any(
-            isinstance(case.pattern, ast.MatchAs)
-            and case.pattern.name is None
-            for case in node.cases
-        )
-        self.match_depth += 1
-        for case in node.cases:
-            pattern = case.pattern
-            wildcard = isinstance(pattern, ast.MatchAs) and pattern.name is None
-            variant_name = None
-            bindings: tuple[str, ...] = ()
-            enum_name = subject_type
-            if isinstance(pattern, ast.MatchValue) and isinstance(pattern.value, ast.Attribute):
-                enum_name = ast.unparse(pattern.value.value)
-                variant_name = pattern.value.attr
-            elif isinstance(pattern, ast.MatchClass) and isinstance(pattern.cls, ast.Attribute):
-                enum_name = ast.unparse(pattern.cls.value)
-                variant_name = pattern.cls.attr
-                bindings = tuple(item.name for item in pattern.patterns if isinstance(item, ast.MatchAs) and item.name)
-            elif (
-                isinstance(pattern, ast.MatchClass)
-                and isinstance(pattern.cls, ast.Name)
-                and enum_name in self.descriptors
-            ):
-                variant_name = (
-                    "NoneValue"
-                    if pattern.cls.id == "None"
-                    else pattern.cls.id
-                )
-                bindings = tuple(
-                    item.name
-                    for item in pattern.patterns
-                    if isinstance(item, ast.MatchAs) and item.name
-                )
-            elif (
-                isinstance(pattern, ast.MatchSingleton)
-                and pattern.value is None
-                and enum_name in self.descriptors
-            ):
-                variant_name = "NoneValue"
-            if (
-                variant_name is not None
-                and enum_name not in self.descriptors
-                and subject_type in self.descriptors
-            ):
-                generic = _generic(subject_type or "")
-                if generic is not None and generic[0] == enum_name:
-                    enum_name = subject_type
-            scope_suffix = " {"
-            if wildcard:
-                lines.append(f"{pad}default:{scope_suffix}")
-            elif variant_name is not None:
-                descriptor = self.descriptors[enum_name]
-                tag = next(tag for name, _, tag in descriptor.variants if name == variant_name)
-                lines.append(f"{pad}case UINT32_C({tag}):{scope_suffix}")
-            else:
-                raise RepresentationCBackendError(f"unsupported match pattern: {ast.unparse(pattern)}")
-            self.indent += 1
-            if variant_name is not None and bindings:
-                payload_type = next(payload for name, payload, _ in self.descriptors[enum_name].variants if name == variant_name)
-                assert payload_type is not None
-                binding = bindings[0]
-                self.env_types[binding] = payload_type
-                base = subject
-                borrowed_payload = self._has_borrowed_owner_root(node.subject)
-                access = f"({base})->payload.{variant_name}" if self._expression_is_pointer(node.subject) else f"({base}).payload.{variant_name}"
-                if self.descriptors[payload_type].kind == "scalar":
-                    lines.append(f"{self._pad()}{_c_name(payload_type)} {binding} = {access};")
-                else:
-                    self.pointer_values.add(binding)
-                    lines.append(f"{self._pad()}{_c_name(payload_type)} *{binding} = &{access};")
-                    if borrowed_payload and _is_owner(self.descriptors[payload_type]):
-                        self.borrowed_owner_bindings.add(binding)
-            for statement in case.body:
-                lines.extend(self._statement(statement))
-            if not any(isinstance(item, ast.Return) for item in case.body):
-                lines.append(f"{self._pad()}break;")
-            for binding in bindings:
-                self.borrowed_owner_bindings.discard(binding)
-            self.indent -= 1
-            lines.append(f"{pad}}}")
-        self.match_depth -= 1
-        if not has_wildcard:
-            lines.append(f"{pad}default: abort();")
-        lines.append(f"{pad}}}")
-        return lines
-
-    def _binary_expression(
-        self,
-        left: ast.AST,
-        operation: ast.operator,
-        right: ast.AST,
-        *,
-        expected: str | None = None,
-    ) -> str:
-        left_type = self._expression_type(left)
-        right_type = self._expression_type(right)
-        if (
-            isinstance(operation, ast.Add)
-            and left_type in {"Text", "Bytes"}
-            and right_type == left_type
-        ):
-            left_value = (
-                self._materialize_owned_argument(left, left_type)
-                if self._is_owning_temporary(left, left_type)
-                else self._expression(left, expected=left_type)
-            )
-            right_value = (
-                self._materialize_owned_argument(right, right_type)
-                if self._is_owning_temporary(right, right_type)
-                else self._expression(right, expected=right_type)
-            )
-            helper = "merlo_text_concat" if left_type == "Text" else "merlo_bytes_concat"
-            return f"{helper}({left_value}, {right_value})"
-        operators = {
-            ast.Add: "+",
-            ast.Sub: "-",
-            ast.Mult: "*",
-            ast.Div: "/",
-            ast.FloorDiv: "/",
-            ast.Mod: "%",
-            ast.BitXor: "^",
-            ast.BitAnd: "&",
-            ast.BitOr: "|",
-            ast.LShift: "<<",
-            ast.RShift: ">>",
-        }
-        operator = operators.get(type(operation))
-        if operator is None:
-            raise RepresentationCBackendError(
-                f"unsupported binary operator {type(operation).__name__}"
-            )
-        arithmetic_type = (
-            expected
-            if expected in {"Byte", "UInt64", "Int64", "Float32", "Float64"}
-            else self._expression_type(left)
-        )
-        checked = {
-            "Byte": {
-                ast.Add: "merlo_checked_byte_add",
-                ast.Sub: "merlo_checked_byte_sub",
-                ast.Mult: "merlo_checked_byte_mult",
-                ast.Div: "merlo_checked_byte_div",
-                ast.FloorDiv: "merlo_checked_byte_div",
-                ast.Mod: "merlo_checked_byte_mod",
-                ast.LShift: "merlo_checked_byte_lshift",
-                ast.RShift: "merlo_checked_byte_rshift",
-            },
-            "UInt64": {
-                ast.Add: "merlo_checked_uint64_add",
-                ast.Sub: "merlo_checked_uint64_sub",
-                ast.Mult: "merlo_checked_uint64_mult",
-                ast.Div: "merlo_checked_uint64_div",
-                ast.FloorDiv: "merlo_checked_uint64_div",
-                ast.Mod: "merlo_checked_uint64_mod",
-                ast.LShift: "merlo_checked_uint64_lshift",
-                ast.RShift: "merlo_checked_uint64_rshift",
-            },
-            "Int64": {
-                ast.Add: "merlo_checked_int64_add",
-                ast.Sub: "merlo_checked_int64_sub",
-                ast.Mult: "merlo_checked_int64_mult",
-                ast.Div: "merlo_checked_int64_div",
-                ast.FloorDiv: "merlo_checked_int64_floor_div",
-                ast.Mod: "merlo_checked_int64_mod",
-                ast.LShift: "merlo_checked_int64_lshift",
-                ast.RShift: "merlo_checked_int64_rshift",
-            },
-        }.get(arithmetic_type or "", {}).get(type(operation))
-        if checked is not None:
-            return (
-                f"{checked}("
-                f"{self._expression(left, expected=arithmetic_type)}, "
-                f"{self._expression(right, expected=arithmetic_type)})"
-            )
-        return f"({self._expression(left)} {operator} {self._expression(right)})"
     @staticmethod
     def _borrowed_text_literal(value: str) -> str:
         payload = value.encode("utf-8")
@@ -2355,1977 +6390,10 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             "}"
         )
 
-    def _text_comparison_value(self, node: ast.AST, type_name: str) -> str:
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
-
-            return self._borrowed_text_literal(node.value)
-        return self._expression(node, expected=type_name)
-
-    def _clone_is_deep(self, type_name: str, seen: frozenset[str] = frozenset()) -> bool:
-        descriptor = self.descriptors[type_name]
-        if not _is_owner(descriptor) or type_name in seen:
-            return True
-        next_seen = seen | {type_name}
-        if descriptor.kind == "text":
-            children = ()
-        elif descriptor.kind == "enum":
-            children = (
-                payload
-                for _, payload, _ in descriptor.variants
-                if payload is not None
-            )
-        elif descriptor.kind == "record":
-            children = (field_type for _, field_type, _ in descriptor.fields)
-        elif descriptor.kind == "array":
-            return False
-        elif descriptor.kind in {"vec", "box"}:
-            children = (
-                getattr(descriptor, "element_type", None)
-                or getattr(descriptor, "payload_type", None),
-            )
-        else:
-            return False
-        return all(
-            child is None or self._clone_is_deep(child, next_seen)
-            for child in children
-        )
-
-    def _contains_borrow(self, type_name: str, seen: frozenset[str] = frozenset()) -> bool:
-        if type_name in seen:
-            return False
-        descriptor = self.descriptors.get(type_name)
-        if descriptor is None:
-            if type_name.startswith("Result[") and type_name.endswith("]"):
-                parts = type_name[7:-1].split(",", 1)
-                return any(
-                    self._contains_borrow(part.strip(), seen)
-                    for part in parts
-                )
-            return False
-        if descriptor.kind in {"borrow", "slice", "file_lines"}:
-            return True
-        next_seen = seen | {type_name}
-        if descriptor.kind == "record":
-            children = (field_type for _, field_type, _ in descriptor.fields)
-        elif descriptor.kind == "enum":
-            children = (
-                payload
-                for _, payload, _ in descriptor.variants
-                if payload is not None
-            )
-        elif descriptor.kind in {"vec", "box", "array"}:
-            children = (
-                getattr(descriptor, "element_type", None)
-                or getattr(descriptor, "payload_type", None),
-            )
-        else:
-            children = ()
-        return any(
-            child is not None and self._contains_borrow(child, next_seen)
-            for child in children
-        )
-
-    def _is_owning_temporary(self, node: ast.AST, type_name: str) -> bool:
-        descriptor = self.descriptors.get(type_name)
-        if descriptor is None or not _is_owner(descriptor):
-            return False
-        if isinstance(
-            node,
-            (ast.Call, ast.Constant, ast.List, ast.Tuple, ast.BinOp, ast.Lambda),
-        ):
-            return True
-        return (
-            isinstance(node, ast.Attribute)
-            and isinstance(node.value, ast.Name)
-            and node.value.id == type_name
-            and descriptor.kind == "enum"
-        )
-
-    def _materialize_owned_argument(self, argument: ast.AST, type_name: str) -> str:
-        if self.expression_context != "statement":
-            raise RepresentationCBackendError(
-                "owning temporary cannot be materialized in control-flow expression"
-            )
-        if self.returning_borrowed or self.assigning_borrowed:
-            raise RepresentationCBackendError(
-                "borrowed result escapes owning temporary"
-            )
-        self.temporary_ordinal += 1
-        name = f"__merlo_owned_temp_{self.temporary_ordinal}"
-        value = self._move_expression(argument, type_name)
-        self.temporary_declarations.append((name, type_name))
-        self.env_types[name] = type_name
-        self.pending_expression_lines.append(f"{self._pad()}{name} = {value};")
-        self.pending_expression_drops.append(
-            f"{self._pad()}merlo_drop_{_identifier(type_name)}(&{name});"
-        )
-        return name
-    def _borrow_view_argument(
-        self,
-        argument: ast.AST,
-        expected: str,
-        *,
-        want_pointer: bool,
-    ) -> str | None:
-        actual = self._expression_type(argument)
-        view_type = {"Text": "TextView", "Bytes": "BytesView"}.get(actual)
-        if view_type != expected:
-            return None
-        if self._is_owning_temporary(argument, actual or ""):
-            argument = ast.Name(
-                id=self._materialize_owned_argument(argument, actual or ""),
-                ctx=ast.Load(),
-            )
-        address = self._address_expression(argument)
-        return self._view_from_owner_address(
-            address,
-            actual or "",
-            expected,
-            want_pointer=want_pointer,
-        )
-
-    @staticmethod
-    def _view_from_owner_address(
-        address: str,
-        owner_type: str,
-        view_type: str,
-        *,
-        want_pointer: bool,
-    ) -> str:
-        owner = f"((const {_c_name(owner_type)} *){address})"
-        descriptor = f"({_c_name(view_type)}){{ {owner}->data, {owner}->length }}"
-        return f"&({descriptor})" if want_pointer else descriptor
-
-    def _enum_tag_expression(self, node: ast.AST) -> str:
-        expression = self._expression(node)
-        if self._expression_is_pointer(node):
-            return f"({expression})->tag"
-        return f"({expression}).tag"
-
-
-    def _expression_in_context(
-        self,
-        node: ast.AST | None,
-        *,
-        context: str,
-        expected: str | None = None,
-        want_pointer: bool = False,
-    ) -> str:
-        previous = self.expression_context
-        self.expression_context = context
-        try:
-            return self._expression(
-                node,
-                expected=expected,
-                want_pointer=want_pointer,
-            )
-        finally:
-            self.expression_context = previous
-
-    def _expression(self, node: ast.AST | None, *, expected: str | None = None, want_pointer: bool = False) -> str:
-        if node is None:
-            return "0"
-        if isinstance(node, ast.Name):
-            if (
-                node.id == "result"
-                and self.contract_result_name is not None
-            ):
-                return (
-                    f"&{self.contract_result_name}"
-                    if want_pointer
-                    else self.contract_result_name
-                )
-            if node.id in self.functions and node.id not in self.env_types:
-                descriptor = self.descriptors.get(expected or "")
-                if (
-                    descriptor is not None
-                    and descriptor.kind in {"callback", "closure"}
-                ):
-                    value = (
-                        f"({_c_name(expected or '')}){{ "
-                        f"merlo_closure_adapter_{node.id}, NULL, NULL, NULL }}"
-                    )
-                    return f"&({value})" if want_pointer else value
-                return f"merlo_fn_{node.id}"
-            if node.id in self.pointer_values:
-                if want_pointer:
-                    return node.id
-                if expected == self.env_types.get(node.id):
-                    return f"(*{node.id})"
-                return node.id
-            return f"&{node.id}" if want_pointer else node.id
-        if isinstance(node, ast.Lambda):
-            metadata = getattr(node, "_merlo_closure_metadata", None)
-            if metadata is None:
-                raise RepresentationCBackendError(
-                    "capturing closure metadata is required"
-                )
-            closure_id, _parameters, _return_type, captures, _owner = metadata
-            arguments = []
-            for name, type_name, ownership in captures:
-                capture = ast.Name(id=name, ctx=ast.Load())
-                for attribute in (
-                    "lineno",
-                    "col_offset",
-                    "end_lineno",
-                    "end_col_offset",
-                    "_merlo_path",
-                ):
-                    if hasattr(node, attribute):
-                        setattr(capture, attribute, getattr(node, attribute))
-                arguments.append(
-                    self._expression(
-                        capture,
-                        expected=type_name,
-                        want_pointer=ownership == "owned",
-                    )
-                )
-            return (
-                f"merlo_closure_make_{closure_id}"
-                f"({', '.join(arguments)})"
-            )
-        if isinstance(node, ast.Constant):
-            if node.value is None and expected:
-                descriptor = self.descriptors.get(expected)
-                if descriptor is not None and descriptor.kind == "enum":
-                    variants = {
-                        variant: payload
-                        for variant, payload, _ in descriptor.variants
-                    }
-                    if "Some" in variants and "NoneValue" in variants:
-                        return f"merlo_make_{_identifier(expected)}_NoneValue()"
-            if isinstance(node.value, bool):
-                return "true" if node.value else "false"
-            if isinstance(node.value, int):
-                if expected == "Byte":
-                    return f"UINT8_C({node.value})"
-                if expected == "Int64":
-                    return f"INT64_C({node.value})"
-                return f"UINT64_C({node.value})"
-            if isinstance(node.value, float):
-                literal = repr(node.value)
-                return f"((float){literal})" if expected == "Float32" else literal
-            if isinstance(node.value, str):
-                literal = self._borrowed_text_literal(node.value)
-                if want_pointer:
-                    return f"&{literal}"
-                payload = node.value.encode("utf-8")
-                values = (
-                    ", ".join(f"UINT8_C({byte})" for byte in payload)
-                    or "UINT8_C(0)"
-                )
-                return (
-                    "merlo_text_literal("
-                    f"(const uint8_t[]){{{values}}}, "
-                    f"UINT64_C({len(payload)}))"
-                )
-            if isinstance(node.value, bytes):
-                values = (
-                    ", ".join(f"UINT8_C({byte})" for byte in node.value)
-                    or "UINT8_C(0)"
-                )
-                return (
-                    "merlo_bytes_literal("
-                    f"(const uint8_t[]){{{values}}}, "
-                    f"UINT64_C({len(node.value)}))"
-                )
-        if isinstance(node, (ast.List, ast.Tuple)):
-            expected_type = expected or self._expression_type(node)
-            array = _array_parts(expected_type or "")
-            if array is None:
-                raise RepresentationCBackendError(
-                    "array literal requires a fixed Array type"
-                )
-            element_type, _ = array
-            values = ", ".join(
-                self._expression(item, expected=element_type)
-                for item in node.elts
-            )
-            return f"({_c_name(expected_type)}){{ .data = {{{values}}} }}"
-        if isinstance(node, ast.Attribute):
-            if (
-                isinstance(node.value, ast.Name)
-                and node.value.id in self.descriptors
-                and self.descriptors[node.value.id].kind == "enum"
-            ):
-                descriptor = self.descriptors[node.value.id]
-                payload = next(
-                    value
-                    for variant, value, _ in descriptor.variants
-                    if variant == node.attr
-                )
-                if all(
-                    value is None
-                    for _, value, _ in descriptor.variants
-                ):
-                    return f"MERLO_{node.value.id}_{node.attr}"
-                if payload is None:
-                    return (
-                        f"merlo_make_{_identifier(node.value.id)}_"
-                        f"{node.attr}()"
-                    )
-                raise RepresentationCBackendError(
-                    f"enum payload constructor requires a call: "
-                    f"{node.value.id}.{node.attr}"
-                )
-            base = self._expression(node.value)
-            operator = "->" if self._expression_is_pointer(node.value) else "."
-            value = f"({base}){operator}{node.attr}"
-            return f"&({value})" if want_pointer else value
-        if isinstance(node, ast.BinOp):
-            return self._binary_expression(
-                node.left,
-                node.op,
-                node.right,
-                expected=expected,
-            )
-        if isinstance(node, ast.Subscript):
-            owner_type = self._expression_type(node.value)
-            generic = _generic(owner_type or "")
-            if generic and generic[0] == "Vec":
-                pointer = (
-                    f"merlo_{_identifier(owner_type or '')}_get("
-                    f"{self._address_expression(node.value)}, "
-                    f"{self._expression(node.slice)})"
-                )
-                return pointer if want_pointer else f"(*{pointer})"
-            descriptor = self.descriptors.get(owner_type or "")
-            if descriptor is not None and descriptor.kind in {"array", "slice"}:
-                index = self._expression(node.slice, expected="UInt64")
-                owner = self._expression(node.value)
-                operator = "->" if self._expression_is_pointer(node.value) else "."
-                length = (
-                    f"UINT64_C({descriptor.length})"
-                    if descriptor.kind == "array"
-                    else f"({owner}){operator}length"
-                )
-                access = f"({owner}){operator}data[{index}]"
-                if want_pointer:
-                    return (
-                        f"(({index}) < ({length}) ? &({access}) : "
-                        f"(merlo_bounds_trap({index}, {length}), &({access})))"
-                    )
-                return (
-                    f"(({index}) < ({length}) ? ({access}) : "
-                    f"(merlo_bounds_trap({index}, {length}), ({access})))"
-                )
-            shape = self._collection_shape_for_name(owner_type)
-            if shape is not None and shape.kind in {
-                "vec",
-                "bytes",
-                "bytes_view",
-                "text",
-                "text_view",
-            }:
-                index = self._expression(node.slice, expected="UInt64")
-                owner = self._address_expression(node.value)
-                access = f"({owner})->data[{index}]"
-                length = f"({owner})->length"
-                if want_pointer:
-                    return (
-                        f"(({index}) < ({length}) ? &({access}) : "
-                        f"(merlo_bounds_trap({index}, {length}), &({access})))"
-                    )
-                return (
-                    f"(({index}) < ({length}) ? ({access}) : "
-                    f"(merlo_bounds_trap({index}, {length}), ({access})))"
-                )
-            raise RepresentationCBackendError(
-                f"unsupported indexed type: {owner_type or 'unknown'}"
-            )
-        if isinstance(node, ast.BoolOp):
-            operator = " && " if isinstance(node.op, ast.And) else " || "
-            return "(" + operator.join(
-                self._expression_in_context(
-                    item,
-                    context="short_circuit",
-                    expected="Bool",
-                )
-                for item in node.values
-            ) + ")"
-        if isinstance(node, ast.Compare):
-            pieces = []
-            left = node.left
-            for operator_node, right in zip(
-                node.ops,
-                node.comparators,
-                strict=True,
-            ):
-                operator = {
-                    ast.Eq: "==",
-                    ast.NotEq: "!=",
-                    ast.Lt: "<",
-                    ast.LtE: "<=",
-                    ast.Gt: ">",
-                    ast.GtE: ">=",
-                }[type(operator_node)]
-                left_type = self._expression_type(left)
-                right_type = self._expression_type(right)
-                left_descriptor = self.descriptors.get(left_type or "")
-                right_descriptor = self.descriptors.get(right_type or "")
-                if (
-                    isinstance(operator_node, (ast.Eq, ast.NotEq))
-                    and left_descriptor is not None
-                    and right_descriptor is not None
-                    and left_descriptor.kind == "text"
-                    and right_descriptor.kind == "text"
-                ):
-                    equal = (
-                        "merlo_text_equal_values("
-                        f"{self._text_comparison_value(left, left_type or 'Text')}, "
-                        f"{self._text_comparison_value(right, right_type or 'Text')})"
-                    )
-                    pieces.append(
-                        equal
-                        if isinstance(operator_node, ast.Eq)
-                        else f"(!{equal})"
-                    )
-                elif (
-                    isinstance(operator_node, (ast.Eq, ast.NotEq))
-                    and left_type == right_type
-                    and left_descriptor is not None
-                    and left_descriptor.kind == "enum"
-                    and any(
-                        payload is not None
-                        for _, payload, _ in left_descriptor.variants
-                    )
-                ):
-                    pieces.append(
-                        f"({self._enum_tag_expression(left)} {operator} "
-                        f"{self._enum_tag_expression(right)})"
-                    )
-                else:
-                    pieces.append(
-                        f"({self._expression(left)} {operator} "
-                        f"{self._expression(right)})"
-                    )
-                left = right
-            if len(pieces) == 1:
-                piece = pieces[0]
-                return piece[1:-1] if piece.startswith("(") and piece.endswith(")") else piece
-            return "(" + " && ".join(pieces) + ")"
-        if isinstance(node, ast.UnaryOp):
-            operand_type = (
-                expected
-                if expected in {
-                    "Byte",
-                    "UInt64",
-                    "Int64",
-                    "Float32",
-                    "Float64",
-                }
-                else self._expression_type(node.operand)
-            )
-            if isinstance(node.op, ast.Not):
-                return f"(!({self._expression(node.operand, expected='Bool')}))"
-            if isinstance(node.op, ast.Invert):
-                if operand_type not in {"Byte", "UInt64", "Int64"}:
-                    raise RepresentationCBackendError(
-                        f"bitwise invert requires an integer, got {operand_type}"
-                    )
-                operand = self._expression(
-                    node.operand,
-                    expected=operand_type,
-                )
-                return f"(({_c_name(operand_type)})~({operand}))"
-            if isinstance(node.op, ast.USub):
-                if (
-                    operand_type == "Int64"
-                    and isinstance(node.operand, ast.Constant)
-                    and node.operand.value == 9223372036854775808
-                ):
-                    return "INT64_MIN"
-                operand = self._expression(
-                    node.operand,
-                    expected=operand_type,
-                )
-                if operand_type == "Int64":
-                    return f"merlo_checked_int64_neg({operand})"
-                if operand_type in {"Float32", "Float64"}:
-                    return f"(-({operand}))"
-                raise RepresentationCBackendError(
-                    f"unsigned negation forbidden: {operand_type}"
-                )
-            operand = self._expression(
-                node.operand,
-                expected=operand_type,
-            )
-            return f"(+({operand}))"
-        if isinstance(node, ast.Call):
-            return self._call_expression(node, expected=expected, want_pointer=want_pointer)
-        raise RepresentationCBackendError(f"unsupported C expression: {type(node).__name__}@{getattr(node, 'lineno', 0)}")
-
-    def _collection_callback_expression(
-        self,
-        node: ast.expr,
-        parameter: str,
-        return_type: str,
-    ) -> str:
-        if isinstance(node, ast.Name) and node.id in self.functions:
-            callback_call = ast.Call(
-                func=node,
-                args=[ast.Name(id=parameter, ctx=ast.Load())],
-                keywords=[],
-            )
-            return self._call_expression(
-                callback_call,
-                expected=return_type,
-                want_pointer=False,
-            )
-        return self._expression(node, expected=return_type)
-
-    def _type_id_for_name(self, type_name: str | None):
-        if type_name is None or not hasattr(self, "hir"):
-            return None
-        try:
-            return self.hir.type_context.type_id(type_name)
-        except TypeArenaError:
-            return None
-
-    def _collection_shape_for_name(self, type_name: str | None):
-        type_id = self._type_id_for_name(type_name)
-        return (
-            collection_shape(type_id, self.hir.type_context)
-            if type_id is not None
-            else None
-        )
-
     def _static_contract_receiver(self, receiver: str) -> TypeConstructorId | None:
         if not receiver.isidentifier():
             return None
         return TypeConstructorId(receiver)
-
-    def _collection_element_name(self, shape) -> str:
-        return self.hir.type_context.render(shape.element_type_id)
-
-    def _collection_pipeline(
-        self,
-        node: ast.Call,
-    ) -> tuple[
-        ast.expr,
-        Any,
-        tuple[tuple[ast.Call, str, tuple[Any, ...]], ...],
-    ] | None:
-        stages_reversed: list[
-            tuple[ast.Call, str, tuple[Any, ...]]
-        ] = []
-        current: ast.expr = node
-        while (
-            isinstance(current, ast.Call)
-            and isinstance(current.func, ast.Attribute)
-            and current.func.attr in COLLECTION_OPERATIONS
-            and len(current.args) == 1
-        ):
-            metadata = getattr(
-                current.args[0],
-                "_merlo_implicit_callable",
-                None,
-            )
-            if metadata is None:
-                return None
-            stages_reversed.append(
-                (current, current.func.attr, metadata)
-            )
-            current = current.func.value
-        if len(stages_reversed) < 2:
-            return None
-        stages = tuple(reversed(stages_reversed))
-        operations = tuple(stage[1] for stage in stages)
-        if "count" in operations[:-1]:
-            return None
-        shape = self._collection_shape_for_name(self._expression_type(current))
-        if shape is None:
-            return None
-        element_type = self._collection_element_name(shape)
-        for _call, operation, metadata in stages:
-            (
-                _callable_id,
-                _parameter,
-                parameter_type,
-                return_type,
-                _text,
-            ) = metadata
-            descriptor = self.descriptors.get(element_type)
-            if (
-                element_type not in FUSIBLE_COLLECTION_ELEMENTS
-                or parameter_type != element_type
-                or descriptor is None
-                or _is_owner(descriptor)
-            ):
-                return None
-            if operation in {"where", "count"}:
-                if return_type != "Bool":
-                    return None
-            else:
-                element_type = return_type
-                result_descriptor = self.descriptors.get(element_type)
-                if (
-                    element_type not in FUSIBLE_COLLECTION_ELEMENTS
-                    or result_descriptor is None
-                    or _is_owner(result_descriptor)
-                ):
-                    return None
-        return current, shape, stages
-
-    def _fused_collection_expression(
-        self,
-        node: ast.Call,
-    ) -> str | None:
-        pipeline = self._collection_pipeline(node)
-        if pipeline is None:
-            return None
-        base, shape, stages = pipeline
-        self.temporary_ordinal += 1
-        ordinal = self.temporary_ordinal
-        result = f"__merlo_fused_collection_{ordinal}"
-        index = f"__merlo_fused_index_{ordinal}"
-        source_value = f"__merlo_fused_value_{ordinal}"
-        source = self._address_expression(base)
-        length = (
-            f"UINT64_C({shape.fixed_length})"
-            if shape.fixed_length is not None
-            else f"({source})->length"
-        )
-        final_operation = stages[-1][1]
-        result_element = self._collection_element_name(shape)
-        for _call, operation, metadata in stages:
-            if operation == "map":
-                result_element = metadata[3]
-        result_element_id = self._type_id_for_name(result_element)
-        if result_element_id is None:
-            raise RepresentationCBackendError(
-                f"unknown collection result element type: {result_element}"
-            )
-        result_type_id = collection_result_type(
-            final_operation,
-            result_element_id,
-            self.hir.type_context,
-        )
-        assert isinstance(result_type_id, TypeId)
-        result_type = self.hir.type_context.render(result_type_id)
-        pad = self._pad()
-        lines: list[str] = []
-        if final_operation == "count":
-            lines.append(f"{pad}uint64_t {result} = UINT64_C(0);")
-        else:
-            lines.extend(
-                [
-                    f"{pad}{_c_name(result_type)} {result} = "
-                    "{ NULL, UINT64_C(0), UINT64_C(0), UINT64_C(0) };",
-                    f"{pad}if ({length} != 0) {{",
-                    f"{pad}    {result}.data = "
-                    f"({_c_name(result_element)} *)malloc("
-                    f"(size_t){length} * "
-                    f"sizeof({_c_name(result_element)}));",
-                    f"{pad}    if ({result}.data == NULL) "
-                    "merlo_allocation_trap();",
-                    f"{pad}    {result}.capacity = {length};",
-                    f"{pad}    ++merlo_allocations; "
-                    "++merlo_vec_allocations;",
-                    f"{pad}}}",
-                ]
-            )
-        lines.extend(
-            [
-                f"{pad}for (uint64_t {index} = UINT64_C(0); "
-                f"{index} < {length}; ++{index}) {{",
-                f"{pad}    {_c_name(self._collection_element_name(shape))} "
-                f"{source_value} = ({source})->data[{index}];",
-            ]
-        )
-
-        def emit_stage(
-            stage_index: int,
-            value: str,
-            indent: str,
-        ) -> None:
-            call, operation, metadata = stages[stage_index]
-            (
-                _callable_id,
-                parameter,
-                parameter_type,
-                return_type,
-                _text,
-            ) = metadata
-            lines.append(f"{indent}{{")
-            if value != parameter:
-                lines.append(
-                    f"{indent}    {_c_name(parameter_type)} {parameter} = "
-                    f"{value};"
-                )
-            previous_type = self.env_types.get(parameter)
-            self.env_types[parameter] = parameter_type
-            try:
-                callback = self._collection_callback_expression(
-                    call.args[0],
-                    parameter,
-                    return_type,
-                )
-            finally:
-                if previous_type is None:
-                    self.env_types.pop(parameter, None)
-                else:
-                    self.env_types[parameter] = previous_type
-            last = stage_index == len(stages) - 1
-            if operation == "where":
-                lines.append(f"{indent}    if ({callback}) {{")
-                if last:
-                    lines.append(
-                        f"{indent}        {result}.data"
-                        f"[{result}.length++] = {parameter};"
-                    )
-                else:
-                    emit_stage(
-                        stage_index + 1,
-                        parameter,
-                        indent + "        ",
-                    )
-                lines.append(f"{indent}    }}")
-            elif operation == "map":
-                mapped = (
-                    f"__merlo_fused_mapped_{ordinal}_{stage_index}"
-                )
-                lines.append(
-                    f"{indent}    {_c_name(return_type)} {mapped} = "
-                    f"{callback};"
-                )
-                if last:
-                    lines.append(
-                        f"{indent}    {result}.data"
-                        f"[{result}.length++] = {mapped};"
-                    )
-                else:
-                    emit_stage(
-                        stage_index + 1,
-                        mapped,
-                        indent + "    ",
-                    )
-            else:
-                lines.append(
-                    f"{indent}    if ({callback}) ++{result};"
-                )
-            lines.append(f"{indent}}}")
-
-        emit_stage(
-            0,
-            source_value,
-            f"{pad}    ",
-        )
-        lines.append(f"{pad}}}")
-        self.pending_expression_lines.extend(lines)
-        return result
-
-    def _general_collection_expression(
-        self,
-        node: ast.Call,
-        shape,
-        operation: str,
-    ) -> str:
-        if (
-            self.mir.optimized
-            and "collection_pipeline_fusion"
-            in self.mir.optimization_passes
-        ):
-            fused = self._fused_collection_expression(node)
-            if fused is not None:
-                return fused
-        if len(node.args) != 1:
-            raise RepresentationCBackendError(
-                f"{operation} expects one collection callable"
-            )
-        metadata = getattr(node.args[0], "_merlo_implicit_callable", None)
-        if metadata is None:
-            raise RepresentationCBackendError(
-                "typed collection callable metadata required"
-            )
-        _callable_id, parameter, parameter_type, return_type, _text = metadata
-        if parameter_type != self._collection_element_name(shape):
-            raise RepresentationCBackendError(
-                "collection callable element type mismatch"
-            )
-        self.temporary_ordinal += 1
-        ordinal = self.temporary_ordinal
-        result = f"__merlo_collection_{ordinal}"
-        index = f"__merlo_collection_index_{ordinal}"
-        source = self._address_expression(node.func.value)
-        length = (
-            f"UINT64_C({shape.fixed_length})"
-            if shape.fixed_length is not None
-            else f"({source})->length"
-        )
-        data = f"({source})->data"
-        pad = self._pad()
-        lines: list[str] = []
-        result_element = (
-            return_type if operation == "map" else self._collection_element_name(shape)
-        )
-        result_type = collection_result_type(operation, result_element)
-        if operation == "count":
-            lines.append(f"{pad}uint64_t {result} = UINT64_C(0);")
-        else:
-            lines.extend(
-                [
-                    f"{pad}{_c_name(result_type)} {result} = "
-                    "{ NULL, UINT64_C(0), UINT64_C(0), UINT64_C(0) };",
-                    f"{pad}if ({length} != 0) {{",
-                    f"{pad}    {result}.data = "
-                    f"({_c_name(result_element)} *)malloc("
-                    f"(size_t){length} * sizeof({_c_name(result_element)}));",
-                    f"{pad}    if ({result}.data == NULL) "
-                    "merlo_allocation_trap();",
-                    f"{pad}    {result}.capacity = {length};",
-                    f"{pad}    ++merlo_allocations; ++merlo_vec_allocations;",
-                    f"{pad}}}",
-                ]
-            )
-        lines.append(
-            f"{pad}for (uint64_t {index} = UINT64_C(0); "
-            f"{index} < {length}; ++{index}) {{"
-        )
-        lines.append(
-            f"{pad}    {_c_name(self._collection_element_name(shape))} {parameter} = "
-            f"{data}[{index}];"
-        )
-        previous_type = self.env_types.get(parameter)
-        self.env_types[parameter] = self._collection_element_name(shape)
-        try:
-            explicit_function = (
-                isinstance(node.args[0], ast.Name)
-                and node.args[0].id in self.functions
-            )
-            callback = self._collection_callback_expression(
-                node.args[0],
-                parameter,
-                return_type,
-            )
-            if operation == "count":
-                lines.append(
-                    f"{pad}    if ({callback}) ++{result};"
-                )
-            elif operation == "where":
-                value = parameter
-                descriptor = self.descriptors[self._collection_element_name(shape)]
-                if _is_owner(descriptor):
-                    value = (
-                        f"merlo_clone_{_identifier(self._collection_element_name(shape))}"
-                        f"(&{parameter})"
-                    )
-                lines.extend(
-                    [
-                        f"{pad}    if ({callback}) {{",
-                        f"{pad}        {result}.data[{result}.length++] = "
-                        f"{value};",
-                        f"{pad}    }}",
-                    ]
-                )
-            else:
-                value = callback
-                descriptor = self.descriptors[result_element]
-                if _is_owner(descriptor) and not explicit_function:
-                    root: ast.AST = node.args[0]
-                    while isinstance(root, (ast.Attribute, ast.Subscript)):
-                        root = root.value
-                    if isinstance(root, ast.Name) and root.id == parameter:
-                        value = (
-                            f"merlo_clone_{_identifier(result_element)}"
-                            f"({self._address_expression(node.args[0])})"
-                        )
-                    else:
-                        value = self._move_expression(
-                            node.args[0],
-                            result_element,
-                        )
-                lines.append(
-                    f"{pad}    {result}.data[{result}.length++] = {value};"
-                )
-        finally:
-            if previous_type is None:
-                self.env_types.pop(parameter, None)
-            else:
-                self.env_types[parameter] = previous_type
-        lines.append(f"{pad}}}")
-        self.pending_expression_lines.extend(lines)
-        return result
-
-    def _call_expression(self, node: ast.Call, *, expected: str | None, want_pointer: bool) -> str:
-        if isinstance(node.func, ast.Name):
-            name = node.func.id
-            if name == "Unit":
-                return "0"
-            if name in self.extern_functions:
-                foreign = self.extern_functions[name]
-                arguments = [
-                    self._expression(argument, expected=parameter.type_name)
-                    for argument, parameter in zip(
-                        node.args, foreign.parameters, strict=True
-                    )
-                ]
-            callback = None if name in self.functions else _callback_parts(self.env_types.get(name, ""))
-            if callback is not None:
-                parameter_types, _ = callback
-                arguments = ", ".join(
-                    self._expression(argument, expected=parameter_type)
-                    for argument, parameter_type in zip(
-                        node.args,
-                        parameter_types,
-                        strict=True,
-                    )
-                )
-                operator = "->" if name in self.pointer_values else "."
-                prefix = f"{name}{operator}"
-                forwarded = f", {arguments}" if arguments else ""
-                return (
-                    f"{prefix}call({prefix}environment{forwarded})"
-                )
-            if name not in self.functions and name in {
-                "wrapping_add",
-                "wrapping_sub",
-                "wrapping_mul",
-                "checked_add",
-                "checked_sub",
-                "checked_mul",
-            }:
-                if len(node.args) != 2:
-                    raise RepresentationCBackendError(f"{name} expects two integer arguments")
-                argument_types = {self._expression_type(argument) for argument in node.args}
-                if len(argument_types) != 1 or not argument_types <= {"Byte", "Int64", "UInt64"}:
-                    raise RepresentationCBackendError(
-                        f"{name} expects matching Byte, Int64, or UInt64 arguments"
-                    )
-                numeric_type = next(iter(argument_types))
-                operation = name.rsplit("_", 1)[-1]
-                left = self._expression(node.args[0], expected=numeric_type)
-                right = self._expression(node.args[1], expected=numeric_type)
-                if name.startswith("wrapping_"):
-                    operator = {"add": "+", "sub": "-", "mul": "*"}[operation]
-                    if numeric_type == "Int64":
-                        return f"((int64_t)((uint64_t)({left}) {operator} (uint64_t)({right})))"
-                    return f"(({_c_name(numeric_type)})(({left}) {operator} ({right})))"
-                function = f"merlo_checked_{numeric_type.lower()}_{'mult' if operation == 'mul' else operation}"
-                return f"{function}({left}, {right})"
-            if name in {"Byte", "Int64", "UInt64", "Float32", "Float64"}:
-                if len(node.args) != 1:
-                    raise RepresentationCBackendError(f"{name} cast expects one argument")
-                source_type = self._expression_type(node.args[0])
-                value = self._expression(node.args[0], expected=source_type)
-                if name == "Byte":
-                    if source_type in {"Float32", "Float64"}:
-                        return f"merlo_cast_byte_from_float64((double)({value}))"
-                    return f"merlo_cast_byte((uint64_t)({value}))"
-                if name == "Int64":
-                    if source_type in {"Float32", "Float64"}:
-                        return f"merlo_cast_int64_from_float64((double)({value}))"
-                    if source_type in {"Byte", "UInt64"}:
-                        return f"merlo_cast_int64((uint64_t)({value}))"
-                if name == "UInt64":
-                    if source_type in {"Float32", "Float64"}:
-                        return f"merlo_cast_uint64_from_float64((double)({value}))"
-                    if source_type == "Int64":
-                        return f"merlo_cast_uint64((int64_t)({value}))"
-                return f"(({_c_name(name)})({value}))"
-            if name in {"Ok", "Err"} and expected:
-                parts = self._result_parts(expected)
-                if parts is not None:
-                    payload = parts[0 if name == "Ok" else 1]
-                    if payload == "Unit":
-                        return f"merlo_make_{_identifier(expected)}_{name}()"
-                    return f"merlo_make_{_identifier(expected)}_{name}({self._move_expression(node.args[0], payload, enforce_projected_move=True)})"
-            if name == "Some" and expected:
-                descriptor = self.descriptors.get(expected)
-                if descriptor is not None and descriptor.kind == "enum":
-                    payloads = {
-                        variant: payload
-                        for variant, payload, _ in descriptor.variants
-                    }
-                    if "Some" in payloads and "NoneValue" in payloads:
-                        payload = payloads["Some"]
-                        assert payload is not None
-                        return (
-                            f"merlo_make_{_identifier(expected)}_Some("
-                            f"{self._move_expression(node.args[0], payload, enforce_projected_move=True)})"
-                        )
-            if name == "Path":
-                if len(node.args) != 1:
-                    raise RepresentationCBackendError("Path constructor expects one Text argument")
-                return self._move_expression(
-                    node.args[0],
-                    "Text",
-                    enforce_projected_move=True,
-                )
-            if name in self.descriptors and self.descriptors[name].kind == "record":
-                descriptor = self.descriptors[name]
-                arguments = [
-                    self._move_expression(
-                        argument,
-                        field_type,
-                        enforce_projected_move=True,
-                    )
-                    for argument, (_, field_type, _) in zip(node.args, descriptor.fields, strict=True)
-                ]
-                return f"merlo_make_{_identifier(name)}({', '.join(arguments)})"
-            if name in self.functions:
-                function = self.functions[name]
-                arguments = []
-                for argument, parameter in zip(
-                    node.args, function.parameters, strict=True
-                ):
-                    descriptor = self.descriptors[parameter.type_name]
-                    if (
-                        parameter.ownership == "borrow"
-                        and descriptor.kind == "text"
-                        and isinstance(argument, ast.Constant)
-                        and isinstance(argument.value, str)
-                    ):
-                        arguments.append(
-                            f"&{self._borrowed_text_literal(argument.value)}"
-                            if self._parameter_is_pointer(parameter)
-                            else self._borrowed_text_literal(argument.value)
-                        )
-                        continue
-                    actual_type = self._expression_type(argument)
-                    if (
-                        parameter.ownership in {"borrow", "borrow_mut"}
-                        and actual_type is not None
-                        and not self._is_borrow_expression(argument)
-                        and self._is_owning_temporary(argument, actual_type)
-                    ):
-                        temporary = self._materialize_owned_argument(
-                            argument,
-                            actual_type,
-                        )
-                        argument = ast.Name(id=temporary)
-                    wants_pointer = self._parameter_is_pointer(parameter)
-                    view_argument = self._borrow_view_argument(
-                        argument,
-                        parameter.type_name,
-                        want_pointer=wants_pointer,
-                    )
-                    if view_argument is not None:
-                        arguments.append(view_argument)
-                        continue
-                    if (
-                        parameter.ownership in {"borrow", "borrow_mut"}
-                        and not self._is_borrow_expression(argument)
-                        and self._is_owning_temporary(argument, parameter.type_name)
-                    ):
-                        temporary = self._materialize_owned_argument(
-                            argument,
-                            parameter.type_name,
-                        )
-                        arguments.append(f"&{temporary}" if wants_pointer else temporary)
-                        continue
-                    if parameter.ownership == "owned":
-                        arguments.append(
-                            self._move_expression(
-                                argument,
-                                parameter.type_name,
-                                enforce_projected_move=True,
-                            )
-                        )
-                    else:
-                        arguments.append(
-                            self._expression(
-                                argument,
-                                expected=parameter.type_name,
-                                want_pointer=wants_pointer,
-                            )
-                        )
-                return f"merlo_fn_{name}({', '.join(arguments)})"
-
-        if isinstance(node.func, ast.Attribute):
-            receiver_text = ast.unparse(node.func.value)
-            method = node.func.attr
-            receiver_type = self._expression_type(node.func.value)
-            shape = self._collection_shape_for_name(receiver_type)
-            if (
-                method in COLLECTION_OPERATIONS
-                and shape is not None
-            ):
-                return self._general_collection_expression(
-                    node,
-                    shape,
-                    method,
-                )
-            callee = f"{receiver_text}.{method}"
-            intrinsic = intrinsic_signature(callee)
-            if intrinsic is None and receiver_text in {
-                "console", "fs", "env", "clock", "random", "network", "tcp",
-                "process",
-            }:
-                raise RepresentationCBackendError(f"UnknownIntrinsic: {callee}")
-            if intrinsic is not None and len(node.args) != intrinsic.arity:
-                raise RepresentationCBackendError(format_intrinsic_arity(intrinsic, len(node.args)))
-            if (
-                method in {"as_view", "view"}
-                and isinstance(node.func.value, ast.Call)
-                and isinstance(node.func.value.func, ast.Attribute)
-                and node.func.value.func.attr == "to_text"
-            ):
-                inner = node.func.value
-                source = self._address_expression(inner.func.value)
-                return f"(MerloTextView){{ ({source})->data, ({source})->length }}"
-            if receiver_text == "fs" and method == "open_read":
-                return self._wrap_host_result(
-                    f"merlo_file_open_read({self._address_expression(node.args[0])})",
-                    expected,
-                    failure_condition="merlo_file_error != 0",
-                )
-            if receiver_text == "fs" and method == "open_write":
-                return self._wrap_host_result(
-                    f"merlo_file_open_write({self._address_expression(node.args[0])})",
-                    expected,
-                    failure_condition="merlo_file_error != 0",
-                )
-            if receiver_text == "fs" and method == "read":
-                return self._wrap_host_result(
-                    f"merlo_file_read_all({self._address_expression(node.args[0])})",
-                    expected,
-                    failure_condition="merlo_file_error != 0",
-                )
-            if receiver_text == "fs" and method == "read_text":
-                return self._wrap_host_result(
-                    f"merlo_file_read_text({self._address_expression(node.args[0])})",
-                    expected,
-                    failure_condition="merlo_file_error != 0",
-                )
-            if receiver_text == "fs" and method == "read_chunk":
-                return self._wrap_host_result(
-                    f"merlo_file_read_chunk({self._address_expression(node.args[0])}, {self._expression(node.args[1])})",
-                    expected,
-                    failure_condition="merlo_file_error != 0",
-                )
-            if receiver_text == "fs" and method in {"write", "write_text"}:
-                expected_view = "TextView" if method == "write_text" else "BytesView"
-                data = self._borrow_view_argument(
-                    node.args[1], expected_view, want_pointer=True
-                )
-                if data is None:
-                    data = self._address_expression(node.args[1])
-                write_helper = (
-                    "merlo_file_write_text"
-                    if method == "write_text"
-                    else "merlo_file_write_all"
-                )
-                return self._wrap_host_result(
-                    f"{write_helper}({self._address_expression(node.args[0])}, {data})",
-                    expected,
-                    failure_condition="merlo_file_error != 0 || merlo_file_write_error != 0",
-                    error_code="(merlo_file_error != 0 ? merlo_file_error : merlo_file_write_error)",
-                )
-            if receiver_text == "fs" and method == "write_chunk":
-                data = self._borrow_view_argument(
-                    node.args[1], "BytesView", want_pointer=True
-                )
-                if data is None:
-                    data = self._address_expression(node.args[1])
-                return self._wrap_host_result(
-                    f"merlo_file_write_chunk({self._address_expression(node.args[0])}, {data})",
-                    expected,
-                    failure_condition="merlo_file_error != 0",
-                )
-            if receiver_text == "fs" and method == "close_read":
-                address = self._address_expression(node.args[0])
-                if isinstance(node.args[0], ast.Name):
-                    self.owned_locals.pop(node.args[0].id, None)
-                return self._wrap_host_result(
-                    f"merlo_file_close({address})",
-                    expected,
-                    failure_condition="merlo_file_error != 0",
-                )
-            if receiver_text == "fs" and method == "close_write":
-                address = self._address_expression(node.args[0])
-                if isinstance(node.args[0], ast.Name):
-                    self.owned_locals.pop(node.args[0].id, None)
-                return self._wrap_host_result(
-                    f"merlo_file_close_writer({address})",
-                    expected,
-                    failure_condition="merlo_file_error != 0",
-                )
-            if receiver_text == "console" and method == "write":
-                value = self._borrow_view_argument(
-                    node.args[0], "TextView", want_pointer=False
-                )
-                if value is None:
-                    value = self._expression(node.args[0], expected="TextView")
-                return f"(merlo_console_write_view({value}), 0)"
-            if receiver_text == "console" and method == "read":
-                return "merlo_console_read()"
-            if receiver_text == "console" and method == "read_line":
-                return "merlo_console_read_line()"
-            if receiver_text == "console" and method == "read_all":
-                return "merlo_console_read_all()"
-            if receiver_text == "env" and method in {"read", "get"}:
-                return f"merlo_env_read({self._address_expression(node.args[0])})"
-            if receiver_text == "clock" and method == "now":
-                return "merlo_clock_now()"
-            if receiver_text == "random" and method == "read":
-                return f"merlo_random_read({self._expression(node.args[0])})"
-            if receiver_text == "network" and method == "http_request":
-                url_argument = node.args[0]
-                if self._is_owning_temporary(url_argument, "Text"):
-                    url_temporary = self._materialize_owned_argument(
-                        url_argument,
-                        "Text",
-                    )
-                    url = f"&{url_temporary}"
-                else:
-                    url = self._address_expression(url_argument)
-                call = f"merlo_network_http_request({url})"
-                return self._wrap_host_result(
-                    call,
-                    expected,
-                    failure_condition="merlo_network_error != 0",
-                    error_code="merlo_network_error",
-                )
-            if receiver_text == "process" and method == "args":
-                return "merlo_process_args_count()"
-            if receiver_text == "process" and method == "arg":
-                return f"merlo_process_arg({self._expression(node.args[0])})"
-            if receiver_text == "network" and method == "tcp_connect":
-                call = f"merlo_network_tcp_connect({self._address_expression(node.args[0])}, {self._expression(node.args[1])})"
-                return self._wrap_host_result(
-                    call,
-                    expected,
-                    failure_condition="merlo_network_error != 0",
-                    error_code="merlo_network_error",
-                )
-            if receiver_text == "network" and method == "tcp_send":
-                data = self._borrow_view_argument(
-                    node.args[1], "BytesView", want_pointer=True
-                )
-                if data is None:
-                    data = self._address_expression(node.args[1])
-                call = f"merlo_network_tcp_send({self._expression(node.args[0])}, {data})"
-                return self._wrap_host_result(
-                    call,
-                    expected,
-                    failure_condition="merlo_network_error != 0",
-                    error_code="merlo_network_error",
-                )
-            if receiver_text == "network" and method == "tcp_receive":
-                call = f"merlo_network_tcp_receive({self._expression(node.args[0])}, {self._expression(node.args[1])})"
-                return self._wrap_host_result(
-                    call,
-                    expected,
-                    failure_condition="merlo_network_error != 0",
-                    error_code="merlo_network_error",
-                )
-            if receiver_text == "network" and method == "tcp_close":
-                call = f"merlo_network_tcp_close({self._expression(node.args[0])})"
-                return self._wrap_host_result(
-                    call,
-                    expected,
-                    failure_condition="merlo_network_error != 0",
-                    error_code="merlo_network_error",
-                )
-            if receiver_text in self.descriptors and self.descriptors[receiver_text].kind == "enum":
-                descriptor = self.descriptors[receiver_text]
-                payload_type = next(
-                    (payload for variant, payload, _ in descriptor.variants if variant == method),
-                    None,
-                )
-                arguments = [] if payload_type is None else [
-                    self._move_expression(
-                        node.args[0],
-                        payload_type,
-                        enforce_projected_move=True,
-                    )
-                ]
-                return f"merlo_make_{_identifier(receiver_text)}_{method}({', '.join(arguments)})"
-            static_receiver = self._static_contract_receiver(receiver_text)
-            contract_graph = getattr(self, "contract_graph", None)
-            static_contract = (
-                contract_graph.resolve_static_method(
-                    static_receiver,
-                    method,
-                    tuple(
-                        self._type_id_for_name(self._expression_type(argument))
-                        for argument in node.args
-                    ),
-                    self._type_id_for_name(expected),
-                )
-                if contract_graph is not None and static_receiver is not None
-                else None
-            )
-            static_lowering = (
-                static_contract.representation_lowering
-                if static_contract is not None
-                else None
-            )
-            if static_lowering == "vec_new":
-                if expected is None or not expected.startswith("Vec["):
-                    raise RepresentationCBackendError(
-                        "Vec.new requires contextual monomorphized type"
-                    )
-                return f"merlo_{_identifier(expected)}_new()"
-            if static_lowering == "box_new":
-                box_type = static_contract.result_type
-                if not box_type.startswith("Box[") or "Inferred" in box_type:
-                    raise RepresentationCBackendError(
-                        "Box.new requires contextual monomorphized type"
-                    )
-                payload_type = _generic(box_type)[1]
-                return (
-                    f"merlo_{_identifier(box_type)}_new("
-                    f"{self._move_expression(node.args[0], payload_type, enforce_projected_move=True)})"
-                )
-            if static_lowering == "map_new":
-                map_type = static_contract.result_type
-                if _map_types(map_type) is None:
-                    raise RepresentationCBackendError(
-                        "Map.new requires a contextual concrete Map type"
-                    )
-                return f"merlo_{_identifier(map_type)}_new()"
-            if static_contract is not None and static_contract.abi_lowering == (
-                "merlo_text_from_bytes"
-            ):
-                source = self._borrow_view_argument(
-                    node.args[0], "BytesView", want_pointer=True
-                )
-                if source is None:
-                    source = self._address_expression(node.args[0])
-                return (
-                    f"{static_contract.abi_lowering}({source}, "
-                    f"{self._expression(node.args[1])}, "
-                    f"{self._expression(node.args[2])})"
-                )
-            if static_contract is not None and static_contract.abi_lowering == (
-                "merlo_text_builder_new"
-            ):
-                return f"{static_contract.abi_lowering}()"
-            receiver_type = self._expression_type(node.func.value)
-            receiver_type_id = self._type_id_for_name(receiver_type)
-            contract_graph = getattr(self, "contract_graph", None)
-            method_contract = (
-                contract_graph.method(receiver_type_id, method)
-                if contract_graph is not None and receiver_type_id is not None
-                else None
-            )
-            representation_lowering = (
-                method_contract.representation_lowering
-                if method_contract is not None
-                else None
-            )
-            temporary_receiver = (
-                receiver_type is not None
-                and self._is_owning_temporary(node.func.value, receiver_type)
-            )
-            if temporary_receiver:
-                temporary = self._materialize_owned_argument(
-                    node.func.value,
-                    receiver_type,
-                )
-                receiver = f"&{temporary}"
-            else:
-                receiver = self._address_expression(node.func.value)
-            if method == "clone" and receiver_type in self.descriptors and _is_owner(self.descriptors[receiver_type]):
-                return f"merlo_clone_{_identifier(receiver_type)}({receiver})"
-            enum_descriptor = self.descriptors.get(receiver_type or "")
-            if enum_descriptor is not None and enum_descriptor.kind == "enum":
-                variants = {variant: payload for variant, payload, _ in enum_descriptor.variants}
-                suffix = _identifier(receiver_type or "")
-                if "Some" in variants and "NoneValue" in variants:
-                    if representation_lowering == "option_is_none":
-                        return f"({receiver})->tag == MERLO_{suffix}_NoneValue_TAG"
-                    if representation_lowering == "option_is_some":
-                        return f"({receiver})->tag == MERLO_{suffix}_Some_TAG"
-                    if representation_lowering == "option_unwrap_clone":
-                        payload_type = variants["Some"]
-                        return self._checked_enum_payload_access(
-                            receiver,
-                            suffix,
-                            "Some",
-                            payload_type,
-                            "OptionUnwrapWrongVariant",
-                            want_pointer=want_pointer,
-                        )
-                if "Ok" in variants and "Err" in variants:
-                    if representation_lowering == "result_is_err":
-                        return f"({receiver})->tag == MERLO_{suffix}_Err_TAG"
-                    if representation_lowering == "result_is_ok":
-                        return f"({receiver})->tag == MERLO_{suffix}_Ok_TAG"
-                    if representation_lowering == "result_unwrap_clone":
-                        payload_type = variants["Ok"]
-                        return self._checked_enum_payload_access(
-                            receiver,
-                            suffix,
-                            "Ok",
-                            payload_type,
-                            "ResultUnwrapWrongVariant",
-                            want_pointer=want_pointer,
-                        )
-                    if representation_lowering == "result_unwrap_err_clone":
-                        payload_type = variants["Err"]
-                        return self._checked_enum_payload_access(
-                            receiver,
-                            suffix,
-                            "Err",
-                            payload_type,
-                            "ResultUnwrapErrWrongVariant",
-                            want_pointer=want_pointer,
-                        )
-            if receiver_type == "FileReader" and method == "lines":
-                return f"merlo_file_lines({receiver})"
-            generic = _generic(receiver_type or "")
-            map_types = _map_types(receiver_type or "")
-            if map_types is not None:
-                _, value_type = map_types
-                suffix = _identifier(receiver_type or "")
-                if method in {"get", "increment", "insert"}:
-                    key = self._address_expression(node.args[0])
-                    if method == "get":
-                        return f"merlo_{suffix}_get({receiver}, {key})"
-                    if method == "increment":
-                        if value_type != "UInt64":
-                            raise RepresentationCBackendError(
-                                "Map.increment requires UInt64 values"
-                            )
-                        amount = (
-                            self._expression(node.args[1], expected="UInt64")
-                            if len(node.args) == 2
-                            else "UINT64_C(1)"
-                        )
-                        return f"merlo_{suffix}_increment({receiver}, {key}, {amount})"
-                    value = self._expression(node.args[1], expected=value_type)
-                    return f"merlo_{suffix}_insert({receiver}, {key}, {value})"
-                if method == "entries":
-                    return f"merlo_{suffix}_entries({receiver})"
-            if generic and generic[0] == "Vec":
-                suffix = _identifier(receiver_type)
-                if method == "view":
-                    if expected == f"Borrow[{receiver_type}]":
-                        return receiver
-                    if expected is None or not expected.startswith("Slice["):
-                        raise RepresentationCBackendError(
-                            "Vec.view requires contextual Borrow[Vec[T]] "
-                            "or Slice[T] type"
-                        )
-                    return (
-                        f"({_c_name(expected)}){{ ({receiver})->data, "
-                        f"({receiver})->length }}"
-                    )
-                suffix = _identifier(receiver_type)
-                if method in {"len", "capacity"}:
-                    return f"merlo_{suffix}_{method}({receiver})"
-                if method in {"get", "get_mut"}:
-                    if method == "get_mut" and temporary_receiver:
-                        raise RepresentationCBackendError(
-                            "borrowed result escapes owning temporary"
-                        )
-                    pointer = f"merlo_{suffix}_get({receiver}, {self._expression(node.args[0])})"
-                    element_type = generic[1]
-                    if (
-                        method == "get"
-                        and temporary_receiver
-                        and _is_owner(self.descriptors[element_type])
-                    ):
-                        if not self._clone_is_deep(element_type):
-                            raise RepresentationCBackendError(
-                                f"cannot clone temporary accessor {element_type}"
-                            )
-                        return f"merlo_clone_{_identifier(element_type)}({pointer})"
-                    return pointer if want_pointer else f"(*{pointer})"
-            if generic and generic[0] == "Box" and method == "get":
-                pointer = f"merlo_{_identifier(receiver_type)}_get({receiver})"
-                payload_type = generic[1]
-                if temporary_receiver and _is_owner(self.descriptors[payload_type]):
-                    if not self._clone_is_deep(payload_type):
-                        raise RepresentationCBackendError(
-                            f"cannot clone temporary accessor {payload_type}"
-                        )
-                    return f"merlo_clone_{_identifier(payload_type)}({pointer})"
-                return pointer if want_pointer else f"(*{pointer})"
-            if receiver_type == "Bytes":
-                if method == "len":
-                    return f"({receiver})->length"
-                if method == "view":
-                    return self._view_from_owner_address(
-                        receiver, "Bytes", "BytesView", want_pointer=want_pointer
-                    )
-                if method == "to_text":
-                    view = self._view_from_owner_address(
-                        receiver, "Bytes", "BytesView", want_pointer=True
-                    )
-                    return f"merlo_text_from_bytes({view}, UINT64_C(0), ({receiver})->length)"
-            if receiver_type == "BytesView":
-                if method == "len":
-                    return f"({receiver})->length"
-                if method == "byte":
-                    return f"merlo_bytes_load({receiver}, {self._expression(node.args[0])})"
-                if method == "slice":
-                    start = self._expression(node.args[0])
-                    length = self._expression(node.args[1])
-                    return (
-                        f"(MerloBytesView){{ ({receiver})->data + ({start}), "
-                        f"({length}) }}"
-                    )
-            if receiver_type == "TextView":
-                if method == "len":
-                    return f"({receiver})->length"
-                if method == "byte":
-                    return f"merlo_text_view_load({receiver}, {self._expression(node.args[0])})"
-                if method == "contains":
-                    return f"merlo_text_view_contains({receiver}, {self._address_expression(node.args[0])}, false)"
-                if method == "contains_ascii_case_insensitive":
-                    return f"merlo_text_view_contains({receiver}, {self._address_expression(node.args[0])}, true)"
-                if method == "slice_bytes":
-                    return f"merlo_text_view_slice_bytes({receiver}, {self._expression(node.args[0])}, {self._expression(node.args[1])})"
-                if method == "to_text":
-                    sliced = node.func.value
-                    if (
-                        isinstance(sliced, ast.Call)
-                        and isinstance(sliced.func, ast.Attribute)
-                        and sliced.func.attr == "slice_bytes"
-                    ):
-                        source = self._address_expression(sliced.func.value)
-                        return f"merlo_text_from_view_slice({source}, {self._expression(sliced.args[0])}, {self._expression(sliced.args[1])})"
-                    return f"merlo_text_from_view({receiver})"
-                    inner = node.func.value
-                    if (
-                        isinstance(inner.func, ast.Attribute)
-                        and inner.func.attr == "to_text"
-                    ):
-                        source = self._address_expression(inner.func.value)
-                        return f"(MerloTextView){{ ({source})->data, ({source})->length }}"
-                if method in {"starts_with", "ends_with"}:
-                    suffix = "true" if method == "ends_with" else "false"
-                    return f"merlo_text_view_prefix_suffix({receiver}, {self._address_expression(node.args[0])}, {suffix})"
-            if receiver_type == "Path" and method == "to_text":
-                return f"merlo_text_clone({receiver})"
-            if receiver_type == "Text":
-                if method == "len":
-                    return f"({receiver})->length"
-                if method == "byte":
-                    return f"merlo_text_load({receiver}, {self._expression(node.args[0])})"
-                if method == "contains":
-                    view = self._view_from_owner_address(
-                        receiver, "Text", "TextView", want_pointer=True
-                    )
-                    return f"merlo_text_view_contains({view}, {self._address_expression(node.args[0])}, false)"
-                if method == "contains_ascii_case_insensitive":
-                    view = self._view_from_owner_address(
-                        receiver, "Text", "TextView", want_pointer=True
-                    )
-                    return f"merlo_text_view_contains({view}, {self._address_expression(node.args[0])}, true)"
-                if method in {"starts_with", "ends_with"}:
-                    suffix = "true" if method == "ends_with" else "false"
-                    view = self._view_from_owner_address(
-                        receiver, "Text", "TextView", want_pointer=True
-                    )
-                    return f"merlo_text_view_prefix_suffix({view}, {self._address_expression(node.args[0])}, {suffix})"
-                if method == "slice_bytes":
-                    view = self._view_from_owner_address(
-                        receiver, "Text", "TextView", want_pointer=True
-                    )
-                    return f"merlo_text_view_slice_bytes({view}, {self._expression(node.args[0])}, {self._expression(node.args[1])})"
-                if method in {"as_view", "view"}:
-                    sliced = node.func.value
-                    if (
-                        isinstance(sliced, ast.Call)
-                        and isinstance(sliced.func, ast.Attribute)
-                        and sliced.func.attr == "to_text"
-                        and isinstance(sliced.func.value, ast.Name)
-                        and self._expression_type(sliced.func.value) == "Bytes"
-                    ):
-                        source = self._address_expression(sliced.func.value)
-                        return f"(MerloTextView){{ ({source})->data, ({source})->length }}"
-                    return self._view_from_owner_address(
-                        receiver, "Text", "TextView", want_pointer=want_pointer
-                    )
-                if method == "clone":
-                    return f"merlo_text_clone({receiver})"
-            if receiver_type == "TextBuilder" and method == "finish":
-                return f"merlo_text_builder_finish({receiver})"
-            if method == "tag":
-                expression = self._expression(node.func.value)
-                descriptor = self.descriptors.get(receiver_type or "")
-                if (
-                    descriptor is not None
-                    and descriptor.kind == "enum"
-                    and all(payload is None for _, payload, _ in descriptor.variants)
-                ):
-                    return f"((uint64_t)({expression}))"
-                return f"({expression})->tag" if self._expression_is_pointer(node.func.value) else f"({expression}).tag"
-        raise RepresentationCBackendError(f"unsupported C call: {ast.unparse(node)}")
-
-    def _reject_projected_owner_move(
-        self,
-        node: ast.AST,
-        type_name: str,
-        *,
-        enforce: bool,
-        allow: bool = False,
-    ) -> None:
-        if not enforce or allow:
-            return
-        descriptor = self.descriptors.get(type_name)
-        if descriptor is None or not _is_owner(descriptor):
-            return
-        if descriptor.kind in {"borrow", "slice", "file_lines"}:
-            return
-        parent = (
-            node.value
-            if isinstance(node, ast.Attribute)
-            else node.value
-            if isinstance(node, ast.Subscript)
-            else node.func.value
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-            else None
-        )
-        has_borrowed_owner_root = (
-            hasattr(self, "borrowed_owner_bindings")
-            and self._has_borrowed_owner_root(node)
-        )
-        parent_type = (
-            self._expression_type(parent)
-            if parent is not None and hasattr(self, "env_types")
-            else None
-        )
-        if parent is not None and (
-            has_borrowed_owner_root
-            or (
-                parent_type is not None
-                and self._is_owning_temporary(parent, parent_type)
-            )
-        ):
-            return
-        box_parent = _generic(parent_type or "")
-        if (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Attribute)
-            and node.func.attr == "get"
-            and box_parent is not None
-            and box_parent[0] == "Box"
-        ):
-            raise RepresentationCBackendError(
-                "ProjectedOwnerMoveRequiresPartialMoveSupport"
-            )
-        if isinstance(node, ast.Attribute):
-            if (
-                isinstance(node.value, ast.Name)
-                and node.value.id in self.descriptors
-                and self.descriptors[node.value.id].kind == "enum"
-            ):
-                return
-            raise RepresentationCBackendError(
-                "ProjectedOwnerMoveRequiresPartialMoveSupport"
-            )
-        if isinstance(node, ast.Subscript):
-            raise RepresentationCBackendError(
-                "ProjectedOwnerMoveRequiresPartialMoveSupport"
-            )
-
-    def _move_expression(
-        self,
-        node: ast.AST,
-        type_name: str,
-        *,
-        enforce_projected_move: bool = False,
-        clone_projected_move: bool = False,
-    ) -> str:
-        root = node
-        while isinstance(root, (ast.Attribute, ast.Subscript)):
-            root = root.value
-        is_parameter_projection = (
-            isinstance(node, (ast.Attribute, ast.Subscript))
-            and isinstance(root, ast.Name)
-            and getattr(self, "current_function", None) is not None
-            and root.id
-            in {
-                parameter.name
-                for parameter in self.current_function.parameters
-            }
-        )
-        self._reject_projected_owner_move(
-            node,
-            type_name,
-            enforce=enforce_projected_move,
-            allow=clone_projected_move and is_parameter_projection,
-        )
-        descriptor = self.descriptors[type_name]
-        if not _is_owner(descriptor):
-            return self._expression(node, expected=type_name)
-        if clone_projected_move and is_parameter_projection:
-            if not self._clone_is_deep(type_name):
-                raise RepresentationCBackendError(
-                    f"cannot clone borrowed owner of type {type_name}"
-                )
-            source = self._address_expression(node)
-            return (
-                f"merlo_clone_{_identifier(type_name)}"
-                f"((const {_c_name(type_name)} *){source})"
-            )
-        if self._has_borrowed_owner_root(node):
-            if not self._clone_is_deep(type_name):
-                raise RepresentationCBackendError(
-                    f"cannot clone borrowed owner of type {type_name}"
-                )
-            source = self._address_expression(node)
-            return (
-                f"merlo_clone_{_identifier(type_name)}"
-                f"((const {_c_name(type_name)} *){source})"
-            )
-        if isinstance(node, ast.Name):
-            if node.id in self.pointer_values:
-                return f"merlo_move_{_identifier(type_name)}({node.id})"
-            return f"merlo_move_{_identifier(type_name)}(&{node.id})"
-        if isinstance(node, ast.Attribute):
-            if (
-                isinstance(node.value, ast.Name)
-                and node.value.id in self.descriptors
-                and self.descriptors[node.value.id].kind == "enum"
-            ):
-                return self._expression(node, expected=type_name)
-            return (
-                f"merlo_move_{_identifier(type_name)}("
-                f"{self._address_expression(node)})"
-            )
-        if isinstance(node, ast.Subscript):
-            owner_type = self._expression_type(node.value)
-            generic = _generic(owner_type or "")
-            if generic and generic[0] == "Vec" and generic[1] == type_name:
-                return (
-                    f"merlo_move_{_identifier(type_name)}("
-                    f"merlo_{_identifier(owner_type or '')}_get("
-                    f"{self._address_expression(node.value)}, "
-                    f"{self._expression(node.slice)}))"
-                )
-        return self._expression(node, expected=type_name)
-
-    def _expression_type(self, node: ast.AST) -> str | None:
-        if isinstance(node, ast.Name):
-            return self.env_types.get(node.id)
-        if isinstance(node, ast.Lambda):
-            metadata = getattr(node, "_merlo_closure_metadata", None)
-            if metadata is None:
-                return None
-            _closure_id, parameters, return_type, _captures, _owner = metadata
-            return "Fn[" + ",".join(
-                (*[type_name for _name, type_name in parameters], return_type)
-            ) + "]"
-        if isinstance(node, ast.Constant):
-            return (
-                "Bool"
-                if isinstance(node.value, bool)
-                else "UInt64"
-                if isinstance(node.value, int)
-                else "Float64"
-                if isinstance(node.value, float)
-                else "Bytes"
-                if isinstance(node.value, bytes)
-                else "Text"
-            )
-        if isinstance(node, ast.Attribute):
-            if isinstance(node.value, ast.Name) and node.value.id in self.descriptors and self.descriptors[node.value.id].kind == "enum":
-                return node.value.id
-            owner = self._expression_type(node.value)
-            entry_types = _map_entry_types(owner or "")
-            if entry_types is not None:
-                if node.attr == "key":
-                    return entry_types[0]
-                if node.attr == "value":
-                    return entry_types[1]
-            if owner in self.descriptors:
-                descriptor = self.descriptors[owner]
-                for field_name, field_type, _ in descriptor.fields:
-                    if field_name == node.attr:
-                        return field_type
-            return None
-        if isinstance(node, ast.Subscript):
-            owner_type = self._expression_type(node.value)
-            shape = self._collection_shape_for_name(owner_type)
-            return self._collection_element_name(shape) if shape is not None else None
-        if isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name):
-                if node.func.id == "__merlo_try__" and len(node.args) == 1:
-                    parts = self._result_parts(self._expression_type(node.args[0]))
-                    return parts[0] if parts else None
-                if node.func.id in self.functions:
-                    return self.functions[node.func.id].return_type
-                if node.func.id in self.extern_functions:
-                    return self.extern_functions[node.func.id].return_type
-                if node.func.id in self.descriptors:
-                    return node.func.id
-                if node.func.id in {
-                    "Byte",
-                    "UInt64",
-                    "Int64",
-                    "Float32",
-                    "Float64",
-                }:
-                    return node.func.id
-                if node.func.id.startswith(("wrapping_", "checked_")):
-                    return "UInt64"
-            if isinstance(node.func, ast.Attribute):
-                receiver_text = ast.unparse(node.func.value)
-                method = node.func.attr
-                if receiver_text in self.descriptors and self.descriptors[receiver_text].kind == "enum":
-                    return receiver_text
-                receiver_type = self._expression_type(node.func.value)
-                contract_graph = getattr(self, "contract_graph", None)
-                static_receiver = self._static_contract_receiver(receiver_text)
-                static_contract = (
-                    contract_graph.resolve_static_method(
-                        static_receiver,
-                        method,
-                        tuple(
-                            self._type_id_for_name(self._expression_type(argument))
-                            for argument in node.args
-                        ),
-                    )
-                    if contract_graph is not None and static_receiver is not None
-                    else None
-                )
-                if static_contract is not None:
-                    return static_contract.result_type
-                receiver_type_id = self._type_id_for_name(receiver_type)
-                method_contract = (
-                    contract_graph.method(receiver_type_id, method)
-                    if contract_graph is not None and receiver_type_id is not None
-                    else None
-                )
-                if method_contract is not None:
-                    return method_contract.result_for(None)
-                if method == "get":
-                    generic = _generic(receiver_type or "")
-                    if generic is not None and generic[0] in {"Box", "Vec"}:
-                        return generic[1]
-                    map_types = _map_types(receiver_type or "")
-                    if map_types is not None:
-                        return map_types[1]
-                if method in COLLECTION_OPERATIONS:
-                    shape = self._collection_shape_for_name(receiver_type)
-                    metadata = (
-                        getattr(node.args[0], "_merlo_implicit_callable", None)
-                        if len(node.args) == 1
-                        else None
-                    )
-                    if shape is not None and metadata is not None:
-                        result_element = (
-                            metadata[3]
-                            if method == "map"
-                            else self._collection_element_name(shape)
-                        )
-                        result_element_id = self._type_id_for_name(result_element)
-                        if result_element_id is None:
-                            return None
-                        result_type_id = collection_result_type(
-                            method,
-                            result_element_id,
-                            self.hir.type_context,
-                        )
-                        assert isinstance(result_type_id, TypeId)
-                        return self.hir.type_context.render(result_type_id)
-                signature = intrinsic_signature(f"{receiver_text}.{method}")
-                if signature is not None:
-                    result_parts = self._result_parts(signature.result_type)
-                    if result_parts is not None:
-                        host_error = result_parts[1]
-                        if self.current_function is not None:
-                            current_parts = self._result_parts(self.current_function.return_type)
-                            if current_parts is not None:
-                                host_error = current_parts[1]
-                        return f"Result[{result_parts[0]},{host_error}]"
-                    return signature.result_type
-                descriptor = self.descriptors.get(receiver_type or "")
-                if descriptor is not None and descriptor.kind == "enum":
-                    variants = {
-                        variant: payload
-                        for variant, payload, _ in descriptor.variants
-                    }
-                    if "Some" in variants and "NoneValue" in variants:
-                        if method in {"is_none", "is_some"}:
-                            return "Bool"
-                        if method == "unwrap":
-                            return variants["Some"]
-                if method in {"len", "capacity", "byte", "tag"}:
-                    return "UInt64"
-        if isinstance(node, (ast.Compare, ast.BoolOp)):
-            return "Bool"
-        if isinstance(node, ast.UnaryOp):
-            return "Bool" if isinstance(node.op, ast.Not) else self._expression_type(node.operand)
-        if isinstance(node, ast.BinOp):
-            return self._expression_type(node.left)
-        return None
-
-    def _expression_is_pointer(self, node: ast.AST) -> bool:
-        if isinstance(node, ast.Name) and node.id in self.pointer_values:
-            return True
-        type_name = self._expression_type(node)
-        return generic_parts(type_name or "", "Borrow", arity=1) is not None
-
-    def _address_expression(self, node: ast.AST) -> str:
-        if isinstance(node, ast.Subscript):
-            return self._expression(node, want_pointer=True)
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            return f"&{self._borrowed_text_literal(node.value)}"
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-            receiver_type = self._expression_type(node.func.value)
-            receiver_type_id = self._type_id_for_name(receiver_type)
-            contract_graph = getattr(self, "contract_graph", None)
-            contract = (
-                contract_graph.method(receiver_type_id, node.func.attr)
-                if contract_graph is not None and receiver_type_id is not None
-                else None
-            )
-            if contract is not None and contract.representation_lowering in {
-                "option_unwrap_clone",
-                "result_unwrap_clone",
-                "result_unwrap_err_clone",
-            }:
-                return self._expression(node, want_pointer=True)
-        expression = self._expression(node)
-        return expression if self._expression_is_pointer(node) else f"&({expression})"
-
-    def _lvalue(self, node: ast.AST) -> str:
-        if isinstance(node, ast.Name):
-            return node.id
-        if isinstance(node, ast.Attribute):
-            base = self._expression(node.value)
-            operator = "->" if self._expression_is_pointer(node.value) else "."
-            return f"({base}){operator}{node.attr}"
-        raise RepresentationCBackendError(f"unsupported lvalue: {ast.unparse(node)}")
-
-    def _checked_enum_payload_access(
-        self,
-        receiver: str,
-        enum_suffix: str,
-        variant: str,
-        payload_type: str | None,
-        diagnostic: str,
-        *,
-        want_pointer: bool,
-    ) -> str:
-        concrete_type = payload_type or "Unit"
-        zero = self._zero_expression(concrete_type)
-        if payload_type in {None, "Unit"}:
-            payload = zero
-            failure = zero
-        else:
-            expression = f"(({receiver})->payload.{variant})"
-            descriptor = self.descriptors[payload_type]
-            if want_pointer:
-                payload = f"(&{expression})"
-                failure = f"(({_c_name(payload_type)} *)NULL)"
-            elif _is_owner(descriptor):
-                if not self._clone_is_deep(payload_type):
-                    raise RepresentationCBackendError(
-                        f"cannot clone {variant} payload {payload_type}"
-                    )
-                payload = (
-                    f"merlo_clone_{_identifier(payload_type)}"
-                    f"(&{expression})"
-                )
-            else:
-                payload = expression
-            if not want_pointer:
-                failure = zero
-        return (
-            f"(({receiver})->tag == "
-            f"MERLO_{enum_suffix}_{variant}_TAG "
-            f"? ({payload}) : "
-            f"(merlo_ownership_trap(\"{diagnostic}\"), {failure}))"
-        )
 
     def _zero_expression(self, type_name: str) -> str:
         descriptor = self.descriptors[type_name]
@@ -4527,7 +6595,7 @@ int main(int argc, char **argv) {
         )
         file_error_guard = ""
         if self.used_effects & {"fs.read", "fs.write"}:
-            file_error_guard = '''    if (merlo_file_error != 0) {
+            file_error_guard = '''    if (result.tag == UINT32_C(0) && merlo_file_error != 0) {
         if (merlo_file_error == UINT32_C(1)) {
             fprintf(stderr, "AppError.FileOpen:%s\\n", argv[1]);
         } else if (merlo_file_error == UINT32_C(2)) {

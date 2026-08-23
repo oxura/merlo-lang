@@ -73,7 +73,7 @@ def layers():
 
 def test_structured_hir_is_typed_structural_and_source_mapped(layers):
     hir, _representation, _mir, _optimized = layers
-    assert hir.contract == "merlo.structured-typed-hir.v12"
+    assert hir.contract == "merlo.structured-typed-hir.v13"
     assert hir.path.endswith("general_json.mlo")
     assert {item.name for item in hir.types} == {
         "ErrorKind",

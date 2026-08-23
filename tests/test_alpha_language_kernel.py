@@ -449,6 +449,27 @@ def test_owned_text_reborrows_as_text_view_for_native_calls(tmp_path: Path) -> N
     assert b"OK result=5" in completed.stdout
 
 
+def test_value_boolean_short_circuits_before_bounds_check(tmp_path: Path) -> None:
+    binary = _native(
+        "fn check(view: TextView) -> Bool:\n"
+        "    return view.len() == 0 or view.byte(0) == 0\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    let text: Text = Text.from_bytes(input, 0, input.len())\n"
+        "    if check(text.as_view()):\n"
+        "        return 1\n"
+        "    return 0\n",
+        tmp_path,
+        "boolean-short-circuit",
+    )
+    completed = subprocess.run(
+        [str(binary)],
+        input=b"",
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert b"OK result=1" in completed.stdout
+
 def test_generated_c_uses_real_view_descriptors_under_strict_aliasing(
     tmp_path: Path,
 ) -> None:

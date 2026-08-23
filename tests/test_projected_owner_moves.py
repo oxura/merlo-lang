@@ -2,12 +2,6 @@ from __future__ import annotations
 
 import pytest
 
-from merlo import native_syntax as ast
-from merlo.representation_c_backend import (
-    GeneralCEmitter,
-    RepresentationCBackendError,
-)
-from merlo.representation_ir import ScalarDesc
 from merlo.structured_hir_v2 import StructuredHIRCompileError, compile_structured_hir
 
 
@@ -180,34 +174,6 @@ def test_fixed_array_disjoint_constant_index_remains_accepted() -> None:
     )
 
 
-def test_c_backend_rejects_projected_owner_move_defense_in_depth() -> None:
-    emitter = object.__new__(GeneralCEmitter)
-    emitter.descriptors = {
-        "Text": ScalarDesc(
-            "Text",
-            "text",
-            1,
-            1,
-            "scalar",
-            "move",
-            "move",
-            "drop",
-            (),
-            (),
-            "Text",
-        )
-    }
-    expression = ast.parse("result = owner.name\n", filename="projected.mlo").body[0].value
-    with pytest.raises(
-        RepresentationCBackendError,
-        match="^ProjectedOwnerMoveRequiresPartialMoveSupport$",
-    ):
-        emitter._move_expression(
-            expression,
-            "Text",
-            enforce_projected_move=True,
-        )
-
 
 @pytest.mark.parametrize(
     "source",
@@ -257,37 +223,3 @@ def test_projected_owner_drops_are_rejected(source: str) -> None:
         match="^ProjectedOwnerDropRequiresPartialMoveSupport$",
     ):
         _compile(source)
-
-
-def test_c_backend_rejects_projected_owner_drop_defense_in_depth() -> None:
-    emitter = object.__new__(GeneralCEmitter)
-    emitter.descriptors = {
-        "Text": ScalarDesc(
-            "Text",
-            "text",
-            1,
-            1,
-            "scalar",
-            "move",
-            "move",
-            "drop",
-            (),
-            (),
-            "Text",
-        )
-    }
-    emitter.env_types = {"boxed": "Box[Text]"}
-    emitter.functions = {}
-    emitter.extern_functions = {}
-    emitter.current_function = None
-    emitter.owned_locals = {"boxed": "Box[Text]"}
-    emitter.pointer_values = set()
-    emitter.pending_expression_lines = []
-    emitter.pending_expression_drops = []
-    emitter.indent = 0
-    statement = ast.parse("drop(boxed.get())\n", filename="projected.mlo").body[0]
-    with pytest.raises(
-        RepresentationCBackendError,
-        match="^ProjectedOwnerDropRequiresPartialMoveSupport$",
-    ):
-        emitter._statement(statement)

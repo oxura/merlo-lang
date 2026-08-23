@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 
-from merlo import native_syntax as ast
 from merlo.ffi import pointer_type
 from merlo.representation_ir import TypeDescriptor
 from merlo.type_parser import generic_parts, parse_type
@@ -41,18 +40,6 @@ def _callback_parts(type_name: str) -> tuple[tuple[str, ...], str] | None:
     return parts[:-1], parts[-1]
 
 
-def _type_from_annotation(node: ast.AST | None) -> str:
-    """Normalize an AST annotation to the canonical Merlo type spelling."""
-    if node is None:
-        return "Unit"
-    type_name = ast.unparse(node).replace(" ", "")
-    for alias, canonical in {
-        "Int": "Int64",
-        "UInt": "UInt64",
-        "Float": "Float64",
-    }.items():
-        type_name = re.sub(rf"\b{alias}\b", canonical, type_name)
-    return type_name
 
 
 def _result_types(type_name: str | None) -> tuple[str, str] | None:
@@ -103,6 +90,10 @@ def _c_name(type_name: str) -> str:
     }
     if type_name in aliases:
         return aliases[type_name]
+    entry_types = _map_entry_types(type_name)
+    if entry_types is not None:
+        key, value = entry_types
+        return f"{_c_name(f'Map[{key},{value}]')}Entry"
     generic = _generic(type_name)
     if generic:
         base, argument = generic
