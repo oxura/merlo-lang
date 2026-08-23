@@ -21,6 +21,27 @@ This release is intentionally narrow and should be evaluated as such:
   ecosystem or a promise that every construct lowers to native code.
 - **FFI:** only explicit C ABI declarations with fixed-width types are accepted;
   FFI and unsafe operations remain review obligations.
+
+## Issue #72 cutover boundaries
+
+The production native cutover is deliberately limited to the typed
+Structured HIR -> Representation IR -> executable Performance MIR -> C11
+pipeline. It does not widen the language or redesign the runtime:
+
+- Whole-value ownership moves and the existing type-directed drop plans remain
+  supported. General partial-move semantics and runtime/conditional drop-flag
+  lowering are outside this cutover.
+- C11 remains the native bootstrap backend. LLVM lowering and optimizer
+  redesign are outside this cutover.
+- Execution remains synchronous. Async, Task IR, and Parallel IR scheduling are
+  outside this cutover; GPU lowering and WASM targets remain research surfaces.
+- Removing the native-syntax backend authority does not add grammar. New
+  surface syntax and transitional parser replacement remain outside this
+  cutover.
+- User-defined generic declaration/package-provenance `TypeId` v2 remains
+  outside this cutover and is tracked by Issue #86. Unknown generic
+  constructors continue to fail closed under the accepted v1 contract.
+
 - **Tooling:** LSP is a Python JSON-RPC facade, not a separately installed
   daemon command. Historical commands and artifacts remain readable but are not
   production routes.

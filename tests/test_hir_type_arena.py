@@ -102,7 +102,7 @@ def _hir(source: str = HIR_SOURCE) -> StructuredHIRProgram:
 def _typed_payload(program: StructuredHIRProgram) -> dict[str, Any]:
     payload = program.to_dict()
     assert payload["contract"] == STRUCTURED_HIR_CONTRACT
-    assert payload["schema_version"] == 12
+    assert payload["schema_version"] == 13
     assert "type_arena" in payload
     assert payload["type_arena_digest"] == program.type_arena_digest
     return payload
@@ -181,12 +181,12 @@ def _walk_nodes(node: dict[str, Any]):
         yield from _walk_nodes(child)
 
 
-def test_hir_v12_json_roundtrip_is_canonical_and_type_arena_is_closed() -> None:
+def test_hir_v13_json_roundtrip_is_canonical_and_type_arena_is_closed() -> None:
     original = _hir()
     restored = StructuredHIRProgram.from_json(original.to_json())
 
-    assert original.contract == "merlo.structured-typed-hir.v12"
-    assert original.schema_version == 12
+    assert original.contract == "merlo.structured-typed-hir.v13"
+    assert original.schema_version == 13
     assert original.type_context.arena.allow_unresolved is False
     assert original.type_arena_digest == original.type_context.arena.digest
     assert restored.to_json() == original.to_json()

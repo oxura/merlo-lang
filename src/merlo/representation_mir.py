@@ -23,6 +23,7 @@ from merlo.representation_ir import (
     verify_representation_program,
 )
 from merlo.structured_hir_v2 import HIRNode, SourceSpan, StructuredHIRProgram
+from merlo.representation_runtime import EvaluationResult, evaluate_structured_hir
 from merlo.type_arena import (
     FrozenTypeArena,
     TypeArena,
@@ -643,6 +644,14 @@ class _CFGBuilder:
             if ownership == "owned"
         }
         self.value_types: dict[str, TypeId] = {}
+        self.local_types: dict[str, TypeId] = {
+            parameter[0]: type_id
+            for parameter, type_id in zip(
+                function.parameters,
+                function.parameter_type_ids,
+                strict=True,
+            )
+        }
 
     def new_block(self, label: str) -> _MutableBlock:
         self.block_ordinal += 1
@@ -664,6 +673,14 @@ class _CFGBuilder:
     ) -> str | None:
         self.instruction_ordinal += 1
         identity = type_id if type_id is not None else operation.type_id
+        instruction_attributes = attributes or operation.attribute_map
+        if op == "store_local" and identity is not None:
+            target = instruction_attributes.get(
+                "name",
+                instruction_attributes.get("target"),
+            )
+            if isinstance(target, str) and "." not in target:
+                self.local_types[target] = identity
         rendered = (
             self.authority.render(identity)
             if identity is not None
@@ -725,17 +742,79 @@ class _CFGBuilder:
         block.instructions.append(instruction)
         return result_value
 
-    def lower_expression(self, operation: RIROperation, block: _MutableBlock) -> str | None:
-        operands = tuple(
-            value
-            for child in operation.children
-            if (value := self.lower_expression(child, block)) is not None
+    def _lower_boolean_value(
+        self,
+        operation: RIROperation,
+        block: _MutableBlock,
+    ) -> tuple[str, _MutableBlock]:
+        if not operation.children:
+            raise ValueError("boolean value requires operands")
+        operator = operation.attribute_map.get("operator")
+        if operator not in {"And", "Or"}:
+            raise ValueError(f"unsupported boolean value operator: {operator}")
+        true_block = self.new_block("boolean_value_true")
+        false_block = self.new_block("boolean_value_false")
+        join_block = self.new_block("boolean_value_join")
+        self.lower_condition(
+            operation,
+            block,
+            true_block.id,
+            false_block.id,
         )
+        bool_type_id = operation.type_id or self.authority.type_id("Bool")
+        temporary_name = (
+            f"__merlo_boolean_value_{self.block_ordinal}_{self.instruction_ordinal}"
+        )
+        for target, literal in ((true_block, True), (false_block, False)):
+            value = self.instruction(
+                target,
+                "const",
+                operation,
+                attributes={"value": literal},
+                type_id=bool_type_id,
+            )
+            assert value is not None
+            self.instruction(
+                target,
+                "store_local",
+                operation,
+                operands=(value,),
+                result=False,
+                attributes={"name": temporary_name, "mutable": False},
+                type_id=bool_type_id,
+            )
+            target.terminator = GeneralMIRTerminator(
+                "jump",
+                (join_block.id,),
+            )
+        result = self.instruction(
+            join_block,
+            "load_local",
+            operation,
+            attributes={"name": temporary_name},
+            type_id=bool_type_id,
+        )
+        assert result is not None
+        return result, join_block
+
+    def lower_expression(
+        self,
+        operation: RIROperation,
+        block: _MutableBlock,
+    ) -> tuple[str | None, _MutableBlock]:
+        if operation.op == "boolean":
+            return self._lower_boolean_value(operation, block)
+        operands_list: list[str] = []
+        for child in operation.children:
+            value, block = self.lower_expression(child, block)
+            if value is not None:
+                operands_list.append(value)
+        operands = tuple(operands_list)
         op = operation.op
         if op == "try_result":
             if len(operands) != 1:
                 raise ValueError("try_result requires one Result operand")
-            return self.instruction(
+            value = self.instruction(
                 block,
                 "result_branch",
                 operation,
@@ -747,6 +826,7 @@ class _CFGBuilder:
                     **operation.attribute_map,
                 },
             )
+            return value, block
         if op == "get_field":
             op = "load_field"
         elif op == "set_field":
@@ -845,15 +925,21 @@ class _CFGBuilder:
                 attributes={"stale_borrow": "reject"},
             )
         elif op in {"expression", "then", "else", "loop_body", "enum_case", "if", "while", "match_enum"}:
-            return operands[-1] if operands else None
+            return (operands[-1] if operands else None), block
         if operation.op == "drop_value":
             self._forget_owned(operation)
+        inferred_type_id = operation.type_id
+        if op == "load_local" and inferred_type_id is None:
+            name = operation.attribute_map.get("name")
+            if isinstance(name, str):
+                inferred_type_id = self.local_types.get(name)
         value = self.instruction(
             block,
             op,
             operation,
             operands=operands,
             result=op not in {"store_field", "store_local"},
+            type_id=inferred_type_id,
         )
         if (
             operation.op in {"bind_value", "bind_mutable"}
@@ -862,7 +948,60 @@ class _CFGBuilder:
             name = str(operation.attribute_map.get("name", value or ""))
             if operation.type_id is not None:
                 self.owned_locals[name] = operation.type_id
-        return value
+        return value, block
+    def lower_condition(
+        self,
+        operation: RIROperation,
+        current: _MutableBlock,
+        true_target: str,
+        false_target: str,
+    ) -> _MutableBlock:
+        if operation.op == "boolean":
+            if not operation.children:
+                raise ValueError("boolean condition requires operands")
+            operator = operation.attribute_map.get("operator")
+            if operator not in {"And", "Or"}:
+                raise ValueError(
+                    f"unsupported boolean condition operator: {operator}"
+                )
+            current_block = current
+            for index, child in enumerate(operation.children[:-1]):
+                next_block = self.new_block(
+                    f"boolean_{operator.lower()}_rhs_{index}"
+                )
+                if operator == "And":
+                    current_block = self.lower_condition(
+                        child,
+                        current_block,
+                        next_block.id,
+                        false_target,
+                    )
+                else:
+                    current_block = self.lower_condition(
+                        child,
+                        current_block,
+                        true_target,
+                        next_block.id,
+                    )
+                current_block = next_block
+            return self.lower_condition(
+                operation.children[-1],
+                current_block,
+                true_target,
+                false_target,
+            )
+        condition, current = self.lower_expression(operation, current)
+        if condition is None:
+            raise ValueError("condition has no value")
+        if current.terminator is not None:
+            raise ValueError("condition block is already terminated")
+        current.terminator = GeneralMIRTerminator(
+            "branch",
+            (true_target, false_target),
+            condition,
+        )
+        return current
+
 
     def _forget_owned(self, operation: RIROperation) -> None:
         target = operation.attribute_map.get("drop_target")
@@ -902,12 +1041,15 @@ class _CFGBuilder:
             if current.terminator is not None:
                 current = self.new_block("unreachable_source")
             if operation.op == "if":
-                test = operation.children[0]
-                condition = self.lower_expression(test, current)
                 then_block = self.new_block("if_then")
                 else_block = self.new_block("if_else")
                 join_block = self.new_block("if_join")
-                current.terminator = GeneralMIRTerminator("branch", (then_block.id, else_block.id), condition)
+                self.lower_condition(
+                    operation.children[0],
+                    current,
+                    then_block.id,
+                    else_block.id,
+                )
                 then_end = self.lower_sequence(operation.children[1].children, then_block)
                 if then_end.terminator is None:
                     then_end.terminator = GeneralMIRTerminator("jump", (join_block.id,))
@@ -916,8 +1058,410 @@ class _CFGBuilder:
                     else_end.terminator = GeneralMIRTerminator("jump", (join_block.id,))
                 current = join_block
                 continue
-            if operation.op == "for" and operation.children and operation.children[0].op == "file_lines":
-                self.lower_expression(operation.children[0], current)
+            if (
+                operation.op == "for"
+                and len(operation.children) >= 2
+                and operation.children[0].op != "file_lines"
+                and (
+                    operation.children[0].type_id is None
+                    or self.authority.render(operation.children[0].type_id)
+                    != "FileLines"
+                )
+            ):
+                source_operation = operation.children[0]
+                body_operation = operation.children[1]
+                source_type_id = source_operation.type_id
+                if source_type_id is None:
+                    raise ValueError("for iterable has no type")
+                source_type = self.authority.render(source_type_id)
+                source_value, current = self.lower_expression(source_operation, current)
+                if source_value is None:
+                    raise ValueError("for iterable has no value")
+                target = operation.attribute_map.get("target")
+                if not isinstance(target, str) or not target:
+                    raise ValueError("for loop target is missing")
+
+                def generic_argument(spelling: str, index: int) -> str | None:
+                    if "[" not in spelling or not spelling.endswith("]"):
+                        return None
+                    body = spelling[spelling.index("[") + 1 : -1]
+                    depth = 0
+                    start = 0
+                    arguments: list[str] = []
+                    for offset, character in enumerate(body):
+                        if character == "[":
+                            depth += 1
+                        elif character == "]":
+                            depth -= 1
+                        elif character == "," and depth == 0:
+                            arguments.append(body[start:offset].strip())
+                            start = offset + 1
+                    arguments.append(body[start:].strip())
+                    return arguments[index] if index < len(arguments) else None
+
+                map_type: str | None = None
+                if source_type in {"Bytes", "Text"}:
+                    item_type = "Byte"
+                elif source_type.startswith("Vec["):
+                    item_type = generic_argument(source_type, 0)
+                elif source_type.startswith("Array["):
+                    item_type = generic_argument(source_type, 0)
+                elif (
+                    source_type.startswith("Borrow[Map[")
+                    and source_type.endswith("]]")
+                ):
+                    map_type = source_type[7:-1]
+                    key_type = generic_argument(map_type, 0)
+                    value_type = generic_argument(map_type, 1)
+                    item_type = (
+                        f"MapEntry[{key_type},{value_type}]"
+                        if key_type is not None and value_type is not None
+                        else None
+                    )
+                else:
+                    item_type = None
+                if item_type is None:
+                    raise ValueError(f"unsupported for iterable: {source_type}")
+                item_type_id = self.authority.type_id(item_type)
+                uint64_type_id = self.authority.type_id("UInt64")
+                bool_type_id = self.authority.type_id("Bool")
+                index_name = (
+                    f"__merlo_for_index_{operation.id.rsplit('_', 1)[-1][:12]}"
+                )
+
+                def synthetic(
+                    op: str,
+                    type_name: str | None,
+                    type_id: TypeId | None,
+                    attributes: dict[str, Any] | None = None,
+                ) -> RIROperation:
+                    return RIROperation(
+                        _stable_id(
+                            "rirop",
+                            operation.id,
+                            op,
+                            self.block_ordinal,
+                            self.instruction_ordinal,
+                        ),
+                        op,
+                        type_name,
+                        operation.source,
+                        operation.symbol_id,
+                        operation.revision_id,
+                        "plain_value",
+                        (),
+                        tuple(sorted((attributes or {}).items())),
+                        (),
+                        type_id,
+                    )
+
+                zero_operation = synthetic(
+                    "const",
+                    "UInt64",
+                    uint64_type_id,
+                    {"value": 0},
+                )
+                zero_index = self.instruction(
+                    current,
+                    "const",
+                    zero_operation,
+                    type_id=uint64_type_id,
+                )
+                one_index = self.instruction(
+                    current,
+                    "const",
+                    synthetic(
+                        "const",
+                        "UInt64",
+                        uint64_type_id,
+                        {"value": 1},
+                    ),
+                    type_id=uint64_type_id,
+                )
+                assert one_index is not None
+                assert zero_index is not None
+                self.instruction(
+                    current,
+                    "store_local",
+                    synthetic(
+                        "store_local",
+                        "UInt64",
+                        uint64_type_id,
+                        {"name": index_name, "mutable": True},
+                    ),
+                    operands=(zero_index,),
+                    result=False,
+                    attributes={"name": index_name, "mutable": True},
+                    type_id=uint64_type_id,
+                )
+
+                condition_block = self.new_block("for_condition")
+                body_block = self.new_block("for_body")
+                exit_block = self.new_block("for_exit")
+                current.terminator = GeneralMIRTerminator(
+                    "jump",
+                    (condition_block.id,),
+                )
+                index_value = self.instruction(
+                    condition_block,
+                    "load_local",
+                    synthetic(
+                        "load_local",
+                        "UInt64",
+                        uint64_type_id,
+                        {"name": index_name},
+                    ),
+                    attributes={"name": index_name},
+                    type_id=uint64_type_id,
+                )
+                assert index_value is not None
+
+                if source_type.startswith("Array["):
+                    length_text = generic_argument(source_type, 1)
+                    if length_text is None:
+                        raise ValueError(f"array length is missing: {source_type}")
+                    length_operation = synthetic(
+                        "const",
+                        "UInt64",
+                        uint64_type_id,
+                        {"value": int(length_text)},
+                    )
+                    length_value = self.instruction(
+                        condition_block,
+                        "const",
+                        length_operation,
+                        type_id=uint64_type_id,
+                    )
+                elif map_type is not None:
+                    length_operation = synthetic(
+                        "entries_len",
+                        "UInt64",
+                        uint64_type_id,
+                        {
+                            "map_type": map_type,
+                            "operation_family": "map",
+                            "receiver_ownership": "borrow",
+                            "result_ownership": "value",
+                        },
+                    )
+                    length_value = self.instruction(
+                        condition_block,
+                        "entries_len",
+                        length_operation,
+                        operands=(source_value,),
+                        type_id=uint64_type_id,
+                    )
+                else:
+                    length_operation = synthetic(
+                        "vec_len" if source_type.startswith("Vec[") else "bytes_text_operation",
+                        "UInt64",
+                        uint64_type_id,
+                        {
+                            "callee": f"__merlo_for_source_{source_type}.len",
+                            "contract_symbol": f"{source_type}.len",
+                            "operation_family": (
+                                "vec"
+                                if source_type.startswith("Vec[")
+                                else "bytes_text"
+                            ),
+                            "receiver_ownership": "borrow",
+                            "result_ownership": "value",
+                        },
+                    )
+                    length_value = self.instruction(
+                        condition_block,
+                        "vec_len" if source_type.startswith("Vec[") else "primitive_call",
+                        length_operation,
+                        operands=(source_value,),
+                        type_id=uint64_type_id,
+                    )
+                assert length_value is not None
+                condition_value = self.instruction(
+                    condition_block,
+                    "compare",
+                    synthetic(
+                        "compare",
+                        "Bool",
+                        bool_type_id,
+                        {"operators": ("Lt",)},
+                    ),
+                    operands=(index_value, length_value),
+                    attributes={"operators": ("Lt",)},
+                    type_id=bool_type_id,
+                )
+                assert condition_value is not None
+                condition_block.terminator = GeneralMIRTerminator(
+                    "branch",
+                    (body_block.id, exit_block.id),
+                    condition_value,
+                )
+
+                if source_type in {"Bytes", "Text"}:
+                    item_operation = synthetic(
+                        "bytes_text_operation",
+                        "Byte",
+                        item_type_id,
+                        {
+                            "callee": f"{source_type}.byte",
+                            "contract_symbol": f"{source_type}.byte",
+                            "operation_family": "bytes_text",
+                            "receiver_ownership": "borrow",
+                            "result_ownership": "value",
+                        },
+                    )
+                    self.instruction(
+                        body_block,
+                        "bounds_check",
+                        item_operation,
+                        operands=(source_value, index_value),
+                        result=False,
+                        type_id=item_type_id,
+                    )
+                    item_value = self.instruction(
+                        body_block,
+                        "byte_load",
+                        item_operation,
+                        operands=(source_value, index_value),
+                        type_id=item_type_id,
+                    )
+                elif source_type.startswith("Vec["):
+                    item_operation = synthetic(
+                        "vec_get",
+                        item_type,
+                        item_type_id,
+                        {
+                            "callee": "__merlo_for_source.get",
+                            "contract_symbol": f"{source_type}.get",
+                            "operation_family": "vec",
+                            "receiver_ownership": "borrow",
+                            "result_ownership": "borrow",
+                        },
+                    )
+                    self.instruction(
+                        body_block,
+                        "bounds_check",
+                        item_operation,
+                        operands=(source_value, index_value),
+                        result=False,
+                        type_id=item_type_id,
+                    )
+                    item_value = self.instruction(
+                        body_block,
+                        "vec_get",
+                        item_operation,
+                        operands=(source_value, index_value),
+                        type_id=item_type_id,
+                    )
+                elif map_type is not None:
+                    item_operation = synthetic(
+                        "entries_get",
+                        item_type,
+                        item_type_id,
+                        {
+                            "map_type": map_type,
+                            "operation_family": "map",
+                            "receiver_ownership": "borrow",
+                            "result_ownership": "value",
+                        },
+                    )
+                    item_value = self.instruction(
+                        body_block,
+                        "entries_get",
+                        item_operation,
+                        operands=(source_value, index_value),
+                        type_id=item_type_id,
+                    )
+                else:
+                    item_operation = synthetic(
+                        "bounds_checked_index",
+                        item_type,
+                        item_type_id,
+                    )
+                    item_value = self.instruction(
+                        body_block,
+                        "bounds_checked_index",
+                        item_operation,
+                        operands=(source_value, index_value),
+                        type_id=item_type_id,
+                    )
+                assert item_value is not None
+                self.instruction(
+                    body_block,
+                    "store_local",
+                    synthetic(
+                        "bind_value",
+                        item_type,
+                        item_type_id,
+                        {"name": target, "mutable": False},
+                    ),
+                    operands=(item_value,),
+                    result=False,
+                    attributes={"name": target, "mutable": False},
+                    type_id=item_type_id,
+                )
+                body_end = self.lower_sequence(body_operation.children, body_block)
+                if body_end.terminator is None:
+                    next_index = self.instruction(
+                        body_end,
+                        "binary",
+                        synthetic(
+                            "binary",
+                            "UInt64",
+                            uint64_type_id,
+                            {"operator": "Add", "overflow": "checked"},
+                        ),
+                        operands=(
+                            self.instruction(
+                                body_end,
+                                "load_local",
+                                synthetic(
+                                    "load_local",
+                                    "UInt64",
+                                    uint64_type_id,
+                                    {"name": index_name},
+                                ),
+                                attributes={"name": index_name},
+                                type_id=uint64_type_id,
+                            ),
+                            one_index,
+                        ),
+                        attributes={"operator": "Add", "overflow": "checked"},
+                        type_id=uint64_type_id,
+                    )
+                    assert next_index is not None
+                    self.instruction(
+                        body_end,
+                        "store_local",
+                        synthetic(
+                            "store_local",
+                            "UInt64",
+                            uint64_type_id,
+                            {"name": index_name, "mutable": True},
+                        ),
+                        operands=(next_index,),
+                        result=False,
+                        attributes={"name": index_name, "mutable": True},
+                        type_id=uint64_type_id,
+                    )
+                    body_end.terminator = GeneralMIRTerminator(
+                        "jump",
+                        (condition_block.id,),
+                    )
+                current = exit_block
+                continue
+            if (
+                operation.op == "for"
+                and operation.children
+                and (
+                    operation.children[0].op == "file_lines"
+                    or (
+                        operation.children[0].type_id is not None
+                        and self.authority.render(operation.children[0].type_id)
+                        == "FileLines"
+                    )
+                )
+            ):
+                _, current = self.lower_expression(operation.children[0], current)
                 condition_block = self.new_block("file_lines_condition")
                 body_block = self.new_block("file_lines_body")
                 exit_block = self.new_block("file_lines_exit")
@@ -935,8 +1479,15 @@ class _CFGBuilder:
                     (operation.children[0],),
                     self.authority.type_id("TextView"),
                 )
-                line_value = self.lower_expression(line_operation, condition_block)
-                condition_block.terminator = GeneralMIRTerminator("branch", (body_block.id, exit_block.id), line_value)
+                line_value, condition_block = self.lower_expression(
+                    line_operation,
+                    condition_block,
+                )
+                condition_block.terminator = GeneralMIRTerminator(
+                    "branch",
+                    (body_block.id, exit_block.id),
+                    line_value,
+                )
                 body_end = self.lower_sequence(operation.children[1].children, body_block)
                 if body_end.terminator is None:
                     body_end.terminator = GeneralMIRTerminator("jump", (condition_block.id,))
@@ -947,15 +1498,19 @@ class _CFGBuilder:
                 body_block = self.new_block("while_body")
                 exit_block = self.new_block("while_exit")
                 current.terminator = GeneralMIRTerminator("jump", (condition_block.id,))
-                condition = self.lower_expression(operation.children[0], condition_block)
-                condition_block.terminator = GeneralMIRTerminator("branch", (body_block.id, exit_block.id), condition)
+                self.lower_condition(
+                    operation.children[0],
+                    condition_block,
+                    body_block.id,
+                    exit_block.id,
+                )
                 body_end = self.lower_sequence(operation.children[1].children, body_block)
                 if body_end.terminator is None:
                     body_end.terminator = GeneralMIRTerminator("jump", (condition_block.id,))
                 current = exit_block
                 continue
             if operation.op == "match_enum":
-                subject = self.lower_expression(operation.children[0], current)
+                subject, current = self.lower_expression(operation.children[0], current)
                 join_block = self.new_block("match_join")
                 cases = []
                 for index, case in enumerate(operation.children[1:]):
@@ -970,11 +1525,15 @@ class _CFGBuilder:
             if operation.op == "return":
                 if operation.children:
                     self._forget_owned(operation.children[0])
-                value = self.lower_expression(operation.children[0], current) if operation.children else None
+                value, current = (
+                    self.lower_expression(operation.children[0], current)
+                    if operation.children
+                    else (None, current)
+                )
                 self.insert_drops(current, operation)
                 current.terminator = GeneralMIRTerminator("return", value=value)
                 continue
-            self.lower_expression(operation, current)
+            _, current = self.lower_expression(operation, current)
         return current
     def build(self) -> GeneralMIRFunction:
         entry = self.new_block("entry")

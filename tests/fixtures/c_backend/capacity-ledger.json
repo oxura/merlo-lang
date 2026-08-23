@@ -1,5 +1,5 @@
 {
   "fixture": "examples/capacity-ledger",
   "baseline_commit": "723776f6748bead81429696e3f1662926e3cea15",
-  "generated_c_sha256": "ed531005cd0ab41e6b0c90a84e1853816f26f2cbaea0a999d9f8decb4cdfd976"
+  "generated_c_sha256": "c7ef44e86ee140217f19d927b60b0b501bad8de8dd45690f594555c0ff022cfe"
 }

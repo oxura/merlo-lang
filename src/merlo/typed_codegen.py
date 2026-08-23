@@ -8,7 +8,7 @@ MIR validation has completed.
 from __future__ import annotations
 
 import ast as _python_ast
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterator
 from typing import Any
 
 
@@ -308,8 +308,6 @@ def _op_node(name: str, table: dict[str, type[AST]], label: str) -> AST:
 
 
 def _callable_name(expression: str, parameter: str) -> str:
-    prefix = f"("  # keep the validation branch explicit below
-    del prefix
     open_paren = expression.find("(")
     if open_paren <= 0 or not expression.endswith(")"):
         raise ValueError(f"invalid typed callable expression: {expression}")

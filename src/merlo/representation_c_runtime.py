@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from merlo import native_syntax as ast
 from merlo.representation_c_types import _c_name, _identifier, _is_owner
 from merlo.representation_ir import TypeDescriptor
 
@@ -1043,12 +1042,13 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
             signature = "void *environment" + (
                 f", {parameters}" if parameters else ""
             )
+            function_name = _identifier(function.name)
             lines.append(
                 f"static {_c_name(function.return_type)} "
-                f"merlo_closure_adapter_{function.name}({signature}) {{"
+                f"merlo_closure_adapter_{function_name}({signature}) {{"
             )
             lines.append("    (void)environment;")
-            call = f"merlo_fn_{function.name}(" + ", ".join(
+            call = f"merlo_fn_{function_name}(" + ", ".join(
                 item.name for item in function.parameters
             ) + ")"
             if function.return_type == "Unit":
@@ -1057,9 +1057,20 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 lines.extend([f"    return {call};", "}"])
 
         for node in self.closure_nodes:
-            closure_id, parameters, return_type, captures, owner = (
-                node._merlo_closure_metadata
-            )
+            attrs = node.attribute_map
+            closure_id = attrs.get("closure_id")
+            parameters = attrs.get("parameters", ())
+            return_type = attrs.get("return_type")
+            captures = attrs.get("captures", ())
+            body = attrs.get("closure_body")
+            if (
+                not isinstance(closure_id, str)
+                or not isinstance(return_type, str)
+                or not isinstance(parameters, (list, tuple))
+                or not isinstance(captures, (list, tuple))
+                or body is None
+            ):
+                raise RuntimeError("typed closure metadata is malformed")
             callback_type = "Fn[" + ",".join(
                 (*[type_name for _name, type_name in parameters], return_type)
             ) + "]"
@@ -1105,57 +1116,53 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                     f"({environment_type} *)raw;",
                 ]
             )
+            owned_captures = {
+                name
+                for name, _type_name, ownership in captures
+                if ownership == "owned"
+            }
+            local_types = {
+                name: (
+                    f"Borrow[{type_name}]"
+                    if ownership == "owned"
+                    else type_name
+                )
+                for name, type_name, ownership in captures
+            }
+            local_types.update(
+                {name: type_name for name, type_name in parameters}
+            )
             if not captures:
                 lines.append("    (void)environment;")
-            for name, type_name, _ownership in captures:
-                lines.append(
-                    f"    {_c_name(type_name)} {name} = environment->{name};"
-                )
-
-            previous_function = self.current_function
-            previous_types = self.env_types
-            previous_pointers = self.pointer_values
-            previous_owned = self.owned_locals
-            previous_pending_lines = self.pending_expression_lines
-            previous_pending_drops = self.pending_expression_drops
-            self.current_function = self.functions[owner]
-            self.env_types = {
-                **{name: type_name for name, type_name, _ownership in captures},
-                **dict(parameters),
-            }
-            self.pointer_values = set()
-            self.owned_locals = {}
-            self.pending_expression_lines = []
-            self.pending_expression_drops = []
-            try:
-                body = self._expression(node.body, expected=return_type)
-                if (
-                    isinstance(node.body, ast.Name)
-                    and any(
-                        name == node.body.id and ownership == "owned"
-                        for name, _type_name_, ownership in captures
+            for name, type_name, ownership in captures:
+                if ownership == "owned":
+                    lines.append(
+                        f"    const {_c_name(type_name)} *{name} = "
+                        f"&environment->{name};"
                     )
-                ):
-                    body = (
-                        f"merlo_clone_{_identifier(return_type)}"
-                        f"(&{node.body.id})"
-                    )
-                lines.extend(self.pending_expression_lines)
-                if return_type == "Unit":
-                    lines.extend([f"    (void)({body});", "    return;"])
                 else:
-                    lines.append(f"    {_c_name(return_type)} result = {body};")
-                lines.extend(self.pending_expression_drops)
-                if return_type != "Unit":
-                    lines.append("    return result;")
-                lines.append("}")
-            finally:
-                self.current_function = previous_function
-                self.env_types = previous_types
-                self.pointer_values = previous_pointers
-                self.owned_locals = previous_owned
-                self.pending_expression_lines = previous_pending_lines
-                self.pending_expression_drops = previous_pending_drops
+                    lines.append(
+                        f"    {_c_name(type_name)} {name} = environment->{name};"
+                    )
+            expression = self._closure_expression(body, local_types)
+            if (
+                getattr(body, "kind", "") == "Name"
+                and body.attribute_map.get("name") in owned_captures
+            ):
+                expression = (
+                    f"merlo_clone_{_identifier(return_type)}"
+                    f"({body.attribute_map['name']})"
+                )
+            if return_type == "Unit":
+                lines.extend([f"    (void)({expression});", "    return;"])
+            else:
+                lines.extend(
+                    [
+                        f"    {_c_name(return_type)} result = {expression};",
+                        "    return result;",
+                    ]
+                )
+            lines.append("}")
 
             make_parameters = []
             for name, type_name, ownership in captures:

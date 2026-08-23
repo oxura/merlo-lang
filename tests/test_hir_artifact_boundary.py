@@ -7,9 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
-from merlo import native_syntax
 from merlo.native_c_backend import compile_c_source
 from merlo.representation_c_backend import emit_general_c
 from merlo.representation_ir import lower_structured_hir_to_rir
@@ -48,36 +46,21 @@ def _generated(hir: StructuredHIRProgram) -> str:
     )
     return emit_general_c(hir, representation, mir).source
 
-
-def _first_encoded_node(value: object, type_name: str) -> dict[str, object]:
-    if isinstance(value, dict):
-        if value.get("$kind") == "node" and value.get("type") == type_name:
-            return value
-        for item in value.values():
-            try:
-                return _first_encoded_node(item, type_name)
-            except LookupError:
-                pass
-    elif isinstance(value, list):
-        for item in value:
-            try:
-                return _first_encoded_node(item, type_name)
-            except LookupError:
-                pass
-    raise LookupError(type_name)
-
-
-def _encoded_nodes(value: object) -> list[dict[str, object]]:
+def _typed_nodes(value: object) -> list[dict[str, object]]:
     result: list[dict[str, object]] = []
     if isinstance(value, dict):
-        if value.get("$kind") == "node":
+        if isinstance(value.get("kind"), str) and isinstance(
+            value.get("children"), list
+        ):
             result.append(value)
         for item in value.values():
-            result.extend(_encoded_nodes(item))
+            result.extend(_typed_nodes(item))
     elif isinstance(value, list):
         for item in value:
-            result.extend(_encoded_nodes(item))
+            result.extend(_typed_nodes(item))
     return result
+
+
 
 
 def test_hir_json_roundtrip_closes_backend_artifact() -> None:
@@ -87,7 +70,6 @@ def test_hir_json_roundtrip_closes_backend_artifact() -> None:
     assert restored.to_dict() == original.to_dict()
     assert restored.to_json() == original.to_json()
     assert restored.digest == original.digest
-    assert restored.native_module is None
     assert _generated(restored) == _generated(original)
 
 
@@ -151,56 +133,38 @@ def test_original_and_roundtripped_hir_produce_identical_binaries(
     )
 
 
-def test_backend_ignores_legacy_native_artifact_changes() -> None:
+def test_typed_hir_changes_are_digest_and_codegen_bound() -> None:
     original = _hir()
     payload = copy.deepcopy(original.to_dict())
-    constant = _first_encoded_node(payload["native_syntax"], "Constant")
-    fields = constant["fields"]
-    assert isinstance(fields, dict)
-    fields["value"] = 42
+    literal = payload["functions"][0]["body"][0]["children"][0]
+    assert isinstance(literal, dict)
+    attributes = literal["attributes"]
+    assert isinstance(attributes, dict)
+    attributes["value"] = 42
     changed = StructuredHIRProgram.from_dict(payload)
 
     assert changed.digest != original.digest
-    assert _generated(changed) == _generated(original)
+    assert _generated(changed) != _generated(original)
 
-def test_every_serialized_native_node_is_digest_bound() -> None:
+
+def test_every_serialized_typed_node_is_digest_bound() -> None:
     original = _hir()
-    nodes = _encoded_nodes(original.to_dict()["native_syntax"])
+    nodes = _typed_nodes(original.to_dict()["functions"])
     assert nodes
     for index in range(len(nodes)):
         payload = copy.deepcopy(original.to_dict())
-        changed_node = _encoded_nodes(payload["native_syntax"])[index]
-        attributes = changed_node["attributes"]
-        assert isinstance(attributes, dict)
-        attributes["_merlo_path"] = f"digest-probe-{index}.mlo"
+        changed_node = _typed_nodes(payload["functions"])[index]
+        source = changed_node["source"]
+        assert isinstance(source, dict)
+        source["path"] = f"digest-probe-{index}.mlo"
         changed = StructuredHIRProgram.from_dict(payload)
         assert changed.digest != original.digest
 
 
-def test_forged_hidden_native_module_is_ignored() -> None:
+def test_backend_never_reads_legacy_artifacts_or_raw_source() -> None:
     hir = _hir()
-    representation = lower_structured_hir_to_rir(hir)
-    mir = optimize_general_mir(
-        lower_rir_to_performance_mir(hir, representation)
-    )
-    forged = hir.backend_module()
-    function = next(
-        item for item in forged.body if isinstance(item, native_syntax.FunctionDef)
-    )
-    function.name = "forged_main"
-    object.__setattr__(hir, "native_module", forged)
-
-    assert "merlo_fn_main" in emit_general_c(hir, representation, mir).source
-
-
-def test_backend_never_reparses_legacy_artifacts_or_raw_source(monkeypatch) -> None:
-    hir = _hir()
-    object.__setattr__(hir, "native_module", None)
-
-    def forbidden(*_args: object, **_kwargs: object) -> object:
-        raise AssertionError("backend reparsed raw HIR source")
-
-    monkeypatch.setattr(native_syntax, "parse", forbidden)
+    assert not hasattr(hir, "native_module")
+    assert not hasattr(hir, "native_syntax_json")
     assert "merlo_fn_main" in _generated(hir)
     backend_source = (
         ROOT / "src" / "merlo" / "representation_c_backend.py"
@@ -210,6 +174,8 @@ def test_backend_never_reparses_legacy_artifacts_or_raw_source(monkeypatch) -> N
     assert "native_module" not in backend_source
     assert "hir.source" not in backend_source
     assert "validate_ffi(hir.source" not in backend_source
+
+
 
 
 def test_typed_ffi_artifact_roundtrips_builds_and_runs(tmp_path: Path) -> None:
