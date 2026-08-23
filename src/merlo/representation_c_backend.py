@@ -1363,6 +1363,221 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             calls_collections=True,
         )
 
+    def _mir_ownership_ffi_eligible(
+        self,
+        function: HIRFunction,
+        mir_function: GeneralMIRFunction,
+    ) -> bool:
+        if function.requirements or function.ensures:
+            return False
+        allowed = {
+            "allocate",
+            "allocate_deferred",
+            "bounds_check",
+            "borrow_key",
+            "checked_growth",
+            "copy_key_if_vacant",
+            "move_value",
+            "drop_value",
+            "const",
+            "load_local",
+            "store_local",
+            "binary",
+            "boolean",
+            "compare",
+            "unary",
+            "numeric_intrinsic",
+            "scalar_cast",
+            "construct_enum",
+            "construct_record",
+            "load_field",
+            "store_field",
+            "result_branch",
+            "vec_view",
+            "vec_new",
+            "vec_push",
+            "vec_get",
+            "vec_get_mut",
+            "vec_len",
+            "box_new",
+            "box_get",
+            "map_new",
+            "map_insert",
+            "map_get",
+            "map_increment",
+            "call",
+            "primitive_call",
+            "array_literal",
+            "bounds_checked_index",
+            "callback_call",
+        }
+        result_instructions = {
+            instruction.result: instruction
+            for block in mir_function.blocks
+            for instruction in block.instructions
+            if instruction.result is not None
+        }
+        for block in mir_function.blocks:
+            terminator = block.terminator
+            if terminator.kind != "branch" or terminator.value is None:
+                continue
+            condition = result_instructions.get(terminator.value)
+            if condition is None or condition.op != "call":
+                continue
+            if any(
+                (
+                    (source := result_instructions.get(operand)) is not None
+                    and source.type_name is not None
+                    and self.descriptors.get(source.type_name) is not None
+                    and _is_owner(self.descriptors[source.type_name])
+                    and source.attribute_map.get("result_ownership") == "owned"
+                )
+                for operand in condition.operands
+            ):
+                return False
+        for block in mir_function.blocks:
+            for instruction in block.instructions:
+                if instruction.op not in allowed:
+                    return False
+                attrs = instruction.attribute_map
+                if instruction.op == "call":
+                    callee = attrs.get("callee")
+                    if not isinstance(callee, str):
+                        return False
+                    target = next(
+                        (
+                            item
+                            for item in self.hir.functions
+                            if item.name == callee
+                        ),
+                        None,
+                    )
+                    if target is not None:
+                        if target.requirements or target.ensures:
+                            return False
+                    elif callee == "console.write":
+                        if len(instruction.operands) != 1:
+                            return False
+                    elif callee.endswith(".len"):
+                        source_name = callee.rsplit(".", 1)[0]
+                        source_type = next(
+                            (
+                                item.type_name
+                                for candidate in mir_function.blocks
+                                for item in candidate.instructions
+                                if (
+                                    item.op == "store_local"
+                                    and item.attribute_map.get("name")
+                                    == source_name
+                                )
+                            ),
+                            None,
+                        )
+                        descriptor = self.descriptors.get(source_type or "")
+                        if (
+                            descriptor is None
+                            or descriptor.kind != "array"
+                            or descriptor.length is None
+                        ):
+                            return False
+                    elif not (
+                        instruction.type_name is not None
+                        and (
+                            descriptor := self.descriptors.get(
+                                instruction.type_name
+                            )
+                        ) is not None
+                        and descriptor.kind == "enum"
+                        and any(
+                            variant == callee
+                            for variant, _payload, _tag in descriptor.variants
+                        )
+                    ):
+                        return False
+                elif instruction.op == "primitive_call":
+                    callee = attrs.get("callee")
+                    if not isinstance(callee, str):
+                        return False
+                    if not (
+                        callee == "Text.from_bytes"
+                        or callee == "len"
+                        or callee.endswith(".clone")
+                        or callee.endswith(".len")
+                        or callee.endswith(".byte")
+                    ):
+                        return False
+                elif instruction.op == "construct_enum":
+                    callee = attrs.get("callee")
+                    descriptor = self.descriptors.get(instruction.type_name or "")
+                    if (
+                        descriptor is None
+                        or descriptor.kind != "enum"
+                        or not isinstance(callee, str)
+                        or "." not in callee
+                        or not any(
+                            name == callee.rsplit(".", 1)[1]
+                            for name, _payload, _tag in descriptor.variants
+                        )
+                    ):
+                        return False
+                elif instruction.op == "bounds_checked_index":
+                    if len(instruction.operand_type_ids) != 2:
+                        return False
+                    source_type = self.hir.type_context.render(
+                        instruction.operand_type_ids[0]
+                    )
+                    descriptor = self.descriptors.get(source_type)
+                    if (
+                        descriptor is None
+                        or descriptor.kind != "array"
+                        or descriptor.length is None
+                    ):
+                        return False
+                elif instruction.op == "result_branch":
+                    source_type = (
+                        self.hir.type_context.render(instruction.operand_type_ids[0])
+                        if instruction.operand_type_ids
+                        else None
+                    )
+                    descriptor = self.descriptors.get(source_type or "")
+                    if (
+                        descriptor is None
+                        or descriptor.kind != "enum"
+                        or not any(
+                            variant == "Ok"
+                            for variant, _payload, _tag in descriptor.variants
+                        )
+                    ):
+                        return False
+            terminator = block.terminator
+            if terminator.kind == "branch":
+                if len(terminator.targets) != 2 or terminator.value is None:
+                    return False
+            elif terminator.kind == "jump":
+                if len(terminator.targets) != 1:
+                    return False
+            elif terminator.kind == "switch":
+                if terminator.value is None or not terminator.cases:
+                    return False
+                source = result_instructions.get(terminator.value)
+                descriptor = self.descriptors.get(
+                    source.type_name if source is not None else ""
+                )
+                if descriptor is None or descriptor.kind != "enum":
+                    return False
+                if any(
+                    variant not in {
+                        name for name, _payload, _tag in descriptor.variants
+                    }
+                    for variant, _target in terminator.cases
+                ):
+                    return False
+            elif terminator.kind == "return":
+                pass
+            else:
+                return False
+        return bool(mir_function.blocks)
+
     def _mir_scalar_eligible(
         self,
         function: HIRFunction,
@@ -1377,7 +1592,13 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
     def _mir_scalar_temp(self, value: str) -> str:
         return f"__merlo_mir_{value}"
 
-    def _mir_literal(self, type_name: str, value: object) -> str:
+    def _mir_literal(
+        self,
+        type_name: str,
+        value: object,
+        *,
+        owned: bool = False,
+    ) -> str:
         if type_name == "Bool":
             return "true" if value else "false"
         if type_name == "Byte":
@@ -1390,6 +1611,19 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             return repr(float(value))
         if type_name == "Unit":
             return "0"
+        if type_name == "Text" and isinstance(value, str):
+            if owned:
+                payload = value.encode("utf-8")
+                values = (
+                    ", ".join(f"UINT8_C({byte})" for byte in payload)
+                    or "UINT8_C(0)"
+                )
+                return (
+                    "merlo_text_literal("
+                    f"(const uint8_t[]){{{values}}}, "
+                    f"UINT64_C({len(payload)}))"
+                )
+            return self._borrowed_text_literal(value)
         raise RepresentationCBackendError(
             f"MIR scalar literal has unsupported type: {type_name}"
         )
@@ -1814,11 +2048,105 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
         mir_function: GeneralMIRFunction,
     ) -> str:
         parameter_names = {item.name for item in function.parameters}
+        pointer_values: set[str] = set()
+        moved_values: set[str] = set()
+        borrowed_pointer_values: set[str] = set()
+        inline_call_results: set[str] = set()
+        inline_construct_results: set[str] = set()
+        call_operand_ids: set[str] = set()
+        result_branch_inputs: set[str] = set()
+        replacement_names: dict[str, tuple[str, str]] = {}
+        replacement_index = 0
+        seen_call_results: set[str] = set()
+        seen_construct_results: set[str] = set()
         local_types: dict[str, str] = {}
         result_types: dict[str, str] = {}
+        result_names: dict[str, str] = {}
+        owned_temporaries: dict[str, tuple[str, str]] = {}
+        owned_temp_index = 0
+        block_by_id = {block.id: block for block in mir_function.blocks}
+        stored_local_names = {
+            str(instruction.attribute_map["name"])
+            for block in mir_function.blocks
+            for instruction in block.instructions
+            if instruction.op == "store_local"
+            and isinstance(instruction.attribute_map.get("name"), str)
+        }
+        match_payload_bindings: dict[
+            str, dict[str, tuple[str, str, str]]
+        ] = {}
+        match_payload_names: set[str] = set()
+        for block in mir_function.blocks:
+            terminator = block.terminator
+            if terminator.kind != "switch" or terminator.value is None:
+                continue
+            switch_type = next(
+                (
+                    instruction.type_name
+                    for candidate_block in mir_function.blocks
+                    for instruction in candidate_block.instructions
+                    if instruction.result == terminator.value
+                ),
+                None,
+            )
+            switch_descriptor = self.descriptors.get(switch_type or "")
+            if switch_descriptor is None or switch_descriptor.kind != "enum":
+                continue
+            for variant, target in terminator.cases:
+                payload = next(
+                    (
+                        payload
+                        for name, payload, _tag in switch_descriptor.variants
+                        if name == variant
+                    ),
+                    None,
+                )
+                target_block = block_by_id.get(target)
+                if (
+                    payload is None
+                    or payload == "Unit"
+                    or target_block is None
+                ):
+                    continue
+                bindings = match_payload_bindings.setdefault(target, {})
+                for instruction in target_block.instructions:
+                    name = instruction.attribute_map.get("name")
+                    if (
+                        instruction.op == "load_local"
+                        and isinstance(name, str)
+                        and name not in parameter_names
+                        and name not in stored_local_names
+                    ):
+                        bindings[name] = (terminator.value, variant, payload)
+                        match_payload_names.add(name)
         for block in mir_function.blocks:
             for instruction in block.instructions:
+                if instruction.op == "call":
+                    call_operand_ids.update(instruction.operands)
+                if instruction.op == "call" and instruction.result is not None:
+                    seen_call_results.add(instruction.result)
+                if (
+                    instruction.op == "store_local"
+                    and instruction.operands
+                    and instruction.operands[0] in seen_call_results
+                ):
+                    inline_call_results.add(instruction.operands[0])
+                if instruction.op == "result_branch":
+                    result_branch_inputs.update(instruction.operands)
+                if (
+                    instruction.op == "construct_record"
+                    and instruction.result is not None
+                ):
+                    seen_construct_results.add(instruction.result)
+                if (
+                    instruction.op == "store_local"
+                    and instruction.operands
+                    and instruction.operands[0] in seen_construct_results
+                ):
+                    inline_construct_results.add(instruction.operands[0])
                 attrs = instruction.attribute_map
+                if instruction.op == "move_value":
+                    moved_values.update(instruction.operands)
                 if instruction.op == "store_local":
                     target = attrs.get("name", attrs.get("target"))
                     if (
@@ -1828,19 +2156,157 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                         and instruction.type_name is not None
                     ):
                         local_types.setdefault(target, instruction.type_name)
-                if instruction.result is not None and instruction.type_name is not None:
+                    reassignment_target = attrs.get("target")
+                    reassignment_type = self.descriptors.get(
+                        instruction.type_name
+                    )
+                    if (
+                        isinstance(reassignment_target, str)
+                        and reassignment_type is not None
+                        and _is_owner(reassignment_type)
+                    ):
+                        replacement_index += 1
+                        replacement = f"__merlo_replacement_{replacement_index}"
+                        replacement_names[instruction.operands[0]] = (
+                            replacement,
+                            instruction.type_name,
+                        )
+                        local_types[replacement] = instruction.type_name
+                if instruction.result is None or instruction.type_name is None:
+                    continue
+                descriptor = self.descriptors.get(instruction.type_name)
+                local_name = attrs.get("name")
+                local_parameter = next(
+                    (
+                        parameter
+                        for parameter in function.parameters
+                        if parameter.name == local_name
+                    ),
+                    None,
+                )
+                target_function = next(
+                    (
+                        item
+                        for item in self.hir.functions
+                        if item.name == local_name
+                    ),
+                    None,
+                )
+                pointer_result = (
+                    descriptor is not None
+                    and _is_owner(descriptor)
+                    and (
+                        attrs.get("result_ownership") in {"borrow", "borrow_mut"}
+                        or (
+                            instruction.op == "load_field"
+                            and instruction.operands
+                            and descriptor.kind in {
+                                "text",
+                                "vec",
+                                "box",
+                                "map",
+                                "record",
+                                "enum",
+                            }
+                        )
+                        or instruction.op == "bounds_checked_index"
+                        or (
+                            instruction.op == "const"
+                            and descriptor.kind == "text"
+                        )
+                        or (
+                            instruction.op == "load_local"
+                            and local_name in match_payload_names
+                        )
+                        or (
+                            instruction.op == "load_local"
+                            and not (
+                                target_function is not None
+                                and descriptor.kind in {"callback", "closure"}
+                            )
+                        )
+                        or (
+                            instruction.op == "load_local"
+                            and local_parameter is not None
+                            and self._parameter_is_pointer(local_parameter)
+                        )
+                    )
+                )
+                if pointer_result:
+                    pointer_values.add(instruction.result)
+                    if (
+                        attrs.get("result_ownership") in {"borrow", "borrow_mut"}
+                        or instruction.op in {"load_field", "const", "bounds_checked_index"}
+                        or (
+                            instruction.op == "load_local"
+                            and local_name in match_payload_names
+                        )
+                        or (
+                            instruction.op == "load_local"
+                            and local_parameter is not None
+                            and local_parameter.ownership != "owned"
+                        )
+                    ):
+                        borrowed_pointer_values.add(instruction.result)
+                else:
                     result_types[instruction.result] = instruction.type_name
+        owned_call_results = {
+            instruction.result
+            for block in mir_function.blocks
+            for instruction in block.instructions
+            if (
+                instruction.op == "call"
+                and instruction.result is not None
+                and instruction.result in result_types
+                and self.descriptors.get(instruction.type_name or "") is not None
+                and _is_owner(self.descriptors[instruction.type_name or ""])
+            )
+        }
+        for value, type_name in result_types.items():
+            descriptor = self.descriptors.get(type_name)
+            if (
+                value in call_operand_ids
+                and value not in result_names
+                and descriptor is not None
+                and _is_owner(descriptor)
+            ):
+                owned_temp_index += 1
+                temporary = f"__merlo_owned_temp_{owned_temp_index}"
+                result_names[value] = temporary
+                owned_temporaries[value] = (temporary, type_name)
+        returning_locals: set[str] = set()
+        for block in mir_function.blocks:
+            if block.terminator.kind != "return" or block.terminator.value is None:
+                continue
+            for instruction in block.instructions:
+                if (
+                    instruction.op == "load_local"
+                    and instruction.result == block.terminator.value
+                    and isinstance(instruction.attribute_map.get("name"), str)
+                ):
+                    returning_locals.add(str(instruction.attribute_map["name"]))
+        explicit_drop_locals = {
+            str(instruction.attribute_map["local"])
+            for block in mir_function.blocks
+            for instruction in block.instructions
+            if instruction.op == "drop_value"
+            and isinstance(instruction.attribute_map.get("local"), str)
+        }
         lines = [self._function_signature(function) + " {"]
         lines.extend(
             f"    {_c_name(type_name)} {name} = {{0}};"
             for name, type_name in local_types.items()
         )
         lines.extend(
-            f"    {_c_name(type_name)} {self._mir_scalar_temp(value)} = {{0}};"
+            f"    {_c_name(type_name)} "
+            f"{result_names.get(value, self._mir_scalar_temp(value))} = {{0}};"
             for value, type_name in result_types.items()
         )
         values: dict[str, str] = {}
         callables: dict[str, GeneralMIRInstruction] = {}
+        pending_drops: dict[str, list[tuple[str, str]]] = {}
+        pending_receiver_drops: dict[str, list[tuple[str, str]]] = {}
+        active_match_bindings: dict[str, tuple[str, str, str]] = {}
 
         def value_of(value: str) -> str:
             try:
@@ -1853,15 +2319,135 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
         def define(instruction: GeneralMIRInstruction, expression: str) -> None:
             if instruction.result is None:
                 return
+            if instruction.result in pointer_values:
+                values[instruction.result] = expression
+                return
             if instruction.result not in result_types:
                 raise RepresentationCBackendError(
                     f"MIR CFG result has no type: {instruction.op}"
                 )
-            temporary = self._mir_scalar_temp(instruction.result)
+            if (
+                (
+                    instruction.op == "call"
+                    and instruction.result in inline_call_results
+                )
+                or (
+                    instruction.op == "construct_record"
+                    and instruction.result in inline_construct_results
+                )
+            ):
+                values[instruction.result] = expression
+                return
+            temporary = result_names.get(
+                instruction.result,
+                self._mir_scalar_temp(instruction.result),
+            )
             lines.append(f"    {temporary} = {expression};")
             values[instruction.result] = temporary
+        def consume(operand_id: str, operand: str, type_name: str | None) -> str:
+            descriptor = self.descriptors.get(type_name or "")
+            if descriptor is None or not _is_owner(descriptor):
+                return operand
+            address = operand if operand_id in pointer_values else f"&({operand})"
+            if (
+                operand_id in borrowed_pointer_values
+                or (operand_id in pointer_values and operand_id not in moved_values)
+            ):
+                return f"merlo_clone_{_identifier(type_name)}({address})"
+            return f"merlo_move_{_identifier(type_name)}({address})"
+
+        def local_pointer(name: str) -> str:
+            parameter = next(
+                (item for item in function.parameters if item.name == name),
+                None,
+            )
+            if parameter is not None and self._parameter_is_pointer(parameter):
+                return name
+            return f"&{name}"
+
+        def operand_type(
+            item: GeneralMIRInstruction,
+            index: int,
+        ) -> str | None:
+            if index >= len(item.operand_type_ids):
+                return None
+            return self.hir.type_context.render(item.operand_type_ids[index])
+
+        def borrow(operand_id: str, operand: str, type_name: str | None) -> str:
+            descriptor = self.descriptors.get(type_name or "")
+            if descriptor is None or not _is_owner(descriptor):
+                return operand
+            address = operand if operand_id in pointer_values else f"&({operand})"
+            return address
+
+        def call_argument(
+            parameter: Any,
+            operand_id: str,
+            operand: str,
+            source_type: str | None,
+        ) -> str:
+            source_pointer = (
+                operand
+                if operand_id in pointer_values
+                else f"&({operand})"
+            )
+            if parameter.type_name == "TextView" and source_type == "Text":
+                return (
+                    f"(MerloTextView){{ ({source_pointer})->data, "
+                    f"({source_pointer})->length }}"
+                )
+            if parameter.type_name == "BytesView" and source_type == "Bytes":
+                return (
+                    f"(MerloBytesView){{ ({source_pointer})->data, "
+                    f"({source_pointer})->length }}"
+                )
+            if self._parameter_is_pointer(parameter):
+                return (
+                    operand
+                    if operand_id in pointer_values
+                    else f"&({operand})"
+                )
+            if parameter.ownership in {"consuming", "owned"} and source_type is not None:
+                descriptor = self.descriptors.get(source_type)
+                if (
+                    descriptor is not None
+                    and _is_owner(descriptor)
+                    and operand_id in borrowed_pointer_values
+                    and descriptor.kind == "map"
+                ):
+                    raise RepresentationCBackendError(
+                        "cannot clone borrowed owner Map"
+                    )
+                if descriptor is not None and _is_owner(descriptor):
+                    return consume(operand_id, operand, source_type)
+            return operand
+
         def emit_instruction(instruction: GeneralMIRInstruction) -> None:
             attrs = instruction.attribute_map
+            if instruction.op == "drop_value":
+                local = attrs.get("local")
+                type_name = attrs.get("type", instruction.type_name)
+                if not isinstance(local, str) or not isinstance(type_name, str):
+                    raise RepresentationCBackendError(
+                        "MIR drop_value is malformed"
+                    )
+                if local in returning_locals:
+                    return
+                lines.append(
+                    f"    merlo_drop_{_identifier(type_name)}"
+                    f"({local_pointer(local)});"
+                )
+                return
+            if instruction.op in {
+                "allocate",
+                "allocate_deferred",
+                "bounds_check",
+                "borrow_key",
+                "checked_growth",
+                "copy_key_if_vacant",
+                "move_value",
+            }:
+                return
             if instruction.op == "implicit_callable":
                 if instruction.result is None:
                     raise RepresentationCBackendError(
@@ -1912,6 +2498,413 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 values[instruction.result] = temporary
                 return
             operands = tuple(value_of(item) for item in instruction.operands)
+            if instruction.op == "result_branch":
+                if len(operands) != 1:
+                    raise RepresentationCBackendError(
+                        "MIR result_branch is malformed"
+                    )
+                result_type = operand_type(instruction, 0)
+                result_descriptor = self.descriptors.get(result_type or "")
+                if result_descriptor is None or result_descriptor.kind != "enum":
+                    raise RepresentationCBackendError(
+                        "MIR result_branch source is not an enum"
+                    )
+                ok_payload = next(
+                    (
+                        payload
+                        for variant, payload, _tag in result_descriptor.variants
+                        if variant == "Ok"
+                    ),
+                    None,
+                )
+                ok_tag = next(
+                    (
+                        tag
+                        for variant, _payload, tag in result_descriptor.variants
+                        if variant == "Ok"
+                    ),
+                    None,
+                )
+                if ok_tag is None or ok_payload is None:
+                    raise RepresentationCBackendError(
+                        "MIR result_branch source has no Ok variant"
+                    )
+                result_value = operands[0]
+                drops = pending_drops.pop(instruction.operands[0], [])
+                lines.append(
+                    f"    if ({result_value}.tag != "
+                    f"MERLO_{_identifier(result_type)}_Ok_TAG) {{"
+                )
+                for temporary, type_name in drops:
+                    lines.append(
+                        f"        merlo_drop_{_identifier(type_name)}"
+                        f"(&{temporary});"
+                    )
+                lines.append(f"        return {result_value};")
+                lines.append("    }")
+                payload = f"{result_value}.payload.Ok"
+                payload_descriptor = self.descriptors.get(ok_payload)
+                define(
+                    instruction,
+                    (
+                        f"merlo_move_{_identifier(ok_payload)}"
+                        f"(&{payload})"
+                        if payload_descriptor is not None
+                        and _is_owner(payload_descriptor)
+                        else payload
+                    ),
+                )
+                lines.append(
+                    f"    {result_value}.tag = "
+                    f"MERLO_{_identifier(result_type)}_MOVED_TAG;"
+                )
+                for temporary, type_name in drops:
+                    lines.append(
+                        f"    merlo_drop_{_identifier(type_name)}"
+                        f"(&{temporary});"
+                    )
+                return
+            if instruction.op == "vec_view":
+                raise RepresentationCBackendError("borrowed result escapes")
+            if instruction.op == "vec_new":
+                type_name = instruction.type_name
+                descriptor = self.descriptors.get(type_name or "")
+                if descriptor is None or descriptor.kind != "vec":
+                    raise RepresentationCBackendError("MIR Vec.new type is invalid")
+                define(
+                    instruction,
+                    f"merlo_{_identifier(type_name)}_new()",
+                )
+                return
+            if instruction.op == "vec_push":
+                callee = attrs.get("callee")
+                if not isinstance(callee, str) or len(operands) not in {1, 2}:
+                    raise RepresentationCBackendError("MIR Vec.push is malformed")
+                receiver_name = callee.split(".", 1)[0]
+                if len(operands) == 2:
+                    receiver_id, receiver = instruction.operands[0], operands[0]
+                    item_id, item = instruction.operands[1], operands[1]
+                    receiver_type = operand_type(instruction, 0)
+                    item_type = operand_type(instruction, 1)
+                    receiver_pointer = (
+                        receiver
+                        if receiver_id in pointer_values
+                        else f"&({receiver})"
+                    )
+                else:
+                    receiver_id, receiver = receiver_name, local_pointer(receiver_name)
+                    item_id, item = instruction.operands[0], operands[0]
+                    receiver_type = local_types.get(receiver_name)
+                    if receiver_type is None:
+                        receiver_type = next(
+                            (
+                                parameter.type_name
+                                for parameter in function.parameters
+                                if parameter.name == receiver_name
+                            ),
+                            None,
+                        )
+                    item_type = operand_type(instruction, 0)
+                    receiver_pointer = receiver
+                descriptor = self.descriptors.get(str(receiver_type or ""))
+                if descriptor is None or descriptor.kind != "vec":
+                    raise RepresentationCBackendError("MIR Vec.push receiver is invalid")
+                value = consume(item_id, item, item_type)
+                lines.append(
+                    f"    merlo_{_identifier(descriptor.name)}_push"
+                    f"({receiver_pointer}, {value});"
+                )
+                return
+            if instruction.op in {"vec_get", "vec_get_mut"}:
+                callee = attrs.get("callee")
+                if not isinstance(callee, str) or len(operands) not in {1, 2}:
+                    raise RepresentationCBackendError("MIR Vec.get is malformed")
+                receiver_name = callee.split(".", 1)[0]
+                if (
+                    instruction.op == "vec_get_mut"
+                    and (
+                        (
+                            len(operands) == 1
+                            and receiver_name not in local_types
+                            and not any(
+                                parameter.name == receiver_name
+                                for parameter in function.parameters
+                            )
+                        )
+                        or (
+                            len(operands) == 2
+                            and instruction.operands[0] in owned_call_results
+                        )
+                    )
+                ):
+                    raise RepresentationCBackendError("borrowed result escapes")
+                receiver_temp: tuple[str, str] | None = None
+                if len(operands) == 2:
+                    receiver_id, receiver = instruction.operands[0], operands[0]
+                    index = operands[1]
+                    receiver_type = operand_type(instruction, 0)
+                    receiver_pointer = (
+                        receiver
+                        if receiver_id in pointer_values
+                        else f"&({receiver})"
+                    )
+                else:
+                    index = operands[0]
+                    receiver_type = local_types.get(receiver_name)
+                    if receiver_type is None:
+                        receiver_type = next(
+                            (
+                                parameter.type_name
+                                for parameter in function.parameters
+                                if parameter.name == receiver_name
+                            ),
+                            None,
+                        )
+                    if receiver_type is None:
+                        contract = str(attrs.get("contract_symbol", ""))
+                        receiver_type = contract.rsplit(".", 1)[0] or None
+                        producer = next(
+                            (
+                                item
+                                for item in self.hir.functions
+                                if item.return_type == receiver_type
+                                and not item.parameters
+                            ),
+                            None,
+                        )
+                        if producer is None:
+                            raise RepresentationCBackendError(
+                                "MIR Vec.get receiver is unknown"
+                            )
+                        receiver_name = f"__merlo_vec_receiver_{instruction.result}"
+                        lines.append(
+                            f"    {_c_name(receiver_type)} {receiver_name} = "
+                            f"merlo_zero_{_identifier(receiver_type)}();"
+                        )
+                        lines.append(
+                            f"    {receiver_name} = merlo_fn_{producer.name}();"
+                        )
+                        receiver_temp = (receiver_name, receiver_type)
+                        receiver_pointer = f"&{receiver_name}"
+                    else:
+                        receiver_pointer = local_pointer(receiver_name)
+                descriptor = self.descriptors.get(str(receiver_type or ""))
+                if descriptor is None or descriptor.kind != "vec":
+                    raise RepresentationCBackendError("MIR Vec.get receiver is invalid")
+                expression = (
+                    f"merlo_{_identifier(descriptor.name)}_get"
+                    f"({receiver_pointer}, {index})"
+                )
+                if instruction.result not in pointer_values:
+                    expression = f"*({expression})"
+                define(instruction, expression)
+                if receiver_temp is not None and instruction.result is not None:
+                    pending_receiver_drops[instruction.result] = [receiver_temp]
+                return
+            if instruction.op == "vec_len":
+                callee = attrs.get("callee")
+                if not isinstance(callee, str):
+                    raise RepresentationCBackendError("MIR Vec.len is malformed")
+                if len(operands) == 1:
+                    receiver_id = instruction.operands[0]
+                    receiver = operands[0]
+                    receiver_type = operand_type(instruction, 0)
+                    receiver_name = callee.split(".", 1)[0]
+                    receiver_pointer = (
+                        receiver
+                        if receiver_id in pointer_values
+                        else f"&({receiver})"
+                    )
+                elif not operands:
+                    receiver_name = callee.split(".", 1)[0]
+                    receiver_type = next(
+                        (
+                            item.type_name
+                            for item in function.parameters
+                            if item.name == receiver_name
+                        ),
+                        None,
+                    )
+                    if receiver_type is None:
+                        receiver_type = next(
+                            (
+                                item.type_name
+                                for item in mir_function.blocks[0].instructions
+                                if item.op == "store_local"
+                                and item.attribute_map.get("name") == receiver_name
+                            ),
+                            None,
+                        )
+                    receiver_pointer = local_pointer(receiver_name)
+                else:
+                    raise RepresentationCBackendError("MIR Vec.len is malformed")
+                descriptor = self.descriptors.get(str(receiver_type or ""))
+                if descriptor is None or descriptor.kind != "vec":
+                    raise RepresentationCBackendError("MIR Vec.len receiver is invalid")
+                define(
+                    instruction,
+                    f"merlo_{_identifier(descriptor.name)}_len"
+                    f"({receiver_pointer})",
+                )
+                return
+            if instruction.op == "box_new":
+                type_name = instruction.type_name
+                descriptor = self.descriptors.get(type_name or "")
+                if (
+                    descriptor is None
+                    or descriptor.kind != "box"
+                    or descriptor.payload_type is None
+                    or len(operands) != 1
+                ):
+                    raise RepresentationCBackendError("MIR Box.new is malformed")
+                value = consume(
+                    instruction.operands[0],
+                    operands[0],
+                    operand_type(instruction, 0),
+                )
+                define(
+                    instruction,
+                    f"merlo_{_identifier(type_name)}_new({value})",
+                )
+                return
+            if instruction.op == "box_get":
+                callee = attrs.get("callee")
+                if not isinstance(callee, str):
+                    raise RepresentationCBackendError("MIR Box.get is malformed")
+                receiver_name = callee.split(".", 1)[0]
+                receiver_temp: tuple[str, str] | None = None
+                if len(operands) == 1:
+                    receiver_id, receiver = instruction.operands[0], operands[0]
+                    receiver_type = operand_type(instruction, 0)
+                    receiver_pointer = (
+                        receiver
+                        if receiver_id in pointer_values
+                        else f"&({receiver})"
+                    )
+                elif not operands:
+                    receiver_type = next(
+                        (
+                            parameter.type_name
+                            for parameter in function.parameters
+                            if parameter.name == receiver_name
+                        ),
+                        None,
+                    )
+                    if receiver_type is None:
+                        contract = str(attrs.get("contract_symbol", ""))
+                        receiver_type = contract.rsplit(".", 1)[0] or None
+                    producer = next(
+                        (
+                            item
+                            for item in self.hir.functions
+                            if item.return_type == receiver_type
+                            and not item.parameters
+                        ),
+                        None,
+                    )
+                    if receiver_type is None or producer is None:
+                        raise RepresentationCBackendError(
+                            "MIR Box.get receiver is unknown"
+                        )
+                    receiver_name = f"__merlo_box_receiver_{instruction.result}"
+                    lines.append(
+                        f"    {_c_name(receiver_type)} {receiver_name} = "
+                        f"merlo_zero_{_identifier(receiver_type)}();"
+                    )
+                    lines.append(
+                        f"    {receiver_name} = merlo_fn_{producer.name}();"
+                    )
+                    receiver_temp = (receiver_name, receiver_type)
+                    receiver_pointer = f"&{receiver_name}"
+                else:
+                    raise RepresentationCBackendError("MIR Box.get is malformed")
+                descriptor = self.descriptors.get(str(receiver_type or ""))
+                if (
+                    descriptor is None
+                    or descriptor.kind != "box"
+                    or descriptor.payload_type is None
+                ):
+                    raise RepresentationCBackendError("MIR Box.get receiver is invalid")
+                expression = (
+                    f"merlo_{_identifier(descriptor.name)}_get"
+                    f"({receiver_pointer})"
+                )
+                if instruction.result not in pointer_values:
+                    expression = f"*({expression})"
+                define(instruction, expression)
+                if receiver_temp is not None and instruction.result is not None:
+                    pending_receiver_drops[instruction.result] = [receiver_temp]
+                return
+            if instruction.op == "map_new":
+                type_name = instruction.type_name
+                descriptor = self.descriptors.get(type_name or "")
+                if descriptor is None or descriptor.kind != "map":
+                    raise RepresentationCBackendError("MIR Map.new type is invalid")
+                define(
+                    instruction,
+                    f"merlo_{_identifier(type_name)}_new()",
+                )
+                return
+            if instruction.op == "map_insert":
+                if len(operands) != 3:
+                    raise RepresentationCBackendError("MIR Map.insert is malformed")
+                map_type = operand_type(instruction, 0)
+                descriptor = self.descriptors.get(map_type or "")
+                if descriptor is None or descriptor.kind != "map" or descriptor.value_type is None:
+                    raise RepresentationCBackendError("MIR Map.insert type is invalid")
+                key = borrow(
+                    instruction.operands[1],
+                    operands[1],
+                    operand_type(instruction, 1),
+                )
+                value = consume(
+                    instruction.operands[2],
+                    operands[2],
+                    operand_type(instruction, 2),
+                )
+                lines.append(
+                    f"    merlo_{_identifier(descriptor.name)}_insert"
+                    f"({borrow(instruction.operands[0], operands[0], map_type)}, "
+                    f"{key}, {value});"
+                )
+                return
+            if instruction.op == "map_get":
+                if len(operands) != 2:
+                    raise RepresentationCBackendError("MIR Map.get is malformed")
+                map_type = operand_type(instruction, 0)
+                descriptor = self.descriptors.get(map_type or "")
+                if descriptor is None or descriptor.kind != "map":
+                    raise RepresentationCBackendError("MIR Map.get type is invalid")
+                key = borrow(
+                    instruction.operands[1],
+                    operands[1],
+                    operand_type(instruction, 1),
+                )
+                expression = (
+                    f"merlo_{_identifier(descriptor.name)}_get"
+                    f"({borrow(instruction.operands[0], operands[0], map_type)}, {key})"
+                )
+                define(instruction, expression)
+                return
+            if instruction.op == "map_increment":
+                if len(operands) != 3:
+                    raise RepresentationCBackendError("MIR Map.increment is malformed")
+                map_type = operand_type(instruction, 0)
+                descriptor = self.descriptors.get(map_type or "")
+                if descriptor is None or descriptor.kind != "map":
+                    raise RepresentationCBackendError("MIR Map.increment type is invalid")
+                key = borrow(
+                    instruction.operands[1],
+                    operands[1],
+                    operand_type(instruction, 1),
+                )
+                expression = (
+                    f"merlo_{_identifier(descriptor.name)}_increment"
+                    f"({borrow(instruction.operands[0], operands[0], map_type)}, "
+                    f"{key}, {operands[2]})"
+                )
+                define(instruction, expression)
+                return
             if instruction.op == "call":
                 callee = attrs.get("callee")
                 if not isinstance(callee, str):
@@ -1920,11 +2913,84 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     (item for item in self.hir.functions if item.name == callee),
                     None,
                 )
-                if target is not None:
+                if callee == "console.write":
+                    if len(operands) != 1:
+                        raise RepresentationCBackendError(
+                            "MIR console.write arity is invalid"
+                        )
+                    value = operands[0]
+                    pointer = (
+                        value
+                        if instruction.operands[0] in pointer_values
+                        else f"&({value})"
+                    )
+                    call = (
+                        "merlo_console_write_view((MerloTextView){ "
+                        f"({pointer})->data, ({pointer})->length }})"
+                    )
+                elif target is not None:
+                    call_operands = []
+                    for index, (operand_id, operand) in enumerate(
+                        zip(instruction.operands, operands)
+                    ):
+                        parameter = (
+                            target.parameters[index]
+                            if index < len(target.parameters)
+                            else None
+                        )
+                        if parameter is None:
+                            raise RepresentationCBackendError(
+                                f"MIR call arity exceeds target: {callee}"
+                            )
+                        call_operands.append(
+                            call_argument(
+                                parameter,
+                                operand_id,
+                                operand,
+                                operand_type(instruction, index),
+                            )
+                        )
                     call = (
                         f"merlo_fn_{_identifier(callee)}"
-                        f"({', '.join(operands)})"
+                        f"({', '.join(call_operands)})"
                     )
+                elif (
+                    instruction.type_name is not None
+                    and (
+                        result_descriptor := self.descriptors.get(
+                            instruction.type_name
+                        )
+                    ) is not None
+                    and result_descriptor.kind == "enum"
+                    and any(
+                        variant == callee
+                        for variant, _payload, _tag in result_descriptor.variants
+                    )
+                ):
+                    variant = next(
+                        variant
+                        for variant, _payload, _tag in result_descriptor.variants
+                        if variant == callee
+                    )
+                    payload = next(
+                        payload
+                        for variant_name, payload, _tag in result_descriptor.variants
+                        if variant_name == variant
+                    )
+                    if payload is None or payload == "Unit":
+                        call = (
+                            f"merlo_make_{_identifier(instruction.type_name)}"
+                            f"_{variant}()"
+                        )
+                    elif len(operands) == 1:
+                        call = (
+                            f"merlo_make_{_identifier(instruction.type_name)}"
+                            f"_{variant}({consume(instruction.operands[0], operands[0], payload)})"
+                        )
+                    else:
+                        raise RepresentationCBackendError(
+                            f"MIR enum constructor arity is invalid: {callee}"
+                        )
                 elif callee.endswith(".len"):
                     source_name = callee.rsplit(".", 1)[0]
                     source_type = local_types.get(source_name)
@@ -1946,21 +3012,101 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     lines.append(f"    {call};")
                 else:
                     define(instruction, call)
+                drops = [
+                    (temporary, type_name)
+                    for operand_id, (temporary, type_name) in owned_temporaries.items()
+                    if operand_id in instruction.operands
+                ]
+                if (
+                    instruction.result in inline_call_results
+                    or instruction.result in result_branch_inputs
+                ):
+                    pending_drops[instruction.result] = drops
+                else:
+                    for temporary, type_name in drops:
+                        lines.append(
+                            f"    merlo_drop_{_identifier(type_name)}"
+                            f"(&{temporary});"
+                        )
+            elif instruction.op == "callback_call":
+                callee = attrs.get("callee")
+                if not isinstance(callee, str) or not operands:
+                    raise RepresentationCBackendError(
+                        "MIR callback call is malformed"
+                    )
+                callback_type = next(
+                    (
+                        parameter.type_name
+                        for parameter in function.parameters
+                        if parameter.name == callee
+                    ),
+                    local_types.get(callee),
+                )
+                descriptor = self.descriptors.get(callback_type or "")
+                if descriptor is None or descriptor.kind not in {"callback", "closure"}:
+                    raise RepresentationCBackendError(
+                        f"MIR callback target is unknown: {callee}"
+                    )
+                call = (
+                    f"{callee}->call({callee}->environment, "
+                    f"{', '.join(operands)})"
+                )
+                if instruction.result is None:
+                    lines.append(f"    {call};")
+                else:
+                    define(instruction, call)
             elif instruction.op == "primitive_call":
                 callee = attrs.get("callee")
                 if not isinstance(callee, str):
                     raise RepresentationCBackendError(
                         "MIR primitive call has no callee"
                     )
-                if callee.endswith(".len") and len(operands) == 1:
-                    define(instruction, f"({operands[0]}).length")
-                elif callee.endswith(".byte") and len(operands) == 2:
-                    receiver = f"&({operands[0]})"
-                    helper = (
-                        "merlo_text_view_load"
-                        if callee.startswith("TextView.")
-                        else "merlo_bytes_load"
+                if callee == "Text.from_bytes" and len(operands) == 3:
+                    view = (
+                        operands[0]
+                        if instruction.operands[0] in pointer_values
+                        else f"&({operands[0]})"
                     )
+                    define(
+                        instruction,
+                        f"merlo_text_from_bytes({view}, "
+                        f"{operands[1]}, {operands[2]})",
+                    )
+                elif callee.endswith(".clone") and len(operands) == 1:
+                    source = (
+                        operands[0]
+                        if instruction.operands[0] in pointer_values
+                        else f"&({operands[0]})"
+                    )
+                    source_type = operand_type(instruction, 0)
+                    if source_type is None:
+                        raise RepresentationCBackendError(
+                            "MIR clone source type is missing"
+                        )
+                    define(
+                        instruction,
+                        f"merlo_clone_{_identifier(source_type)}({source})",
+                    )
+                elif (callee.endswith(".len") or callee == "len") and len(operands) == 1:
+                    receiver = (
+                        f"({operands[0]})->length"
+                        if instruction.operands[0] in pointer_values
+                        else f"({operands[0]}).length"
+                    )
+                    define(instruction, receiver)
+                elif callee.endswith(".byte") and len(operands) == 2:
+                    receiver = (
+                        operands[0]
+                        if instruction.operands[0] in pointer_values
+                        else f"&({operands[0]})"
+                    )
+                    contract = str(attrs.get("contract_symbol", callee))
+                    if contract.startswith("TextView."):
+                        helper = "merlo_text_view_load"
+                    elif contract.startswith("Text."):
+                        helper = "merlo_text_load"
+                    else:
+                        helper = "merlo_bytes_load"
                     define(instruction, f"{helper}({receiver}, {operands[1]})")
                 else:
                     raise RepresentationCBackendError(
@@ -1972,15 +3118,22 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     descriptor is None
                     or descriptor.kind != "array"
                     or descriptor.length is None
+                    or descriptor.element_type is None
                     or len(operands) != descriptor.length
                 ):
                     raise RepresentationCBackendError(
                         "MIR array literal is malformed"
                     )
+                elements = [
+                    consume(instruction.operands[index], value, descriptor.element_type)
+                    if _is_owner(self.descriptors[descriptor.element_type])
+                    else value
+                    for index, value in enumerate(operands)
+                ]
                 define(
                     instruction,
                     f"({_c_name(instruction.type_name)}){{ .data = "
-                    f"{{{', '.join(operands)}}} }}",
+                    f"{{{', '.join(elements)}}} }}",
                 )
             elif instruction.op == "bounds_checked_index":
                 if len(operands) != 2 or len(instruction.operand_type_ids) != 2:
@@ -1999,25 +3152,152 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     f"    if ({operands[1]} >= UINT64_C({descriptor.length})) "
                     f"merlo_bounds_trap({operands[1]}, UINT64_C({descriptor.length}));"
                 )
+                access = (
+                    f"({operands[0]})->data[{operands[1]}]"
+                    if instruction.operands[0] in pointer_values
+                    else f"({operands[0]}).data[{operands[1]}]"
+                )
                 define(
                     instruction,
-                    f"({operands[0]}).data[{operands[1]}]",
+                    f"&({access})"
+                    if instruction.result in pointer_values
+                    else access,
                 )
+            elif instruction.op == "byte_load":
+                if len(operands) != 2:
+                    raise RepresentationCBackendError("MIR byte_load is malformed")
+                callee = attrs.get("callee")
+                if not isinstance(callee, str):
+                    raise RepresentationCBackendError("MIR byte_load has no callee")
+                receiver = (
+                    operands[0]
+                    if instruction.operands[0] in pointer_values
+                    else f"&({operands[0]})"
+                )
+                contract = str(attrs.get("contract_symbol", callee))
+                if contract.startswith("TextView."):
+                    helper = "merlo_text_view_load"
+                elif contract.startswith("Text."):
+                    helper = "merlo_text_load"
+                else:
+                    helper = "merlo_bytes_load"
+                define(instruction, f"{helper}({receiver}, {operands[1]})")
             elif instruction.op == "const":
-                define(
-                    instruction,
-                    self._mir_literal(instruction.type_name or "Unit", attrs.get("value")),
+                literal = self._mir_literal(
+                    instruction.type_name or "Unit",
+                    attrs.get("value"),
+                    owned=instruction.result not in pointer_values,
                 )
+                if instruction.result in pointer_values:
+                    literal = f"&({literal})"
+                define(instruction, literal)
             elif instruction.op == "load_local":
                 name = attrs.get("name")
                 if not isinstance(name, str):
                     raise RepresentationCBackendError("MIR CFG load_local has no name")
-                define(instruction, name)
+                binding = active_match_bindings.get(name)
+                if binding is not None:
+                    source_id, variant, _payload_type = binding
+                    source = value_of(source_id)
+                    access = (
+                        f"({source})->payload.{variant}"
+                        if source_id in pointer_values
+                        else f"({source}).payload.{variant}"
+                    )
+                    expression = (
+                        f"&({access})"
+                        if instruction.result in pointer_values
+                        else access
+                    )
+                    define(instruction, expression)
+                    return
+                target = next(
+                    (item for item in self.hir.functions if item.name == name),
+                    None,
+                )
+                descriptor = self.descriptors.get(instruction.type_name or "")
+                if (
+                    target is not None
+                    and descriptor is not None
+                    and descriptor.kind in {"callback", "closure"}
+                ):
+                    define(
+                        instruction,
+                        f"({_c_name(instruction.type_name)}){{ "
+                        f"merlo_closure_adapter_{name}, NULL, NULL, NULL }}",
+                    )
+                else:
+                    parameter_pointer = any(
+                        parameter.name == name
+                        and self._parameter_is_pointer(parameter)
+                        for parameter in function.parameters
+                    )
+                    expression = (
+                        name
+                        if parameter_pointer or instruction.result not in pointer_values
+                        else f"&{name}"
+                    )
+                    define(instruction, expression)
+                    if parameter_pointer:
+                        pointer_values.add(instruction.result or "")
             elif instruction.op == "store_local":
                 target = attrs.get("name", attrs.get("target"))
                 if not isinstance(target, str) or len(operands) != 1:
                     raise RepresentationCBackendError("MIR CFG store_local is malformed")
-                lines.append(f"    {target} = {operands[0]};")
+                replacement = replacement_names.get(instruction.operands[0])
+                if "target" in attrs and replacement is not None:
+                    replacement_name, replacement_type = replacement
+                    lines.append(
+                        f"    {replacement_name} = {operands[0]};"
+                    )
+                    lines.append(
+                        f"    merlo_drop_{_identifier(replacement_type)}"
+                        f"(&{target});"
+                    )
+                    lines.append(
+                        f"    {target} = merlo_move_{_identifier(replacement_type)}"
+                        f"(&{replacement_name});"
+                    )
+                else:
+                    store_value = operands[0]
+                    descriptor = self.descriptors.get(instruction.type_name or "")
+                    if (
+                        instruction.operands[0] in pointer_values
+                        and descriptor is not None
+                        and _is_owner(descriptor)
+                    ):
+                        store_value = (
+                            f"merlo_clone_{_identifier(instruction.type_name or '')}"
+                            f"({store_value})"
+                        )
+                    elif (
+                        instruction.operands[0] in result_types
+                        and instruction.operands[0] not in inline_call_results
+                        and instruction.operands[0] not in inline_construct_results
+                        and descriptor is not None
+                        and _is_owner(descriptor)
+                    ):
+                        store_value = (
+                            f"merlo_move_{_identifier(instruction.type_name or '')}"
+                            f"(&({store_value}))"
+                        )
+                    lines.append(f"    {target} = {store_value};")
+                for temporary, type_name in pending_drops.pop(
+                    instruction.operands[0],
+                    [],
+                ):
+                    lines.append(
+                        f"    merlo_drop_{_identifier(type_name)}"
+                        f"(&{temporary});"
+                    )
+                for temporary, type_name in pending_receiver_drops.pop(
+                    instruction.operands[0],
+                    [],
+                ):
+                    lines.append(
+                        f"    merlo_drop_{_identifier(type_name)}"
+                        f"(&{temporary});"
+                    )
             elif instruction.op == "binary":
                 if len(operands) != 2:
                     raise RepresentationCBackendError("MIR CFG binary is malformed")
@@ -2090,21 +3370,121 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 if len(operands) != 1:
                     raise RepresentationCBackendError("MIR CFG scalar cast is malformed")
                 define(instruction, self._mir_scalar_cast(instruction, operands[0]))
+            elif instruction.op == "construct_enum":
+                descriptor = self.descriptors.get(instruction.type_name or "")
+                callee = attrs.get("callee")
+                if (
+                    descriptor is None
+                    or descriptor.kind != "enum"
+                    or not isinstance(callee, str)
+                    or "." not in callee
+                ):
+                    raise RepresentationCBackendError(
+                        "MIR enum construction is malformed"
+                    )
+                variant = callee.rsplit(".", 1)[1]
+                payload = next(
+                    (
+                        payload
+                        for name, payload, _tag in descriptor.variants
+                        if name == variant
+                    ),
+                    None,
+                )
+                if payload is None or payload == "Unit":
+                    if operands:
+                        raise RepresentationCBackendError(
+                            "MIR enum construction arity is invalid"
+                        )
+                    expression = (
+                        f"merlo_make_{_identifier(instruction.type_name)}"
+                        f"_{variant}()"
+                    )
+                elif len(operands) == 1:
+                    expression = (
+                        f"merlo_make_{_identifier(instruction.type_name)}"
+                        f"_{variant}("
+                        f"{consume(instruction.operands[0], operands[0], payload)})"
+                    )
+                else:
+                    raise RepresentationCBackendError(
+                        "MIR enum construction arity is invalid"
+                    )
+                define(instruction, expression)
             elif instruction.op == "construct_record":
                 descriptor = self.descriptors.get(instruction.type_name or "")
                 if descriptor is None or len(operands) != len(descriptor.fields):
                     raise RepresentationCBackendError(
                         "MIR CFG record construction is malformed"
                     )
+                fields = []
+                for index, (_field_name, field_type, _ownership) in enumerate(
+                    descriptor.fields
+                ):
+                    value = operands[index]
+                    operand_id = instruction.operands[index]
+                    field_descriptor = self.descriptors[field_type]
+                    fields.append(
+                        consume(operand_id, value, field_type)
+                        if _is_owner(field_descriptor)
+                        else value
+                    )
                 define(
                     instruction,
-                    f"({_c_name(instruction.type_name)}){{{', '.join(operands)}}}",
+                    f"merlo_make_{_identifier(instruction.type_name)}"
+                    f"({', '.join(fields)})",
                 )
             elif instruction.op == "load_field":
                 field = attrs.get("field")
-                if len(operands) != 1 or not isinstance(field, str):
+                if not isinstance(field, str):
                     raise RepresentationCBackendError("MIR CFG load_field is malformed")
-                define(instruction, f"({operands[0]}).{field}")
+                if len(operands) == 0:
+                    descriptor = self.descriptors.get(instruction.type_name or "")
+                    variant_payload = next(
+                        (
+                            payload
+                            for variant, payload, _tag in (
+                                descriptor.variants
+                                if descriptor is not None
+                                and descriptor.kind == "enum"
+                                else ()
+                            )
+                            if variant == field
+                        ),
+                        None,
+                    )
+                    if (
+                        descriptor is not None
+                        and descriptor.kind == "enum"
+                        and any(
+                            variant == field
+                            for variant, _payload, _tag in descriptor.variants
+                        )
+                        and (variant_payload is None or variant_payload == "Unit")
+                    ):
+                        expression = (
+                            f"merlo_make_{_identifier(instruction.type_name)}"
+                            f"_{field}()"
+                        )
+                    else:
+                        expression = (
+                            f"MERLO_{_identifier(instruction.type_name)}_{field}"
+                        )
+                    define(instruction, expression)
+                    return
+                if len(operands) != 1:
+                    raise RepresentationCBackendError("MIR CFG load_field is malformed")
+                access = (
+                    f"({operands[0]})->{field}"
+                    if instruction.operands[0] in pointer_values
+                    else f"({operands[0]}).{field}"
+                )
+                define(
+                    instruction,
+                    f"&({access})"
+                    if instruction.result in pointer_values
+                    else access,
+                )
             elif instruction.op == "store_field":
                 target = attrs.get("target")
                 if len(operands) != 1 or not isinstance(target, str):
@@ -2120,6 +3500,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             for block in mir_function.blocks
         }
         for block in mir_function.blocks:
+            active_match_bindings = match_payload_bindings.get(block.id, {})
             lines.append(f"{labels[block.id]}:")
             for instruction in block.instructions:
                 emit_instruction(instruction)
@@ -2133,11 +3514,110 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 lines.append(f"    goto {labels[terminator.targets[1]]};")
             elif terminator.kind == "jump":
                 lines.append(f"    goto {labels[terminator.targets[0]]};")
+            elif terminator.kind == "switch":
+                if terminator.value is None or not terminator.cases:
+                    raise RepresentationCBackendError(
+                        "MIR switch terminator is malformed"
+                    )
+                switch_type = next(
+                    (
+                        instruction.type_name
+                        for candidate_block in mir_function.blocks
+                        for instruction in candidate_block.instructions
+                        if instruction.result == terminator.value
+                    ),
+                    None,
+                )
+                descriptor = self.descriptors.get(switch_type or "")
+                if descriptor is None or descriptor.kind != "enum":
+                    raise RepresentationCBackendError(
+                        "MIR switch source is not an enum"
+                    )
+                switch_value = value_of(terminator.value)
+                switch_access = (
+                    f"({switch_value})->tag"
+                    if terminator.value in pointer_values
+                    else f"({switch_value}).tag"
+                )
+                lines.append(f"    switch ({switch_access}) {{")
+                for variant, target in terminator.cases:
+                    tag = next(
+                        (
+                            tag
+                            for name, _payload, tag in descriptor.variants
+                            if name == variant
+                        ),
+                        None,
+                    )
+                    if tag is None:
+                        raise RepresentationCBackendError(
+                            f"MIR switch variant is unknown: {variant}"
+                        )
+                    lines.append(
+                        f"    case MERLO_{_identifier(descriptor.name)}"
+                        f"_{variant}_TAG: goto {labels[target]};"
+                    )
+                lines.append("    default:")
+                lines.append('        merlo_ownership_trap("InvalidEnumTag");')
+                lines.append(f"        goto {labels[terminator.targets[0]]};")
+                lines.append("    }")
             elif terminator.kind == "return":
+                for name, type_name in local_types.items():
+                    descriptor = self.descriptors.get(type_name)
+                    if (
+                        descriptor is not None
+                        and _is_owner(descriptor)
+                        and name not in returning_locals
+                        and name not in explicit_drop_locals
+                    ):
+                        lines.append(
+                            f"    merlo_drop_{_identifier(type_name)}"
+                            f"(&{name});"
+                        )
+                for value_id, type_name in result_types.items():
+                    descriptor = self.descriptors.get(type_name)
+                    temporary = result_names.get(
+                        value_id,
+                        self._mir_scalar_temp(value_id),
+                    )
+                    if (
+                        descriptor is not None
+                        and _is_owner(descriptor)
+                        and value_id != terminator.value
+                        and value_id not in moved_values
+                        and value_id not in owned_temporaries
+                    ):
+                        lines.append(
+                            f"    merlo_drop_{_identifier(type_name)}"
+                            f"(&{temporary});"
+                        )
                 if terminator.value is None:
-                    lines.append("    return;")
+                    if function.return_type == "Unit":
+                        lines.append("    return;")
+                    else:
+                        lines.append('    merlo_ownership_trap("Unreachable");')
+                        lines.append(
+                            f"    return {self._zero_expression(function.return_type)};"
+                        )
                 else:
-                    lines.append(f"    return {value_of(terminator.value)};")
+                    value = value_of(terminator.value)
+                    descriptor = self.descriptors.get(function.return_type)
+                    if (
+                        descriptor is not None
+                        and _is_owner(descriptor)
+                        and terminator.value in pointer_values
+                    ):
+                        if terminator.value in borrowed_pointer_values:
+                            value = (
+                                f"merlo_clone_{_identifier(function.return_type)}"
+                                f"({value})"
+                            )
+                        else:
+                            value = (
+                                f"merlo_move_{_identifier(function.return_type)}"
+                                f"({value})"
+                            )
+                    lines.append(f"    return {value};")
             else:
                 raise RepresentationCBackendError(
                     f"unsupported MIR CFG terminator: {terminator.kind}"
@@ -2165,6 +3645,12 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             if (
                 mir_function is not None
                 and self._mir_calls_collections_eligible(function, mir_function)
+            ):
+                emitted.append(self._emit_mir_cfg_function(function, mir_function))
+                continue
+            if (
+                mir_function is not None
+                and self._mir_ownership_ffi_eligible(function, mir_function)
             ):
                 emitted.append(self._emit_mir_cfg_function(function, mir_function))
                 continue
@@ -2290,7 +3776,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
         receiver_type = self._expression_type(node.func.value) or ""
         generic = _generic(receiver_type)
         if (
-            method == "get"
+            method in {"get", "get_mut"}
             and generic is not None
             and generic[0] in {"Vec", "Box"}
             and self._is_owning_temporary(node.func.value, receiver_type)
