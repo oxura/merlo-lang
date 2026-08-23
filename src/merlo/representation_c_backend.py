@@ -1355,6 +1355,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             "checked_growth",
             "checked_uint64_add",
             "copy_key_if_vacant",
+            "pass",
             "drop_value",
             "return",
             "borrow_lines",
@@ -1632,7 +1633,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                         or callee.endswith(".clone")
                         or callee.endswith(".view")
                         or callee.endswith(".as_view")
-                        or callee == "view"
+                        or callee in {"view", "as_view"}
                         or callee.endswith(".slice")
                         or callee == "slice_bytes"
                         or callee.endswith(".slice_bytes")
@@ -2598,6 +2599,12 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
         result_names: dict[str, str] = {}
         owned_temporaries: dict[str, tuple[str, str]] = {}
         owned_temp_index = 0
+        result_instructions = {
+            instruction.result: instruction
+            for block in mir_function.blocks
+            for instruction in block.instructions
+            if instruction.result is not None
+        }
         block_by_id = {block.id: block for block in mir_function.blocks}
         block_index = {
             block.id: index for index, block in enumerate(mir_function.blocks)
@@ -2640,7 +2647,14 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
             )
             for block in mir_function.blocks
             if (
-                "_while_condition" in block.id
+                any(
+                    marker in block.id
+                    for marker in (
+                        "_while_condition",
+                        "_for_condition",
+                        "_file_lines_condition",
+                    )
+                )
                 and block.terminator.kind == "branch"
                 and len(block.terminator.targets) == 2
             )
@@ -2652,7 +2666,15 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 block.instructions[0].source.column,
             )
             for block in mir_function.blocks
-            if "_while_condition" in block.id and block.instructions
+            if any(
+                marker in block.id
+                for marker in (
+                    "_while_condition",
+                    "_for_condition",
+                    "_file_lines_condition",
+                )
+            )
+            and block.instructions
         }
         control_targets: dict[tuple[str, str], str] = {}
         for block in mir_function.blocks:
@@ -2934,7 +2956,15 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     None,
                 )
                 pointer_result = (
-                    (
+                    pointer_type(instruction.type_name) is not None
+                    or (
+                        instruction.type_id is not None
+                        and self.hir.type_context.resolve(
+                            instruction.type_id
+                        ).constructor
+                        == "Borrow"
+                    )
+                    or (
                         instruction.result in pointer_call_operand_ids
                         and instruction.op == "load_local"
                         and not (
@@ -4341,7 +4371,13 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                         receiver_pointer = f"&{receiver_name}"
                     else:
                         receiver_pointer = local_pointer(receiver_name)
-                descriptor = self.descriptors.get(str(receiver_type or ""))
+                descriptor_type = str(receiver_type or "")
+                if (
+                    descriptor_type.startswith("Borrow[")
+                    and descriptor_type.endswith("]")
+                ):
+                    descriptor_type = descriptor_type[7:-1]
+                descriptor = self.descriptors.get(descriptor_type)
                 if descriptor is None or descriptor.kind != "vec":
                     raise RepresentationCBackendError("MIR Vec.get receiver is invalid")
                 expression = (
@@ -4391,7 +4427,13 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     receiver_pointer = local_pointer(receiver_name)
                 else:
                     raise RepresentationCBackendError("MIR Vec.len is malformed")
-                descriptor = self.descriptors.get(str(receiver_type or ""))
+                descriptor_type = str(receiver_type or "")
+                if (
+                    descriptor_type.startswith("Borrow[")
+                    and descriptor_type.endswith("]")
+                ):
+                    descriptor_type = descriptor_type[7:-1]
+                descriptor = self.descriptors.get(descriptor_type)
                 if descriptor is None or descriptor.kind != "vec":
                     raise RepresentationCBackendError("MIR Vec.len receiver is invalid")
                 define(
@@ -4678,7 +4720,15 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     raise RepresentationCBackendError(
                         "MIR enum tag receiver is not an enum"
                     )
-                define(instruction, f"({receiver})->tag")
+                tag = (
+                    f"*({receiver})"
+                    if all(
+                        payload is None
+                        for _name, payload, _tag in descriptor.variants
+                    )
+                    else f"({receiver})->tag"
+                )
+                define(instruction, tag)
                 return
             if instruction.op == "call":
                 callee = attrs.get("callee")
@@ -5241,7 +5291,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                         f"merlo_text_builder_finish({receiver})",
                     )
                 elif (
-                    callee == "view"
+                    callee in {"view", "as_view"}
                     or callee.endswith(".view")
                     or callee.endswith(".as_view")
                 ):
@@ -5663,7 +5713,11 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     for index, operator in enumerate(operators):
                         left_type = operand_type(instruction, index)
                         right_type = operand_type(instruction, index + 1)
-                        if left_type == right_type == "Text" and operator in {"Eq", "NotEq"}:
+                        descriptor = self.descriptors.get(left_type or "")
+                        if (
+                            left_type == right_type == "Text"
+                            and operator in {"Eq", "NotEq"}
+                        ):
                             left = (
                                 f"*({operands[index]})"
                                 if instruction.operands[index] in pointer_values
@@ -5679,6 +5733,73 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                             )
                             comparisons.append(
                                 equal if operator == "Eq" else f"!({equal})"
+                            )
+                        elif (
+                            left_type == right_type
+                            and descriptor is not None
+                            and descriptor.kind == "enum"
+                            and operator in {"Eq", "NotEq"}
+                        ):
+                            pure_enum = all(
+                                payload is None
+                                for _name, payload, _tag in descriptor.variants
+                            )
+
+                            def unit_constructor(value_id: str) -> bool:
+                                producer = result_instructions.get(value_id)
+                                if producer is None:
+                                    return False
+                                if producer.op == "load_field":
+                                    field = producer.attribute_map.get("field")
+                                    variant = field if isinstance(field, str) else ""
+                                elif producer.op in {"call", "construct_enum"}:
+                                    callee = producer.attribute_map.get("callee")
+                                    if not isinstance(callee, str):
+                                        return False
+                                    variant = callee.rsplit(".", 1)[-1]
+                                else:
+                                    return False
+                                return any(
+                                    name == variant
+                                    and payload in {None, "Unit"}
+                                    for name, payload, _tag in descriptor.variants
+                                )
+
+                            if not pure_enum and not any(
+                                unit_constructor(value_id)
+                                for value_id in instruction.operands[
+                                    index : index + 2
+                                ]
+                            ):
+                                raise RepresentationCBackendError(
+                                    "MIR payload enum equality requires "
+                                    "a unit variant"
+                                )
+
+                            def enum_tag(value_id: str, value: str) -> str:
+                                if pure_enum:
+                                    return (
+                                        f"*({value})"
+                                        if value_id in pointer_values
+                                        else value
+                                    )
+                                return (
+                                    f"({value})->tag"
+                                    if value_id in pointer_values
+                                    else f"({value}).tag"
+                                )
+
+                            left = enum_tag(
+                                instruction.operands[index],
+                                operands[index],
+                            )
+                            right = enum_tag(
+                                instruction.operands[index + 1],
+                                operands[index + 1],
+                            )
+                            equal = f"({left} == {right})"
+                            comparisons.append(
+                                equal if operator == "Eq" else f"!{equal}"
                             )
                         else:
                             comparisons.append(
@@ -5899,6 +6020,11 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                         force_move=True,
                     )
                 lines.append(f"    {access} = {store_value};")
+            elif instruction.op == "pass":
+                if instruction.operands or instruction.result is not None:
+                    raise RepresentationCBackendError(
+                        "MIR pass instruction is malformed"
+                    )
             else:
                 raise RepresentationCBackendError(
                     f"unsupported MIR CFG operation: {instruction.op}"

@@ -1081,53 +1081,37 @@ class _CFGBuilder:
                 if not isinstance(target, str) or not target:
                     raise ValueError("for loop target is missing")
 
-                def generic_argument(spelling: str, index: int) -> str | None:
-                    if "[" not in spelling or not spelling.endswith("]"):
-                        return None
-                    body = spelling[spelling.index("[") + 1 : -1]
-                    depth = 0
-                    start = 0
-                    arguments: list[str] = []
-                    for offset, character in enumerate(body):
-                        if character == "[":
-                            depth += 1
-                        elif character == "]":
-                            depth -= 1
-                        elif character == "," and depth == 0:
-                            arguments.append(body[start:offset].strip())
-                            start = offset + 1
-                    arguments.append(body[start:].strip())
-                    return arguments[index] if index < len(arguments) else None
-
+                source_shape = collection_shape(source_type_id, self.authority)
                 map_type: str | None = None
-                if source_type in {"Bytes", "Text"}:
-                    item_type = "Byte"
-                elif source_type.startswith("Vec["):
-                    item_type = generic_argument(source_type, 0)
-                elif source_type.startswith("Array["):
-                    item_type = generic_argument(source_type, 0)
+                if source_shape is not None:
+                    collection_kind = source_shape.kind
+                    item_type_id = source_shape.element_type_id
+                    item_type = self.authority.render(item_type_id)
                 elif (
                     source_type.startswith("Borrow[Map[")
                     and source_type.endswith("]]")
                 ):
+                    collection_kind = "map"
                     map_type = source_type[7:-1]
-                    key_type = generic_argument(map_type, 0)
-                    value_type = generic_argument(map_type, 1)
-                    item_type = (
-                        f"MapEntry[{key_type},{value_type}]"
-                        if key_type is not None and value_type is not None
-                        else None
+                    map_reference = self.authority.resolve(
+                        self.authority.resolve(source_type_id).arguments[0]
                     )
+                    if (
+                        map_reference.constructor != "Map"
+                        or len(map_reference.arguments) != 2
+                    ):
+                        raise ValueError(f"unsupported for iterable: {source_type}")
+                    item_type = (
+                        "MapEntry["
+                        f"{self.authority.render(map_reference.arguments[0])},"
+                        f"{self.authority.render(map_reference.arguments[1])}]"
+                    )
+                    item_type_id = self.authority.type_id(item_type)
                 else:
-                    item_type = None
-                if item_type is None:
                     raise ValueError(f"unsupported for iterable: {source_type}")
-                item_type_id = self.authority.type_id(item_type)
                 uint64_type_id = self.authority.type_id("UInt64")
                 bool_type_id = self.authority.type_id("Bool")
-                index_name = (
-                    f"__merlo_for_index_{operation.id.rsplit('_', 1)[-1][:12]}"
-                )
+                index_name = f"__merlo_for_index_{self.block_ordinal + 1}"
 
                 def synthetic(
                     op: str,
@@ -1216,15 +1200,14 @@ class _CFGBuilder:
                 )
                 assert index_value is not None
 
-                if source_type.startswith("Array["):
-                    length_text = generic_argument(source_type, 1)
-                    if length_text is None:
+                if collection_kind == "array":
+                    if source_shape is None or source_shape.fixed_length is None:
                         raise ValueError(f"array length is missing: {source_type}")
                     length_operation = synthetic(
                         "const",
                         "UInt64",
                         uint64_type_id,
-                        {"value": int(length_text)},
+                        {"value": source_shape.fixed_length},
                     )
                     length_value = self.instruction(
                         condition_block,
@@ -1252,8 +1235,13 @@ class _CFGBuilder:
                         type_id=uint64_type_id,
                     )
                 else:
+                    length_op = (
+                        "vec_len"
+                        if collection_kind == "vec"
+                        else "primitive_call"
+                    )
                     length_operation = synthetic(
-                        "vec_len" if source_type.startswith("Vec[") else "bytes_text_operation",
+                        length_op,
                         "UInt64",
                         uint64_type_id,
                         {
@@ -1261,7 +1249,7 @@ class _CFGBuilder:
                             "contract_symbol": f"{source_type}.len",
                             "operation_family": (
                                 "vec"
-                                if source_type.startswith("Vec[")
+                                if collection_kind == "vec"
                                 else "bytes_text"
                             ),
                             "receiver_ownership": "borrow",
@@ -1270,7 +1258,7 @@ class _CFGBuilder:
                     )
                     length_value = self.instruction(
                         condition_block,
-                        "vec_len" if source_type.startswith("Vec[") else "primitive_call",
+                        length_op,
                         length_operation,
                         operands=(source_value,),
                         type_id=uint64_type_id,
@@ -1296,7 +1284,7 @@ class _CFGBuilder:
                     condition_value,
                 )
 
-                if source_type in {"Bytes", "Text"}:
+                if collection_kind in {"bytes", "bytes_view", "text", "text_view"}:
                     item_operation = synthetic(
                         "bytes_text_operation",
                         "Byte",
@@ -1324,7 +1312,7 @@ class _CFGBuilder:
                         operands=(source_value, index_value),
                         type_id=item_type_id,
                     )
-                elif source_type.startswith("Vec["):
+                elif collection_kind == "vec":
                     item_operation = synthetic(
                         "vec_get",
                         item_type,
