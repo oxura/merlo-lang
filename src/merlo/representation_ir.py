@@ -24,6 +24,7 @@ from merlo.type_arena import (
 )
 from merlo.type_properties import TypePropertyResolver
 from merlo.borrow_summary import BorrowSummary
+from merlo.operation_footprint import validate_footprint_attributes
 
 
 REPRESENTATION_IR_SCHEMA_VERSION = 6
@@ -1456,6 +1457,10 @@ def _verify_representation_program(program: RepresentationProgram) -> None:
             dict(operation.attributes),
             arena,
             f"RIR operation {operation.id} attributes",
+        )
+        validate_footprint_attributes(
+            dict(operation.attributes),
+            label=f"RIR operation {operation.id}",
         )
         for child in operation.children:
             verify_operation(child)

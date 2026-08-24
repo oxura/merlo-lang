@@ -6991,7 +6991,9 @@ __MERLO_CAPS__
                         f"fn({parameter_text}) -> {signature.result_type}",
                         entry[2],
                         signature.effect,
-                        entry[4],
+                        signature.footprint.allocates
+                        if signature.footprint is not None
+                        else entry[4],
                         entry[5],
                         entry[6],
                         entry[7],
@@ -7009,7 +7011,9 @@ __MERLO_CAPS__
                         f"result={method_signature.result_ownership}"
                     ),
                     entry[3],
-                    method_signature.result_ownership == "owned",
+                    method_signature.footprint.allocates
+                    if method_signature.footprint is not None
+                    else method_signature.result_ownership == "owned",
                     method_signature.result_ownership == "owned"
                     or any(
                         item in {"Text", "TextView", "Bytes", "BytesView"}
@@ -7061,7 +7065,9 @@ __MERLO_CAPS__
                         f"result={intrinsic.result_ownership}"
                     ),
                     intrinsic.effect,
-                    intrinsic.result_ownership == "owned",
+                    intrinsic.footprint.allocates
+                    if intrinsic.footprint is not None
+                    else intrinsic.result_ownership == "owned",
                     linear,
                     intrinsic.result_type.startswith("Result["),
                     "O(n)" if linear else "O(1)",
@@ -7090,7 +7096,9 @@ __MERLO_CAPS__
                         f"result={contract.result_ownership}"
                     ),
                     "memory",
-                    "allocate" in contract.effects,
+                    contract.footprint.allocates
+                    if contract.footprint is not None
+                    else "allocate" in contract.effects,
                     "copy" in contract.effects,
                     "may_fail" in contract.effects,
                     "O(n)" if "copy" in contract.effects else "O(1)",

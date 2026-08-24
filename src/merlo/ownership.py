@@ -14,13 +14,19 @@ from merlo import native_syntax as ast
 from merlo.borrow_summary import BorrowSummary
 from merlo.collection_protocol import collection_shape
 from merlo.place import IndexClass, OverlapRelation, Place, PlaceRoot, PlaceStep, overlap_relation
-from merlo.intrinsics import BoundContractGraph, TypeConstructorId, intrinsic_signature
-from merlo.type_arena import TypeArenaError, TypeId, TypeRef
+from merlo.intrinsics import (
+    BoundContractGraph,
+    INSTANCE_METHOD_SIGNATURES,
+    TypeConstructorId,
+    intrinsic_signature,
+)
+from merlo.operation_footprint import operation_footprint
 from merlo.type_properties import (
     TypeAuthority,
     TypeProperties,
     TypePropertyResolver,
 )
+from merlo.type_arena import TypeArenaError, TypeId, TypeRef
 
 
 def _stable_id(prefix: str, *parts: Any) -> str:
@@ -36,8 +42,42 @@ def _stable_id(prefix: str, *parts: Any) -> str:
     return f"{prefix}_{hashlib.sha256(payload.encode()).hexdigest()}"
 
 
+def _method_mutates(receiver_type: str | None, method: str) -> bool:
+    if not receiver_type:
+        return False
+    signature = intrinsic_signature(f"{receiver_type}.{method}")
+    if signature is not None and getattr(signature, "receiver_ownership", None) in {
+        "borrow_mut",
+        "consuming",
+    }:
+        return True
+    receiver_constructor = receiver_type.split("[", 1)[0]
+    method_signature = next(
+        (
+            candidate
+            for (pattern, candidate_name), candidate in INSTANCE_METHOD_SIGNATURES.items()
+            if candidate_name == method
+            and pattern.split("[", 1)[0] == receiver_constructor
+        ),
+        None,
+    )
+    if method_signature is not None and method_signature.receiver_ownership in {
+        "borrow_mut",
+        "consuming",
+    }:
+        return True
+    footprint = operation_footprint(f"{receiver_type}.{method}")
+    if footprint is None:
+        return False
+    return bool(footprint.write_places or footprint.may_relocate)
+
+
 def _assigned_parameter_names(function: ast.FunctionDef) -> set[str]:
-    parameters = {item.arg for item in function.args.args}
+    parameters = {
+        item.arg: ast.unparse(item.annotation)
+        for item in function.args.args
+        if item.annotation is not None
+    }
     assigned: set[str] = set()
     for node in ast.walk(function):
         if isinstance(node, ast.Attribute) and isinstance(node.ctx, ast.Store):
@@ -50,10 +90,10 @@ def _assigned_parameter_names(function: ast.FunctionDef) -> set[str]:
             root = node.func.value
             while isinstance(root, ast.Attribute):
                 root = root.value
-            if isinstance(root, ast.Name) and root.id in parameters and node.func.attr in {
-                "push", "get_mut", "append_byte", "append_scalar", "append_text",
-                "append_uint64", "insert",
-            }:
+            if isinstance(root, ast.Name) and root.id in parameters and _method_mutates(
+                parameters[root.id],
+                node.func.attr,
+            ):
                 assigned.add(root.id)
     return assigned
 
@@ -1342,10 +1382,10 @@ class _OwnershipChecker:
                 self._error("MapOperationsRequireScalarValues", receiver_type)
             receiver_root = self._root_name(receiver)
             receiver_place = self._place_for_expr(receiver, state)
-            if receiver_root and method in {
-                "push", "get_mut", "insert", "increment",
-                "append_byte", "append_scalar", "append_text", "append_uint64",
-            }:
+            if receiver_root and _method_mutates(
+                self._render_type(receiver_type),
+                method,
+            ):
                 self._check_mutation(
                     receiver_root,
                     state,

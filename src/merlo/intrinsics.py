@@ -9,6 +9,16 @@ from dataclasses import dataclass, replace
 from types import MappingProxyType
 from typing import Mapping
 
+from merlo.operation_footprint import (
+    OPERATION_FOOTPRINT_CONTRACT,
+    OPERATION_FOOTPRINT_SCHEMA_VERSION,
+    OperationFootprint,
+    PlacePattern,
+    canonical_operation_symbol,
+    footprint_attributes,
+    operation_footprint,
+)
+
 from merlo.type_parser import (
     GenericTypeSyntaxError,
     TypeExpr,
@@ -111,6 +121,7 @@ class IntrinsicSignature:
     capability: str
     parameter_ownership: tuple[str, ...] = ()
     result_ownership: str = "value"
+    footprint: OperationFootprint | None = None
 
     def __post_init__(self) -> None:
         if not self.parameter_ownership:
@@ -119,6 +130,13 @@ class IntrinsicSignature:
             raise ValueError(f"ownership arity mismatch for {self.name}")
         if self.capability != self.effect:
             raise ValueError(f"capability/effect mismatch for {self.name}")
+        catalog_footprint = operation_footprint(self.name)
+        if self.footprint is None:
+            object.__setattr__(self, "footprint", catalog_footprint)
+        elif not isinstance(self.footprint, OperationFootprint):
+            raise ValueError(f"invalid operation footprint for {self.name}")
+        elif catalog_footprint is not None and self.footprint != catalog_footprint:
+            raise ValueError(f"operation footprint does not match catalog for {self.name}")
 
     @property
     def arity(self) -> int:
@@ -152,7 +170,7 @@ class InstanceMethodSignature:
     parameter_type_ids: tuple[TypeId, ...] = ()
     result_type_id: TypeId | None = None
     generic_variables: frozenset[str] = frozenset()
-
+    footprint: OperationFootprint | None = None
     def __post_init__(self) -> None:
         variables = frozenset(self.generic_variables)
         if any(not isinstance(item, str) or not item for item in variables):
@@ -222,6 +240,14 @@ class InstanceMethodSignature:
                 f"invalid bound parameter identities for "
                 f"{self.receiver_type}.{self.name}"
             )
+        symbol = f"{self.receiver_type}.{self.name}"
+        catalog_footprint = operation_footprint(symbol)
+        if self.footprint is None:
+            object.__setattr__(self, "footprint", catalog_footprint)
+        elif not isinstance(self.footprint, OperationFootprint):
+            raise ValueError(f"invalid operation footprint for {symbol}")
+        elif catalog_footprint is not None and self.footprint != catalog_footprint:
+            raise ValueError(f"operation footprint does not match catalog for {symbol}")
         if self.result_type_id is not None and not isinstance(
             self.result_type_id, TypeId
         ):
@@ -1489,6 +1515,10 @@ __all__ = [
     "INSTANCE_METHOD_SIGNATURES",
     "InstanceMethodSignature",
     "IntrinsicSignature",
+    "OPERATION_FOOTPRINT_CONTRACT",
+    "OPERATION_FOOTPRINT_SCHEMA_VERSION",
+    "OperationFootprint",
+    "PlacePattern",
     "TypeScheme",
     "TypeConstructorId",
     "TypeSchemeApplied",
@@ -1497,7 +1527,10 @@ __all__ = [
     "TypeSchemeNode",
     "TypeSchemeVar",
     "TypeVarId",
+    "canonical_operation_symbol",
     "contextual_result_type",
+    "footprint_attributes",
     "format_intrinsic_arity",
     "intrinsic_signature",
+    "operation_footprint",
 ]

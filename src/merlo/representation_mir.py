@@ -37,10 +37,13 @@ from merlo.type_arena import (
     FrozenTypeArena,
     TypeArena,
     TypeArenaError,
-    TypeContext,
     TypeId,
+    TypeContext,
 )
-
+from merlo.operation_footprint import (
+    operation_footprint,
+    validate_footprint_attributes,
+)
 
 
 class MIRVerificationError(ValueError):
@@ -69,6 +72,14 @@ def _json_payload(value: object) -> Any:
         }
     return value
 
+
+def _canonical_footprint_attributes(symbol: str) -> dict[str, Any]:
+    footprint = operation_footprint(symbol)
+    return {} if footprint is None else {"operation_footprint": footprint.to_dict()}
+
+
+def _verify_operation_footprint(attributes: dict[str, Any], label: str) -> None:
+    validate_footprint_attributes(attributes, label=label)
 
 def _type_id_from_dict(value: object, label: str) -> TypeId:
     try:
@@ -1414,6 +1425,10 @@ class _CFGBuilder:
                             "operation_family": "map",
                             "receiver_ownership": "borrow",
                             "result_ownership": "value",
+                            "contract_symbol": f"{source_type}.entries",
+                            **_canonical_footprint_attributes(
+                                f"{source_type}.entries"
+                            ),
                         },
                     )
                     length_value = self.instruction(
@@ -1443,6 +1458,9 @@ class _CFGBuilder:
                             ),
                             "receiver_ownership": "borrow",
                             "result_ownership": "value",
+                            **_canonical_footprint_attributes(
+                                f"{source_type}.len"
+                            ),
                         },
                     )
                     length_value = self.instruction(
@@ -1512,6 +1530,7 @@ class _CFGBuilder:
                             "operation_family": "vec",
                             "receiver_ownership": "borrow",
                             "result_ownership": "borrow",
+                            **_canonical_footprint_attributes(f"{source_type}.get"),
                         },
                     )
                     self.instruction(
@@ -1539,6 +1558,10 @@ class _CFGBuilder:
                             "operation_family": "map",
                             "receiver_ownership": "borrow",
                             "result_ownership": "value",
+                            "contract_symbol": f"{source_type}.entries",
+                            **_canonical_footprint_attributes(
+                                f"{source_type}.entries"
+                            ),
                         },
                     )
                     item_value = self.instruction(
@@ -2174,6 +2197,10 @@ def _verify_general_mir(
                             f"MIR instruction {instruction.id} place TypeId mismatch"
                         )
                 attributes = dict(instruction.attributes)
+                _verify_operation_footprint(
+                    attributes,
+                    f"MIR instruction {instruction.id}",
+                )
                 verify_attributes(
                     attributes,
                     f"MIR instruction {instruction.id} attributes",

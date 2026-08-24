@@ -45,6 +45,10 @@ from merlo.intrinsics import (
     intrinsic_signature,
 )
 from merlo.type_properties import TypePropertyResolver
+from merlo.operation_footprint import (
+    footprint_attributes,
+    operation_footprint,
+)
 from merlo.borrow_summary import (
     BorrowSummary,
     compute_borrow_summaries,
@@ -2369,6 +2373,9 @@ class _HIRBuilder:
         ownership = "value"
         kind = "DirectCall"
         symbol_id = None
+        signature = None
+        method_signature = None
+        static_signature = None
         call_attributes: dict[str, Any] = {"callee": name}
         operation_children = arguments
         if isinstance(node.func, ast.Name):
@@ -2981,6 +2988,18 @@ class _HIRBuilder:
                 if ownership == "owned" or self._owner(type_name)
                 else "contained_borrow"
             )
+        footprint_symbol = None
+        if method_signature is not None:
+            footprint_symbol = f"{method_signature.receiver_type}.{method}"
+        elif static_signature is not None:
+            footprint_symbol = f"{static_signature.receiver_type}.{method}"
+        elif signature is not None:
+            footprint_symbol = signature.name
+        if footprint_symbol is not None:
+            footprint = operation_footprint(footprint_symbol)
+            if footprint is not None:
+                call_attributes.update(footprint_attributes(footprint))
+                call_attributes.setdefault("contract_symbol", footprint_symbol)
         return self._new_node(
             node,
             kind,
