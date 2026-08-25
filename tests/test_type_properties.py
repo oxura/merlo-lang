@@ -237,3 +237,82 @@ def test_map_entry_is_a_borrowed_view_not_an_implicit_copy() -> None:
     assert tuple(context.render(item) for item in properties.borrow_types) == (
         "MapEntry[Text,Text]",
     )
+
+
+def test_transfer_properties_cover_views_resources_and_synchronized_sharing() -> None:
+    names = (
+        "Text",
+        "TextView",
+        "Vec[Text]",
+        "Vec[TextView]",
+        "MapEntry[Text,Text]",
+        "FileReader",
+        "RawPointer[UInt8]",
+        "Shared[Text]",
+        "Future[UInt64]",
+        "UInt8",
+        "UInt64",
+    )
+    builder, context = _frozen(names)
+    resolver = TypePropertyResolver(context)
+
+    text = resolver.resolve(builder.type_id("Text"))
+    assert text.can_transfer()
+    assert text.is_shareable
+    assert text.is_thread_safe
+    assert text.is_device_transferable
+
+    view = resolver.resolve(builder.type_id("TextView"))
+    assert not view.can_transfer()
+    assert view.can_transfer(owner_proof=True)
+    assert view.requires_owner_proof
+    assert not view.is_shareable
+    assert not view.is_thread_safe
+
+    vec_view = resolver.resolve(builder.type_id("Vec[TextView]"))
+    assert not vec_view.can_transfer()
+    assert vec_view.contains_borrow
+    assert vec_view.requires_owner_proof
+
+    entry = resolver.resolve(builder.type_id("MapEntry[Text,Text]"))
+    assert not entry.can_transfer()
+    assert entry.is_copy
+
+    reader = resolver.resolve(builder.type_id("FileReader"))
+    assert not reader.can_transfer()
+    assert reader.is_resource
+    assert reader.is_pinned
+
+    shared = resolver.resolve(builder.type_id("Shared[Text]"))
+    assert shared.can_transfer()
+    assert shared.is_mutable_shareable
+    assert shared.is_thread_safe
+    assert shared.is_pinned
+
+    future = resolver.resolve(builder.type_id("Future[UInt64]"))
+    assert not future.can_transfer()
+    assert future.is_resource
+    assert future.is_pinned
+
+    pointer = resolver.resolve(builder.type_id("RawPointer[UInt8]"))
+    assert not pointer.can_transfer()
+    assert pointer.is_pinned
+
+
+def test_resource_transfer_policy_is_explicit_and_structural() -> None:
+    builder, context = _frozen(("FileReader", "Vec[FileReader]"))
+    resolver = TypePropertyResolver(
+        context,
+        resource_transfer_policy={"FileReader": True},
+    )
+
+    reader = resolver.resolve(builder.type_id("FileReader"))
+    vector = resolver.resolve(builder.type_id("Vec[FileReader]"))
+    assert reader.can_transfer()
+    assert reader.is_resource_transferable
+    assert vector.can_transfer()
+    assert vector.is_resource_transferable
+    assert resolver.resource_transfer_policy == ("FileReader",)
+
+    with pytest.raises(TypeArenaError, match="invalid resource transfer policy"):
+        TypePropertyResolver(context, resource_transfer_policy={"FileReader": 1})

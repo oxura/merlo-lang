@@ -105,8 +105,8 @@ with target revisions, world binding, immutable metadata, canonical edit
 identities, and a digest. Unsupported operations use the same envelope and
 cannot be applied.
 The old ad hoc `TaskCapsule` mapping is removed. `context.compile` now returns
-the digest-bound `merlo.semantic-capsule.v1` contract with target-scoped
-verification evidence.
+the digest-bound `merlo.semantic-capsule.v2` contract with target-scoped
+verification evidence and canonical transfer properties for dependent types.
 Change-bound impact analysis is serialized as `merlo.semantic-impact.v1`.
 Consumers should call `impact.change` with the full ChangeIR envelope instead
 of inferring affected symbols from edited paths.

@@ -49,7 +49,7 @@ VERSIONS = CompilerVersions(
     property_evidence=1,
     verification_metrics=1,
     change_ir=1,
-    semantic_capsule=1,
+    semantic_capsule=2,
     semantic_impact=1,
     patch_evidence=1,
     preservation=1,
@@ -59,7 +59,7 @@ VERSIONS = CompilerVersions(
     parallel_ir=1,
     wasm_backend=1,
     runtime_abi=2,
-    semantic_world=19,
+    semantic_world=20,
     manifest=1,
     lockfile=1,
 )

@@ -6,7 +6,7 @@ import os
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping, TYPE_CHECKING
+from typing import Any, Iterable, Mapping, TYPE_CHECKING
 
 from merlo.semantic_capsule import (
     SemanticCapsule,
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     )
 
 WORLD_SCHEMA_VERSION = VERSIONS.semantic_world
-WORLD_CONTRACT = "merlo.semantic-world.v19"
+WORLD_CONTRACT = "merlo.semantic-world.v20"
 
 
 class WorldError(ValueError):
@@ -179,6 +179,7 @@ class SemanticWorld:
         lockfile: str | Path | None = None,
         previous: "SemanticWorld | None" = None,
         require_interface_lock: bool = False,
+        resource_transfer_policy: Mapping[str, bool] | Iterable[str] | None = None,
     ) -> "SemanticWorld":
         from merlo.compiler import ProjectCompilation, compile_project
 
@@ -198,7 +199,10 @@ class SemanticWorld:
             (str(Path(item.source.path).resolve()), item.source.line): item
             for item in compilation.hir.types
         }
-        type_properties = TypePropertyResolver(compilation.hir.type_context)
+        type_properties = TypePropertyResolver(
+            compilation.hir.type_context,
+            resource_transfer_policy=resource_transfer_policy,
+        )
         task_by_location = {
             (str(Path(item.path).resolve()), item.line): item
             for item in compilation.elaborated.tasks
@@ -267,6 +271,12 @@ class SemanticWorld:
                         type_name: type_properties.resolve(
                             compilation.hir.type_context.type_id(type_name)
                         ).to_dict(compilation.hir.type_context)
+                        for type_name in symbol_types
+                    },
+                    "transfer_properties": {
+                        type_name: type_properties.resolve(
+                            compilation.hir.type_context.type_id(type_name)
+                        ).transfer_to_dict()
                         for type_name in symbol_types
                     },
                     "effects": list(effects),
@@ -531,6 +541,13 @@ class SemanticWorld:
                 ).to_dict(compilation.hir.type_context)
                 for type_name in world_type_names
             },
+            "transfer_properties": {
+                type_name: type_properties.resolve(
+                    compilation.hir.type_context.type_id(type_name)
+                ).transfer_to_dict()
+                for type_name in world_type_names
+            },
+            "resource_transfer_policy": list(type_properties.resource_transfer_policy),
             "data_dependencies": sorted(data_dependencies, key=lambda item: (item["owner_id"], item["target_id"])),
             "module_dependencies": [{"module": item["name"], "imports": item["imports"]} for item in sorted(modules, key=lambda item: item["name"])],
             "effects": sorted({effect for item in symbols for effect in item["effects"]}),
@@ -640,7 +657,15 @@ class SemanticWorld:
 
     def inspect(self, target: str) -> dict[str, Any]:
         symbol = self.resolve(target)
-        return {"symbol": symbol, "references": list(self.references(symbol["symbol_id"])), "callers": list(self.callers(symbol["symbol_id"])), "callees": list(self.callees(symbol["symbol_id"])), "dependencies": list(self.dependencies(symbol["symbol_id"]))}
+        return {
+            "symbol": symbol,
+            "type_properties": dict(symbol.get("type_properties", {})),
+            "transfer_properties": dict(symbol.get("transfer_properties", {})),
+            "references": list(self.references(symbol["symbol_id"])),
+            "callers": list(self.callers(symbol["symbol_id"])),
+            "callees": list(self.callees(symbol["symbol_id"])),
+            "dependencies": list(self.dependencies(symbol["symbol_id"])),
+        }
 
     def references(self, target: str) -> tuple[dict[str, Any], ...]:
         identifier = self.resolve(target)["symbol_id"] if target not in self._symbols else target

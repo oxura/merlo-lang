@@ -119,12 +119,23 @@ def test_protocol_operations_and_minimal_capsule(tmp_path: Path) -> None:
         result = protocol.call(operation, params)
         assert result is not None
     capsule = protocol.call("context.compile", {"target": "app.main.main", "goal": "inspect"})
-    assert capsule["schema_version"] == 1
-    assert capsule["contract"] == "merlo.semantic-capsule.v1"
+    assert capsule["schema_version"] == 2
+    assert capsule["contract"] == "merlo.semantic-capsule.v2"
     assert capsule["digest"]
     assert capsule["world_digest"]
     assert capsule["target"]["revision_id"]
-    assert "verification" in capsule
+    assert "transfer_properties" in capsule
+    assert capsule["transfer_properties"]
+    assert set(next(iter(capsule["transfer_properties"].values()))) == {
+        "is_transferable",
+        "is_shareable",
+        "is_mutable_shareable",
+        "is_resource_transferable",
+        "is_thread_safe",
+        "is_device_transferable",
+        "is_pinned",
+        "requires_owner_proof",
+    }
 
 
 def test_world_uses_custom_lockfile_provenance(tmp_path: Path) -> None:

@@ -10,8 +10,8 @@ from typing import Any, Mapping, TYPE_CHECKING
 if TYPE_CHECKING:
     from merlo.semantic_world import SemanticWorld
 
-SEMANTIC_CAPSULE_SCHEMA_VERSION = 1
-SEMANTIC_CAPSULE_CONTRACT = "merlo.semantic-capsule.v1"
+SEMANTIC_CAPSULE_SCHEMA_VERSION = 2
+SEMANTIC_CAPSULE_CONTRACT = "merlo.semantic-capsule.v2"
 
 
 def _freeze(value: Any) -> Any:
@@ -124,7 +124,7 @@ class SemanticTarget:
 
 _CAPSULE_FIELDS = {
     "schema_version", "contract", "digest", "world_digest", "target_revision_id", "goal", "target", "source", "signature",
-    "dependent_types", "callers", "callees", "dependencies", "effects", "capabilities", "ownership", "resources",
+    "dependent_types", "transfer_properties", "callers", "callees", "dependencies", "effects", "capabilities", "ownership", "resources",
     "requirements", "ensures", "invariants", "holes", "obligations", "tests", "verification",
 }
 
@@ -150,6 +150,33 @@ def _sorted_strings(
             f"{field.title()}NotCanonical"
         )
     return items
+_TRANSFER_PROPERTY_FIELDS = frozenset(
+    {
+        "is_transferable",
+        "is_shareable",
+        "is_mutable_shareable",
+        "is_resource_transferable",
+        "is_thread_safe",
+        "is_device_transferable",
+        "is_pinned",
+        "requires_owner_proof",
+    }
+)
+
+
+def _transfer_properties(value: Any) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ValueError("InvalidSemanticCapsule:transfer_properties")
+    for type_name, properties in value.items():
+        if not isinstance(type_name, str) or not type_name:
+            raise ValueError("InvalidSemanticCapsule:transfer_properties")
+        if (
+            not isinstance(properties, Mapping)
+            or set(properties) != _TRANSFER_PROPERTY_FIELDS
+            or any(type(item) is not bool for item in properties.values())
+        ):
+            raise ValueError("InvalidSemanticCapsule:transfer_properties")
+    return _freeze(value)
 
 
 def _filtered_report(report: Any, obligation_ids: frozenset[str]) -> dict[str, Any]:
@@ -182,6 +209,9 @@ class SemanticCapsule:
     source: str
     signature: str
     dependent_types: tuple[str, ...] = ()
+    transfer_properties: Mapping[str, Mapping[str, bool]] = dataclass_field(
+        default_factory=lambda: MappingProxyType({})
+    )
     callers: tuple[str, ...] = ()
     callees: tuple[str, ...] = ()
     dependencies: tuple[str, ...] = ()
@@ -222,6 +252,11 @@ class SemanticCapsule:
             raise ValueError("InvalidSemanticCapsuleText")
         for field in ("dependent_types", "callers", "callees", "dependencies", "effects", "capabilities", "ownership", "resources", "requirements", "ensures", "invariants", "tests"):
             object.__setattr__(self, field, _sorted_strings(getattr(self, field), field))
+        object.__setattr__(
+            self,
+            "transfer_properties",
+            _transfer_properties(self.transfer_properties),
+        )
         for field in ("holes", "obligations"):
             values = getattr(self, field)
             if not isinstance(values, (list, tuple)) or any(
@@ -261,6 +296,7 @@ class SemanticCapsule:
             "world_digest": self.world_digest, "target_revision_id": self.target_revision_id,
             "goal": self.goal, "target": self.target.to_dict(), "source": self.source,
             "signature": self.signature, "dependent_types": list(self.dependent_types),
+            "transfer_properties": _thaw(self.transfer_properties),
             "callers": list(self.callers), "callees": list(self.callees), "dependencies": list(self.dependencies),
             "effects": list(self.effects), "capabilities": list(self.capabilities), "ownership": list(self.ownership),
             "resources": list(self.resources), "requirements": list(self.requirements), "ensures": list(self.ensures),
@@ -296,7 +332,8 @@ class SemanticCapsule:
         target = SemanticTarget.from_dict(value["target"])
         return cls(
             world_digest=value["world_digest"], target_revision_id=value["target_revision_id"], goal=value["goal"], target=target,
-            source=value["source"], signature=value["signature"], dependent_types=tuple(value["dependent_types"]), callers=tuple(value["callers"]),
+            source=value["source"], signature=value["signature"], dependent_types=tuple(value["dependent_types"]),
+            transfer_properties=value["transfer_properties"], callers=tuple(value["callers"]),
             callees=tuple(value["callees"]), dependencies=tuple(value["dependencies"]), effects=tuple(value["effects"]), capabilities=tuple(value["capabilities"]),
             ownership=tuple(value["ownership"]), resources=tuple(value["resources"]), requirements=tuple(value["requirements"]), ensures=tuple(value["ensures"]),
             invariants=tuple(value["invariants"]), holes=tuple(value["holes"]), obligations=tuple(value["obligations"]), tests=tuple(value["tests"]),
@@ -328,7 +365,9 @@ def extract_semantic_capsule(world: "SemanticWorld", target: str, *, goal: str =
     tests = tuple(item["path"] for item in impact["tests"]) if symbol["exported"] else ()
     return SemanticCapsule(
         world_digest=world.digest, target_revision_id=symbol["revision_id"], goal=goal, target=target_data, source=world.source(symbol["symbol_id"]), signature=symbol["signature"],
-        dependent_types=tuple(symbol.get("types", ())), callers=tuple(item["symbol_id"] for item in impact["callers"]), callees=tuple(item["symbol_id"] for item in impact["callees"]), dependencies=tuple(item["symbol_id"] for item in impact["dependencies"]),
+        dependent_types=tuple(symbol.get("types", ())),
+        transfer_properties=symbol.get("transfer_properties", {}),
+        callers=tuple(item["symbol_id"] for item in impact["callers"]), callees=tuple(item["symbol_id"] for item in impact["callees"]), dependencies=tuple(item["symbol_id"] for item in impact["dependencies"]),
         effects=tuple(symbol.get("effects", ())), capabilities=tuple(symbol.get("capabilities", ())), ownership=tuple(symbol.get("ownership", ())), resources=tuple(symbol.get("resources", ())),
         requirements=tuple(symbol.get("requirements", ())), ensures=tuple(symbol.get("ensures", ())), invariants=tuple(symbol.get("invariants", ())), holes=tuple(symbol.get("holes", ())), obligations=obligations, tests=tests, verification=verification,
     )

@@ -97,7 +97,7 @@ def test_capsule_rejects_tamper_and_schema_drift(tmp_path: Path) -> None:
         SemanticCapsule.from_dict(payload)
 
     payload = json.loads(capsule.to_json())
-    payload["schema_version"] = 2
+    payload["schema_version"] = 1
     with pytest.raises(
         ValueError,
         match="SemanticCapsuleSchemaVersionMismatch",

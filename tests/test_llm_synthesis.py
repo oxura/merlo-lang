@@ -58,8 +58,9 @@ def test_opt_in_payload_is_minimized_and_output_is_deterministic(tmp_path: Path)
     assert set(payload) == {"schema_version", "contract", "request", "capsule"}
     assert set(payload["capsule"]) == {
         "schema_version", "contract", "digest", "world_digest", "target_revision_id",
-        "goal", "target", "signature", "dependent_types", "effects", "capabilities",
-        "ownership", "resources", "requirements", "ensures", "invariants", "hole",
+        "goal", "target", "signature", "dependent_types", "transfer_properties",
+        "effects", "capabilities", "ownership", "resources", "requirements",
+        "ensures", "invariants", "hole",
     }
     assert "source" not in payload["capsule"]
     assert "verification" not in payload["capsule"]

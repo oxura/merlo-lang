@@ -4,8 +4,14 @@
 
 - Continues the `0.1.0-alpha.3-dev` compatibility line with language contract
   `0.3`, frontend `8`, canonical `6`, HIR `12`, Obligation IR `1`, RIR `6`,
-  MIR `3`, runtime ABI `2`, and SemanticWorld `19`. Earlier lockfiles must be
+  MIR `3`, runtime ABI `2`, and SemanticWorld `20`. Earlier lockfiles must be
   regenerated with the current compiler; see the migration guide.
+- SemanticWorld v20 and SemanticCapsule v2 expose canonical structural transfer
+  properties alongside legacy ownership/resource diagnostics. Each resolved
+  type records transferability, immutable and synchronized sharing, resource
+  transfer eligibility, thread/device safety, pinning, and owner-proof
+  requirements; the normalized resource-transfer policy is persisted with the
+  world and `context.compile` carries the same bounded projection.
   `merlo.structured-typed-hir.v11` artifacts, RIR v5 artifacts, and MIR v2
   artifacts are rejected by the current readers. The supported regeneration
   operation is

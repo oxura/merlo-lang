@@ -58,6 +58,40 @@ def _bounded_strings(values: Any, code: str) -> list[str]:
     for value in values:
         result.append(_bounded_text(value, code, limit=LLM_MAX_TEXT_LENGTH))
     return list(result)
+_TRANSFER_PROPERTY_FIELDS = frozenset(
+    {
+        "is_transferable",
+        "is_shareable",
+        "is_mutable_shareable",
+        "is_resource_transferable",
+        "is_thread_safe",
+        "is_device_transferable",
+        "is_pinned",
+        "requires_owner_proof",
+    }
+)
+
+
+def _bounded_transfer_properties(value: Any) -> dict[str, dict[str, bool]]:
+    if not isinstance(value, Mapping) or len(value) > LLM_MAX_ITEMS:
+        raise WorldError("LLMInvalidCapsuleContext")
+    result: dict[str, dict[str, bool]] = {}
+    for type_name, properties in value.items():
+        if (
+            type(type_name) is not str
+            or not type_name
+            or not isinstance(properties, Mapping)
+            or set(properties) != _TRANSFER_PROPERTY_FIELDS
+            or any(type(item) is not bool for item in properties.values())
+        ):
+            raise WorldError("LLMInvalidCapsuleContext")
+        result[type_name] = {
+            name: properties[name]
+            for name in sorted(_TRANSFER_PROPERTY_FIELDS)
+        }
+    return result
+
+
 
 
 def _bounded_hole(hole: Mapping[str, Any]) -> dict[str, Any]:
@@ -143,6 +177,7 @@ def _bounded_capsule(capsule: Any, hole_id: str) -> tuple[dict[str, Any], str]:
         "dependent_types": _bounded_strings(capsule.dependent_types, "LLMInvalidCapsuleContext"),
         "effects": _bounded_strings(capsule.effects, "LLMInvalidCapsuleContext"),
         "capabilities": _bounded_strings(capsule.capabilities, "LLMInvalidCapsuleContext"),
+        "transfer_properties": _bounded_transfer_properties(capsule.transfer_properties),
         "ownership": _bounded_strings(capsule.ownership, "LLMInvalidCapsuleContext"),
         "resources": _bounded_strings(capsule.resources, "LLMInvalidCapsuleContext"),
         "requirements": _bounded_strings(capsule.requirements, "LLMInvalidCapsuleContext"),

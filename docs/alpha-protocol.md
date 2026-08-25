@@ -4,10 +4,14 @@
 Production operations include inspection, references, callers/callees,
 dependencies, impact, compile context, and diagnostic explanations.
 
-`context.compile` returns a canonical `merlo.semantic-capsule.v1` bound to the
+`context.compile` returns a canonical `merlo.semantic-capsule.v2` bound to the
 world and target revision. It contains only the target's source, dependencies,
-authority, contracts, holes, obligations, public tests, and filtered
-verification/property evidence; unrelated global evidence is excluded.
+authority, contracts, holes, obligations, public tests, filtered
+verification/property evidence, and the resolved transfer properties for every
+dependent type. Transferability, sharing, resource transfer, thread/device
+safety, pinning, and owner-proof requirements are explicit boolean fields. The
+world also records the normalized resource-transfer policy used to derive those
+facts; unrelated global evidence is excluded.
 `impact.change` accepts a canonical ChangeIR and returns a
 `merlo.semantic-impact.v1` report. The report partitions directly edited and
 transitively affected symbols and records callers, references, dependencies,
