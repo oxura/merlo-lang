@@ -1,0 +1,12 @@
+include CHANGELOG.md CITATION.cff CODE_OF_CONDUCT.md CONTRIBUTING.md ROADMAP.md SECURITY.md
+recursive-include .github *.py *.yml *.yaml *.md *.json CODEOWNERS
+recursive-include docs *.md *.json
+recursive-include editors *.json *.md
+recursive-include examples *.mlo *.toml *.lock *.json *.txt *.csv *.ndjson *.jsonl *.log *.c *.h *.md
+recursive-include rfcs *.md
+recursive-include spec *.md
+recursive-include stdlib *.mlo *.md
+recursive-include selfhost *.mlo *.toml *.lock
+recursive-include research *.py *.mlo *.meldra *.md *.json *.txt *.csv *.ndjson *.jsonl *.toml *.lock *.c *.h *.rs
+recursive-include tools *.py *.mlo *.meldra *.md *.json *.txt *.csv *.ndjson *.jsonl *.toml *.lock *.c *.h *.rs
+global-exclude *.py[cod] .env .env.* */.merlo/* */__pycache__/* */compile-cache/* */bin/* */obj/* */target/* */publish/*

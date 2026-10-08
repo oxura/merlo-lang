@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Makes ordinary source distributions self-contained: build/release tools,
+  specifications, documentation, examples, governance assets, and self-hosting
+  sources are included without leaking them into the production wheel.
+- Routes PEP 517 source builds through the existing release archive normalizer,
+  so repeated builds with the same toolchain and `SOURCE_DATE_EPOCH` produce
+  byte-identical source archives without modifying payload bytes.
+- Extends packaging CI and alpha-release smoke checks to rebuild the wheel from
+  an extracted source archive, require its hash to match the checkout-built
+  wheel, and install/run that rebuilt wheel outside the checkout.
+
 - Continues the `0.1.0-alpha.3-dev` compatibility line with language contract
   `0.3`, frontend `8`, canonical `6`, HIR `12`, Obligation IR `1`, RIR `6`,
   MIR `3`, runtime ABI `2`, and SemanticWorld `19`. Earlier lockfiles must be

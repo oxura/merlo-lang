@@ -43,7 +43,7 @@ jobs:
       - name: Production tests
         run: python -m pytest tests/ -q
       - name: Production pyflakes
-        run: python -m pyflakes src/merlo tests tools/benchmarks/merlo tools/release/merlo
+        run: python -m pyflakes src/merlo tests tools/benchmarks/merlo tools/release
 
   tooling:
     name: Python 3.14 tooling tests
@@ -82,8 +82,10 @@ jobs:
         run: python -m pytest research/archive/alpha1/tests/ -q
 
   package-smoke:
-    name: Wheel install and project smoke
+    name: Reproducible source and wheel install smoke
     runs-on: ubuntu-latest
+    env:
+      SOURCE_DATE_EPOCH: "0"
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -92,11 +94,43 @@ jobs:
         with:
           python-version: "3.14"
           cache: pip
-      - name: Build wheel
+      - name: Build reproducible source and wheel distributions
         run: |
           set -euo pipefail
-          python -m pip install build
-          (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --wheel --outdir "$GITHUB_WORKSPACE/dist")
+          python -m pip install build 'setuptools>=77.0.3' wheel
+          (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --no-isolation --outdir "$GITHUB_WORKSPACE/dist")
+          (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --no-isolation --outdir "$RUNNER_TEMP/merlo-dist-repeat")
+          diff -r dist "$RUNNER_TEMP/merlo-dist-repeat"
+      - name: Rebuild wheel from the extracted source distribution
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          import tarfile
+
+          smoke = Path(os.environ["RUNNER_TEMP"]) / "merlo-source-smoke"
+          source = smoke / "source"
+          source.mkdir(parents=True)
+          with tarfile.open(next(Path("dist").glob("*.tar.gz"))) as archive:
+              archive.extractall(source, filter="data")
+          roots = list(source.iterdir())
+          if len(roots) != 1 or not roots[0].is_dir():
+              raise SystemExit("source distribution must contain one project root")
+          root = roots[0]
+          subprocess.run(
+              [sys.executable, "-m", "build", "--wheel", "--no-isolation", "--outdir", str(smoke / "wheel")],
+              cwd=root, check=True,
+          )
+          original = next(Path("dist").glob("*.whl"))
+          rebuilt = next((smoke / "wheel").glob("*.whl"))
+          if hashlib.sha256(original.read_bytes()).digest() != hashlib.sha256(rebuilt.read_bytes()).digest():
+              raise SystemExit("source distribution rebuilt a different wheel")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as output:
+              output.write(f"MERLO_SOURCE_ROOT={root}\n")
+          PY
       - name: Verify wheel product boundary
         run: |
           python - <<'PY'
@@ -117,15 +151,16 @@ jobs:
           rm -rf "$smoke_root"
           mkdir -p "$smoke_root"
           python -m venv "$smoke_root/venv"
-          "$smoke_root/venv/bin/python" -m pip install dist/*.whl
+          "$smoke_root/venv/bin/python" -m pip install --no-deps "$RUNNER_TEMP"/merlo-source-smoke/wheel/*.whl
+          cd "$smoke_root"
           "$smoke_root/venv/bin/merlo" --help
           "$smoke_root/venv/bin/merlo" new --json "$smoke_root/project"
           "$smoke_root/venv/bin/merlo" check --json "$smoke_root/project"
           "$smoke_root/venv/bin/merlo" build --json "$smoke_root/project"
           "$smoke_root/venv/bin/merlo" run --json "$smoke_root/project"
-          "$smoke_root/venv/bin/merlo" check --json "$GITHUB_WORKSPACE/examples/capacity-ledger"
-          "$smoke_root/venv/bin/merlo" build --json "$GITHUB_WORKSPACE/examples/capacity-ledger"
-          "$smoke_root/venv/bin/merlo" run --json "$GITHUB_WORKSPACE/examples/capacity-ledger" "$GITHUB_WORKSPACE/examples/capacity-ledger/input.txt"
+          "$smoke_root/venv/bin/merlo" check --json "$MERLO_SOURCE_ROOT/examples/capacity-ledger"
+          "$smoke_root/venv/bin/merlo" build --json "$MERLO_SOURCE_ROOT/examples/capacity-ledger"
+          "$smoke_root/venv/bin/merlo" run --json "$MERLO_SOURCE_ROOT/examples/capacity-ledger" "$MERLO_SOURCE_ROOT/examples/capacity-ledger/input.txt"
 
 
   native-examples:
