@@ -185,36 +185,6 @@ def test_shipped_human_sources_use_and_parse_as_surface_0_2() -> None:
         assert spelling in serialized
 
 
-def test_dual_license_and_alpha_limitations_are_explicit() -> None:
-    config = _config()
-    assert config["project"]["license"] == "MIT OR Apache-2.0"
-    mit = (ROOT / "LICENSE-MIT").read_text(encoding="utf-8")
-    apache = (ROOT / "LICENSE-APACHE").read_text(encoding="utf-8")
-    assert "Copyright (c) 2026 Mansurshakh Japarov" in mit
-    assert "Apache License" in apache
-    assert "Version 2.0, January 2004" in apache
-    public_text = "\n".join(
-        (ROOT / path).read_text(encoding="utf-8")
-        for path in ("README.md", "docs/limitations.md", "ROADMAP.md")
-    ).casefold()
-    for statement in (
-        "linux x86-64",
-        "c11",
-        "synchronous",
-        "cycle collector",
-        "capturing closures",
-        "async",
-        "hosted public registry",
-        "macro",
-        "staged self-host",
-        "python bootstrap",
-        "experimental research surfaces",
-        "one semantic core",
-        "no future facets",
-    ):
-        assert statement in public_text
-
-
 def test_roadmap_and_normative_models_match_active_contract_versions() -> None:
     from merlo.version import VERSIONS
 

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Replaces the staged self-host experiment's unsound regex-normalized
+  "semantic" digest with exact C-source byte convergence. Reports stage 2/3
+  executable-byte convergence separately and labels the compiler scope as a
+  subset. Regression checks reject literal and preprocessing changes; every
+  stage compiles/runs a consumer with literal/comment-like text and an empty
+  compiler PATH. Resource-limit checks now observe actual child-process limits.
+
 - Shares one bounded token scanner between the lossless file lexer and
   standalone expression lexer. Full-file error recovery no longer copies and
   re-lexes suffixes or already-tokenized valid prefixes; token values, spans,

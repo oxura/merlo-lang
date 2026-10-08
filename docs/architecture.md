@@ -145,6 +145,14 @@ determinism, CLI projects, LSP behavior, packaging, and release assembly.
 Larger corpora, sanitizer runs, and performance reports are evidence only when
 their source, fixture, toolchain, and protocol locks match.
 
+The staged self-host experiment requires exact C-source equality across stages
+1–3, records executable-byte equality between the two recompilations (stages
+2/3), and exercises generated consumer programs. Its report uses
+`compiler_scope: selfhost_subset` and names both byte comparisons explicitly.
+There is no regex-stripped "semantic" hash: changing whitespace or comment-like
+text inside a literal, or changing preprocessing boundaries, cannot pass as
+convergence. These observations are not full production compiler semantic parity.
+
 ## Deliberate constraints
 
 The alpha has one supported native target. Production I/O remains synchronous,

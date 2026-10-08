@@ -40,7 +40,6 @@ class SelfHostStage:
     compiler_digest: str
     source_digest: str
     artifact_digest: str
-    semantic_digest: str
     command: tuple[str, ...] = ()
     c_source_digest: str = ""
     c_source_path: str = ""
@@ -52,7 +51,6 @@ class SelfHostStage:
             "compiler_digest": self.compiler_digest,
             "source_digest": self.source_digest,
             "artifact_digest": self.artifact_digest,
-            "semantic_digest": self.semantic_digest,
             "command": list(self.command),
             "c_source_digest": self.c_source_digest,
             "c_source_path": self.c_source_path,
@@ -70,8 +68,8 @@ class SelfHostReport:
     parsed_sources: tuple[str, ...]
     blockers: tuple[SelfHostBlocker, ...]
     stages: tuple[SelfHostStage, ...] = ()
-    semantic_convergence: str = "UNAVAILABLE"
-    byte_convergence: str = "UNAVAILABLE"
+    c_source_convergence: str = "UNAVAILABLE"
+    executable_convergence: str = "UNAVAILABLE"
     canonical_bundle: str = ""
     artifact_root: str = ""
 
@@ -88,7 +86,11 @@ class SelfHostReport:
             "stages": [item.to_dict() for item in self.stages],
             "canonical_bundle": self.canonical_bundle,
             "artifact_root": self.artifact_root,
-            "convergence": {"semantic": self.semantic_convergence, "bytes": self.byte_convergence},
+            "compiler_scope": "selfhost_subset",
+            "convergence": {
+                "c_source_bytes": self.c_source_convergence,
+                "recompiled_executable_bytes": self.executable_convergence,
+            },
             "observations": {
                 "compiler_source_readable": self.compiler_source_observed,
                 "selfhost_source_readable": self.selfhost_source_observed,
@@ -237,11 +239,14 @@ def _canonical_bundle(root: Path, destination: Path) -> tuple[Path, tuple[str, .
     return path, tuple(parsed)
 
 
-def _semantic_digest(source: bytes) -> str:
-    text = source.decode("utf-8", errors="strict")
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    text = re.sub(r"//[^\n]*", "", text)
-    return _sha256_bytes(re.sub(r"\s+", "", text).encode("utf-8"))
+def _require_c_source_convergence(sources: tuple[bytes, ...]) -> None:
+    if any(source != sources[0] for source in sources[1:]):
+        digests = tuple(_sha256_bytes(source) for source in sources)
+        raise SelfHostStageError(
+            "convergence", "NonConvergentCSource", f"C source hashes {digests}"
+        )
+
+
 def _stage_command(executable: Path) -> tuple[str, ...]:
     limiter = shutil.which("prlimit") if sys.platform.startswith("linux") else None
     if limiter is None:
@@ -339,14 +344,28 @@ def _execute(root: Path) -> SelfHostReport:
         raise SelfHostStageError("stage3", "CompileFailed", stage3_result.stderr)
     stage3_executable = Path(stage3_result.binary_path)
     c3, _runtime_command3 = _run_stage(stage3_executable, canonical, run_root / "stage3.c", "stage3")
-    semantic = tuple(_semantic_digest(item) for item in (c1, c2, c3))
-    if len(set(semantic)) != 1:
-        raise SelfHostStageError("convergence", "NonConvergent", f"semantic hashes {semantic[0]} != {semantic[1]} != {semantic[2]}")
+    sources = (c1, c2, c3)
+    _require_c_source_convergence(sources)
     stages: list[SelfHostStage] = []
-    for number, executable, content, command in ((1, stage1_executable, c1, tuple(compiled.native.command)), (2, stage2_executable, c2, tuple(stage2_result.command)), (3, stage3_executable, c3, tuple(stage3_result.command))):
-        raw = executable.read_bytes()
-        stages.append(SelfHostStage(number, str(executable), _sha256_bytes(raw), digest, _sha256_bytes(raw), _semantic_digest(content), command, _sha256_bytes(content), str(run_root / f"stage{number}.c")))
-    return SelfHostReport(SelfHostStatus.OBSERVED, _digest_files(_source_files(root), root), _digest_files(files, root), _digest_files(_config_files(root), root), _environment_digest(toolchains), toolchains, parsed, (), tuple(stages), "OBSERVED", "OBSERVED" if c1 == c2 == c3 else "DIVERGED", str(canonical), str(run_root))
+    for number, executable, content, command in (
+        (1, stage1_executable, c1, tuple(compiled.native.command)),
+        (2, stage2_executable, c2, tuple(stage2_result.command)),
+        (3, stage3_executable, c3, tuple(stage3_result.command)),
+    ):
+        executable_digest = _sha256_bytes(executable.read_bytes())
+        stages.append(SelfHostStage(
+            number, str(executable), executable_digest, digest, executable_digest,
+            command, _sha256_bytes(content), str(run_root / f"stage{number}.c"),
+        ))
+    executable_convergence = (
+        "OBSERVED" if stages[1].artifact_digest == stages[2].artifact_digest else "DIVERGED"
+    )
+    return SelfHostReport(
+        SelfHostStatus.OBSERVED, _digest_files(_source_files(root), root),
+        _digest_files(files, root), _digest_files(_config_files(root), root),
+        _environment_digest(toolchains), toolchains, parsed, (), tuple(stages),
+        "OBSERVED", executable_convergence, str(canonical), str(run_root),
+    )
 
 
 def assess_self_host(root: str | Path | None = None) -> SelfHostReport:

@@ -1,39 +1,93 @@
 from __future__ import annotations
 
+import os
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
 
-from merlo.self_host import SelfHostStageError, SelfHostStatus, _stage_command, run_self_host
+from merlo.native_c_backend import compile_c_source
+from merlo.self_host import (
+    SelfHostStageError,
+    SelfHostStatus,
+    _require_c_source_convergence,
+    _stage_command,
+    run_self_host,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_real_three_stage_chain_emits_executables_and_converges() -> None:
+def test_real_three_stage_chain_compiles_and_runs_consumers(tmp_path: Path) -> None:
     report = run_self_host(ROOT)
     assert report.status is SelfHostStatus.OBSERVED
-    assert report.executable_stages_observed
-    assert report.semantic_convergence == "OBSERVED"
-    assert report.byte_convergence in {"OBSERVED", "DIVERGED"}
-    assert len(report.stages) == 3
-    assert Path(report.canonical_bundle).is_file()
+    assert report.c_source_convergence == "OBSERVED"
+    assert report.executable_convergence == "OBSERVED"
+    sources = tuple(Path(stage.c_source_path).read_bytes() for stage in report.stages)
+    assert sources[0] == sources[1] == sources[2]
+    assert (
+        Path(report.stages[1].executable).read_bytes()
+        == Path(report.stages[2].executable).read_bytes()
+    )
+    consumer = (
+        'module consumer\n\n'
+        'increment(value: UInt64) -> UInt64:\n'
+        '    value + 1\n\n'
+        'main(input: Text) -> Text:\n'
+        '    if increment(41) == 42:\n'
+        '        return "a b // c /* d */\\n"\n'
+        '    else:\n'
+        '        return input\n'
+    )
     for stage in report.stages:
-        assert Path(stage.executable).is_file()
-        assert Path(stage.executable).stat().st_size > 0
-        assert Path(stage.c_source_path).is_file()
-        assert stage.command
-        assert len(stage.artifact_digest) == 64
-        assert len(stage.semantic_digest) == 64
+        emitted = subprocess.run(
+            [stage.executable], input=consumer.encode(), capture_output=True,
+            check=True, env={**os.environ, "PATH": ""}, timeout=30,
+        )
+        compiled = compile_c_source(
+            emitted.stdout.decode(), output_dir=tmp_path,
+            stem=f"consumer-stage{stage.number}",
+        )
+        assert compiled.status == "MEASURED", compiled.stderr
+        result = subprocess.run(
+            [compiled.binary_path], input=b"unexpected branch\n",
+            capture_output=True, check=True, timeout=30,
+        )
+        assert result.stdout == b"a b // c /* d */\n"
 
-def test_linux_stage_execution_is_resource_limited() -> None:
-    command = _stage_command(Path("/tmp/compiler"))
-    if shutil.which("prlimit"):
-        assert "--as=1073741824" in command
-        assert "--cpu=60" in command
-    else:
-        assert command == ("/tmp/compiler",)
+
+@pytest.mark.parametrize(
+    ("original", "changed"),
+    (
+        (b'puts("a b");', b'puts("ab");'),
+        (b'puts("http://one");', b'puts("http://two");'),
+        (b'puts("a/*one*/b");', b'puts("a/*two*/b");'),
+        (b"#define VALUE 1\n+2\n", b"#define VALUE 1+2\n"),
+    ),
+)
+def test_stage_convergence_rejects_literal_and_preprocessor_changes(
+    original: bytes, changed: bytes,
+) -> None:
+    with pytest.raises(SelfHostStageError) as raised:
+        _require_c_source_convergence((original, changed, original))
+    assert raised.value.stage == "convergence"
+    assert raised.value.code == "NonConvergentCSource"
+
+
+@pytest.mark.skipif(not shutil.which("prlimit"), reason="Linux prlimit unavailable")
+def test_stage_execution_enforces_resource_limits() -> None:
+    import sys
+
+    command = _stage_command(Path(sys.executable))
+    process = subprocess.run(
+        [*command, "-c",
+         "import resource; print(resource.getrlimit(resource.RLIMIT_AS)[0]); "
+         "print(resource.getrlimit(resource.RLIMIT_CPU)[0])"],
+        capture_output=True, text=True, check=True, timeout=10,
+    )
+    assert process.stdout.splitlines() == ["1073741824", "60"]
 
 
 def test_tampered_bootstrap_source_fails_at_observed_stage(tmp_path: Path) -> None:

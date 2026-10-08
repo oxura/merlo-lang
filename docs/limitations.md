@@ -13,9 +13,11 @@ This release is intentionally narrow and should be evaluated as such:
   shared captures are rejected. There is no macro system or cycle collector;
   ordinary lifetime annotations and manual memory operations are not part of
   the human surface.
-- **Bootstrap:** a staged self-host subset is exercised for semantic
-  convergence, but stage 0 and the production compiler remain Python-based and
-  every native stage still requires a C11 compiler.
+- **Bootstrap:** the staged self-host subset requires byte-identical C output
+  from all three stages and reports stage 2/3 executable-byte convergence
+  separately. These checks and native consumer runs do not establish production
+  compiler semantic parity. Stage 0 and the production compiler remain
+  Python-based; every native stage still requires a C11 compiler.
 - **Ecosystem:** registry, synthesis, parallel, WASM, web, machine, and flow
   modules are experimental research surfaces rather than a stable hosted
   ecosystem or a promise that every construct lowers to native code.
