@@ -30,6 +30,12 @@ separate compiler and binary metadata but is not part of that provenance
 chain. `compiler.py` coordinates compilation; the CLI, LSP, and SemanticWorld
 consume its results.
 
+File and standalone-expression tokenization share one bounded scalar scanner.
+The file lexer scans absolute ranges in the original source buffer, rather than
+passing copied line/suffix fragments to the expression lexer and re-lexing valid
+prefixes during error recovery. Token values, identities, positions, layout,
+and diagnostics retain their existing contract.
+
 Production parsing starts with a lossless full-file Merlo token stream and CST,
 then builds an immutable Surface AST with bound symbols and structural
 inference. The semantic declaration parser remains transitional, but every

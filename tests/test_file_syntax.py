@@ -440,3 +440,36 @@ def test_adversarial_multiline_tokens_keep_exact_offsets_and_trivia() -> None:
     assert [token.start for token in expression.tokens] == sorted(
         token.start for token in expression.tokens
     )
+
+
+def test_file_lexer_recovers_with_absolute_unicode_spans() -> None:
+    source = "module α\nfn bad():\n    first $ второе @ third\n"
+    result = lex_file(source, path="unicode-recovery.mlo")
+
+    assert result.to_source() == source
+    assert [
+        (item.code, item.start, item.end, item.line, item.column)
+        for item in result.diagnostics
+    ] == [
+        ("InvalidToken", 29, 30, 3, 11),
+        ("InvalidToken", 38, 39, 3, 20),
+    ]
+    assert [
+        token.text for token in result.tokens if token.kind == "identifier"
+    ] == ["module", "α", "fn", "bad", "first", "второе", "third"]
+
+
+def test_unterminated_literal_cannot_consume_the_next_physical_line() -> None:
+    source = 'fn broken():\r\n    α = "broken\r\n    β = "keep" # comment\r\n'
+    result = lex_file(source, path="literal-boundary.mlo")
+
+    assert result.to_source() == source
+    assert [
+        (item.code, item.start, item.end, item.line, item.column)
+        for item in result.diagnostics
+    ] == [("InvalidToken", 22, 23, 2, 9)]
+    literal, = [token for token in result.tokens if token.kind == "literal"]
+    assert literal.text == '"keep"'
+    assert literal.value == "keep"
+    assert literal.line == 3
+    assert source[literal.start:literal.end] == '"keep"'

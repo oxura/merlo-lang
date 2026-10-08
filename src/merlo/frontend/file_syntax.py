@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 
-from merlo.frontend.lexer import ExpressionLexError, ExpressionToken, lex_expression
+from merlo.frontend.lexer import ExpressionLexError, _scan_token
 
 
 _OPEN_TO_CLOSE = {"(": ")", "[": "]", "{": "}"}
@@ -116,87 +116,41 @@ def _token(
     )
 
 
-def _line_tokens(
-    text: str,
+def _body_tokens(
+    source: str,
     *,
-    offset: int,
+    start: int,
+    end: int,
     line_number: int,
-    column_offset: int,
+    line_start: int,
     diagnostics: list[FileDiagnostic],
 ) -> list[FileToken]:
     output: list[FileToken] = []
-    cursor = 0
-    while cursor < len(text):
-        segment = text[cursor:]
+    cursor = start
+    while cursor < end:
         try:
-            expression_tokens = lex_expression(segment, include_trivia=True)
+            token, cursor = _scan_token(source, cursor, end)
         except ExpressionLexError as error:
-            failure = cursor + error.position
-            if failure > cursor:
-                prefix = lex_expression(text[cursor:failure], include_trivia=True)
-                output.extend(
-                    _from_expression_token(
-                        token,
-                        offset=offset + cursor,
-                        line_number=line_number,
-                        column_offset=column_offset + cursor,
-                    )
-                    for token in prefix
-                    if token.kind != "eof"
-                )
-            bad_end = min(failure + 1, len(text))
+            failure = error.position
+            cursor = min(failure + 1, end)
+            column = failure - line_start + 1
             diagnostics.append(
                 FileDiagnostic(
-                    "InvalidToken",
-                    error.message,
-                    offset + failure,
-                    offset + bad_end,
-                    line_number,
-                    column_offset + failure + 1,
+                    "InvalidToken", error.message, failure, cursor, line_number, column
                 )
             )
             output.append(
+                _token("error", source[failure:cursor], failure, cursor, line_number, column)
+            )
+            continue
+        if token is not None:
+            output.append(
                 _token(
-                    "error",
-                    text[failure:bad_end],
-                    offset + failure,
-                    offset + bad_end,
-                    line_number,
-                    column_offset + failure + 1,
+                    token.kind, token.text, token.start, token.end, line_number,
+                    token.start - line_start + 1, value=token.value,
                 )
             )
-            cursor = bad_end
-            continue
-        output.extend(
-            _from_expression_token(
-                token,
-                offset=offset + cursor,
-                line_number=line_number,
-                column_offset=column_offset + cursor,
-            )
-            for token in expression_tokens
-            if token.kind != "eof"
-        )
-        break
     return output
-
-
-def _from_expression_token(
-    token: ExpressionToken,
-    *,
-    offset: int,
-    line_number: int,
-    column_offset: int,
-) -> FileToken:
-    return _token(
-        token.kind,
-        token.text,
-        offset + token.start,
-        offset + token.end,
-        line_number,
-        column_offset + token.start + 1,
-        value=token.value,
-    )
 
 
 def lex_file(source: str, *, path: str = "main.mlo") -> FileLexResult:
@@ -278,11 +232,12 @@ def lex_file(source: str, *, path: str = "main.mlo") -> FileLexResult:
                 )
             )
         if body:
-            body_tokens = _line_tokens(
-                body,
-                offset=offset + leading,
+            body_tokens = _body_tokens(
+                source,
+                start=offset + leading,
+                end=offset + len(content),
                 line_number=line_number,
-                column_offset=leading,
+                line_start=offset,
                 diagnostics=diagnostics,
             )
             tokens.extend(body_tokens)

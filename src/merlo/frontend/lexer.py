@@ -112,12 +112,13 @@ def _quoted(
     index: int,
     *,
     prefix: str,
+    end: int,
 ) -> tuple[ExpressionToken, int]:
     quote = source[index]
     index += 1
     body_start = index
     escaped = False
-    while index < len(source):
+    while index < end:
         current = source[index]
         if current == quote and not escaped:
             body = source[body_start:index]
@@ -138,6 +139,93 @@ def _quoted(
     raise ExpressionLexError("unterminated string literal", start)
 
 
+def _scan_token(
+    source: str,
+    index: int,
+    end: int,
+    *,
+    include_trivia: bool = True,
+) -> tuple[ExpressionToken | None, int]:
+    """Scan one token in the original buffer without copying or re-lexing a suffix."""
+    start = index
+    character = source[index]
+    if character.isspace():
+        while index < end and source[index].isspace():
+            index += 1
+        token = ExpressionToken("whitespace", source[start:index], start, index) if include_trivia else None
+        return token, index
+    if character == "#":
+        token = ExpressionToken("comment", source[index:end], index, end) if include_trivia else None
+        return token, end
+    if character in "'\"":
+        return _quoted(source, start, index, prefix="", end=end)
+    if character.isalpha() or character == "_":
+        prefix = ""
+        lowered = source[index:min(index + 2, end)].casefold()
+        if lowered in {"br", "rb"} and index + 2 < end and source[index + 2] in "'\"":
+            prefix = source[index:index + 2]
+            index += 2
+        elif character.casefold() in {"b", "r", "u"} and index + 1 < end and source[index + 1] in "'\"":
+            prefix = character
+            index += 1
+        if prefix:
+            return _quoted(source, start, index, prefix=prefix, end=end)
+        index = start + 1
+        while index < end and (source[index].isalnum() or source[index] == "_"):
+            index += 1
+        return ExpressionToken("identifier", source[start:index], start, index), index
+    if character.isdigit() or (
+        character == "." and index + 1 < end and source[index + 1].isdigit()
+    ):
+        if source[index:min(index + 2, end)].casefold() in {"0x", "0b", "0o"}:
+            index += 2
+            while index < end and (source[index].isalnum() or source[index] == "_"):
+                index += 1
+            text = source[start:index]
+            if text.endswith("_") or "__" in text:
+                raise ExpressionLexError("invalid integer literal", start)
+            try:
+                value = int(text.replace("_", ""), 0)
+            except ValueError as exc:
+                raise ExpressionLexError("invalid integer literal", start) from exc
+            kind = "UInt64" if value >= 0 else "Int64"
+        else:
+            if character == ".":
+                index += 1
+            while index < end and (source[index].isdigit() or source[index] == "_"):
+                index += 1
+            is_float = character == "."
+            if index < end and source[index] == ".":
+                is_float = True
+                index += 1
+                while index < end and (source[index].isdigit() or source[index] == "_"):
+                    index += 1
+            if index < end and source[index] in "eE":
+                is_float = True
+                index += 1
+                if index < end and source[index] in "+-":
+                    index += 1
+                while index < end and (source[index].isdigit() or source[index] == "_"):
+                    index += 1
+            text = source[start:index]
+            if text.endswith("_") or "__" in text:
+                raise ExpressionLexError("invalid numeric literal", start)
+            try:
+                value = float(text.replace("_", "")) if is_float else int(text.replace("_", ""), 10)
+            except ValueError as exc:
+                raise ExpressionLexError("invalid numeric literal", start) from exc
+            kind = "Float64" if is_float else "UInt64"
+        return ExpressionToken("literal", source[start:index], start, index, (value, kind)), index
+    matched = next(
+        (operator for operator in _OPERATORS if index + len(operator) <= end and source.startswith(operator, index)),
+        None,
+    )
+    if matched is None:
+        raise ExpressionLexError(f"unexpected character {character!r}", index)
+    index += len(matched)
+    return ExpressionToken("operator", matched, start, index), index
+
+
 def lex_expression(
     source: str,
     *,
@@ -146,98 +234,12 @@ def lex_expression(
     """Return stable, source-spanned tokens, optionally retaining all trivia."""
     tokens: list[ExpressionToken] = []
     index = 0
-    while index < len(source):
-        if source[index].isspace():
-            start = index
-            while index < len(source) and source[index].isspace():
-                index += 1
-            if include_trivia:
-                tokens.append(
-                    ExpressionToken("whitespace", source[start:index], start, index)
-                )
-            continue
-        if source[index] == "#":
-            if include_trivia:
-                tokens.append(
-                    ExpressionToken("comment", source[index:], index, len(source))
-                )
-            break
-        start = index
-        character = source[index]
-        if character in "'\"":
-            token, index = _quoted(source, start, index, prefix="")
+    end = len(source)
+    while index < end:
+        token, index = _scan_token(source, index, end, include_trivia=include_trivia)
+        if token is not None:
             tokens.append(token)
-            continue
-        if character.isalpha() or character == "_":
-            prefix = ""
-            lowered = source[index : index + 2].casefold()
-            if lowered in {"br", "rb"} and index + 2 < len(source) and source[index + 2] in "'\"":
-                prefix = source[index : index + 2]
-                index += 2
-            elif character.casefold() in {"b", "r", "u"} and index + 1 < len(source) and source[index + 1] in "'\"":
-                prefix = character
-                index += 1
-            if prefix:
-                token, index = _quoted(source, start, index, prefix=prefix)
-                tokens.append(token)
-                continue
-            index = start + 1
-            while index < len(source) and (source[index].isalnum() or source[index] == "_"):
-                index += 1
-            tokens.append(ExpressionToken("identifier", source[start:index], start, index))
-            continue
-        if character.isdigit() or (
-            character == "." and index + 1 < len(source) and source[index + 1].isdigit()
-        ):
-            if source[index : index + 2].casefold() in {"0x", "0b", "0o"}:
-                index += 2
-                while index < len(source) and (source[index].isalnum() or source[index] == "_"):
-                    index += 1
-                text = source[start:index]
-                if text.endswith("_") or "__" in text:
-                    raise ExpressionLexError("invalid integer literal", start)
-                try:
-                    value = int(text.replace("_", ""), 0)
-                except ValueError as exc:
-                    raise ExpressionLexError("invalid integer literal", start) from exc
-                kind = "UInt64" if value >= 0 else "Int64"
-            else:
-                if character == ".":
-                    index += 1
-                while index < len(source) and (source[index].isdigit() or source[index] == "_"):
-                    index += 1
-                is_float = character == "."
-                if index < len(source) and source[index] == ".":
-                    is_float = True
-                    index += 1
-                    while index < len(source) and (source[index].isdigit() or source[index] == "_"):
-                        index += 1
-                if index < len(source) and source[index] in "eE":
-                    is_float = True
-                    index += 1
-                    if index < len(source) and source[index] in "+-":
-                        index += 1
-                    while index < len(source) and (source[index].isdigit() or source[index] == "_"):
-                        index += 1
-                text = source[start:index]
-                if text.endswith("_") or "__" in text:
-                    raise ExpressionLexError("invalid numeric literal", start)
-                try:
-                    value = float(text.replace("_", "")) if is_float else int(text.replace("_", ""), 10)
-                except ValueError as exc:
-                    raise ExpressionLexError("invalid numeric literal", start) from exc
-                kind = "Float64" if is_float else "UInt64"
-            tokens.append(ExpressionToken("literal", source[start:index], start, index, (value, kind)))
-            continue
-        matched = next(
-            (operator for operator in _OPERATORS if source.startswith(operator, index)),
-            None,
-        )
-        if matched is None:
-            raise ExpressionLexError(f"unexpected character {character!r}", index)
-        index += len(matched)
-        tokens.append(ExpressionToken("operator", matched, start, index))
-    tokens.append(ExpressionToken("eof", "", len(source), len(source)))
+    tokens.append(ExpressionToken("eof", "", end, end))
     return tuple(tokens)
 
 
