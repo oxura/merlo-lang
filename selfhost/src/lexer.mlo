@@ -13,10 +13,10 @@ LexerState:
 is_digit(value: UInt64) -> Bool:
     value >= 48 and value <= 57
 
-is_alpha(value: UInt64) -> Bool:
+export is_alpha(value: UInt64) -> Bool:
     value >= 65 and value <= 90 or value >= 97 and value <= 122 or value == 95
 
-is_alphanumeric(value: UInt64) -> Bool:
+export is_alphanumeric(value: UInt64) -> Bool:
     is_alpha(value) or is_digit(value)
 
 is_hex(value: UInt64) -> Bool:

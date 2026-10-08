@@ -286,7 +286,8 @@ parse_name(state: ParserState, context: Text) -> Text:
     while not state.failed and at(state, token_dot_kind()):
         advance(state)
         piece = parse_identifier(state, context)
-        result = parser_join3(result, ".", piece)
+        joined_name = parser_join3(result, ".", piece)
+        result = joined_name
     result
 
 parse_identifier(state: ParserState, context: Text) -> Text:

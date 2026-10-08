@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Allows an independently installed CLI to seed the native self-host subset.
+  The seed owns its manifest and dependency lock; its build runs without the
+  observer's `PYTHONPATH`, and external/development artifacts remain separate.
+  The report records the seed route and actual command without claiming release
+  provenance or full compiler parity. Native sources reuse the lexer identifier
+  predicates, avoid unnecessary reader clones, and compute replacement values
+  before dropping the previous owner. Clang/GCC CI verifies the immutable
+  alpha.2 wheel hash and exercises native consumers across both seed routes.
+
 - Checks nested generic arguments, constructor arity, and nominal names in the
   native self-host subset's declarations. Parameter, return, record-field, and
   enum-payload checks reject unknown nested types and malformed `Vec`/`Result`/

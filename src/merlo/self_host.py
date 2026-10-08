@@ -72,6 +72,7 @@ class SelfHostReport:
     executable_convergence: str = "UNAVAILABLE"
     canonical_bundle: str = ""
     artifact_root: str = ""
+    stage0_kind: str = "development_library"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -87,6 +88,7 @@ class SelfHostReport:
             "canonical_bundle": self.canonical_bundle,
             "artifact_root": self.artifact_root,
             "compiler_scope": "selfhost_subset",
+            "stage0_kind": self.stage0_kind,
             "convergence": {
                 "c_source_bytes": self.c_source_convergence,
                 "recompiled_executable_bytes": self.executable_convergence,
@@ -216,7 +218,7 @@ def _canonical_bundle(root: Path, destination: Path) -> tuple[Path, tuple[str, .
     missing = sorted(required - {path.stem for path in files})
     if missing:
         raise SelfHostStageError("bundle", "MissingModule", ", ".join(missing))
-    chunks = ["module selfhost\n\n"]
+    chunks = ["module main\n\n"]
     parsed: list[str] = []
     for path in _module_order(files):
         text = path.read_text(encoding="utf-8").replace("\r\n", "\n")
@@ -297,7 +299,25 @@ def _run_stage(executable: Path, input_path: Path, output_path: Path, label: str
     return content, command
 
 
-def _execute(root: Path) -> SelfHostReport:
+def _run_stage0_command(command: tuple[str, ...], cwd: Path) -> str:
+    environment = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
+    try:
+        completed = subprocess.run(
+            command, cwd=cwd, env=environment, capture_output=True, text=True,
+            check=False, timeout=120,
+        )
+    except OSError as exc:
+        raise SelfHostStageError("stage0", "ExecutionFailed", str(exc)) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise SelfHostStageError("stage0", "ExecutionTimeout", str(exc)) from exc
+    if completed.returncode != 0:
+        raise SelfHostStageError(
+            "stage0", "CompileFailed", (completed.stderr or completed.stdout).strip(),
+        )
+    return completed.stdout
+
+
+def _execute(root: Path, stage0_command: tuple[str, ...] | None) -> SelfHostReport:
     root = root.resolve()
     toolchains = _toolchain_digests()
     files = _selfhost_files(root)
@@ -307,30 +327,61 @@ def _execute(root: Path) -> SelfHostReport:
     artifact_root.mkdir(parents=True, exist_ok=True)
     bundle, parsed = _canonical_bundle(root, artifact_root)
     digest = _sha256_bytes(bundle.read_bytes())
-    run_root = artifact_root / digest
+    profile = (
+        "development_library" if stage0_command is None
+        else _sha256_bytes(json.dumps(stage0_command).encode("utf-8"))
+    )
+    run_root = artifact_root / digest / profile
     run_root.mkdir(parents=True, exist_ok=True)
     canonical = run_root / "compiler.mlo"
     if canonical != bundle:
         canonical.write_bytes(bundle.read_bytes())
     stage0 = run_root / "stage0"
-    (stage0 / "src").mkdir(parents=True, exist_ok=True)
-    (stage0 / "src" / "main.mlo").write_bytes(canonical.read_bytes())
-    (stage0 / "merlo.toml").write_text('manifest = 1\n\n[project]\nname = "merlo-self-host-stage0"\nversion = "0.1.0"\nedition = "alpha.1"\n', encoding="utf-8")
-    resolve_dependencies(Project.load(stage0), write=True)
     stage1_path = run_root / "stage1"
-    try:
-        compiled = compile_project(stage0, emit_native=True, output=stage1_path, require_interface_lock=False)
-    except Exception as exc:
-        raise SelfHostStageError("stage0", "CompileFailed", str(exc)) from exc
-    if compiled.native is None or compiled.native.binary_path is None:
-        raise SelfHostStageError("stage0", "ExecutableMissing", str(stage1_path))
-    stage1_executable = Path(compiled.native.binary_path)
+    if stage0_command is None:
+        (stage0 / "src").mkdir(parents=True, exist_ok=True)
+        (stage0 / "src" / "main.mlo").write_bytes(canonical.read_bytes())
+        (stage0 / "merlo.toml").write_text(
+            'manifest = 1\n\n[project]\nname = "merlo-self-host-stage0"\n'
+            'version = "0.1.0"\nedition = "alpha.1"\n', encoding="utf-8",
+        )
+        resolve_dependencies(Project.load(stage0), write=True)
+        try:
+            compiled = compile_project(
+                stage0, emit_native=True, output=stage1_path, require_interface_lock=False,
+            )
+        except Exception as exc:
+            raise SelfHostStageError("stage0", "CompileFailed", str(exc)) from exc
+        if compiled.native is None or compiled.native.binary_path is None:
+            raise SelfHostStageError("stage0", "ExecutableMissing", str(stage1_path))
+        stage1_executable = Path(compiled.native.binary_path)
+        stage1_command = tuple(compiled.native.command)
+        c_compiler = compiled.native.compiler
+    else:
+        if not (stage0 / "merlo.toml").is_file():
+            _run_stage0_command(
+                (*stage0_command, "new", str(stage0), "--name",
+                 "merlo-self-host-stage0", "--json"), run_root,
+            )
+        (stage0 / "src" / "main.mlo").write_bytes(canonical.read_bytes())
+        stage1_command = (
+            *stage0_command, "build", str(stage0), "-o", str(stage1_path), "--json",
+        )
+        output = _run_stage0_command(stage1_command, run_root)
+        try:
+            native = json.loads(output)["binary"]
+            if native["status"] != "MEASURED" or not native["binary_path"]:
+                raise ValueError("stage0 did not produce a measured executable")
+            stage1_executable = Path(native["binary_path"])
+            c_compiler = native["compiler"]
+        except (ValueError, KeyError, TypeError) as exc:
+            raise SelfHostStageError("stage0", "InvalidBuildReport", output.strip()) from exc
     c1, _runtime_command1 = _run_stage(stage1_executable, canonical, run_root / "stage1.c", "stage1")
     try:
         stage1_source = c1.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise SelfHostStageError("stage1", "OutputInvalidUtf8", str(exc)) from exc
-    stage2_result = compile_c_source(stage1_source, output_dir=run_root, stem="stage2", compiler=compiled.native.compiler)
+    stage2_result = compile_c_source(stage1_source, output_dir=run_root, stem="stage2", compiler=c_compiler)
     if stage2_result.status != "MEASURED" or not stage2_result.binary_path:
         raise SelfHostStageError("stage2", "CompileFailed", stage2_result.stderr)
     stage2_executable = Path(stage2_result.binary_path)
@@ -339,7 +390,7 @@ def _execute(root: Path) -> SelfHostReport:
         stage2_source = c2.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise SelfHostStageError("stage2", "OutputInvalidUtf8", str(exc)) from exc
-    stage3_result = compile_c_source(stage2_source, output_dir=run_root, stem="stage3", compiler=compiled.native.compiler)
+    stage3_result = compile_c_source(stage2_source, output_dir=run_root, stem="stage3", compiler=c_compiler)
     if stage3_result.status != "MEASURED" or not stage3_result.binary_path:
         raise SelfHostStageError("stage3", "CompileFailed", stage3_result.stderr)
     stage3_executable = Path(stage3_result.binary_path)
@@ -348,7 +399,7 @@ def _execute(root: Path) -> SelfHostReport:
     _require_c_source_convergence(sources)
     stages: list[SelfHostStage] = []
     for number, executable, content, command in (
-        (1, stage1_executable, c1, tuple(compiled.native.command)),
+        (1, stage1_executable, c1, stage1_command),
         (2, stage2_executable, c2, tuple(stage2_result.command)),
         (3, stage3_executable, c3, tuple(stage3_result.command)),
     ):
@@ -365,15 +416,20 @@ def _execute(root: Path) -> SelfHostReport:
         _digest_files(files, root), _digest_files(_config_files(root), root),
         _environment_digest(toolchains), toolchains, parsed, (), tuple(stages),
         "OBSERVED", executable_convergence, str(canonical), str(run_root),
+        "development_library" if stage0_command is None else "external_cli",
     )
 
 
-def assess_self_host(root: str | Path | None = None) -> SelfHostReport:
-    return _execute(Path(root or Path(__file__).resolve().parents[2]))
+def assess_self_host(
+    root: str | Path | None = None, *, stage0_command: tuple[str, ...] | None = None,
+) -> SelfHostReport:
+    return _execute(Path(root or Path(__file__).resolve().parents[2]), stage0_command)
 
 
-def run_self_host(root: str | Path | None = None) -> SelfHostReport:
-    return assess_self_host(root)
+def run_self_host(
+    root: str | Path | None = None, *, stage0_command: tuple[str, ...] | None = None,
+) -> SelfHostReport:
+    return assess_self_host(root, stage0_command=stage0_command)
 
 
 __all__ = ["SelfHostBlocked", "SelfHostBlocker", "SelfHostReport", "SelfHostStage", "SelfHostStageError", "SelfHostStatus", "assess_self_host", "run_self_host"]
