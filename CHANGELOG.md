@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Shares one bounded token scanner between the lossless file lexer and
+  standalone expression lexer. Full-file error recovery no longer copies and
+  re-lexes suffixes or already-tokenized valid prefixes; token values, spans,
+  identities, and diagnostics are preserved. Adds Unicode recovery and
+  physical-line string-boundary regressions.
+
 - Makes ordinary source distributions self-contained: build/release tools,
   specifications, documentation, examples, governance assets, and self-hosting
   sources are included without leaking them into the production wheel.
