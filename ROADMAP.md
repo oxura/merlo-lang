@@ -28,7 +28,7 @@ Status labels:
 | Evolve and ChangeIR | Preview | Rename, explicit ChangeSignature, and private top-level MoveSymbol use fail-closed verified subsets. |
 | Offline typed-hole synthesis | Preview | Bounded deterministic candidates; default builds never invoke an LLM. |
 | SemanticWorld and semantic capsules | Production | Deterministic project index and structured context APIs. |
-| Staged self-host | Preview | Three-stage source-level subset convergence; production stage 0 remains the Python bootstrap and every native stage still uses C11. |
+| Staged self-host | Preview | Three-stage byte-identical C output, separately reported stage 2/3 executable bytes, and native consumer checks for a source-level subset; production stage 0 remains the Python bootstrap and every native stage still uses C11. This is not full compiler semantic parity. |
 | Synchronous filesystem/network I/O | Production | Capability-checked host operations only. |
 | Async, machine, and durable flow | Research | Not the production native execution path; concurrency remains [RFC 0002](rfcs/0002-concurrency-model-v1.md). |
 | CPU Parallel IR and work stealing | Research | Models and isolated tests exist; normal programs do not select this path. |
@@ -65,7 +65,7 @@ Required work:
    compiler-frontend review evidence.
 8. Build and run one real application of at least 10,000 Merlo source lines.
 9. Preserve sanitizer gates, deterministic artifacts, and three-stage
-   self-host convergence.
+   self-host subset byte convergence without claiming full compiler parity.
 
 Definition of done:
 
