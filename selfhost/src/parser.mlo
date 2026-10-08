@@ -236,40 +236,50 @@ parse_type(state: ParserState, context: Text) -> Text:
     if not at(state, token_identifier_kind()) and not at(state, token_fn_kind()):
         fail(state, CompileError.UnsupportedType(context))
         return ""
-    first = current(state)
+    output = TextBuilder.new()
     if at(state, token_fn_kind()):
         advance(state)
         expect(state, token_lparen_kind(), "'(' in function type")
+        output.append_text("fn(")
         if not at(state, token_rparen_kind()):
-            parse_type(state, context)
+            parameter_type = parse_type(state, context)
+            output.append_text(parameter_type)
             while not state.failed and at(state, token_comma_kind()):
                 advance(state)
-                parse_type(state, context)
+                parameter_type = parse_type(state, context)
+                output.append_text(",")
+                output.append_text(parameter_type)
         expect(state, token_rparen_kind(), "')' in function type")
         expect(state, token_arrow_kind(), "'->' in function type")
-        parse_type(state, context)
+        output.append_text(")->")
+        return_type = parse_type(state, context)
+        output.append_text(return_type)
     else:
-        parse_identifier(state, context)
+        name = parse_identifier(state, context)
+        output.append_text(name)
         while not state.failed and at(state, token_dot_kind()):
             advance(state)
-            parse_identifier(state, context)
+            name = parse_identifier(state, context)
+            output.append_text(".")
+            output.append_text(name)
         if at(state, token_lbracket_kind()):
             advance(state)
+            output.append_text("[")
             if at(state, token_rbracket_kind()):
                 fail(state, CompileError.UnsupportedType(parser_join2("empty generic type in ", context)))
             else:
-                parse_type(state, context)
+                argument = parse_type(state, context)
+                output.append_text(argument)
                 while not state.failed and at(state, token_comma_kind()):
                     advance(state)
-                    parse_type(state, context)
+                    argument = parse_type(state, context)
+                    output.append_text(",")
+                    output.append_text(argument)
             expect(state, token_rbracket_kind(), "']' in generic type")
+            output.append_text("]")
     if state.failed:
         return ""
-    if state.index == 0:
-        return ""
-    last = state.tokens.get(state.index - 1)
-    source_view = state.source.as_view()
-    source_view.slice_bytes(first.start, last.start + last.length - first.start).to_text()
+    output.finish()
 
 parse_name(state: ParserState, context: Text) -> Text:
     result = parse_identifier(state, context)

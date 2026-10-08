@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Checks nested generic arguments, constructor arity, and nominal names in the
+  native self-host subset's declarations. Parameter, return, record-field, and
+  enum-payload checks reject unknown nested types and malformed `Vec`/`Result`/
+  `Map` arities. Declaration types are rendered from retained tokens, making
+  valid spacing independent of generic recognition. Removes the obsolete
+  keyword-based unsupported-body helper; full body type checking remains open.
+
 - Replaces the staged self-host experiment's unsound regex-normalized
   "semantic" digest with exact C-source byte convergence. Reports stage 2/3
   executable-byte convergence separately and labels the compiler scope as a
