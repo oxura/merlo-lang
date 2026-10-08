@@ -153,6 +153,13 @@ There is no regex-stripped "semantic" hash: changing whitespace or comment-like
 text inside a literal, or changing preprocessing boundaries, cannot pass as
 convergence. These observations are not full production compiler semantic parity.
 
+Within that subset, declaration type spellings are canonical projections of the
+retained type tokens. The native validator checks complete nested applications,
+constructor arity (`Vec`: one; `Result`/`Map`: two), and record/enum names instead
+of accepting a generic-name prefix. Parameter, return, record-field, and enum
+payload declarations share this check. Function bodies still retain source spans;
+this is not the production TypeArena, inference, ownership, or executable-MIR port.
+
 ## Deliberate constraints
 
 The alpha has one supported native target. Production I/O remains synchronous,
