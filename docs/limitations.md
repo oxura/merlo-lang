@@ -18,6 +18,10 @@ This release is intentionally narrow and should be evaluated as such:
   separately. These checks and native consumer runs do not establish production
   compiler semantic parity. Stage 0 and the production compiler remain
   Python-based; every native stage still requires a C11 compiler.
+- **Bootstrap memory:** dedicated sanitizer runs expose owning-local rebinding
+  leaks in the production MIR route and incomplete lifecycle handling in the
+  native subset emitter. The subset's byte-convergence observations do not
+  establish leak-free compilation or full self-host safety.
 - **Ecosystem:** registry, synthesis, parallel, WASM, web, machine, and flow
   modules are experimental research surfaces rather than a stable hosted
   ecosystem or a promise that every construct lowers to native code.

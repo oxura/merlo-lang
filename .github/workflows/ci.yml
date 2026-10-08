@@ -252,6 +252,13 @@ jobs:
           cache: pip
       - name: Install native test dependencies
         run: python -m pip install -e '.[test]'
+      - name: Install immutable published bootstrap compiler
+        run: |
+          python -m venv "$RUNNER_TEMP/merlo-published-stage0"
+          "$RUNNER_TEMP/merlo-published-stage0/bin/python" -m pip install --no-deps \
+            'https://github.com/oxura/merlo-lang/releases/download/v0.1.0-alpha.2/merlo-0.1.0a2-py3-none-any.whl#sha256=bc3615254b922ffa8cf2bd0b847a2a54f9e01638c578ffca5827218f9924a4b8'
+          printf 'MERLO_SELF_HOST_STAGE0=%s/bin/merlo\n' \
+            "$RUNNER_TEMP/merlo-published-stage0" >> "$GITHUB_ENV"
       - name: Run complete production suite with selected compiler
         env:
           MERLO_C_COMPILER: ${{ matrix.compiler }}

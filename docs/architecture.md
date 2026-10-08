@@ -153,12 +153,35 @@ There is no regex-stripped "semantic" hash: changing whitespace or comment-like
 text inside a literal, or changing preprocessing boundaries, cannot pass as
 convergence. These observations are not full production compiler semantic parity.
 
+`run_self_host(root, stage0_command=("/absolute/path/to/merlo",))` can seed the
+chain from an independently installed CLI. That CLI creates its own project and
+dependency lock, then compiles the canonical `module main` bundle; the observer
+does not rewrite the seed's lock or inject its own `PYTHONPATH`. The report labels
+the route as `stage0_kind: external_cli`, records the actual build command, and
+keeps its artifact namespace separate from `development_library`. This label
+does not attest a published release: record the installed wheel's identity and
+hash separately. `compiler_source_digest` still fingerprints the observer
+checkout, not the external seed installation.
+
+Native reader calls borrow their existing inputs rather than clone them
+unnecessarily. Collection and qualified-name replacements compute the next
+owned value before replacing the old one. This keeps the subset compatible with
+the immutable alpha.2 bootstrap while preserving current ownership checks.
+Clang/GCC CI installs that published wheel with its pinned SHA-256, runs both
+seed routes, and executes consumers through all three native stages.
+
 Within that subset, declaration type spellings are canonical projections of the
 retained type tokens. The native validator checks complete nested applications,
 constructor arity (`Vec`: one; `Result`/`Map`: two), and record/enum names instead
 of accepting a generic-name prefix. Parameter, return, record-field, and enum
 payload declarations share this check. Function bodies still retain source spans;
 this is not the production TypeArena, inference, ownership, or executable-MIR port.
+
+Dedicated sanitized bootstrap runs still expose leaks in owning local
+rebindings in the production MIR route and in the subset emitter's lifecycle
+handling. Passing byte comparisons or the representative sanitizer corpus
+does not supersede those failures. Full self-host memory-safety acceptance
+remains open.
 
 ## Deliberate constraints
 

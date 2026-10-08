@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -21,9 +22,15 @@ from merlo.self_host import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
-@pytest.fixture(scope="module")
-def bootstrap_report() -> SelfHostReport:
-    return run_self_host(ROOT)
+@pytest.fixture(scope="module", params=("development_library", "external_cli"))
+def bootstrap_report(request: pytest.FixtureRequest) -> SelfHostReport:
+    stage0_command = None
+    if request.param == "external_cli":
+        published_cli = os.environ.get("MERLO_SELF_HOST_STAGE0")
+        stage0_command = (
+            (published_cli,) if published_cli else (sys.executable, "-m", "merlo")
+        )
+    return run_self_host(ROOT, stage0_command=stage0_command)
 
 
 def test_real_three_stage_chain_compiles_and_runs_consumers(
@@ -40,7 +47,7 @@ def test_real_three_stage_chain_compiles_and_runs_consumers(
         == Path(report.stages[2].executable).read_bytes()
     )
     consumer = (
-        'module consumer\n\n'
+        'module consumer.app\n\n'
         'increment(value: UInt64) -> UInt64:\n'
         '    value + 1\n\n'
         'main(input: Text) -> Text:\n'
@@ -186,3 +193,10 @@ def test_missing_stage_input_is_an_exact_bundle_error(tmp_path: Path) -> None:
         run_self_host(clone)
     assert raised.value.stage == "bundle"
     assert raised.value.code == "MissingModule"
+
+
+def test_missing_external_stage0_cannot_use_development_compiler(tmp_path: Path) -> None:
+    with pytest.raises(SelfHostStageError) as raised:
+        run_self_host(ROOT, stage0_command=(str(tmp_path / "unavailable-merlo"),))
+    assert raised.value.stage == "stage0"
+    assert raised.value.code == "ExecutionFailed"

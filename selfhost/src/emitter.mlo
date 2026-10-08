@@ -1,6 +1,7 @@
 module emitter
 
 use syntax
+use lexer
 
 emitter_join2(left: Text, right: Text) -> Text:
     output: TextBuilder = TextBuilder.new()
@@ -610,11 +611,11 @@ emitter_expr_tokens(value: Text, program: Program) -> Text:
             emitter_append_owned(output, emitter_expr_literal(emitter_slice(value, index, finish - index)))
             index = finish
         else:
-            if (byte >= 65 and byte <= 90) or (byte >= 97 and byte <= 122) or byte == 95:
+            if lexer.is_alpha(byte):
                 finish = index + 1
                 while finish < value.len():
                     current = view.byte(finish)
-                    if not ((current >= 65 and current <= 90) or (current >= 97 and current <= 122) or (current >= 48 and current <= 57) or current == 95):
+                    if not lexer.is_alphanumeric(current):
                         break
                     finish = finish + 1
                 token = emitter_slice(value, index, finish - index)
@@ -795,7 +796,7 @@ emitter_is_final_line(source_view: TextView, line_end: UInt64, finish: UInt64) -
     true
 
 emitter_emit_body(output: TextBuilder, program: Program, function: Function) -> Unit:
-    emitter_initialize_parameters(output, program.clone(), function.clone())
+    emitter_initialize_parameters(output, program, function)
     source_view: TextView = program.source.as_view()
     start: UInt64 = function.body_start
     finish: UInt64 = start + function.body_length
@@ -810,14 +811,14 @@ emitter_emit_body(output: TextBuilder, program: Program, function: Function) -> 
     parameter_index: UInt64 = 0
     while parameter_index < function.parameters.len():
         parameter_item = function.parameters.get(parameter_index)
-        emitter_names_add(names, name_indents, parameter_item.name.clone(), 0)
+        emitter_names_add(names, name_indents, parameter_item.name, 0)
         parameter_index = parameter_index + 1
     while start < finish:
         line_end: UInt64 = start
         while line_end < finish and source_view.byte(line_end) != 10:
             line_end = line_end + 1
         raw = source_view.slice_bytes(start, line_end - start).to_text()
-        line = emitter_trim(raw.clone())
+        line = emitter_trim(raw)
         indent: UInt64 = 0
         while indent < raw.len():
             current_byte = raw.byte(indent)
@@ -835,17 +836,18 @@ emitter_emit_body(output: TextBuilder, program: Program, function: Function) -> 
             while control_indents.len() > 0 and control_indents.get(control_indents.len() - 1) >= indent:
                 close_depth: UInt64 = control_indents.len() - 1
                 emitter_append_line(output, close_depth, "}")
-                control_indents = emitter_control_trim(control_indents, close_depth)
+                trimmed_control_indents = emitter_control_trim(control_indents, close_depth)
+                control_indents = trimmed_control_indents
 
-            line_is_if = emitter_starts(line.clone(), "if ")
-            line_is_while = emitter_starts(line.clone(), "while ")
+            line_is_if = emitter_starts(line, "if ")
+            line_is_while = emitter_starts(line, "while ")
             if line_is_if or line_is_while:
-                colon = emitter_expr_top(line.clone(), ":", false)
+                colon = emitter_expr_top(line, ":", false)
                 offset: UInt64 = 3
                 if line_is_while:
                     offset = 6
-                control_source = emitter_slice(line.clone(), offset, colon - offset)
-                control_condition = emitter_expr(control_source, program.clone())
+                control_source = emitter_slice(line, offset, colon - offset)
+                control_condition = emitter_expr(control_source, program)
                 if line_is_while:
                     emitter_append_line(output, control_indents.len(), emitter_join2(emitter_join2("while (", control_condition), ") {"))
                 else:
@@ -856,20 +858,20 @@ emitter_emit_body(output: TextBuilder, program: Program, function: Function) -> 
                     emitter_append_line(output, control_indents.len(), "else {")
                     control_indents.push(indent)
                 else:
-                    line_starts_return = emitter_starts(line.clone(), "return ")
+                    line_starts_return = emitter_starts(line, "return ")
                     line_is_return = line == "return" or line_starts_return
                     if line_is_return:
                         if line == "return":
-                            emitter_sync_parameters(output, function.clone(), control_indents.len())
+                            emitter_sync_parameters(output, function, control_indents.len())
                             if function.return_type == "Unit":
                                 emitter_append_line(output, control_indents.len(), "return;")
                             else:
-                                fallback_return = emitter_join2(emitter_join2("return (", emitter_ctype(function.return_type.clone(), program.clone())), "){0};")
+                                fallback_return = emitter_join2(emitter_join2("return (", emitter_ctype(function.return_type.clone(), program)), "){0};")
                                 emitter_append_line(output, control_indents.len(), fallback_return)
                         else:
-                            return_source = emitter_slice(line.clone(), 7, line.len() - 7)
-                            return_expression = emitter_expr(return_source, program.clone())
-                            emitter_append_return(output, function.clone(), control_indents.len(), return_expression, line_end)
+                            return_source = emitter_slice(line, 7, line.len() - 7)
+                            return_expression = emitter_expr(return_source, program)
+                            emitter_append_return(output, function, control_indents.len(), return_expression, line_end)
                     else:
                         if line == "break":
                             emitter_append_line(output, control_indents.len(), "break;")
@@ -877,29 +879,29 @@ emitter_emit_body(output: TextBuilder, program: Program, function: Function) -> 
                             if line == "continue":
                                 emitter_append_line(output, control_indents.len(), "continue;")
                             else:
-                                equals = emitter_expr_top(line.clone(), "=", false)
-                                colon = emitter_expr_top(line.clone(), ":", false)
-                                line_is_assignment = emitter_is_assignment(line.clone())
+                                equals = emitter_expr_top(line, "=", false)
+                                colon = emitter_expr_top(line, ":", false)
+                                line_is_assignment = emitter_is_assignment(line)
                                 if colon < equals and line_is_assignment:
-                                    declaration_name_source = emitter_slice(line.clone(), 0, colon)
+                                    declaration_name_source = emitter_slice(line, 0, colon)
                                     declaration_name = emitter_trim(declaration_name_source)
-                                    type_name_source = emitter_slice(line.clone(), colon + 1, equals - colon - 1)
+                                    type_name_source = emitter_slice(line, colon + 1, equals - colon - 1)
                                     type_name = emitter_trim(type_name_source)
-                                    declaration_expression_source = emitter_slice(line.clone(), equals + 1, line.len() - equals - 1)
-                                    declaration_expression = emitter_expr(declaration_expression_source, program.clone())
-                                    declaration = emitter_join2(emitter_join2(emitter_ctype(type_name, program.clone()), " "), declaration_name)
+                                    declaration_expression_source = emitter_slice(line, equals + 1, line.len() - equals - 1)
+                                    declaration_expression = emitter_expr(declaration_expression_source, program)
+                                    declaration = emitter_join2(emitter_join2(emitter_ctype(type_name, program), " "), declaration_name)
                                     declaration = emitter_join2(emitter_join2(declaration, " = "), declaration_expression)
                                     emitter_append_line(output, control_indents.len(), emitter_join2(declaration, ";"))
                                     emitter_names_add(names, name_indents, declaration_name, indent)
                                 else:
                                     if line_is_assignment:
-                                        assignment_name_source = emitter_slice(line.clone(), 0, equals)
+                                        assignment_name_source = emitter_slice(line, 0, equals)
                                         assignment_name = emitter_trim(assignment_name_source)
-                                        assignment_expression_source = emitter_slice(line.clone(), equals + 1, line.len() - equals - 1)
-                                        assignment_expression = emitter_expr(assignment_expression_source, program.clone())
-                                        tracked_name = emitter_names_has(names, assignment_name.clone())
+                                        assignment_expression_source = emitter_slice(line, equals + 1, line.len() - equals - 1)
+                                        assignment_expression = emitter_expr(assignment_expression_source, program)
+                                        tracked_name = emitter_names_has(names, assignment_name)
                                         known_name = tracked_name or assignment_name == "control_indents" or (assignment_name == "start" and function.name == "emitter_emit_body")
-                                        member_name = emitter_has(assignment_name.clone(), ".")
+                                        member_name = emitter_has(assignment_name, ".")
                                         if not known_name and not member_name:
                                             declaration = emitter_join2(emitter_join2("__auto_type ", assignment_name), " = ")
                                             declaration = emitter_join2(emitter_join2(declaration, assignment_expression), ";")
@@ -909,9 +911,9 @@ emitter_emit_body(output: TextBuilder, program: Program, function: Function) -> 
                                             assignment = emitter_join2(emitter_join2(assignment_name, " = "), assignment_expression)
                                             emitter_append_line(output, control_indents.len(), emitter_join2(assignment, ";"))
                                     else:
-                                        statement_expression = emitter_expr(line.clone(), program.clone())
+                                        statement_expression = emitter_expr(line, program)
                                         if function.return_type != "Unit" and emitter_is_final_line(source_view, line_end, finish):
-                                            emitter_append_return(output, function.clone(), control_indents.len(), statement_expression, line_end)
+                                            emitter_append_return(output, function, control_indents.len(), statement_expression, line_end)
                                         else:
                                             emitter_append_line(output, control_indents.len(), emitter_join2(statement_expression, ";"))
         if line_end == finish:
@@ -921,10 +923,11 @@ emitter_emit_body(output: TextBuilder, program: Program, function: Function) -> 
     while control_indents.len() > 0:
         close_depth: UInt64 = control_indents.len() - 1
         emitter_append_line(output, close_depth, "}")
-        control_indents = emitter_control_trim(control_indents, close_depth)
-    emitter_sync_parameters(output, function.clone(), 0)
+        trimmed_control_indents = emitter_control_trim(control_indents, close_depth)
+        control_indents = trimmed_control_indents
+    emitter_sync_parameters(output, function, 0)
     if function.return_type != "Unit":
-        fallback = emitter_join2(emitter_join2("return (", emitter_ctype(function.return_type.clone(), program.clone())), "){0};")
+        fallback = emitter_join2(emitter_join2("return (", emitter_ctype(function.return_type.clone(), program)), "){0};")
         emitter_append_line(output, 0, fallback)
 emitter_tag_text(tag: UInt64) -> Text:
     output: TextBuilder = TextBuilder.new()
