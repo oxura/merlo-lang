@@ -61,7 +61,7 @@ jobs:
       - name: Production tests
         run: python -m pytest tests/ -q
       - name: Production pyflakes
-        run: python -m pyflakes src/merlo tests tools/benchmarks/merlo tools/release/merlo
+        run: python -m pyflakes src/merlo tests tools/benchmarks/merlo tools/release
 
   tooling:
     needs: [verify-tag]
@@ -114,29 +114,18 @@ jobs:
           python-version: "3.14"
           cache: pip
       - name: Install release tools
-        run: python -m pip install build twine
+        run: python -m pip install build twine 'setuptools>=77.0.3' wheel
       - name: Build reproducible wheel and sdist
         run: |
           set -euo pipefail
           export SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$GITHUB_SHA")"
+          echo "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" >> "$GITHUB_ENV"
           first="$RUNNER_TEMP/merlo-dist-first"
           second="$RUNNER_TEMP/merlo-dist-second"
           rm -rf "$first" "$second" dist
           mkdir -p "$first" "$second"
-          (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --wheel --sdist --outdir "$first")
-          (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --wheel --sdist --outdir "$second")
-          python - "$first" "$second" "$SOURCE_DATE_EPOCH" <<'PY'
-          import sys
-          from pathlib import Path
-          from tools.release.merlo.alpha_release import canonicalize_sdist
-
-          epoch = int(sys.argv[3])
-          for root in (Path(sys.argv[1]), Path(sys.argv[2])):
-              sdists = sorted(root.glob("merlo-*.tar.gz"))
-              if len(sdists) != 1:
-                  raise SystemExit(f"expected one sdist in {root}")
-              canonicalize_sdist(sdists[0], epoch)
-          PY
+          (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --wheel --sdist --no-isolation --outdir "$first")
+          (cd "$RUNNER_TEMP" && python -m build "$GITHUB_WORKSPACE" --wheel --sdist --no-isolation --outdir "$second")
           python - "$first" "$second" <<'PY'
           from __future__ import annotations
 
@@ -192,6 +181,36 @@ jobs:
           PY
           mkdir -p dist
           cp "$first"/* dist/
+      - name: Rebuild wheel from the extracted source distribution
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          import tarfile
+
+          smoke = Path(os.environ["RUNNER_TEMP"]) / "merlo-source-smoke"
+          source = smoke / "source"
+          source.mkdir(parents=True)
+          with tarfile.open(next(Path("dist").glob("*.tar.gz"))) as archive:
+              archive.extractall(source, filter="data")
+          roots = list(source.iterdir())
+          if len(roots) != 1 or not roots[0].is_dir():
+              raise SystemExit("source distribution must contain one project root")
+          root = roots[0]
+          subprocess.run(
+              [sys.executable, "-m", "build", "--wheel", "--no-isolation", "--outdir", str(smoke / "wheel")],
+              cwd=root, check=True,
+          )
+          original = next(Path("dist").glob("*.whl"))
+          rebuilt = next((smoke / "wheel").glob("*.whl"))
+          if hashlib.sha256(original.read_bytes()).digest() != hashlib.sha256(rebuilt.read_bytes()).digest():
+              raise SystemExit("source distribution rebuilt a different wheel")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as output:
+              output.write(f"MERLO_SOURCE_ROOT={root}\n")
+          PY
       - name: Validate release metadata and artifacts
         run: |
           set -euo pipefail
@@ -205,15 +224,16 @@ jobs:
           rm -rf "$smoke_root"
           mkdir -p "$smoke_root"
           python -m venv "$smoke_root/venv"
-          "$smoke_root/venv/bin/python" -m pip install dist/*.whl
+          "$smoke_root/venv/bin/python" -m pip install --no-deps "$RUNNER_TEMP"/merlo-source-smoke/wheel/*.whl
+          cd "$smoke_root"
           "$smoke_root/venv/bin/merlo" --help
           "$smoke_root/venv/bin/merlo" new --json "$smoke_root/project"
           "$smoke_root/venv/bin/merlo" check --json "$smoke_root/project"
           "$smoke_root/venv/bin/merlo" build --json "$smoke_root/project"
           "$smoke_root/venv/bin/merlo" run --json "$smoke_root/project"
-          "$smoke_root/venv/bin/merlo" check --json "$GITHUB_WORKSPACE/examples/capacity-ledger"
-          "$smoke_root/venv/bin/merlo" build --json "$GITHUB_WORKSPACE/examples/capacity-ledger"
-          "$smoke_root/venv/bin/merlo" run --json "$GITHUB_WORKSPACE/examples/capacity-ledger" "$GITHUB_WORKSPACE/examples/capacity-ledger/input.txt"
+          "$smoke_root/venv/bin/merlo" check --json "$MERLO_SOURCE_ROOT/examples/capacity-ledger"
+          "$smoke_root/venv/bin/merlo" build --json "$MERLO_SOURCE_ROOT/examples/capacity-ledger"
+          "$smoke_root/venv/bin/merlo" run --json "$MERLO_SOURCE_ROOT/examples/capacity-ledger" "$MERLO_SOURCE_ROOT/examples/capacity-ledger/input.txt"
       - name: Upload release artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -225,7 +245,7 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: merlo-${{ github.ref_name }}-capacity-ledger-smoke
-          path: examples/capacity-ledger/.merlo/build/app
+          path: ${{ env.MERLO_SOURCE_ROOT }}/examples/capacity-ledger/.merlo/build/app
           if-no-files-found: error
           retention-days: 14
 

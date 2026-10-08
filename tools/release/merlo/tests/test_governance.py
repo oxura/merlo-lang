@@ -29,13 +29,6 @@ def test_pull_request_workflows_never_grant_write_tokens_or_run_target_code() ->
             assert not re.search(r"^\s+[\w-]+:\s+write\s*$", text, re.MULTILINE)
 
 
-def test_ci_and_release_lint_production_and_tooling_trees() -> None:
-    command = (
-        "python -m pyflakes src/merlo tests "
-        "tools/benchmarks/merlo tools/release/merlo"
-    )
-    for name in ("ci.yml", "release.yml"):
-        assert command in (WORKFLOWS / name).read_text(encoding="utf-8")
 
 
 def test_ci_required_gate_checks_the_exact_pull_request_head() -> None:

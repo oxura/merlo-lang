@@ -25,6 +25,37 @@ Native commands also require a C11-capable Clang or GCC. The bootstrap compiler
 requires Python 3.11 or newer and has no third-party Python runtime
 dependencies.
 
+## Source distribution and reproducible builds
+
+Development source archives include the build backend, release tools,
+specification, documentation, examples, and self-hosting sources. The wheel
+still contains only the compiler package, its standard-library sources, and
+package metadata; source-only assets are not installed into `site-packages`.
+The published alpha.2 download above is unchanged by this development work.
+
+Install a source archive with the same Python and C compiler requirements:
+
+```console
+python -m pip install /path/to/merlo-VERSION.tar.gz
+merlo --help
+```
+
+For a reproducibility check, use one build toolchain and a fixed epoch:
+
+```console
+python -m pip install build 'setuptools>=77.0.3' wheel
+SOURCE_DATE_EPOCH=0 python -m build --no-isolation --outdir /tmp/merlo-dist-first
+SOURCE_DATE_EPOCH=0 python -m build --no-isolation --outdir /tmp/merlo-dist-second
+diff -r /tmp/merlo-dist-first /tmp/merlo-dist-second
+```
+
+The packaging backend normalizes source-archive ordering and tar/gzip metadata,
+without changing file contents. CI also extracts the archive outside the
+checkout, rebuilds a byte-identical wheel with the same toolchain, installs that
+wheel into a fresh environment, and runs the generated project and
+`capacity-ledger` example. These are packaging checks, not a claim of full
+self-hosting or production promotion.
+
 ## Clean demo
 
 ```console
