@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Fixes owning C-slot replacement in executable MIR, including inferred
+  bindings, branch rebindings, and temporaries re-executed on CFG backedges.
+  Replacement values are evaluated before releasing the previous owner;
+  borrowed collection elements are deep-cloned and owned results are moved.
+  Vacant record/enum/array slots use the runtime's typed zero values rather than
+  an all-zero active enum variant. Cleanup is return-path-specific and includes
+  owned parameters. Fresh owning `for` bindings receive compiler-managed cleanup
+  without weakening checks on owners carried into a loop. Native consumer and
+  full SDK-bootstrap sanitizer regressions cover these lifetimes; the immutable
+  alpha.2 seed and native subset emitter's memory gaps remain separate.
+
 - Allows an independently installed CLI to seed the native self-host subset.
   The seed owns its manifest and dependency lock; its build runs without the
   observer's `PYTHONPATH`, and external/development artifacts remain separate.

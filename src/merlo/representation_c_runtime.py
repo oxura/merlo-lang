@@ -1226,6 +1226,17 @@ static MerloTextView *merlo_file_next(MerloFileLines *lines) {
                 field_descriptor = self.descriptors[field_type]
                 if _is_owner(field_descriptor):
                     lines.append(f"    result.{field_name} = merlo_zero_{_identifier(field_type)}();")
+        elif descriptor.kind == "array":
+            assert descriptor.element_type is not None
+            assert descriptor.length is not None
+            if _is_owner(self.descriptors[descriptor.element_type]):
+                lines.extend(
+                    [
+                        f"    for (uint64_t index = 0; index < UINT64_C({descriptor.length}); ++index) {{",
+                        f"        result.data[index] = merlo_zero_{_identifier(descriptor.element_type)}();",
+                        "    }",
+                    ]
+                )
         lines.extend(["    return result;", "}"])
         lines.extend(
             [

@@ -2626,6 +2626,12 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 seen.add(current)
                 pending.extend(successors.get(current, ()))
             return False
+
+        repeated_blocks = {
+            block.id
+            for block in mir_function.blocks
+            if any(reachable(target, block.id) for target in successors[block.id])
+        }
         def case_reachable(start: str, goal: str) -> bool:
             pending = [start]
             seen: set[str] = set()
@@ -2912,6 +2918,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     moved_values.update(instruction.operands)
                 if instruction.op == "store_local":
                     target = attrs.get("name", attrs.get("target"))
+                    rebinds_local = isinstance(target, str) and target in local_types
                     if (
                         isinstance(target, str)
                         and "." not in target
@@ -2919,14 +2926,18 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                         and instruction.type_name is not None
                     ):
                         local_types.setdefault(target, instruction.type_name)
-                    reassignment_target = attrs.get("target")
-                    reassignment_type = self.descriptors.get(
+                    replacement_type = self.descriptors.get(
                         instruction.type_name
                     )
                     if (
-                        isinstance(reassignment_target, str)
-                        and reassignment_type is not None
-                        and _is_owner(reassignment_type)
+                        isinstance(target, str)
+                        and replacement_type is not None
+                        and _is_owner(replacement_type)
+                        and (
+                            "target" in attrs
+                            or rebinds_local
+                            or block.id in repeated_blocks
+                        )
                     ):
                         replacement_index += 1
                         replacement = f"__merlo_replacement_{replacement_index}"
@@ -3066,17 +3077,6 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 temporary = f"__merlo_owned_temp_{owned_temp_index}"
                 result_names[value] = temporary
                 owned_temporaries[value] = (temporary, type_name)
-        returning_locals: set[str] = set()
-        for block in mir_function.blocks:
-            if block.terminator.kind != "return" or block.terminator.value is None:
-                continue
-            for instruction in block.instructions:
-                if (
-                    instruction.op == "load_local"
-                    and instruction.result == block.terminator.value
-                    and isinstance(instruction.attribute_map.get("name"), str)
-                ):
-                    returning_locals.add(str(instruction.attribute_map["name"]))
         explicit_drop_local_blocks: dict[str, set[str]] = {}
         for block in mir_function.blocks:
             for instruction in block.instructions:
@@ -3215,18 +3215,26 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 result_parts = self._result_parts(instruction.type_name)
                 if result_parts is not None and result_parts[0] != "Unit":
                     host_temporary_types[instruction.result] = result_parts[0]
+        cleanup_types = {
+            parameter.name: parameter.type_name
+            for parameter in function.parameters
+            if parameter.ownership == "owned"
+        }
+        cleanup_types.update(local_types)
         lines = [self._function_signature(function) + " {"]
         lines.extend(
-            f"    {_c_name(type_name)} {name} = {{0}};"
+            f"    {_c_name(type_name)} {name} = {self._zero_expression(type_name)};"
             for name, type_name in local_types.items()
         )
         lines.extend(
             f"    {_c_name(type_name)} "
-            f"{result_names.get(value, self._mir_scalar_temp(value))} = {{0}};"
+            f"{result_names.get(value, self._mir_scalar_temp(value))} "
+            f"= {self._zero_expression(type_name)};"
             for value, type_name in result_types.items()
         )
         lines.extend(
-            f"    {_c_name(type_name)} __merlo_host_value_{value} = {{0}};"
+            f"    {_c_name(type_name)} __merlo_host_value_{value} "
+            f"= {self._zero_expression(type_name)};"
             for value, type_name in host_temporary_types.items()
         )
         lines.extend(
@@ -3283,7 +3291,22 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 instruction.result,
                 self._mir_scalar_temp(instruction.result),
             )
-            lines.append(f"    {temporary} = {expression};")
+            descriptor = self.descriptors[result_types[instruction.result]]
+            if active_block_id in repeated_blocks and _is_owner(descriptor):
+                # A MIR value is a reused C slot on a backedge. Evaluate the
+                # next owner before releasing the previous iteration's value.
+                next_value = f"__merlo_next_{instruction.result}"
+                lines.extend(
+                    [
+                        "    {",
+                        f"        {_c_name(descriptor.name)} {next_value} = {expression};",
+                        f"        merlo_drop_{_identifier(descriptor.name)}(&{temporary});",
+                        f"        {temporary} = merlo_move_{_identifier(descriptor.name)}(&{next_value});",
+                        "    }",
+                    ]
+                )
+            else:
+                lines.append(f"    {temporary} = {expression};")
             values[instruction.result] = temporary
         def mark_consumed_local(local: str, *, closed: bool = False) -> None:
             consumed_locals.add(local)
@@ -3796,8 +3819,6 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     raise RepresentationCBackendError(
                         "MIR drop_value is malformed"
                     )
-                if local in returning_locals:
-                    return
                 if active_block_id in consumed_local_blocks.get(local, set()):
                     return
                 if local in protected_return_locals.get(active_block_id, set()):
@@ -5595,11 +5616,33 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                 target = attrs.get("name", attrs.get("target"))
                 if not isinstance(target, str) or len(operands) != 1:
                     raise RepresentationCBackendError("MIR CFG store_local is malformed")
+                store_value = operands[0]
+                descriptor = self.descriptors.get(instruction.type_name or "")
+                if (
+                    instruction.operands[0] in pointer_values
+                    and descriptor is not None
+                    and _is_owner(descriptor)
+                ):
+                    store_value = (
+                        f"merlo_clone_{_identifier(instruction.type_name or '')}"
+                        f"({store_value})"
+                    )
+                elif (
+                    instruction.operands[0] in result_types
+                    and instruction.operands[0] not in inline_call_results
+                    and instruction.operands[0] not in inline_construct_results
+                    and descriptor is not None
+                    and _is_owner(descriptor)
+                ):
+                    store_value = (
+                        f"merlo_move_{_identifier(instruction.type_name or '')}"
+                        f"(&({store_value}))"
+                    )
                 replacement = replacement_names.get(instruction.operands[0])
-                if "target" in attrs and replacement is not None:
+                if replacement is not None:
                     replacement_name, replacement_type = replacement
                     lines.append(
-                        f"    {replacement_name} = {operands[0]};"
+                        f"    {replacement_name} = {store_value};"
                     )
                     lines.append(
                         f"    merlo_drop_{_identifier(replacement_type)}"
@@ -5610,28 +5653,6 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                         f"(&{replacement_name});"
                     )
                 else:
-                    store_value = operands[0]
-                    descriptor = self.descriptors.get(instruction.type_name or "")
-                    if (
-                        instruction.operands[0] in pointer_values
-                        and descriptor is not None
-                        and _is_owner(descriptor)
-                    ):
-                        store_value = (
-                            f"merlo_clone_{_identifier(instruction.type_name or '')}"
-                            f"({store_value})"
-                        )
-                    elif (
-                        instruction.operands[0] in result_types
-                        and instruction.operands[0] not in inline_call_results
-                        and instruction.operands[0] not in inline_construct_results
-                        and descriptor is not None
-                        and _is_owner(descriptor)
-                    ):
-                        store_value = (
-                            f"merlo_move_{_identifier(instruction.type_name or '')}"
-                            f"(&({store_value}))"
-                        )
                     lines.append(f"    {target} = {store_value};")
                 for temporary, type_name in pending_drops.pop(
                     instruction.operands[0],
@@ -6089,7 +6110,7 @@ static MerloBytesView merlo_bytes_as_view(const MerloBytes *value) {
                     )
                 )
 
-            for name, type_name in local_types.items():
+            for name, type_name in cleanup_types.items():
                 descriptor = self.descriptors.get(type_name)
                 if (
                     descriptor is not None

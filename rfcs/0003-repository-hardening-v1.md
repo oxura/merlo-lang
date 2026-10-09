@@ -210,10 +210,10 @@ artifacts make the code slices independently reversible.
   lock, cycle, cache, and archive cases are covered;
 - the complete production, tooling, and archive suites pass;
 - ownership/place/borrow/loop regressions and native execution pass;
-- `tests/fixtures/c_backend/capacity-ledger.json` records the `examples/capacity-ledger`
-  generated-C SHA-256 and full pre-extraction baseline commit; the behavioral test
-  recompiles that fixture and checks exact bytes, with intentional backend changes
-  updating both fields with rationale in the same reviewed PR;
+- pre-extraction C-byte equivalence was recorded against commit
+  `723776f6748bead81429696e3f1662926e3cea15`; subsequent intentional backend changes
+  are checked through native `capacity-ledger` output and malformed-record
+  rejection, rather than re-pinning an incidental generated-source hash;
 - pyflakes is clean across production, tests, benchmark tooling, and release tooling;
 - all workflow actions are immutable SHA references and pull-request workflows have
   no write permission;

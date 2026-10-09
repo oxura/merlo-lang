@@ -79,10 +79,11 @@ of invoking the expression lexer a second time. Function parameter lists own
 structural parameter children and per-parameter type regions. Surface function
 signatures validate and consume those nodes plus the retained return-type
 region instead of locating parameter fragments in the line text.
-Module binding transforms Surface nodes structurally,
-and HIR lowering projects the retained Surface tree into Merlo-owned native
-syntax nodes, so no canonical or module source is reparsed and no CPython AST
-is created on the production frontend path.
+Module binding transforms Surface nodes structurally. Structured HIR v13 retains
+typed semantic nodes and the compiler-local TypeArena rather than a native-syntax
+compatibility artifact. RIR/MIR carry the physical lowering boundary, so no
+canonical or module source is reparsed and no CPython AST is created on the
+production frontend path.
 
 ## Verification commands
 
