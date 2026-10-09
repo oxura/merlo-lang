@@ -22,14 +22,19 @@ from merlo.self_host import (
 ROOT = Path(__file__).resolve().parents[1]
 
 
+@pytest.fixture(scope="module")
+def development_bootstrap_report() -> SelfHostReport:
+    return run_self_host(ROOT)
+
+
 @pytest.fixture(scope="module", params=("development_library", "external_cli"))
 def bootstrap_report(request: pytest.FixtureRequest) -> SelfHostReport:
-    stage0_command = None
-    if request.param == "external_cli":
-        published_cli = os.environ.get("MERLO_SELF_HOST_STAGE0")
-        stage0_command = (
-            (published_cli,) if published_cli else (sys.executable, "-m", "merlo")
-        )
+    if request.param == "development_library":
+        return request.getfixturevalue("development_bootstrap_report")
+    published_cli = os.environ.get("MERLO_SELF_HOST_STAGE0")
+    stage0_command = (
+        (published_cli,) if published_cli else (sys.executable, "-m", "merlo")
+    )
     return run_self_host(ROOT, stage0_command=stage0_command)
 
 
@@ -71,6 +76,39 @@ def test_real_three_stage_chain_compiles_and_runs_consumers(
             capture_output=True, check=True, timeout=30,
         )
         assert result.stdout == b"a b // c /* d */\n"
+
+
+@pytest.mark.parametrize("compiler_name", ("clang", "gcc"))
+def test_development_seed_emits_complete_bundle_without_leaks(
+    tmp_path: Path, development_bootstrap_report: SelfHostReport, compiler_name: str,
+) -> None:
+    compiler = shutil.which(compiler_name)
+    if compiler is None:
+        pytest.skip(f"{compiler_name} is required for the bootstrap sanitizer regression")
+    report = development_bootstrap_report
+    source = next(
+        argument for argument in report.stages[0].command if argument.endswith(".c")
+    )
+    binary = tmp_path / "compiler-sanitized"
+    built = subprocess.run(
+        [
+            compiler, "-std=c11", "-O1", "-g", "-fno-omit-frame-pointer",
+            "-fsanitize=address,undefined", source, "-o", str(binary),
+        ],
+        capture_output=True, text=True, check=False, timeout=120,
+    )
+    assert built.returncode == 0, built.stderr
+    emitted = subprocess.run(
+        [str(binary)], input=Path(report.canonical_bundle).read_bytes(),
+        capture_output=True, check=False, timeout=60,
+        env={
+            **os.environ,
+            "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+            "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1",
+        },
+    )
+    assert emitted.returncode == 0, emitted.stderr.decode(errors="replace")
+    assert emitted.stdout == Path(report.stages[0].c_source_path).read_bytes()
 
 
 @pytest.mark.parametrize(

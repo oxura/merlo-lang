@@ -137,6 +137,27 @@ def test_mutually_recursive_boxed_enums_have_finite_drop_glue(
     assert b"ast_nodes_allocated=2 ast_nodes_freed=2" in output
 
 
+@pytest.mark.parametrize("payload", (b"", b"x", b"abcd"))
+def test_recursive_enum_loop_slots_drop_only_initialized_values(
+    tmp_path: Path, payload: bytes,
+) -> None:
+    source = (
+        "enum Tree:\n"
+        "    Leaf: UInt64\n"
+        "    Branch: Box[Tree]\n"
+        "fn main(input: BytesView) -> UInt64:\n"
+        "    var index: UInt64 = 0\n"
+        "    while index < input.len():\n"
+        "        item = Tree.Leaf(index)\n"
+        "        index += 1\n"
+        "    return index\n"
+    )
+    output = run_native(source, tmp_path, "recursive-loop", payload=payload)
+    count = len(payload)
+    assert f"OK result={count}".encode() in output
+    assert f"ast_nodes_allocated={count} ast_nodes_freed={count}".encode() in output
+
+
 def test_inline_recursive_layout_requires_owning_indirection() -> None:
     hir = compile_structured_hir(
         "record Node:\n"

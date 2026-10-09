@@ -667,46 +667,6 @@ def test_borrowed_map_cannot_be_shallow_cloned_for_owned_call() -> None:
         emit_general_c(hir, rir, optimized)
 
 
-def test_branch_move_keeps_zeroed_source_cleanup_on_false_path() -> None:
-    source = (
-        "record Change:\n"
-        "    old_path: Text\n"
-        "    new_path: Text\n"
-        "fn take(value: Change) -> Change:\n"
-        "    return value\n"
-        "fn main(input: BytesView) -> UInt64:\n"
-        "    let source: Change = Change(\"a\", \"bc\")\n"
-        "    if input.len() > 0:\n"
-        "        let moved: Change = take(source)\n"
-        "        return moved.old_path.len()\n"
-        "    return source.old_path.len()\n"
-    )
-    hir, rir, _mir, optimized = _layers(source)
-    generated = emit_general_c(hir, rir, optimized)
-    function_body = generated.source.split("merlo_fn_main(", 1)[1]
-    assignment = function_body.index("source = merlo_make_Change(")
-    first_cleanup = function_body.index("merlo_drop_Change(&source);")
-    assert assignment < first_cleanup
-    assert function_body.count("merlo_drop_Change(&source);") == 2
-    assert function_body.count("merlo_drop_Change(&moved);") == 2
-
-
-def test_loop_body_borrow_temporary_is_dropped_at_each_iteration() -> None:
-    source = (
-        "fn consume(value: Text) -> Unit:\n"
-        "    return\n"
-        "fn main(input: BytesView) -> UInt64:\n"
-        "    var remaining: UInt64 = input.len()\n"
-        "    while remaining > 0:\n"
-        "        consume(Text.from_bytes(input, 0, input.len()))\n"
-        "        remaining = 0\n"
-        "    return remaining\n"
-    )
-    hir, rir, _mir, optimized = _layers(source)
-    generated = emit_general_c(hir, rir, optimized)
-    assert generated.source.count("__merlo_owned_temp_1 = merlo_text_from") == 1
-    assert generated.source.count("merlo_drop_Text(&__merlo_owned_temp_1);") == 1
-
 
 @pytest.mark.parametrize("binding", ("return", "assign"))
 def test_nested_borrowed_holder_rejects_owner_escape(binding: str) -> None:

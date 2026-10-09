@@ -15,6 +15,16 @@ typed environment. Borrowed captures may not escape, mutable captures and host
 resources are rejected, and arbitrary shared closure environments are not part
 of the alpha contract.
 
+Compiler-managed owning bindings may be refreshed inside `while` and `for`
+loops. Before replacing a value, the native backend evaluates the replacement
+while the old owner is still valid, then releases the old owner and moves in the
+new one. A borrowed owning collection element is cloned rather than transferred
+out of its collection. Re-executed owning expression temporaries follow the same
+replacement rule. Vacant enum and nested aggregate slots use typed moved/empty
+states, and final cleanup applies to the actual return path, including owned
+parameters. These rules do not allow moving an outer owner across a loop
+backedge, mutating a live borrowed backing value, or escaping an iteration borrow.
+
 Use typed errors at operation boundaries:
 
 ```merlo

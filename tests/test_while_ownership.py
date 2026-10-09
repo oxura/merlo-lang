@@ -1,6 +1,14 @@
 from __future__ import annotations
 
+import os
+import shutil
+import subprocess
+from pathlib import Path
+
 import pytest
+
+from merlo.compiler import compile_project
+from merlo.project import Project
 
 from merlo.structured_hir_v2 import (
     StructuredHIRCompileError,
@@ -256,21 +264,6 @@ def test_contained_borrow_mutation_is_rejected_inside_loop() -> None:
         _compile(_compile_contained)
 
 
-def test_for_owner_binding_requires_cleanup_before_backedge() -> None:
-    source = (
-        "fn main(input: BytesView) -> UInt64:\n"
-        "    let values: Vec[Text] = Vec.new()\n"
-        "    var index: UInt64 = 0\n"
-        "    for item in values:\n"
-        "        index += 1\n"
-        "    return index\n"
-    )
-    with pytest.raises(
-        StructuredHIRCompileError,
-        match="LoopOwnershipBackedgeRequiresFixedPointSupport",
-    ):
-        _compile(source)
-
 
 def test_for_owner_binding_is_clean_after_explicit_drop() -> None:
     _compile(
@@ -353,3 +346,138 @@ def test_owner_reassignment_inside_loop_keeps_target_place() -> None:
         "        index += 1\n"
         "    return value.len()\n"
     )
+
+
+@pytest.mark.parametrize(
+    ("body", "expected"),
+    (
+        (
+            "    index: UInt64 = 0\n"
+            "    while index < 4:\n"
+            "        item = values.get(0)\n"
+            "        total = total + item.label.len() + item.parts.get(0).len()\n"
+            "        index = index + 1\n",
+            24,
+        ),
+        (
+            "    index: UInt64 = 0\n"
+            "    while index < 4:\n"
+            "        item = make_item(input)\n"
+            "        total = total + item.label.len() + item.parts.get(0).len()\n"
+            "        index = index + 1\n",
+            24,
+        ),
+        (
+            "    values.push(make_item(input))\n"
+            "    values.push(make_item(input))\n"
+            "    values.push(make_item(input))\n"
+            "    for item in values:\n"
+            "        total = total + item.label.len() + item.parts.get(0).len()\n",
+            24,
+        ),
+        (
+            "    value = input.clone()\n"
+            "    index: UInt64 = 0\n"
+            "    while index < 4:\n"
+            "        value = value.clone()\n"
+            "        total = total + value.len()\n"
+            "        index = index + 1\n",
+            12,
+        ),
+        (
+            "    index: UInt64 = 0\n"
+            "    while index < 4:\n"
+            '        if input.as_view().slice_bytes(0, 1).to_text() == "a":\n'
+            "            total = total + input.len()\n"
+            "        index = index + 1\n",
+            12,
+        ),
+        (
+            "    index: UInt64 = 0\n"
+            "    while index < 4:\n"
+            "        total = total + choose_item(input.clone()).len()\n"
+            "        index = index + 1\n",
+            12,
+        ),
+        (
+            "    value = input.clone()\n"
+            "    if input.len() == 3:\n"
+            "        value = value.clone()\n"
+            "    total = value.len()\n",
+            3,
+        ),
+        (
+            "    index: UInt64 = 0\n"
+            "    while index < 0:\n"
+            "        item = values.get(0)\n"
+            "        total = total + item.label.len()\n",
+            0,
+        ),
+    ),
+    ids=(
+        "borrowed-record", "returned-record", "for-record", "aliased-owner",
+        "comparison-temporary", "consuming-parameter", "branch-rebinding", "zero-iterations",
+    ),
+)
+def test_native_owning_loop_bindings_release_replaced_values(
+    tmp_path: Path, body: str, expected: int,
+) -> None:
+    compiler = shutil.which("clang")
+    if compiler is None:
+        pytest.skip("Clang is required for the owning-loop sanitizer regression")
+    project = Project.create(tmp_path / "owning-loop", name="owning_loop")
+    (project.root / "src" / "main.mlo").write_text(
+        "module main\n\n"
+        "Item:\n"
+        "    label: Text\n"
+        "    parts: Vec[Text]\n\n"
+        "make_item(input: Text) -> Item:\n"
+        "    parts: Vec[Text] = Vec.new()\n"
+        "    parts.push(input.clone())\n"
+        "    Item(input.clone(), parts)\n\n"
+        "choose_item(input: Text) -> Text:\n"
+        "    if input.len() == 0:\n"
+        "        return input\n"
+        '    "abc"\n\n'
+        "export task main(input: Text) -> Text:\n"
+        "    uses console.write\n"
+        "    values: Vec[Item] = Vec.new()\n"
+        "    values.push(make_item(input))\n"
+        "    total: UInt64 = 0\n"
+        + body
+        + f"    if total != {expected}:\n"
+        '        return "bad\\n"\n'
+        "    console.write(values.get(0).label.as_view())\n"
+        '    "ok\\n"\n',
+        encoding="utf-8",
+    )
+    compilation = compile_project(
+        project.root, emit_native=True, output=tmp_path / "app",
+        require_interface_lock=False,
+    )
+    assert compilation.native is not None
+    completed = subprocess.run(
+        [compilation.native.binary_path], input=b"abc", capture_output=True,
+        check=False, timeout=30,
+    )
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert completed.stdout == b"abcok\n"
+    generated_c = tmp_path / "owning-loop.c"
+    generated_c.write_text(compilation.generated_c, encoding="utf-8")
+    sanitized_binary = tmp_path / "owning-loop-sanitized"
+    built = subprocess.run(
+        [compiler, "-std=c11", "-O1", "-g", "-fno-omit-frame-pointer",
+         "-fsanitize=address,undefined", str(generated_c), "-o", str(sanitized_binary)],
+        capture_output=True, text=True, check=False, timeout=60,
+    )
+    assert built.returncode == 0, built.stderr
+    sanitized = subprocess.run(
+        [str(sanitized_binary)], input=b"abc", capture_output=True, check=False,
+        timeout=30, env={
+            **os.environ,
+            "ASAN_OPTIONS": "detect_leaks=1:halt_on_error=1",
+            "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1",
+        },
+    )
+    assert sanitized.returncode == 0, sanitized.stderr.decode()
+    assert sanitized.stdout == b"abcok\n"

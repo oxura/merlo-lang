@@ -1,6 +1,7 @@
 # Compiler architecture
 
-Merlo `0.1.0-alpha.2` uses a Python bootstrap compiler and emits C11.
+The active `0.1.0-alpha.3-dev` toolchain uses a Python bootstrap compiler and
+emits C11; the packaged public prerelease remains `0.1.0-alpha.2`.
 Production code lives under `src/merlo`; benchmark, release, and frozen
 research code lives in explicit tool or archive namespaces. The production
 wheel contains the compiler/runtime/tooling closure.
@@ -21,14 +22,14 @@ The production coordinator currently records this checked artifact chain:
 6. generated C11, followed optionally by a native executable.
 
 The recorded intermediate artifacts through generated C11 carry a contract,
-schema version, digest, and parent digest. Structured HIR also carries the
-canonical native-syntax adapter tree and typed FFI declarations consumed by
-the C backend; both survive strict JSON round trips and contribute to its
-digest. The backend never reparses raw HIR source or trusts an unbound in-memory
-syntax object. The optional native executable has
-separate compiler and binary metadata but is not part of that provenance
-chain. `compiler.py` coordinates compilation; the CLI, LSP, and SemanticWorld
-consume its results.
+schema version, digest, and parent digest. Structured HIR v13 carries the
+compiler-local TypeArena snapshot, typed semantic nodes, and validated FFI
+declarations. It does not retain a native-syntax compatibility artifact.
+Representation IR and executable MIR carry the typed descriptors and operations
+consumed by the C backend; HIR remains their validated predecessor, not a source
+to reparse. The optional native executable has separate compiler and binary
+metadata but is not part of that provenance chain. `compiler.py` coordinates
+compilation; the CLI, LSP, and SemanticWorld consume its results.
 
 File and standalone-expression tokenization share one bounded scalar scanner.
 The file lexer scans absolute ranges in the original source buffer, rather than
@@ -81,11 +82,11 @@ Elaboration constraints, call binding, diagnostics, inference state, and
 native lowering have separate owners under `merlo/elaboration` and
 `merlo/frontend`.
 
-Typed Surface nodes lower directly into Merlo-owned native syntax nodes. HIR and
-the C backend share that representation without constructing or compiling
-CPython AST objects. Python parsing survives only behind the legacy
-`compile_structured_hir(source)` test boundary; project compilation never uses
-it.
+The typed Surface program lowers into Structured HIR and then physical RIR/MIR
+descriptors. The production C backend does not consume a native-syntax adapter
+tree, CPython AST, or raw-source parser. Python parsing survives only behind the
+legacy `compile_structured_hir(source)` test boundary; project compilation never
+uses it.
 
 Builtin semantics are progressively owned by one immutable ContractGraph.
 Host intrinsics and the centralized static `Text.from_bytes` and
@@ -177,11 +178,19 @@ of accepting a generic-name prefix. Parameter, return, record-field, and enum
 payload declarations share this check. Function bodies still retain source spans;
 this is not the production TypeArena, inference, ownership, or executable-MIR port.
 
-Dedicated sanitized bootstrap runs still expose leaks in owning local
-rebindings in the production MIR route and in the subset emitter's lifecycle
-handling. Passing byte comparisons or the representative sanitizer corpus
-does not supersede those failures. Full self-host memory-safety acceptance
-remains open.
+The production MIR route stages replacement owners before releasing old values,
+including inferred rebindings and result slots re-executed on CFG backedges.
+Vacant owning slots use the runtime's typed zero helpers, so unused enum slots
+cannot be mistaken for constructed variants. Return-path-specific cleanup
+includes owned parameters rather than suppressing a drop because another branch
+returns the same local. Sanitizer regressions compile the SDK-generated seed
+with Clang/GCC and require its complete canonical-bundle C output, not a prefix.
+
+The independently released alpha.2 seed retains its historical memory behavior.
+The native subset emitter also still lacks complete lifecycle handling; its
+dedicated sanitizer failure is not superseded by repairing SDK code generation.
+Passing byte comparisons or the representative sanitizer corpus does not
+establish full self-host memory-safety acceptance.
 
 ## Deliberate constraints
 

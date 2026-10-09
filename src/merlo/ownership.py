@@ -1980,6 +1980,8 @@ class _OwnershipChecker:
                     )
                     | self._loop_implicit_cleanup_names(node.body)
                 )
+                if isinstance(node.target, ast.Name):
+                    assignment_names.add(node.target.id)
                 exit_candidates = [before_loop]
                 backedge_candidates = []
                 if not body_state.terminal:
