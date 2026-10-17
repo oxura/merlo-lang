@@ -302,16 +302,31 @@ token_text(state: ParserState, token: Token) -> Text:
     source_view = state.source.as_view()
     source_view.slice_bytes(token.start, token.length).to_text()
 
+skip_trivia(state: ParserState) -> Unit:
+    while state.index < state.tokens.len():
+        token = state.tokens.get(state.index)
+        if not token_kind_is_trivia(token):
+            break
+        state.index = state.index + 1
+
 current(state: ParserState) -> Token:
+    skip_trivia(state)
     if state.index >= state.tokens.len():
         return Token(token_eof_kind(), state.source.len(), 0, 0, 0)
     state.tokens.get(state.index)
 
 peek(state: ParserState, offset: UInt64) -> Token:
-    position = state.index + offset
-    if position >= state.tokens.len():
-        return Token(token_eof_kind(), state.source.len(), 0, 0, 0)
-    state.tokens.get(position)
+    skip_trivia(state)
+    position = state.index
+    remaining = offset
+    while position < state.tokens.len():
+        token = state.tokens.get(position)
+        if not token_kind_is_trivia(token):
+            if remaining == 0:
+                return token
+            remaining = remaining - 1
+        position = position + 1
+    Token(token_eof_kind(), state.source.len(), 0, 0, 0)
 
 advance(state: ParserState) -> Token:
     token = current(state)

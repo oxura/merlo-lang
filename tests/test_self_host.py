@@ -78,6 +78,39 @@ def test_real_three_stage_chain_compiles_and_runs_consumers(
         assert result.stdout == b"a b // c /* d */\n"
 
 
+def test_native_parser_consumes_one_trivia_preserving_stream(
+    tmp_path: Path, bootstrap_report: SelfHostReport,
+) -> None:
+    consumer = (
+        '# before the module\r\n'
+        'module consumer  # module comment\r\n'
+        '\r\n'
+        'Envelope :  # record comment\r\n'
+        '    name : Text  # field comment\r\n'
+        '\r\n'
+        '# between declarations\r\n'
+        'main \t ( input : Text ) -> Text :  # header comment\r\n'
+        '    "# remains literal\\n"\r\n'
+        '# final comment without a newline'
+    )
+    for stage in bootstrap_report.stages:
+        emitted = subprocess.run(
+            [stage.executable], input=consumer.encode(), capture_output=True,
+            check=True, env={**os.environ, "PATH": ""}, timeout=30,
+        )
+        compiled = compile_c_source(
+            emitted.stdout.decode(), output_dir=tmp_path,
+            stem=f"retained-trivia-stage{stage.number}",
+        )
+        assert compiled.status == "MEASURED", compiled.stderr
+        result = subprocess.run(
+            [compiled.binary_path], input=b"unused\n", capture_output=True,
+            check=True, timeout=30, env={"PATH": ""},
+        )
+        assert result.stdout == b"# remains literal\n"
+        assert result.stderr == b""
+
+
 @pytest.mark.parametrize("compiler_name", ("clang", "gcc"))
 def test_development_seed_emits_complete_bundle_without_leaks(
     tmp_path: Path, development_bootstrap_report: SelfHostReport, compiler_name: str,

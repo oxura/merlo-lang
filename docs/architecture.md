@@ -178,6 +178,15 @@ of accepting a generic-name prefix. Parameter, return, record-field, and enum
 payload declarations share this check. Function bodies still retain source spans;
 this is not the production TypeArena, inference, ownership, or executable-MIR port.
 
+The native subset lexer retains whitespace and comments alongside its semantic
+tokens. Positive-length spans partition the original source bytes exactly,
+including trailing trivia and malformed input; layout-error anchors have zero
+length so indentation is not represented twice. The native parser's cursor and
+lookahead skip trivia in this retained vector rather than copying it into a
+second semantic-only stream. This source-preservation boundary does not yet
+provide the production lossless CST, Unicode/numeric/string semantics, or typed
+body lowering.
+
 The production MIR route stages replacement owners before releasing old values,
 including inferred rebindings and result slots re-executed on CFG backedges.
 Vacant owning slots use the runtime's typed zero helpers, so unused enum slots
