@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Retains native self-host lexer whitespace and comments as source-spanned
+  tokens, including trailing trivia, CRLF, and malformed input. Layout errors
+  use zero-width anchors instead of duplicating the indentation bytes. Native
+  parser cursors and lookahead consume the same stream while skipping trivia;
+  they do not allocate a second filtered token vector. Native round-trip and
+  staged consumer regressions cover the cutover. This is not the complete
+  production lexer/CST or typed compiler port.
+
 - Fixes owning C-slot replacement in executable MIR, including inferred
   bindings, branch rebindings, and temporaries re-executed on CFG backedges.
   Replacement values are evaluated before releasing the previous owner;

@@ -178,6 +178,12 @@ export token_left_shift_kind() -> UInt64:
 export token_right_shift_kind() -> UInt64:
     39
 
+export token_whitespace_kind() -> UInt64:
+    40
+
+export token_comment_kind() -> UInt64:
+    41
+
 export token_module_kind() -> UInt64:
     100
 
@@ -264,6 +270,9 @@ export token_kind_is_identifier(value: Token) -> Bool:
 
 export token_kind_is_literal(value: Token) -> Bool:
     value.kind == token_integer_kind() or value.kind == token_string_kind()
+
+export token_kind_is_trivia(value: Token) -> Bool:
+    value.kind == token_whitespace_kind() or value.kind == token_comment_kind()
 
 export token_keyword_kind(word: Text) -> UInt64:
     if word == "module":
