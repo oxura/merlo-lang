@@ -416,6 +416,9 @@ scan_operator(state: LexerState) -> Unit:
                                                                                         else:
                                                                                             if byte == 126:
                                                                                                 kind = token_tilde_kind()
+                                                                                            else:
+                                                                                                if byte == 94:
+                                                                                                    kind = token_caret_kind()
     count: UInt64 = 0
     while count < width:
         lexer_advance(state)

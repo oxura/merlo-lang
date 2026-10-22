@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Adds the missing native XOR token and recursive bitwise OR/XOR/AND lowering.
+  Nested method operands no longer fall through as unlowered C-like text, and
+  the bitwise precedence levels are preserved. Native token-boundary regressions
+  and input-dependent staged consumers cover both result branches and mixed
+  operators; complete typed body/lifecycle acceptance remains separate.
+
 - Ports native ASCII numeric literal grammar for bases, decimal fractions and
   exponents, and digit separators. Number tokens retain neighboring identifier/
   operator boundaries and exact source spans; malformed numeric lexemes are

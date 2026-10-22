@@ -184,6 +184,9 @@ export token_whitespace_kind() -> UInt64:
 export token_comment_kind() -> UInt64:
     41
 
+export token_caret_kind() -> UInt64:
+    42
+
 export token_module_kind() -> UInt64:
     100
 

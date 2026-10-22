@@ -135,6 +135,38 @@ def test_native_stages_compile_hexadecimal_integer_arithmetic(
         assert result.stderr == b""
 
 
+def test_native_stages_evaluate_bitwise_xor(
+    tmp_path: Path, bootstrap_report: SelfHostReport,
+) -> None:
+    assert tuple(stage.number for stage in bootstrap_report.stages) == (1, 2, 3)
+    consumer = (
+        "module consumer\n\n"
+        "main(input: Text) -> Text:\n"
+        "    if (input.len() ^ 3) == 5 and (7 ^ 7) == 0 and "
+        "(input.len() | 1 ^ 3) == 6 and (input.len() ^ 3 & 1) == 7:\n"
+        '        return "xor-ok\\n"\n'
+        "    else:\n"
+        '        return "other\\n"\n'
+    )
+    for stage in bootstrap_report.stages:
+        emitted = subprocess.run(
+            [stage.executable], input=consumer.encode(), capture_output=True,
+            check=True, env={**os.environ, "PATH": ""}, timeout=30,
+        )
+        compiled = compile_c_source(
+            emitted.stdout.decode(), output_dir=tmp_path,
+            stem=f"xor-stage{stage.number}",
+        )
+        assert compiled.status == "MEASURED", compiled.stderr
+        for payload, expected in ((b"123456", b"xor-ok\n"), (b"1234", b"other\n")):
+            result = subprocess.run(
+                [compiled.binary_path], input=payload, capture_output=True,
+                check=True, timeout=30, env={"PATH": ""},
+            )
+            assert result.stdout == expected
+            assert result.stderr == b""
+
+
 def test_native_parser_consumes_one_trivia_preserving_stream(
     tmp_path: Path, bootstrap_report: SelfHostReport,
 ) -> None:
