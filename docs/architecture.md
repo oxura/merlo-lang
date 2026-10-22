@@ -205,6 +205,13 @@ errors. Adjacent names and operators retain their own token boundaries.
 The scanner preserves raw spans without converting values; numeric decoding,
 type-directed ranges, and complete numeric body lowering remain separate.
 
+The native scanner gives `^` its own operator kind and one-byte span. The subset
+emitter recursively lowers bitwise OR, XOR, and AND at separate precedence levels,
+so grouped operands containing method calls are lowered instead of copied as
+opaque C-like text. Staged consumers check input-dependent true/false paths and
+mixed OR/XOR/AND precedence. This remains the subset emitter, not the complete
+typed expression/MIR port or its outstanding lifecycle acceptance.
+
 The production MIR route stages replacement owners before releasing old values,
 including inferred rebindings and result slots re-executed on CFG backedges.
 Vacant owning slots use the runtime's typed zero helpers, so unused enum slots

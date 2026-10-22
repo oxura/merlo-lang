@@ -34,8 +34,11 @@ classify(source: Text) -> Text:
                 if token.kind == syntax.token_number_kind():
                     output.append_text("N")
                 else:
-                    if token.kind != syntax.token_eof_kind() and token.kind != syntax.token_newline_kind() and token.kind != syntax.token_indent_kind() and token.kind != syntax.token_dedent_kind() and token.kind != syntax.token_whitespace_kind() and token.kind != syntax.token_comment_kind():
-                        output.append_text("O")
+                    if token.kind == syntax.token_caret_kind():
+                        output.append_text("X")
+                    else:
+                        if token.kind != syntax.token_eof_kind() and token.kind != syntax.token_newline_kind() and token.kind != syntax.token_indent_kind() and token.kind != syntax.token_dedent_kind() and token.kind != syntax.token_whitespace_kind() and token.kind != syntax.token_comment_kind():
+                            output.append_text("O")
         index = index + 1
     if expected != length:
         return "TRUNCATED"
@@ -150,6 +153,14 @@ NUMERIC_CASES = (
     ("_1", b"O"),
 )
 
+XOR_CASES = (
+    ("^", b"X"),
+    ("1 ^ 2", b"NXN"),
+    ("^=", b"XO"),
+    ("^^", b"XX"),
+    ("|^&~", b"OXOO"),
+)
+
 
 @pytest.fixture(scope="module")
 def native_literal_lexer(tmp_path_factory: pytest.TempPathFactory) -> Path:
@@ -173,7 +184,7 @@ def native_literal_lexer(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return Path(compilation.native.binary_path)
 
 
-@pytest.mark.parametrize(("source", "expected"), LEXEME_CASES + NUMERIC_CASES)
+@pytest.mark.parametrize(("source", "expected"), LEXEME_CASES + NUMERIC_CASES + XOR_CASES)
 def test_native_literal_validation_and_recovery(
     native_literal_lexer: Path, source: str, expected: bytes,
 ) -> None:

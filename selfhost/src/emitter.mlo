@@ -708,6 +708,21 @@ emitter_expr(value: Text, program: Program) -> Text:
         left = emitter_slice(result, 0, position)
         right = emitter_slice(result, position + 1, result.len() - position - 1)
         return emitter_expr_binary(" > ", left, right, program.clone())
+    position = emitter_expr_last_top(result, "|", false)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 1, result.len() - position - 1)
+        return emitter_expr_binary(" | ", left, right, program)
+    position = emitter_expr_last_top(result, "^", false)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 1, result.len() - position - 1)
+        return emitter_expr_binary(" ^ ", left, right, program)
+    position = emitter_expr_last_top(result, "&", false)
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 1, result.len() - position - 1)
+        return emitter_expr_binary(" & ", left, right, program)
     position = emitter_expr_last_top(result, "+", false)
     if position < result.len():
         left = emitter_slice(result, 0, position)
