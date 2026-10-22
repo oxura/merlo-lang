@@ -187,6 +187,15 @@ second semantic-only stream. This source-preservation boundary does not yet
 provide the production lossless CST, Unicode/numeric/string semantics, or typed
 body lowering.
 
+Individual native Text/Bytes literal lexemes recognize the case-insensitive
+`r`/`u`/`b` and `rb`/`br` prefixes, simple/hex/octal escapes, and four/eight-digit
+Unicode escapes. Validation rejects surrogate/out-of-range scalars, Unicode
+escapes or non-ASCII source text in non-raw bytes, and octal byte overflow.
+Raw bytes still require ASCII source text. Invalid literals retain their source
+bytes and stop at the physical line boundary for recovery. This scanner layer
+retains raw spans, not decoded typed literal values; the complete native
+expression/literal lowering remains a separate port.
+
 The production MIR route stages replacement owners before releasing old values,
 including inferred rebindings and result slots re-executed on CFG backedges.
 Vacant owning slots use the runtime's typed zero helpers, so unused enum slots

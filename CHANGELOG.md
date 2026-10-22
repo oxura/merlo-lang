@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Ports native Text/Bytes literal lexical validation: raw/Unicode/bytes prefixes,
+  simple/hex/octal escapes, Unicode scalar bounds, ASCII bytes, and byte-range
+  checks. Invalid escapes retain exact source-byte coverage and recover at the
+  physical line boundary. Native consumers and staged compiler regressions cover
+  the scanner; complete typed literal decoding/lowering is not claimed.
+
 - Fixes native `std.json` string round trips: valid UTF-16 surrogate pairs decode
   to their Unicode scalar, malformed or unpaired escapes remain errors, and the
   formatter escapes every JSON control character in values and object keys.

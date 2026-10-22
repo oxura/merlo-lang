@@ -23,7 +23,7 @@ is_hex(value: UInt64) -> Bool:
     value >= 48 and value <= 57 or value >= 65 and value <= 70 or value >= 97 and value <= 102
 
 is_escape(value: UInt64) -> Bool:
-    value == 34 or value == 39 or value == 92 or value == 110 or value == 114 or value == 116 or value == 98 or value == 102 or value == 48
+    value == 34 or value == 39 or value == 92 or value == 97 or value == 98 or value == 102 or value == 110 or value == 114 or value == 116 or value == 118
 
 push_token(state: LexerState, kind: UInt64, start: UInt64, length: UInt64, line: UInt64, column: UInt64) -> Unit:
     state.tokens.push(Token(kind, start, length, line, column))
@@ -119,10 +119,91 @@ scan_integer(state: LexerState) -> Unit:
     else:
         push_token(state, token_integer_kind(), start, state.index - start, start_line, start_column)
 
-scan_string(state: LexerState) -> Unit:
+is_quote(value: UInt64) -> Bool:
+    value == 34 or value == 39
+
+is_raw_prefix(value: UInt64) -> Bool:
+    value == 82 or value == 114
+
+is_bytes_prefix(value: UInt64) -> Bool:
+    value == 66 or value == 98
+
+string_prefix_width(state: LexerState) -> UInt64:
+    if state.index + 1 >= state.source.len():
+        return 0
+    first = state.source.byte(state.index)
+    second = state.source.byte(state.index + 1)
+    if is_quote(second) and (is_raw_prefix(first) or is_bytes_prefix(first) or first == 85 or first == 117):
+        return 1
+    if state.index + 2 < state.source.len() and is_quote(state.source.byte(state.index + 2)):
+        if is_raw_prefix(first) and is_bytes_prefix(second) or is_bytes_prefix(first) and is_raw_prefix(second):
+            return 2
+    0
+
+hex_value(value: UInt64) -> UInt64:
+    if value <= 57:
+        return value - 48
+    if value <= 70:
+        return value - 55
+    value - 87
+
+scan_escape(state: LexerState, bytes_literal: Bool) -> Bool:
+    escaped = state.source.byte(state.index)
+    if is_escape(escaped):
+        lexer_advance(state)
+        return true
+    if escaped >= 48 and escaped <= 55:
+        value: UInt64 = 0
+        digits: UInt64 = 0
+        while digits < 3 and state.index < state.source.len():
+            byte = state.source.byte(state.index)
+            if byte < 48 or byte > 55:
+                break
+            value = value * 8 + byte - 48
+            lexer_advance(state)
+            digits = digits + 1
+        return not bytes_literal or value <= 255
+    if escaped == 120 or escaped == 88 or escaped == 117 or escaped == 85:
+        width: UInt64 = 2
+        if escaped == 117:
+            width = 4
+        if escaped == 85:
+            width = 8
+        valid = not bytes_literal or width == 2
+        lexer_advance(state)
+        scalar: UInt64 = 0
+        digits: UInt64 = 0
+        while digits < width and state.index < state.source.len():
+            byte = state.source.byte(state.index)
+            if not is_hex(byte):
+                break
+            scalar = scalar * 16 + hex_value(byte)
+            lexer_advance(state)
+            digits = digits + 1
+        if digits != width:
+            return false
+        if not bytes_literal and (scalar > 1114111 or scalar >= 55296 and scalar <= 57343):
+            return false
+        return valid
+    if escaped != 10 and escaped != 13:
+        lexer_advance(state)
+    false
+
+scan_string(state: LexerState, prefix_width: UInt64) -> Unit:
     start = state.index
     start_line = state.line
     start_column = state.column
+    raw = false
+    bytes_literal = false
+    prefix: UInt64 = 0
+    while prefix < prefix_width:
+        byte = state.source.byte(state.index)
+        if is_raw_prefix(byte):
+            raw = true
+        if is_bytes_prefix(byte):
+            bytes_literal = true
+        lexer_advance(state)
+        prefix = prefix + 1
     quote = state.source.byte(state.index)
     lexer_advance(state)
     valid = true
@@ -135,40 +216,26 @@ scan_string(state: LexerState) -> Unit:
             break
         if byte == 10 or byte == 13:
             break
-        if byte < 32:
+        if bytes_literal and byte > 127:
             valid = false
+        if byte != 92:
             lexer_advance(state)
         else:
-            if byte == 92:
-                lexer_advance(state)
-                if state.index >= state.source.len():
-                    valid = false
-                else:
-                    escaped = state.source.byte(state.index)
-                    if escaped == 117:
-                        lexer_advance(state)
-                        digits: UInt64 = 0
-                        while digits < 4 and state.index < state.source.len():
-                            hex_byte = state.source.byte(state.index)
-                            if hex_byte == 10 or hex_byte == 13:
-                                valid = false
-                                break
-                            else:
-                                if not is_hex(hex_byte):
-                                    valid = false
-                                lexer_advance(state)
-                                digits = digits + 1
-                        if digits < 4:
-                            valid = false
-                    else:
-                        if escaped == 10 or escaped == 13:
-                            valid = false
-                        else:
-                            if not is_escape(escaped):
-                                valid = false
-                            lexer_advance(state)
+            lexer_advance(state)
+            if state.index >= state.source.len():
+                valid = false
             else:
-                lexer_advance(state)
+                if raw:
+                    escaped = state.source.byte(state.index)
+                    if escaped == 10 or escaped == 13:
+                        valid = false
+                    else:
+                        if bytes_literal and escaped > 127:
+                            valid = false
+                        lexer_advance(state)
+                else:
+                    if not scan_escape(state, bytes_literal):
+                        valid = false
     if closed and valid:
         push_token(state, token_string_kind(), start, state.index - start, start_line, start_column)
     else:
@@ -318,13 +385,17 @@ export lex(source: Text) -> Vec[Token]:
                         consume_whitespace(state)
                     else:
                         if is_alpha(byte):
-                            scan_identifier(state)
+                            prefix_width = string_prefix_width(state)
+                            if prefix_width > 0:
+                                scan_string(state, prefix_width)
+                            else:
+                                scan_identifier(state)
                         else:
                             if is_digit(byte):
                                 scan_integer(state)
                             else:
                                 if byte == 34 or byte == 39:
-                                    scan_string(state)
+                                    scan_string(state, 0)
                                 else:
                                     scan_operator(state)
     while state.indent_width > 0:
