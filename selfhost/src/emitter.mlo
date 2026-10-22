@@ -244,8 +244,27 @@ emitter_expr_matching(value: Text, open: UInt64) -> UInt64:
         index = index + 1
     value.len()
 
+emitter_expr_match_at(view: TextView, needle: TextView, index: UInt64) -> Bool:
+    if needle.len() == 0 or index + needle.len() > view.len():
+        return false
+    offset: UInt64 = 0
+    while offset < needle.len():
+        if view.byte(index + offset) != needle.byte(offset):
+            return false
+        offset = offset + 1
+    if needle.len() == 1:
+        byte = needle.byte(0)
+        if byte == 60 or byte == 62:
+            if index > 0 and view.byte(index - 1) == byte:
+                return false
+            after = index + 1
+            if after < view.len() and (view.byte(after) == byte or view.byte(after) == 61):
+                return false
+    true
+
 emitter_expr_top(value: Text, needle: Text, words: Bool) -> UInt64:
     view: TextView = value.as_view()
+    needle_view = needle.as_view()
     depth: UInt64 = 0
     index: UInt64 = 0
     quote: UInt64 = 0
@@ -269,7 +288,7 @@ emitter_expr_top(value: Text, needle: Text, words: Bool) -> UInt64:
                             depth = depth - 1
                         index = index + 1
                     else:
-                        matches = view.slice_bytes(index, needle.len()).to_text() == needle
+                        matches = emitter_expr_match_at(view, needle_view, index)
                         if depth == 0 and matches:
                             if not words:
                                 return index
@@ -282,6 +301,7 @@ emitter_expr_top(value: Text, needle: Text, words: Bool) -> UInt64:
     value.len()
 emitter_expr_last_top(value: Text, needle: Text, words: Bool) -> UInt64:
     view: TextView = value.as_view()
+    needle_view = needle.as_view()
     depth: UInt64 = 0
     index: UInt64 = 0
     quote: UInt64 = 0
@@ -302,7 +322,7 @@ emitter_expr_last_top(value: Text, needle: Text, words: Bool) -> UInt64:
                         if depth > 0:
                             depth = depth - 1
                     else:
-                        matches = view.slice_bytes(index, needle.len()).to_text() == needle
+                        matches = emitter_expr_match_at(view, needle_view, index)
                         if depth == 0 and matches:
                             if not words:
                                 last = index
@@ -723,6 +743,16 @@ emitter_expr(value: Text, program: Program) -> Text:
         left = emitter_slice(result, 0, position)
         right = emitter_slice(result, position + 1, result.len() - position - 1)
         return emitter_expr_binary(" & ", left, right, program)
+    position = emitter_expr_last_top(result, "<<", false)
+    right_shift = emitter_expr_last_top(result, ">>", false)
+    if right_shift < result.len() and (position >= result.len() or right_shift > position):
+        position = right_shift
+    if position < result.len():
+        left = emitter_slice(result, 0, position)
+        right = emitter_slice(result, position + 2, result.len() - position - 2)
+        if position == right_shift:
+            return emitter_expr_binary(" >> ", left, right, program)
+        return emitter_expr_binary(" << ", left, right, program)
     position = emitter_expr_last_top(result, "+", false)
     if position < result.len():
         left = emitter_slice(result, 0, position)
