@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fixes native shifts being misparsed as repeated comparisons, which could
+  compile successfully but return the wrong result. Byte-based operator matching
+  distinguishes complete operators without per-candidate Text allocation;
+  recursive shift lowering preserves precedence and mixed-direction left
+  associativity. Input-dependent staged consumers cover both result branches.
+  Complete typed shift traps and native lifecycle acceptance remain separate.
+
 - Adds the missing native XOR token and recursive bitwise OR/XOR/AND lowering.
   Nested method operands no longer fall through as unlowered C-like text, and
   the bitwise precedence levels are preserved. Native token-boundary regressions

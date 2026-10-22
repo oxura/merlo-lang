@@ -212,6 +212,15 @@ opaque C-like text. Staged consumers check input-dependent true/false paths and
 mixed OR/XOR/AND precedence. This remains the subset emitter, not the complete
 typed expression/MIR port or its outstanding lifecycle acceptance.
 
+Native operator matching compares retained bytes directly and distinguishes
+single `<`/`>` comparisons from `<<`/`>>` and `<=`/`>=`; it does not allocate a
+temporary Text at each candidate position. Shift operands are recursively
+lowered between the bitwise and additive precedence levels. Mixed shift
+directions associate left to right. Staged consumers verify comparisons,
+method operands, arithmetic/bitwise precedence, and both runtime branches.
+This establishes bounded valid-operand lowering, not complete type-directed
+shift overflow/count traps or the native lifecycle port.
+
 The production MIR route stages replacement owners before releasing old values,
 including inferred rebindings and result slots re-executed on CFG backedges.
 Vacant owning slots use the runtime's typed zero helpers, so unused enum slots
