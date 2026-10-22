@@ -196,6 +196,15 @@ bytes and stop at the physical line boundary for recovery. This scanner layer
 retains raw spans, not decoded typed literal values; the complete native
 expression/literal lowering remains a separate port.
 
+Native ASCII numeric lexemes share one number-token category for decimal
+integers, fractions/exponents, and binary/octal/hexadecimal prefixes. Separator
+placement follows the production frontend grammar, including its normalization
+before numeric decoding. Missing base/exponent digits, invalid base digits,
+doubled/trailing separators, and duplicate leading-dot fractions are lexical
+errors. Adjacent names and operators retain their own token boundaries.
+The scanner preserves raw spans without converting values; numeric decoding,
+type-directed ranges, and complete numeric body lowering remain separate.
+
 The production MIR route stages replacement owners before releasing old values,
 including inferred rebindings and result slots re-executed on CFG backedges.
 Vacant owning slots use the runtime's typed zero helpers, so unused enum slots

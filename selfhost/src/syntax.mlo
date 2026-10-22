@@ -61,7 +61,7 @@ export token_invalid_kind() -> UInt64:
 export token_identifier_kind() -> UInt64:
     1
 
-export token_integer_kind() -> UInt64:
+export token_number_kind() -> UInt64:
     2
 
 export token_string_kind() -> UInt64:
@@ -269,7 +269,7 @@ export token_kind_is_identifier(value: Token) -> Bool:
     value.kind == token_identifier_kind()
 
 export token_kind_is_literal(value: Token) -> Bool:
-    value.kind == token_integer_kind() or value.kind == token_string_kind()
+    value.kind == token_number_kind() or value.kind == token_string_kind()
 
 export token_kind_is_trivia(value: Token) -> Bool:
     value.kind == token_whitespace_kind() or value.kind == token_comment_kind()
