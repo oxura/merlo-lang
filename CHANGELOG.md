@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Ports native ASCII numeric literal grammar for bases, decimal fractions and
+  exponents, and digit separators. Number tokens retain neighboring identifier/
+  operator boundaries and exact source spans; malformed numeric lexemes are
+  rejected without host-number conversion. Typed numeric decoding/range checking
+  and complete body lowering remain separate.
+
 - Ports native Text/Bytes literal lexical validation: raw/Unicode/bytes prefixes,
   simple/hex/octal escapes, Unicode scalar bounds, ASCII bytes, and byte-range
   checks. Invalid escapes retain exact source-byte coverage and recover at the

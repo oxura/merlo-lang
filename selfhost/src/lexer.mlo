@@ -106,18 +106,88 @@ scan_identifier(state: LexerState) -> Unit:
     kind = token_keyword_kind(word)
     push_token(state, kind, start, state.index - start, start_line, start_column)
 
-scan_integer(state: LexerState) -> Unit:
+scan_decimal_digits(state: LexerState) -> Bool:
+    valid = true
+    previous_underscore = false
+    while state.index < state.source.len():
+        byte = state.source.byte(state.index)
+        if not is_digit(byte) and byte != 95:
+            break
+        if byte == 95:
+            if previous_underscore:
+                valid = false
+            previous_underscore = true
+        else:
+            previous_underscore = false
+        lexer_advance(state)
+    valid
+
+scan_based_digits(state: LexerState, base: UInt64) -> Bool:
+    valid = true
+    seen_digit = false
+    previous_underscore = false
+    while state.index < state.source.len() and is_alphanumeric(state.source.byte(state.index)):
+        byte = state.source.byte(state.index)
+        if byte == 95:
+            if previous_underscore:
+                valid = false
+            previous_underscore = true
+        else:
+            previous_underscore = false
+            if is_hex(byte) and hex_value(byte) < base:
+                seen_digit = true
+            else:
+                valid = false
+        lexer_advance(state)
+    valid and seen_digit and not previous_underscore
+
+scan_number(state: LexerState) -> Unit:
     start = state.index
     start_line = state.line
     start_column = state.column
-    while state.index < state.source.len() and is_digit(state.source.byte(state.index)):
+    base: UInt64 = 10
+    if state.source.byte(state.index) == 48 and state.index + 1 < state.source.len():
+        prefix = state.source.byte(state.index + 1)
+        if prefix == 88 or prefix == 120:
+            base = 16
+        if prefix == 66 or prefix == 98:
+            base = 2
+        if prefix == 79 or prefix == 111:
+            base = 8
+    if base != 10:
         lexer_advance(state)
-    if state.index < state.source.len() and is_alpha(state.source.byte(state.index)):
-        while state.index < state.source.len() and is_alphanumeric(state.source.byte(state.index)):
+        lexer_advance(state)
+        valid = scan_based_digits(state, base)
+        kind = token_number_kind()
+        if not valid:
+            kind = token_invalid_kind()
+        push_token(state, kind, start, state.index - start, start_line, start_column)
+        return
+    leading_dot = state.source.byte(state.index) == 46
+    if leading_dot:
+        lexer_advance(state)
+    valid = scan_decimal_digits(state)
+    if state.index < state.source.len() and state.source.byte(state.index) == 46:
+        if leading_dot:
+            valid = false
+        lexer_advance(state)
+        if not scan_decimal_digits(state):
+            valid = false
+    if state.index < state.source.len() and (state.source.byte(state.index) == 69 or state.source.byte(state.index) == 101):
+        lexer_advance(state)
+        if state.index < state.source.len() and (state.source.byte(state.index) == 43 or state.source.byte(state.index) == 45):
             lexer_advance(state)
-        push_token(state, token_invalid_kind(), start, state.index - start, start_line, start_column)
-    else:
-        push_token(state, token_integer_kind(), start, state.index - start, start_line, start_column)
+        exponent_start = state.index
+        if not scan_decimal_digits(state):
+            valid = false
+        if state.index == exponent_start:
+            valid = false
+    if state.source.byte(state.index - 1) == 95:
+        valid = false
+    kind = token_number_kind()
+    if not valid:
+        kind = token_invalid_kind()
+    push_token(state, kind, start, state.index - start, start_line, start_column)
 
 is_quote(value: UInt64) -> Bool:
     value == 34 or value == 39
@@ -391,8 +461,8 @@ export lex(source: Text) -> Vec[Token]:
                             else:
                                 scan_identifier(state)
                         else:
-                            if is_digit(byte):
-                                scan_integer(state)
+                            if is_digit(byte) or byte == 46 and state.index + 1 < state.source.len() and is_digit(state.source.byte(state.index + 1)):
+                                scan_number(state)
                             else:
                                 if byte == 34 or byte == 39:
                                     scan_string(state, 0)

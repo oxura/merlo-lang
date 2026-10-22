@@ -105,6 +105,36 @@ def test_native_stages_preserve_newly_accepted_text_escapes(
         assert result.stderr == b""
 
 
+def test_native_stages_compile_hexadecimal_integer_arithmetic(
+    tmp_path: Path, bootstrap_report: SelfHostReport,
+) -> None:
+    assert tuple(stage.number for stage in bootstrap_report.stages) == (1, 2, 3)
+    consumer = (
+        "module consumer\n\n"
+        "main(input: Text) -> Text:\n"
+        "    if 0x2A + 0x10 == 58:\n"
+        '        return "hex-ok\\n"\n'
+        "    else:\n"
+        '        return "wrong\\n"\n'
+    )
+    for stage in bootstrap_report.stages:
+        emitted = subprocess.run(
+            [stage.executable], input=consumer.encode(), capture_output=True,
+            check=True, env={**os.environ, "PATH": ""}, timeout=30,
+        )
+        compiled = compile_c_source(
+            emitted.stdout.decode(), output_dir=tmp_path,
+            stem=f"hexadecimal-stage{stage.number}",
+        )
+        assert compiled.status == "MEASURED", compiled.stderr
+        result = subprocess.run(
+            [compiled.binary_path], input=b"unused", capture_output=True,
+            check=True, timeout=30, env={"PATH": ""},
+        )
+        assert result.stdout == b"hex-ok\n"
+        assert result.stderr == b""
+
+
 def test_native_parser_consumes_one_trivia_preserving_stream(
     tmp_path: Path, bootstrap_report: SelfHostReport,
 ) -> None:

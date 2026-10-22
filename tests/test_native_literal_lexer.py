@@ -31,8 +31,11 @@ classify(source: Text) -> Text:
             if token.kind == syntax.token_string_kind():
                 output.append_text("L")
             else:
-                if token.kind != syntax.token_eof_kind() and token.kind != syntax.token_newline_kind() and token.kind != syntax.token_indent_kind() and token.kind != syntax.token_dedent_kind() and token.kind != syntax.token_whitespace_kind() and token.kind != syntax.token_comment_kind():
-                    output.append_text("O")
+                if token.kind == syntax.token_number_kind():
+                    output.append_text("N")
+                else:
+                    if token.kind != syntax.token_eof_kind() and token.kind != syntax.token_newline_kind() and token.kind != syntax.token_indent_kind() and token.kind != syntax.token_dedent_kind() and token.kind != syntax.token_whitespace_kind() and token.kind != syntax.token_comment_kind():
+                        output.append_text("O")
         index = index + 1
     if expected != length:
         return "TRUNCATED"
@@ -89,6 +92,64 @@ LEXEME_CASES = (
     ('rb_name', b"O"),
 )
 
+NUMERIC_CASES = (
+    ("0", b"N"),
+    ("18446744073709551615", b"N"),
+    ("18446744073709551616", b"N"),
+    ("1_000", b"N"),
+    ("0xFF", b"N"),
+    ("0X_fF", b"N"),
+    ("0b101_011", b"N"),
+    ("0B_1", b"N"),
+    ("0o755", b"N"),
+    ("0O_7", b"N"),
+    ("1.25", b"N"),
+    ("1.", b"N"),
+    (".5", b"N"),
+    ("1e3", b"N"),
+    ("1E-3", b"N"),
+    ("1e+3", b"N"),
+    ("0.5e+9", b"N"),
+    ("1_e_2", b"N"),
+    ("1_._2", b"N"),
+    ("1e+_2", b"N"),
+    ("1._e2", b"N"),
+    ("00_1", b"N"),
+    ("08", b"N"),
+    ("1e9999", b"N"),
+    ("0x", b"I"),
+    ("0x_", b"I"),
+    ("0x__1", b"I"),
+    ("0x1_", b"I"),
+    ("0x1G", b"I"),
+    ("0b2", b"I"),
+    ("0o8", b"I"),
+    ("0b10__01", b"I"),
+    ("1__2", b"I"),
+    ("1_", b"I"),
+    ("1e", b"I"),
+    ("1e+", b"I"),
+    ("1e_", b"I"),
+    (".1.2", b"I"),
+    ("1.2_", b"I"),
+    ("1e2__3", b"I"),
+    ("1._", b"I"),
+    ("1e-_", b"I"),
+    ("12name", b"NO"),
+    ("1..2", b"NN"),
+    ("1.2.3", b"NN"),
+    ("1.2foo", b"NO"),
+    ("1e2name", b"NO"),
+    ("0x10.foo", b"NOO"),
+    ("0x10.2", b"NN"),
+    ("0x1+2", b"NON"),
+    ("1 + 2", b"NON"),
+    ("1 # tail\r\n2", b"NN"),
+    ("-1", b"ON"),
+    (".", b"O"),
+    ("_1", b"O"),
+)
+
 
 @pytest.fixture(scope="module")
 def native_literal_lexer(tmp_path_factory: pytest.TempPathFactory) -> Path:
@@ -112,7 +173,7 @@ def native_literal_lexer(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return Path(compilation.native.binary_path)
 
 
-@pytest.mark.parametrize(("source", "expected"), LEXEME_CASES)
+@pytest.mark.parametrize(("source", "expected"), LEXEME_CASES + NUMERIC_CASES)
 def test_native_literal_validation_and_recovery(
     native_literal_lexer: Path, source: str, expected: bytes,
 ) -> None:
