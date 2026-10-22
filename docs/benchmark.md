@@ -42,6 +42,14 @@ arm, fixture/source tamper, failed affinity application, or failed dispersion
 or ratio gate cannot become a pass. Reports with different static source or
 toolchain hashes are separate observations, not replications or regressions.
 
+The canonical arm compiles the current frontend's explicit expansion. A change
+to that expansion requires a new pre-measurement freeze of its exact source
+bytes in both `alpha_performance.FROZEN_WORKLOADS` and `workloads.json`.
+The hygienic match-binding cutover renews the CSV and NDJSON canonical-input
+hashes; fixture bytes, expected outputs, algorithms, timing protocol, and
+thresholds are unchanged. Reports from the previous lock remain separate,
+stale observations, not evidence for the new compiler.
+
 This is not a claim of general native performance, a ranking across languages,
 a Rust result, or evidence outside these three fixtures. It is not an AI
 A/B experiment; the future same-model study remains separately preregistered

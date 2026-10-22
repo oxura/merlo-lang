@@ -9,6 +9,8 @@
   renaming its source variables to hide the inference failure.
   Return validation also consumes proven typed match coverage, so exhaustive
   unqualified enum arms can return without an artificial fallback return.
+  Renews the two affected canonical benchmark input locks before measurement;
+  older reports are not reused, and corpus, protocol, and thresholds are unchanged.
 
 - Retains native self-host lexer whitespace and comments as source-spanned
   tokens, including trailing trivia, CRLF, and malformed input. Layout errors
