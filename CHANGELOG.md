@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Fixes native `std.json` string round trips: valid UTF-16 surrogate pairs decode
+  to their Unicode scalar, malformed or unpaired escapes remain errors, and the
+  formatter escapes every JSON control character in values and object keys.
+  Native CLI regressions cover scalar boundaries, nested values, typed errors,
+  and all control characters without requiring a compiler on the runtime PATH.
+
 - Gives match payload bindings separate lexical identities before inference and
   native lowering. Reused payload spellings no longer merge unrelated variant
   types or overwrite outer parameters; module lookup respects arm-local names.
