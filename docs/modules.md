@@ -16,3 +16,11 @@ bootstrap:
 
 The standard library is alpha source data, not a separate binary distribution.
 Its host operations still require declared effects and capabilities.
+
+`std.json.parse` decodes `\uXXXX` escapes as UTF-16 code units: a high surrogate
+must be followed immediately by a low-surrogate escape, and the pair becomes
+one Unicode scalar. Lone, reversed, malformed, and truncated surrogate escapes
+return `JsonError.InvalidEscape`; unescaped control characters return
+`JsonError.InvalidString`. `std.json.format` escapes every U+0000–U+001F control
+character, quotation mark, and backslash in string values and object keys.
+Other Unicode text is retained as UTF-8.
