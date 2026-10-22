@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from dataclasses import replace
+from dataclasses import fields, replace
 
 from merlo import surface_ast as surface
 from merlo.frontend_model import ConciseApplicationError
@@ -92,15 +92,29 @@ def _payload_name(pattern: str) -> str | None:
 
 def _function_locals(function: surface.SurfaceFunction) -> frozenset[str]:
     names = {parameter.name for parameter in function.parameters}
+
+    def collect(node: surface.SurfaceNode, payloads: frozenset[str]) -> None:
+        if isinstance(node, surface.SurfaceCase):
+            payload = _payload_name(node.pattern)
+            if payload is not None:
+                payloads = payloads | {payload}
+        if isinstance(
+            node,
+            (surface.SurfaceBinding, surface.SurfaceAnnotation, surface.SurfaceFor),
+        ) and node.name not in payloads:
+            names.add(node.name)
+        for field in fields(node):
+            value = getattr(node, field.name)
+            if isinstance(value, surface.SurfaceNode):
+                collect(value, payloads)
+            elif isinstance(value, tuple):
+                for child in value:
+                    if isinstance(child, surface.SurfaceNode):
+                        collect(child, payloads)
+
     nodes = function.body if isinstance(function.body, tuple) else (function.body,)
     for root in nodes:
-        for node in root.walk():
-            if isinstance(node, (surface.SurfaceBinding, surface.SurfaceAnnotation, surface.SurfaceFor)):
-                names.add(node.name)
-            elif isinstance(node, surface.SurfaceCase):
-                payload = _payload_name(node.pattern)
-                if payload is not None:
-                    names.add(payload)
+        collect(root, frozenset())
     return frozenset(names)
 
 
@@ -222,7 +236,7 @@ def bind_module(
             )
         if isinstance(node, surface.SurfaceMember):
             parts = _expression_parts(node)
-            if parts is not None:
+            if parts is not None and parts[0] not in locals_:
                 renamed = qualified(".".join(parts), node.span)
                 if renamed is not None:
                     return surface.SurfaceName(renamed, node.span)
@@ -373,7 +387,10 @@ def bind_module(
                                 pattern=pattern(case.pattern, case.pattern_span or case.span),
                                 body=statements(
                                     case.body,
-                                    locals_,
+                                    locals_ | {
+                                        payload for payload in (_payload_name(case.pattern),)
+                                        if payload is not None
+                                    },
                                     type_parameters,
                                 ),
                             )

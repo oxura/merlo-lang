@@ -122,7 +122,7 @@ FROZEN_WORKLOADS: tuple[FrozenWorkload, ...] = (
         "parse numeric columns and sum each row into one deterministic digest",
         {
             "merlo_concise": "314f1946f6f7db2f79397b8f4a0620319e4587bfaa5242391f367f090727a494",
-            "merlo_canonical": "ec4d71389bef2999eb1fa52be65e443afa77707d755906816cc3d0ed4e6eaa1a",
+            "merlo_canonical": "877b10803d8e30c7509bb38ce2b0fdeb605af9168ad32556da4c3ce8fe1726ed",
             "c": "2c3fd15da202b4d9856388947bafbdce7eaf1198df3c6e448cab5d27d469c683",
             "python": "2fe9388211b54397756948c5912326e36db4a6e1a8a52fc5826549e579c05977",
             "rust": "d2f8f12ac2f5c59ab613b716b958d63e31ae87ae9f7458756c7e8d711c2a7599",
@@ -152,7 +152,7 @@ FROZEN_WORKLOADS: tuple[FrozenWorkload, ...] = (
         "real CLI NDJSON report with one process and identical arguments",
         {
             "merlo_concise": "c4fea95f1308c74f6500902815cc4051b06552047754526258f23e50d69a3dde",
-            "merlo_canonical": "67cc1505b204a981028e2dfff2da7c2933ecdb65312f87af08ff0fb717df67f4",
+            "merlo_canonical": "e189f4b22a0f1197e82e535698099c0bd855ac38a49e27bf21c6e4b88ea1090a",
             "c": "c5d86160aac3f27c85e5d3a8c8ff228ea96f5a76d9145aa3168fe38e9ad0d220",
             "python": "2fe9388211b54397756948c5912326e36db4a6e1a8a52fc5826549e579c05977",
             "rust": "ca9aca6d54d49e5f9203b985c763ae0fc91600027cd56fa043b7474e81c23bb1",

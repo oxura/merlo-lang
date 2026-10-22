@@ -34,6 +34,14 @@ Digest inputs include module identity, declaration kind/name, and signature
 payload. An alias resolves to one target identity; it is not a second host
 symbol.
 
+Match payload names are local to their arm. Before inference and native lowering,
+`elaboration/scopes.py` gives each payload a distinct internal identity while
+retaining its source spans. Reusing a spelling across variants cannot unify their
+payload types or replace an outer parameter. Nested arms shadow their enclosing
+payload; lambda parameters shadow captures. Module binding includes a payload
+only in that arm's local environment, and a local receiver takes precedence over
+an imported module alias.
+
 The current concise interface payload does not include every exported record or
 enum member shape. A shape edit is therefore not promised to change the current
 interface revision unless the published signature payload changes.

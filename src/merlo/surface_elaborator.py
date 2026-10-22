@@ -132,6 +132,7 @@ class _Elaborator:
     ) -> None:
         self._active_binding: str | None = None
         self._active_contract_result: _Function | None = None
+        self._exhaustive_matches: set[int] = set()
         self.program = program
         self.type_context = type_context
         self.types = _Types(type_context)
@@ -446,6 +447,8 @@ class _Elaborator:
         return binding if binding and binding != "_" else None
 
     def _match_exhaustive(self, statement: SurfaceMatch) -> bool:
+        if id(statement) in self._exhaustive_matches:
+            return True
         patterns = {case.pattern for case in statement.cases}
         if "_" in patterns:
             return True
@@ -2591,6 +2594,7 @@ class _Elaborator:
                     raise SurfaceElaborationError(
                         f"NonExhaustiveMatch: missing {sorted(missing)}"
                     )
+                self._exhaustive_matches.add(id(statement))
     def _canonical_block(
         self,
         statements: tuple[SurfaceStatement, ...],
@@ -3322,9 +3326,12 @@ def elaborate_surface(
     type_context_builder: TypeContextBuilder | None = None,
 ) -> SurfaceElaboration:
     from merlo.monomorphization import monomorphize_surface
+    from merlo.elaboration.scopes import bind_match_payloads
 
     builder = type_context_builder or TypeContextBuilder(allow_unresolved=False)
-    return _Elaborator(monomorphize_surface(program), builder).result()
+    return _Elaborator(
+        monomorphize_surface(bind_match_payloads(program)), builder,
+    ).result()
 
 
 __all__ = [
